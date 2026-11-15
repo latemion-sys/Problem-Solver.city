@@ -136,7 +136,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .mg{width:min(760px,100%);background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:10px;overflow:hidden}
 .mg-h{display:flex;justify-content:space-between;align-items:baseline;padding:10px 14px;border-bottom:1px solid var(--line)} .mg-h span{color:var(--muted);font-size:12px}
 .mg-desc{padding:8px 14px;font-size:13px;color:#cfc8bb}
-.mg-stage{padding:0 14px} .mg-stage canvas{width:100%;aspect-ratio:720/300;display:block;border-radius:6px;background:#000;touch-action:none}
+.mg-stage{padding:0 14px;position:relative} .mg-stage canvas.mg-gl{position:absolute;left:14px;top:0;width:calc(100% - 28px)} .mg-stage canvas.mg-over{position:relative;background:transparent} .mg-stage canvas{width:100%;aspect-ratio:720/300;display:block;border-radius:6px;background:#000;touch-action:none}
 .mg-info{padding:8px 14px;font-size:13px;min-height:44px} .mg-log{font-size:12px;color:var(--muted);margin-top:4px}
 .mg-ctrl{display:flex;gap:8px;padding:0 14px 6px} .mg-ctrl button{flex:1;padding:10px;font-size:15px}
 .mg-f{display:flex;justify-content:flex-end;padding:6px 14px 12px}
@@ -450,15 +450,15 @@ async function runMinigames(q, team){
 }
 
 /* ================= 미니게임 공통 창 ================= */
-function mgOpen(title, desc, ctx){
+function mgOpen(title, desc, ctx, H=300){
   const bg = document.createElement("div"); bg.className = "mg-bg";
   bg.innerHTML = `<div class="mg"><div class="mg-h"><b>${title}</b><span>${ctx.total>1?`미니게임 ${ctx.idx} / ${ctx.total} · `:""}${esc(ctx.q.client)}</span></div>
-    <div class="mg-desc">${desc}</div><div class="mg-stage"><canvas width="720" height="300"></canvas></div>
+    <div class="mg-desc">${desc}</div><div class="mg-stage"><canvas width="720" height="${H}" style="aspect-ratio:720/${H}"></canvas></div>
     <div class="mg-info"></div><div class="mg-ctrl"></div><div class="mg-f"><button class="mg-quit">포기</button></div></div>`;
   document.body.appendChild(bg);
   const cvs = bg.querySelector("canvas"), c = cvs.getContext("2d");
-  const d = Math.min(2, devicePixelRatio||1); cvs.width = 720*d; cvs.height = 300*d; c.setTransform(d,0,0,d,0,0);
-  const pos = e => { const r = cvs.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*720, y:(e.clientY-r.top)/r.height*300}; };
+  const d = Math.min(2, devicePixelRatio||1); cvs.width = 720*d; cvs.height = H*d; c.setTransform(d,0,0,d,0,0);
+  const pos = e => { const r = cvs.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*720, y:(e.clientY-r.top)/r.height*H}; };
   return { bg, cvs, c, pos, info: bg.querySelector(".mg-info"), ctrl: bg.querySelector(".mg-ctrl"), quit: bg.querySelector(".mg-quit"), close(){ bg.remove(); } };
 }
 function mgResult(m, score, text){
@@ -466,6 +466,308 @@ function mgResult(m, score, text){
     m.quit.onclick = ()=>{ m.close(); res(score); }; setTimeout(()=>{ if(document.body.contains(m.bg)){ m.close(); res(score); } }, 1800); });
 }
 const powK = (ctx, a) => clamp(teamPower(ctx.team, [a]) / Math.max(1, ctx.q.req), 0.55, 1.7);
+
+/* ================= 전투 무대(WebGL2) =================
+   2D 화면 위에 그리는 셰이더 연출. 과하지 않게, 실루엣은 은은한 입체감만 준다.
+   ① 배경 패스: 노이즈로 만든 3겹 야경(창문·네온 번짐), 젖은 아스팔트 반사, 안개, 비, 포켓몬식 원형 발판
+   ② 인물 패스: 기존의 납작한 실루엣을 텍스처로 받아 가장자리 기울기로 은은한 명암·림 라이트만 더한다(사살 시 노이즈로 흩어짐).
+   ③ 효과 패스: 무기별 궤적 메시(호 잔상·찌르기·탄도), 충격 고리, GPU 파티클(정점 셰이더에서 시드로 궤적 계산)
+   ④ 후처리: 충격파 굴절, 약한 색수차, 빛 번짐, 비네트, 그레인
+   WebGL2가 안 되면 null을 돌려주고 기존 2D 연출을 쓴다. */
+const CombatGL = (function(){
+  const VS_FULL = `#version 300 es
+  in vec2 aP; out vec2 vUv; void main(){ vUv = aP*0.5+0.5; gl_Position = vec4(aP,0.,1.); }`;
+  const NOISE = `
+  float h11(float x){ return fract(sin(x*127.1)*43758.5453); }
+  float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+  float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+    return mix(mix(h21(i),h21(i+vec2(1,0)),f.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x), f.y); }
+  float fbm(vec2 p){ float s=0., a=.5; for(int i=0;i<4;i++){ s+=a*vnoise(p); p=p*2.03+vec2(1.7,9.2); a*=.5; } return s; }`;
+  // ① 배경
+  const FS_BG = `#version 300 es
+  precision highp float; in vec2 vUv; out vec4 o;
+  uniform vec2 uRes; uniform float uT, uHz; uniform vec4 uPlat[2];
+  ${NOISE}
+  // 빌딩 한 겹: x 위치와 지평선 위 높이(hy)로 실루엣·창문·간판을 돌려준다
+  vec4 layer(float x, float hy, float sc, float seed, out vec3 em){
+    em = vec3(0.);
+    float w = 34.*sc, id = floor(x/w + seed*13.), lx = fract(x/w + seed*13.);
+    float bh = (34. + h11(id+seed)*120. + step(.86,h11(id*1.7+seed))*60.)*sc;
+    float gap = step(.06, lx)*step(lx, .94);
+    float inside = step(hy, bh)*gap;
+    // 창문 격자
+    vec2 cell = vec2(floor(lx*w/(5.*sc)), floor(hy/(7.*sc)));
+    vec2 cf = vec2(fract(lx*w/(5.*sc)), fract(hy/(7.*sc)));
+    float win = step(.25,cf.x)*step(cf.x,.75)*step(.3,cf.y)*step(cf.y,.8);
+    float lit = step(.74, h21(cell + id*3.1 + seed)) * win * step(hy, bh-6.*sc) * step(4.*sc, hy);
+    vec3 wc = mix(vec3(1.,.72,.38), vec3(.55,.75,1.), step(.7, h21(cell*1.3+id)));
+    em += lit*wc*(.55+.45*sin(uT*.6+id*7.)*step(.97,h21(cell+id)));
+    // 간판 네온(이웃 빌딩 것까지 번짐을 더한다)
+    for(int k=-1;k<=1;k++){
+      float j = id+float(k); if(h11(j*3.7+seed) < .72) continue;
+      float sx = (j - seed*13. + .5)*w, sy = (20. + h11(j*5.1)*60.)*sc;
+      vec3 nc = h11(j*9.3)<.5 ? vec3(1.,.25,.55) : (h11(j*2.9)<.5 ? vec3(.2,.85,1.) : vec3(1.,.6,.15));
+      float fl = .75+.25*step(.15, fract(sin(floor(uT*8.+j)*91.3)*43.));
+      vec2 d = vec2(x - sx, hy - sy); float box = step(abs(d.x), 7.*sc)*step(abs(d.y), 3.*sc);
+      em += nc*fl*(box*1.4 + .5*exp(-dot(d,d)/(260.*sc*sc)));
+    }
+    return vec4(inside);
+  }
+  vec3 city(float x, float hy, float t){
+    vec3 col = mix(vec3(.10,.07,.16), vec3(.02,.02,.05), clamp(hy/220.,0.,1.));      // 하늘
+    col += vec3(.45,.22,.12)*exp(-max(hy,0.)/38.)*.55;                                // 지평선의 도시 불빛
+    col += vec3(.15,.12,.22)*fbm(vec2(x*.006+t*.01, hy*.012))*.5;                    // 구름
+    vec3 em;
+    vec4 L = layer(x+t*1.5, hy, .62, .3, em); col = mix(col, vec3(.12,.10,.17)+em*.35, L.x*.95);
+    L = layer(x+t*3., hy, .85, 1.7, em);       col = mix(col, vec3(.07,.06,.10)+em*.6, L.x);
+    L = layer(x+t*5., hy, 1.15, 4.1, em);      col = mix(col, vec3(.035,.03,.05)+em*.9, L.x);
+    col += em*.18*(1.-L.x);                                                           // 네온 번짐
+    return col;
+  }
+  void main(){
+    vec2 p = vec2(vUv.x, 1.-vUv.y)*uRes;   // 화면 픽셀(위가 0)
+    float t = uT, hy = uHz - p.y; vec3 col;
+    if(hy >= 0.) col = city(p.x, hy, t);
+    else {
+      // 젖은 아스팔트: 원근 + 일렁이는 반사
+      float d = -hy, z = 40./(d+4.);
+      vec2 g = vec2((p.x-uRes.x*.5)*z*.06, z*3.);
+      float puddle = smoothstep(.45,.62, fbm(vec2(p.x*.012, 30./(d+3.))*vec2(1.,3.)));
+      float rip = (vnoise(vec2(p.x*.08, d*.3 - t*2.))-.5)*(6.+puddle*6.);
+      vec3 refl = city(p.x + rip, d*1.15 + 2., t);
+      col = vec3(.03,.028,.04) + vec3(.02)*fbm(p*.05);
+      col += refl*mix(.18, .55, puddle)*exp(-d/140.);
+      float grid = smoothstep(.97,1.,abs(sin(g.x*3.14159)))*.5 + smoothstep(.96,1.,abs(sin(g.y)))*.4;
+      col += vec3(.08,.07,.1)*grid*exp(-d/60.);
+    }
+    // 안개
+    float fog = fbm(vec2(p.x*.004 + t*.03, p.y*.01 - t*.01));
+    col = mix(col, vec3(.16,.12,.2), fog*.22*smoothstep(uRes.y*.1, uRes.y*.5, p.y)*(1.-smoothstep(uRes.y*.5,uRes.y,p.y)*.6));
+    // 원형 발판 (윗면 + 옆면 + 테두리 빛)
+    for(int i=0;i<2;i++){
+      vec4 P = uPlat[i]; float th = P.w*.35;
+      vec2 q = (p-P.xy)/P.zw; float e = length(q);
+      vec2 q2 = (p-P.xy-vec2(0.,th))/P.zw; float e2 = length(q2);
+      float side = step(e2,1.)*step(1.,e)*step(P.y, p.y);
+      col = mix(col, vec3(.05,.045,.06)+vec3(.05,.04,.07)*(1.-abs(q2.x)), side*.95);
+      if(e < 1.){
+        vec3 top = mix(vec3(.13,.12,.15), vec3(.07,.065,.08), e);
+        top += vec3(.03)*smoothstep(.0,.1, abs(fract(e*5.)-.5))*.0;
+        top += vec3(.05,.045,.07)*(.5+.5*sin(e*34.))*.25;
+        top *= .55 + .45*fbm(q*3.+float(i)*7.);
+        top += vec3(.45,.35,.6)*smoothstep(.86,.99,e)*(.35+.65*smoothstep(.2,-.9,q.y));  // 테두리 빛
+        top *= 1. - .55*exp(-dot(q*vec2(1.6,1.),q*vec2(1.6,1.))*3.5);                     // 발밑 그림자
+        col = mix(col, top, smoothstep(1.,.985,e));
+      }
+    }
+    // 비
+    for(int k=0;k<2;k++){
+      float sp = k==0 ? 620. : 380., cw = k==0 ? 9. : 6.;
+      float cx = floor((p.x + p.y*.18)/cw), lx = fract((p.x + p.y*.18)/cw);
+      float off = h11(cx*1.3+float(k)*5.)*900.;
+      float y = fract((p.y + t*sp + off)/(k==0?110.:70.));
+      float s = smoothstep(.0,.04,y)*smoothstep(.22,.04,y)*step(abs(lx-.5), .06)*step(.55, h11(cx+float(k)*3.));
+      col += vec3(.55,.6,.75)*s*(k==0?.10:.06);
+    }
+    o = vec4(col,1.);
+  }`;
+  // ② 인물: 기존의 납작한 실루엣(2D로 그린 것)을 텍스처로 받아, 가장자리 기울기로 은은한 명암·림 라이트만 더한다
+  const FS_FIG = `#version 300 es
+  precision highp float; in vec2 vUv; out vec4 o;
+  uniform sampler2D uFig; uniform vec2 uTex; uniform float uSc, uDis; uniform vec4 uDisRect;
+  ${NOISE}
+  float A(vec2 uv){ return texture(uFig, uv).a; }
+  void main(){
+    vec2 uv = vec2(vUv.x, 1.-vUv.y);
+    vec4 f = texture(uFig, uv); if(f.a < .01) discard;
+    vec2 px = 1./uTex, ex = vec2(px.x,0.), ey = vec2(0.,px.y);
+    float gx = (A(uv+ex*2.5)-A(uv-ex*2.5)) + .5*(A(uv+ex*6.)-A(uv-ex*6.));
+    float gy = (A(uv+ey*2.5)-A(uv-ey*2.5)) + .5*(A(uv+ey*6.)-A(uv-ey*6.));
+    vec2 nrm = -vec2(gx, gy); float edge = clamp(length(nrm)*.8, 0., 1.);
+    vec2 n2 = length(nrm) > .001 ? normalize(nrm) : vec2(0.);
+    vec3 col = f.rgb;
+    float lit = dot(n2, normalize(vec2(-.55,-.85)))*edge;           // 왼쪽 위에서 오는 약한 빛
+    float rim = max(dot(n2, normalize(vec2(1.,-.25))), 0.)*edge;      // 네온 쪽 림 라이트
+    col *= 1. + .28*lit;
+    col *= 1.04 - .12*smoothstep(.2, 1., uv.y);                       // 아래로 갈수록 살짝 어둡게
+    col += vec3(.5,.42,.85)*rim*.16;
+    // 사살: 노이즈 문턱으로 재처럼 흩어진다
+    vec2 sp = uv*uTex/uSc;
+    if(uDis > 0. && sp.x > uDisRect.x && sp.x < uDisRect.z && sp.y > uDisRect.y && sp.y < uDisRect.w){
+      float nz = vnoise(sp*.09)*.7 + vnoise(sp*.31)*.3;
+      if(nz < uDis) discard;
+      col += vec3(1.,.55,.25)*smoothstep(uDis+.07, uDis, nz)*1.6;
+    }
+    o = vec4(col*f.a, f.a);
+  }`;
+  // ③ 효과: 궤적·충격·파티클
+  const VS_FX = `#version 300 es
+  in vec2 aP; in vec2 aUV; uniform vec2 uRes; out vec2 vUV; out vec2 vP;
+  void main(){ vUV=aUV; vP=aP; gl_Position=vec4(aP.x/uRes.x*2.-1., 1.-aP.y/uRes.y*2., 0., 1.); }`;
+  const FS_FX = `#version 300 es
+  precision highp float; in vec2 vUV; in vec2 vP; out vec4 o;
+  uniform int uKind; uniform float uK; uniform vec3 uCol; uniform float uT;
+  ${NOISE}
+  void main(){
+    float k=uK; vec3 c=uCol; float a=0.;
+    if(uKind==0){ // 호 잔상: u=호 길이 방향, v=폭(-1~1)
+      float u=vUV.x, v=vUV.y, head=k*1.25, tail=head-.55;
+      float along = smoothstep(tail, head, u)*step(u, head);
+      float across = exp(-v*v*5.)*(1.-smoothstep(.75,1.,abs(v)));
+      float streak = .65+.35*vnoise(vec2(u*30., v*3.+uT*4.));
+      a = along*across*streak*(1.-smoothstep(.75,1.,k));
+      c = mix(c, vec3(1.), exp(-v*v*30.)*along);
+    } else if(uKind==1){ // 충격: 중심 빛 + 퍼지는 고리 + 방사 줄기
+      vec2 q=vUV*2.-1.; float r=length(q), ang=atan(q.y,q.x);
+      float ring = exp(-pow((r-k*.95)/.06,2.))*(1.-k);
+      float core = exp(-r*r*16.)*(1.-k)*.8;
+      float rays = pow(vnoise(vec2(ang*5., 3.)),3.)*exp(-r*2.5)*(1.-k)*1.2*step(r,1.);
+      a = ring + core + rays;
+    } else { // 직선 궤적(찌르기·탄도)
+      float u=vUV.x, v=vUV.y; float along = smoothstep(k-.5,k,u)*step(u,k+.02);
+      a = along*exp(-v*v*6.)*(1.-smoothstep(.7,1.,k));
+      c = mix(c, vec3(1.), exp(-v*v*40.));
+    }
+    o = vec4(c*a, a);
+  }`;
+  const VS_PT = `#version 300 es
+  in float aI; uniform vec2 uRes; uniform vec2 uO; uniform float uK, uSeed, uSpd, uN; uniform vec2 uDir;
+  out float vA; out float vH;
+  float h(float x){ return fract(sin(x*78.233+uSeed)*43758.5453); }
+  void main(){
+    float ang = atan(uDir.y,uDir.x) + (h(aI)-.5)*2.4, sp = uSpd*(.35+h(aI+1.)*.9), life = .55+h(aI+2.)*.45;
+    float t = min(uK/life, 1.);
+    vec2 p = uO + vec2(cos(ang),sin(ang))*sp*t*(1.-t*.45) + vec2(0., 55.*t*t);
+    vA = 1.-t; vH = h(aI+3.);
+    gl_PointSize = (1.4+h(aI+4.)*2.6)*(1.-t*.6)*${'${DPR}'};
+    gl_Position = vec4(p.x/uRes.x*2.-1., 1.-p.y/uRes.y*2., 0., 1.);
+  }`;
+  const FS_PT = `#version 300 es
+  precision highp float; in float vA; in float vH; uniform vec3 uCol; out vec4 o;
+  void main(){ vec2 q=gl_PointCoord*2.-1.; float d=dot(q,q); if(d>1.) discard;
+    vec3 c = mix(uCol, vec3(1.,.95,.8), vH*.6); float a = vA*(1.-d); o = vec4(c*a, a); }`;
+  // ④ 후처리
+  const FS_POST = `#version 300 es
+  precision highp float; in vec2 vUv; out vec4 o;
+  uniform sampler2D uTex; uniform vec2 uRes; uniform float uT, uAb, uFlash; uniform vec4 uWave[2]; uniform vec2 uShake; uniform vec3 uFlashCol;
+  ${NOISE}
+  void main(){
+    vec2 uv = vUv + uShake/uRes;
+    vec2 px = vec2(uv.x, 1.-uv.y)*uRes;
+    for(int i=0;i<2;i++){ vec4 w=uWave[i]; if(w.w<=0.) continue;
+      vec2 d = px-w.xy; float r=length(d), R=w.z, band=exp(-pow((r-R)/14.,2.));
+      uv -= (d/max(r,1.))/uRes*band*16.*w.w*vec2(1.,-1.); }
+    vec2 cd = (uv-.5)*uAb*.012;
+    vec3 col = vec3(texture(uTex, uv+cd).r, texture(uTex, uv).g, texture(uTex, uv-cd).b);
+    // 빛 번짐: 밝은 부분만 둥글게 모은다
+    vec3 bl = vec3(0.); for(int i=0;i<12;i++){ float a=float(i)*.5236; for(int j=1;j<=2;j++){
+      vec2 o2 = vec2(cos(a),sin(a))*float(j)*5./uRes; vec3 s = texture(uTex, uv+o2).rgb; bl += max(s-.55, 0.); } }
+    col += bl/24.*1.1;
+    col = mix(col, uFlashCol, uFlash);
+    col = pow(col, vec3(.95))*vec3(1.02,1.,1.04);
+    float vg = smoothstep(1.15, .35, length((vUv-.5)*vec2(1.25,1.)));
+    col *= mix(.55, 1., vg);
+    col += (h21(px+fract(uT)*91.)-.5)*.035;
+    o = vec4(col,1.);
+  }`;
+
+  function make(cv, W, H){
+    const gl = cv.getContext("webgl2", {antialias:false, premultipliedAlpha:false, alpha:false});
+    if(!gl) return null;
+    const DPR = cv.width/W;
+    const sh = (type, src)=>{ const s=gl.createShader(type); gl.shaderSource(s, src.replace("${DPR}", DPR.toFixed(2))); gl.compileShader(s);
+      if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const prog = (vs, fs)=>{ const p=gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
+      if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      const u={}; const n=gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for(let i=0;i<n;i++){ const nm=gl.getActiveUniform(p,i).name.replace("[0]",""); u[nm]=gl.getUniformLocation(p, gl.getActiveUniform(p,i).name); }
+      return {p, u}; };
+    let P;
+    try { P = { bg:prog(VS_FULL, FS_BG), fig:prog(VS_FULL, FS_FIG), fx:prog(VS_FX, FS_FX), pt:prog(VS_PT, FS_PT), post:prog(VS_FULL, FS_POST) }; }
+    catch(e){ console.warn("CombatGL", e); return null; }
+    // 화면 전체 사각형
+    const quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+    const vaoFull = gl.createVertexArray(); gl.bindVertexArray(vaoFull); gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+    [P.bg, P.post].forEach(x=>gl.bindAttribLocation(x.p,0,"aP"));
+    // 인물 텍스처(매 프레임 2D 캔버스에서 올린다)
+    const figTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, figTex);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // 효과 메시
+    const vaoFx = gl.createVertexArray(); gl.bindVertexArray(vaoFx); const fxBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, fxBuf);
+    const lP = gl.getAttribLocation(P.fx.p,"aP"), lU = gl.getAttribLocation(P.fx.p,"aUV");
+    gl.enableVertexAttribArray(lP); gl.vertexAttribPointer(lP,2,gl.FLOAT,false,16,0); gl.enableVertexAttribArray(lU); gl.vertexAttribPointer(lU,2,gl.FLOAT,false,16,8);
+    // 파티클(정점 번호만 넘긴다)
+    const vaoPt = gl.createVertexArray(); gl.bindVertexArray(vaoPt); const ptBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, ptBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([...Array(160).keys()]), gl.STATIC_DRAW);
+    const lI = gl.getAttribLocation(P.pt.p,"aI"); gl.enableVertexAttribArray(lI); gl.vertexAttribPointer(lI,1,gl.FLOAT,false,0,0);
+    gl.bindVertexArray(null);
+    // 장면을 그릴 오프스크린 버퍼(+깊이)
+    const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,cv.width,cv.height,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const depth = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, depth); gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT24, cv.width, cv.height);
+    const fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    function drawFig(S){
+      if(!S.fig) return;
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, figTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, S.fig);
+      gl.useProgram(P.fig.p); gl.uniform1i(P.fig.u.uFig, 1); gl.uniform2f(P.fig.u.uTex, S.fig.width, S.fig.height); gl.uniform1f(P.fig.u.uSc, S.fig.width/W);
+      gl.uniform1f(P.fig.u.uDis, S.dis ? S.dis.v : 0); gl.uniform4fv(P.fig.u.uDisRect, S.dis ? S.dis.rect : [0,0,0,0]);
+      gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+      gl.bindVertexArray(vaoFull); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.disable(gl.BLEND); gl.activeTexture(gl.TEXTURE0);
+    }
+    function drawFx(kind, verts, k, col, mode){
+      gl.useProgram(P.fx.p); gl.uniform2f(P.fx.u.uRes, W, H); gl.uniform1i(P.fx.u.uKind, kind); gl.uniform1f(P.fx.u.uK, k); gl.uniform3fv(P.fx.u.uCol, col); gl.uniform1f(P.fx.u.uT, performance.now()/1000);
+      gl.bindVertexArray(vaoFx); gl.bindBuffer(gl.ARRAY_BUFFER, fxBuf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.DYNAMIC_DRAW);
+      gl.drawArrays(mode, 0, verts.length/4);
+    }
+    // 호 모양 궤적 메시(가늘어지는 띠)
+    const arcMesh = (cx, cy, R, a0, a1, w, seg=28)=>{ const v=[]; for(let i=0;i<=seg;i++){ const u=i/seg, a=a0+(a1-a0)*u, ww=w*(0.25+0.75*Math.sin(u*Math.PI));
+      const ox=Math.cos(a), oy=Math.sin(a); v.push(cx+ox*(R-ww), cy+oy*(R-ww), u, -1, cx+ox*(R+ww), cy+oy*(R+ww), u, 1); } return v; };
+    const lineMesh = (x0,y0,x1,y1,w)=>{ const dx=x1-x0, dy=y1-y0, L=Math.hypot(dx,dy)||1, nx=-dy/L*w, ny=dx/L*w;
+      return [x0+nx,y0+ny,0,-1, x0-nx,y0-ny,0,1, x1+nx,y1+ny,1,-1, x1-nx,y1-ny,1,1]; };
+    const quadMesh = (x,y,r)=>[x-r,y-r,0,0, x+r,y-r,1,0, x-r,y+r,0,1, x+r,y+r,1,1];
+
+    return {
+      gl, W, H,
+      render(S){
+        const t = S.t;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0,0,cv.width,cv.height);
+        gl.disable(gl.DEPTH_TEST); gl.disable(gl.BLEND);
+        gl.useProgram(P.bg.p); gl.uniform2f(P.bg.u.uRes, W, H); gl.uniform1f(P.bg.u.uT, t); gl.uniform1f(P.bg.u.uHz, S.horizon);
+        gl.uniform4fv(P.bg.u.uPlat, new Float32Array(S.plats.flat()));
+        gl.bindVertexArray(vaoFull); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        // 인물
+        drawFig(S);
+        // 효과(가산 혼합)
+        gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE);
+        S.fx.forEach(f=>{
+          if(f.kind==="arc") drawFx(0, arcMesh(f.x, f.y, f.R, f.a0, f.a1, f.w), f.k, f.col, gl.TRIANGLE_STRIP);
+          else if(f.kind==="hit") drawFx(1, quadMesh(f.x, f.y, f.R), f.k, f.col, gl.TRIANGLE_STRIP);
+          else if(f.kind==="line") drawFx(2, lineMesh(f.x0, f.y0, f.x1, f.y1, f.w), f.k, f.col, gl.TRIANGLE_STRIP);
+          else if(f.kind==="pt"){ gl.useProgram(P.pt.p); gl.uniform2f(P.pt.u.uRes, W, H); gl.uniform2f(P.pt.u.uO, f.x, f.y); gl.uniform1f(P.pt.u.uK, f.k);
+            gl.uniform1f(P.pt.u.uSeed, f.seed); gl.uniform1f(P.pt.u.uSpd, f.spd); gl.uniform2f(P.pt.u.uDir, f.dx, f.dy); gl.uniform3fv(P.pt.u.uCol, f.col);
+            gl.bindVertexArray(vaoPt); gl.drawArrays(gl.POINTS, 0, Math.min(160, f.n)); }
+        });
+        gl.disable(gl.BLEND);
+        // 후처리
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0,0,cv.width,cv.height);
+        gl.useProgram(P.post.p); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(P.post.u.uTex, 0);
+        gl.uniform2f(P.post.u.uRes, W, H); gl.uniform1f(P.post.u.uT, t); gl.uniform1f(P.post.u.uAb, S.aberr||0); gl.uniform1f(P.post.u.uFlash, S.flash||0);
+        gl.uniform3fv(P.post.u.uFlashCol, S.flashCol||[1,1,1]); gl.uniform2f(P.post.u.uShake, S.shake[0], S.shake[1]);
+        const wv = new Float32Array(8); (S.waves||[]).slice(0,2).forEach((w,i)=>wv.set(w, i*4)); gl.uniform4fv(P.post.u.uWave, wv);
+        gl.bindVertexArray(vaoFull); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      },
+      dispose(){ const e = gl.getExtension("WEBGL_lose_context"); if(e) e.loseContext(); }
+    };
+  }
+
+  return { make };
+})();
 
 /* ---- 물리: 주사위 합(合) 턴제 전투 ----
    매 턴: ① 노릴 부위(머리/몸통/팔/다리)를 고른다 → ② 무기별 전투 카드 3장 중 하나를 고른다 → ③ 서로 주사위를 굴려 합을 겨룬다.
@@ -502,8 +804,9 @@ const roll = (a,b) => a + Math.floor(Math.random()*(b-a+1));
 function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
-    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal==="사살"?"머리·목을 무너뜨리거나 몸통을 세로로 갈라 사살":"양팔이나 양다리를 못 쓰게 하거나 몸통을 무너뜨려 제압"}</b>. 노릴 부위를 고르고 카드를 내 주사위 합을 겨룬다. 최대 5턴.`, ctx);
+    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal==="사살"?"머리·목을 무너뜨리거나 몸통을 세로로 갈라 사살":"양팔이나 양다리를 못 쓰게 하거나 몸통을 무너뜨려 제압"}</b>. 노릴 부위를 고르고 카드를 내 주사위 합을 겨룬다. 최대 5턴.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none"}));
+    if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value) party.forEach(p=>p.wt = w.value); }
     const fwt = pick(FOE_WEAPONS);
     const foe = {name: FOE_NAMES[q.grade!=null?q.grade:9] || "적", wt:fwt, parts:{}, cards: CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1), b:c.b-1}))};
     const g0 = q.grade!=null ? q.grade : 9, augChance = 0.12 + (9-g0)*0.09;
@@ -536,7 +839,7 @@ function mgCombat(ctx){
           if(foeCard.def) dmg = Math.round(dmg*0.5);
           dmg = Math.max(1, Math.round(dmg*PART_DMG_MUL*(part==="head"?1.4:1)));
           const crit = part==="head" && !c.def && mine >= Math.max(1, c.b+bonus(me)-PARTS.head.pen-1) && Math.random()<0.5;
-          foe.parts[part] -= dmg; anim.push({who:"foe", t:performance.now()}); sparks(st, 540, partY(part), 12+dmg, "#ffd9a0", 4, 0.7); st.shake = 4+dmg/4;
+          foe.parts[part] -= dmg; st.crit = crit; attack("me", dmg, c);
           lines.push(`합을 이겼다! ${foe.name}의 ${PARTS[part].n}에 ${dmg}의 피해.`);
           if(crit){ foe.parts.head = 0; outcome = "사살"; lines.push(`최대치! 일격이 뇌까지 닿았다. ${foe.name}은(는) 즉사했다.`); }
           else if(foe.parts[part]<=0){
@@ -547,9 +850,9 @@ function mgCombat(ctx){
         } else if(theirs > mine){
           let dmg = foeCard.def ? (theirs-mine)*2 : Math.round(theirs*1.6*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f)));
           if(c.def) dmg = Math.round(dmg*0.5);
-          me.hp = Math.max(0, me.hp-dmg); anim.push({who:"me", t:performance.now()}); sparks(st, 200, 190, 10+dmg, "#ff6a6a", 3.5, 0.6); st.shake = 5+dmg/4;
+          me.hp = Math.max(0, me.hp-dmg); st.crit = false; attack("foe", dmg, c);
           lines.push(`합에서 밀렸다… ${esc(me.name)} -${dmg}${c.def?" (막아서 절반)":""}`);
-        } else lines.push("팽팽하게 맞부딪쳐 서로 튕겨 났다.");
+        } else { st.crit = false; attack("tie", 0, c); lines.push("팽팽하게 맞부딪쳐 서로 튕겨 났다."); }
         S2.log = lines.concat(S2.log).slice(0,4);
         m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
         setTimeout(next, 1500);
@@ -575,50 +878,138 @@ function mgCombat(ctx){
       else if(outcome){ score = 0.35; text = goal==="제압" ? "과잉 진압 — 죽여 버렸다" : "제압만 했다 — 사살 의뢰였다"; }
       else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다"; }
       else { score = 0.5*prog; text = "시간이 다 됐다 — 놓쳤다"; }
-      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, clamp(score,0,1), text).then(resolve); }, 600);
+      setTimeout(()=>{ mgResult(m, clamp(score,0,1), text).then(resolve); }, outcome ? 1500 : 600);
     }
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
       if(b.dataset.part && phase==="part"){ part = b.dataset.part; cardMenu(); }
       else if(b.dataset.back && phase==="card") partMenu();
       else if(b.dataset.card!==undefined && phase==="card") resolveClash(+b.dataset.card); };
     m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve(0); };
-    const partY = k => ({head:53, body:122, arm:108, leg:186})[k];
-    let raf;
+    /* ---- 연출: 포켓몬식 구도(적은 오른쪽 위 먼 발판, 우리는 왼쪽 아래 가까운 발판) ---- */
+    const W = 720, H = 380;
+    const POS = { foe:{x:528, gy:182, h:116, face:-1, z:0.62}, me:{x:178, gy:352, h:176, face:1, z:0.3} };
+    const PLATS = [[530,184,112,19],[190,354,168,30]];
+    const stage = m.bg.querySelector(".mg-stage"), glc = document.createElement("canvas");
+    const gd = Math.min(1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
+    stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
+    let G = null; try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; }
+    if(!G){ glc.remove(); m.cvs.classList.remove("mg-over"); }
+    const FX_COL = { blade:[0.8,0.9,1], great:[0.85,0.9,1], spear:[0.8,0.92,1], blunt:[1,0.72,0.42], drill:[1,0.66,0.3], gun:[1,0.85,0.5], tool:[0.95,0.85,0.7], none:[1,0.85,0.7] };
+    let clock = 0, last = performance.now(); st.ev = []; st.fx = []; st.waves = []; st.pop = [];
+    const chestOf = who => who==="foe" ? [POS.foe.x, POS.foe.gy - POS.foe.h*0.52] : [POS.me.x + 6, POS.me.gy - POS.me.h*0.52];
+    const addFx = (o, dur, delay=0)=>{ st.fx.push(Object.assign({t0: clock+delay, dur}, o)); };
+    // by: 공격하는 쪽("me" 우리, "foe" 적, "tie" 맞부딪침)
+    function attack(by, dmg, card){
+      const t0 = clock, imp = 290; st.ev.push({by, t0, crit: st.crit}); const big = st.crit ? 1.6 : 1;
+      if(by==="tie"){ const x = 360, y = 230;
+        addFx({kind:"hit", x, y, R:70, col:[1,0.9,0.7]}, 380, imp); addFx({kind:"pt", x, y, n:50, spd:120, dx:0, dy:-1, col:[1,0.8,0.45], seed:Math.random()*99}, 900, imp);
+        setTimeout(()=>{ st.waves.push({x, y, t0:clock, k:0.6}); st.shake = 6; }, imp); return; }
+      const tgt = by==="me" ? "foe" : "me", wt = by==="me" ? party[act].wt : foe.wt, col = FX_COL[wt] || FX_COL.none;
+      const [x, y] = chestOf(tgt), sc = tgt==="foe" ? 0.75 : 1.15, dir = by==="me" ? 1 : -1;
+      if(wt==="gun"){ const from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
+        [0,90,180].forEach((d,i)=>{ addFx({kind:"hit", x:from[0], y:from[1], R:26, col:[1,0.8,0.4]}, 120, imp-180+d);
+          addFx({kind:"line", x0:from[0], y0:from[1], x1:x+(i-1)*6, y1:y+(i-1)*8, w:2.5, col}, 160, imp-180+d); }); }
+      else if(wt==="spear" || wt==="drill") addFx({kind:"line", x0:x-dir*110*sc, y0:y+dir*30*sc, x1:x+dir*40*sc, y1:y-dir*10*sc, w:7*sc, col}, 320, imp-60);
+      else if(wt!=="blunt"){ const R = (wt==="great"?96:78)*sc, cx = x - dir*R*0.32, cy = y + R*0.62, a0 = dir>0 ? -2.45 : -0.7, a1 = dir>0 ? -0.15 : -3.0+0.01;
+        addFx({kind:"arc", x:cx, y:cy, R, a0, a1, w:(wt==="great"?13:9)*sc, col}, 360, imp-90);
+        if(card && card.cleave) addFx({kind:"arc", x:cx+dir*8, y:cy-10, R:R*0.86, a0:a0+0.15*dir, a1:a1+0.15*dir, w:4*sc, col}, 320, imp-50); }
+      addFx({kind:"hit", x, y, R:(wt==="blunt"?95:62)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
+      addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
+      setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = clock + (st.crit?140:70);
+        st.cond = JSON.parse(JSON.stringify(foe.parts)); party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt:`-${dmg}`, col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
+    }
+    // 한 사람의 움직임: 대기(숨쉬기) · 돌진 · 무기 휘두르기 · 피격 반동
+    // 실루엣 모양은 그대로 두고 위치(dx, dy)·기울기(rot)·무기 각도(wRot)·번쩍임(flash)만 바꾼다
+    const BASE_W = { me:-0.35, foe:0.6 };
+    function poseFor(who, now){
+      const P = POS[who]; let dx = 0, dy = Math.sin(now/1000*2.1 + (who==="foe"?1:0))*P.h*0.006, rot = 0, wRot = BASE_W[who], flash = 0;
+      st.ev.forEach(e=>{ const k = clock - e.t0; if(k<0 || k>760) return;
+        const isAtk = e.by===who || e.by==="tie", isHit = (e.by==="me" && who==="foe") || (e.by==="foe" && who==="me");
+        if(isAtk){ const tgt = who==="me" ? POS.foe : POS.me, tx = (e.by==="tie" ? 360 : tgt.x) - P.x, ty = (e.by==="tie" ? 230+P.h*0.5 : tgt.gy) - P.gy;
+          const go = k<290 ? ease(k/290) : 1 - ease(clamp((k-380)/360,0,1)), f = e.by==="tie" ? 0.62 : 0.4;
+          dx += tx*f*go; dy += ty*f*go; rot += 0.12*P.face*go;
+          wRot = k<200 ? BASE_W[who] - 1.3*ease(k/200) : k<380 ? BASE_W[who] - 1.3 + 2.9*ease(Math.min(1,(k-200)/90)) : BASE_W[who] + 1.6*(1-ease((k-380)/360)); }
+        if(isHit && k>=290){ const s = clamp((k-290)/320,0,1), fs = clamp((k-290)/200,0,1);
+          flash = Math.max(flash, (1-fs)*(1-fs)*0.32); dx -= P.face*14*Math.sin(s*Math.PI)*(1-s*0.5); rot -= 0.1*P.face*Math.sin(s*Math.PI); } });
+      return {dx, dy, rot, wRot, flash};
+    }
+    const hexMix = (a, b, t)=>{ const A = parseInt(a.slice(1),16), B = parseInt(b.slice(1),16);
+      return "#"+[16,8,0].map(s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t).toString(16).padStart(2,"0")).join(""); };
+    // 두 사람을 그린다(2D 실루엣). GL이면 이 그림을 텍스처로 넘겨 명암을 더한다
+    function drawFighters(c, now){
+      const me = party[act], fp = poseFor("foe", now), mp = poseFor("me", now);
+      let frot = 0, fdim = 0;
+      if(outcome && st.koAt!=null){ const k = ease(clamp((clock-st.koAt)/600,0,1));
+        if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; } else { frot = 1.3*k; fdim = 0.25*k; } }
+      const fcol = SIDE_COL.foe.fill;
+      const ftint = (fp.flash>0.02 || fdim>0) ? hexMix(hexMix(fcol, "#000000", fdim), "#fff4e8", fp.flash) : null;
+      fig(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.86, {side:"foe", face:-1, weapon:!outcome, ewt:foe.wt, wRot:fp.wRot, coat:true, rot: fp.rot + frot, tint: ftint});
+      const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
+      if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
+      const mtint = (mp.flash>0.02 || mdim>0) ? hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash) : null;
+      const gear = Object.assign({}, me.lg||{}, {wtype: me.wt==="none" ? null : me.wt});
+      fig(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.86, {side:"ally", face:1, weapon: me.wt!=="none", wRot:mp.wRot, coat:true, gear, rot: mp.rot + mrot, tint: mtint});
+    }
+    function overlay(now, keep){
+      const c = m.c, me = party[act]; if(!keep) c.clearRect(0,0,W,H);
+      const box = (x, y, w, h, edge)=>{ c.fillStyle = "rgba(10,9,14,0.82)"; c.strokeStyle = edge; c.lineWidth = 1.2; c.beginPath(); c.roundRect(x,y,w,h,8); c.fill(); c.stroke(); };
+      // 적 정보(왼쪽 위): 이름, 개조, 몸 상태는 글로만
+      const shown = st.cond || foe.max, worst = Math.min(...Object.keys(PARTS).map(k=>Math.max(0,shown[k])/foe.max[k]));
+      const cond = outcome==="사살" && st.koAt!=null && clock>st.koAt ? "숨이 끊어졌다" : outcome==="제압" && st.koAt!=null && clock>st.koAt ? "더는 싸우지 못한다" : worst>0.85 ? "멀쩡하다" : worst>0.5 ? "상처를 입었다" : worst>0.2 ? "비틀거린다" : "한계에 가깝다";
+      box(16, 14, 262, foe.aug ? 66 : 50, "rgba(230,110,100,0.55)");
+      c.fillStyle = "#f0e6e0"; c.font = `700 14px "Noto Sans KR",sans-serif`; c.fillText(foe.name, 28, 36);
+      c.fillStyle = "#cbb8b2"; c.font = `500 12px "Noto Sans KR",sans-serif`; c.fillText(`상태: ${cond}`, 28, 55);
+      if(foe.aug){ c.fillStyle = "#ffb35a"; c.fillText(`${foe.aug.n} — ${foe.aug.desc}`, 28, 71); }
+      // 우리 정보(오른쪽 아래)
+      box(452, 286, 252, 72, "rgba(110,210,140,0.55)");
+      c.fillStyle = "#e6f0e8"; c.font = `700 14px "Noto Sans KR",sans-serif`; c.fillText(me.name, 466, 308);
+      c.fillStyle = "#9fb8a6"; c.font = `500 11px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`${party.filter(p=>p.hp>0).length}/${party.length}명`, 692, 308); c.textAlign = "left";
+      c.fillStyle = "#1b1f1c"; c.beginPath(); c.roundRect(466, 318, 224, 8, 4); c.fill();
+      const hp = me.shownHp==null ? me.hp : me.shownHp; me.barHp = me.barHp==null ? hp : me.barHp + (hp-me.barHp)*0.15;
+      c.fillStyle = hp>50 ? "#7fd08a" : hp>20 ? "#e0bd55" : "#d65a4f"; c.beginPath(); c.roundRect(466, 318, Math.max(0.01, 224*me.barHp/100), 8, 4); c.fill();
+      c.fillStyle = "#cfd8d0"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`체력 ${hp} / 100`, 690, 345); c.textAlign = "left";
+      c.fillStyle = "#9fb8a6"; c.fillText(`${turn>MAXT?MAXT:turn} / ${MAXT}턴`, 466, 345);
+      c.fillStyle = goal==="사살" ? "#ff8a7a" : "#9fe8b0"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`목표: ${goal}`, 704, 28); c.textAlign = "left";
+      // 주사위
+      if(clash && now-clash.t < 2400){ const k = now-clash.t, rolling = k<1100, bn = bonus(me), pen = PARTS[part].pen;
+        const show = (x, v, a, b, col, label, won)=>{ const val = rolling ? a+Math.floor(Math.random()*(b-a+1)) : v, pop = rolling ? 1 : 1 + 0.18*Math.max(0, 1-(k-1100)/220);
+          c.save(); c.translate(x, 84); c.rotate(rolling ? Math.sin(k/45)*0.35 : 0); c.scale(pop, pop);
+          if(!rolling && won){ c.shadowColor = col; c.shadowBlur = 18; }
+          c.fillStyle = "rgba(12,11,15,0.9)"; c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.roundRect(-25,-25,50,50,9); c.fill(); c.stroke(); c.shadowBlur = 0;
+          c.fillStyle = col; c.font = `800 25px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(Math.max(1,val), 0, 1); c.restore();
+          c.fillStyle = "#e0d9cc"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(label, x, 126); c.textAlign = "left"; };
+        show(318, clash.mine, Math.max(1,clash.card.a+bn-pen), Math.max(1,clash.card.b+bn-pen), "#7fe0a8", clash.card.n, clash.mine>clash.theirs);
+        show(414, clash.theirs, clash.fcard.a, clash.fcard.b, "#ff9a8a", clash.fcard.n, clash.theirs>clash.mine);
+        c.fillStyle = "#e6e1d8"; c.font = `800 15px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("합", 366, 90); c.textAlign = "left"; }
+      // 피해 숫자
+      st.pop = st.pop.filter(p=>clock-p.t0 < 900);
+      st.pop.forEach(p=>{ const k = (clock-p.t0)/900; c.globalAlpha = 1-k*k; c.fillStyle = p.col; c.font = `800 ${18+6*(1-k)}px "Noto Sans KR",sans-serif`; c.fillText(p.txt, p.x, p.y - 26*ease(k)); c.globalAlpha = 1; });
+    }
+    let raf; const fcv = document.createElement("canvas"); fcv.width = glc.width; fcv.height = glc.height; const fctx = fcv.getContext("2d");
     function draw(){
-      const now = performance.now(), c = m.c, W=720, H=300, me = party[act];
-      c.save(); if(st.shake>0.2){ c.translate((Math.random()-0.5)*st.shake,(Math.random()-0.5)*st.shake); st.shake*=0.85; }
-      const gy = streetBG(c, W, H, now/1000, st);
-      anim = anim.filter(a=>now-a.t<500);
-      const fa = anim.find(a=>a.who==="foe"), ma = anim.find(a=>a.who==="me");
-      const lunge = fa ? Math.sin((now-fa.t)/500*Math.PI)*90 : 0, fl = ma ? Math.sin((now-ma.t)/500*Math.PI)*-80 : 0;
-      const dead = outcome==="사살", down = outcome==="제압";
-      // 적(크게) — 부위 표시
-      fig(c, 540+fl+(fa?Math.sin((now-fa.t)/500*Math.PI)*12:0), 205, 150, {side:"foe", face:-1, weapon: foe.parts.arm>0, ewt:foe.wt, wRot:0.7, coat:true, rot: dead||down ? 1.25 : 0, alpha: dead?0.45:1});
-      if(!dead && !down){ const zones = {head:[540,53,20,20], body:[540,122,28,30], arm:[570,108,10,26], leg:[540,186,24,17]};
-        Object.entries(zones).forEach(([k,[x,y,rx,ry]])=>{ const sel = part===k && phase!=="part", gone = foe.parts[k]<=0;
-          c.save(); c.setLineDash(sel?[]:[3,4]); c.strokeStyle = gone ? "rgba(120,120,120,0.6)" : sel ? "rgba(255,230,140,0.95)" : "rgba(255,200,180,0.35)"; c.lineWidth = sel?2:1;
-          c.beginPath(); c.ellipse(x,y,rx,ry,0,0,7); c.stroke(); c.restore();
-          const v = Math.max(0,foe.parts[k])/foe.max[k]; c.fillStyle="rgba(0,0,0,0.6)"; c.fillRect(x+rx+6, y-3, 34, 5); c.fillStyle = v>0.5?"#d8b24a":"#c94a4a"; c.fillRect(x+rx+6, y-3, 34*v, 5);
-          c.fillStyle="#e6d8cf"; c.font=`600 10px "Noto Sans KR",sans-serif`; c.fillText(PARTS[k].n, x+rx+6, y-6); }); }
-      fig(c, 160+lunge+(ma?Math.sin((now-ma.t)/500*Math.PI)*-12:0), 230, 130, {side:"ally", face:1, weapon:true, wRot:-0.4, coat:true, gear: me.lg, alpha: me.hp<=0?0.35:1});
-      if(fa) weaponFx(c, st, {lead: me.lg}, (now-fa.t)/1000+1, 1, 210+lunge, 150, 540, partY(part||"body"));
-      // 주사위 굴림
-      if(clash && now-clash.t < 2400){ const k = now-clash.t, rolling = k<1100;
-        const show = (x, v, a, b, col, label)=>{ const val = rolling ? a+Math.floor(Math.random()*(b-a+1)) : v; c.save(); c.translate(x, 60); c.rotate(rolling? Math.sin(k/40)*0.3 : 0);
-          c.fillStyle="rgba(12,11,15,0.9)"; c.strokeStyle=col; c.lineWidth=2; c.beginPath(); c.roundRect(-26,-26,52,52,8); c.fill(); c.stroke();
-          c.fillStyle=col; c.font=`800 26px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.textBaseline="middle"; c.fillText(Math.max(1,val), 0, 1); c.restore();
-          c.fillStyle="#cfc8bb"; c.font=`600 11px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.fillText(label, x, 104); c.textAlign="left"; };
-        const bn = bonus(me), pen = PARTS[part].pen;
-        show(300, clash.mine, Math.max(1,clash.card.a+bn-pen), Math.max(1,clash.card.b+bn-pen), "#7fe0a8", clash.card.n);
-        show(420, clash.theirs, clash.fcard.a, clash.fcard.b, "#ff9a8a", clash.fcard.n);
-        c.fillStyle="#e6e1d8"; c.font=`800 16px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.fillText("합", 360, 66); c.textAlign="left"; }
-      // 아군 체력
-      c.fillStyle="rgba(12,11,15,0.85)"; c.fillRect(20,14,230,40); c.strokeStyle="rgba(90,200,130,0.6)"; c.strokeRect(20,14,230,40);
-      c.fillStyle="#e6e1d8"; c.font=`700 12px "Noto Sans KR",sans-serif`; c.fillText(`${me.name}  (${party.filter(p=>p.hp>0).length}/${party.length}명)`, 30, 30);
-      c.fillStyle="#222"; c.fillRect(30,38,210,8); c.fillStyle = me.hp>50?"#7fb069":me.hp>20?"#d8b24a":"#c94a4a"; c.fillRect(30,38,210*me.hp/100,8);
-      c.fillStyle = goal==="사살"?"#ff8a7a":"#9fe8b0"; c.font=`800 12px "Noto Sans KR",sans-serif`; c.textAlign="right"; c.fillText(`목표: ${goal}`, 700, 28); c.textAlign="left";
-      if(foe.aug){ c.fillStyle="#ffb35a"; c.font=`700 11px "Noto Sans KR",sans-serif`; c.textAlign="right"; c.fillText(`${foe.name} · ${foe.aug.n}`, 700, 46); c.textAlign="left"; }
-      drawParts(c, st); vignette(c, W, H, "rgba(0,0,0,0.45)"); c.restore();
+      if(!document.body.contains(m.bg)){ if(G) G.dispose(); return; }
+      const now = performance.now(), dt = Math.min(50, now-last); last = now;
+      if(!(st.stopUntil > clock)) clock += dt; else clock += dt*0.08;
+      if(st.lastAct !== act){ st.enterAt = st.lastAct==null ? -9999 : clock; st.lastAct = act; }
+      if(outcome && st.koAt==null) st.koAt = clock+300;
+      st.shake = (st.shake||0)*0.86; st.aberr = (st.aberr||0)*0.9; st.flash = (st.flash||0)*0.88;
+      if(outcome==="사살" && st.koAt!=null && !st.ember && clock-st.koAt>650){ st.ember = 1; const [x,y] = chestOf("foe"); addFx({kind:"pt", x:x+20, y:y+30, n:90, spd:40, dx:0, dy:-1, col:[1,0.55,0.25], seed:7}, 1600); }
+      if(G){
+        const gd = fcv.width/W; fctx.setTransform(1,0,0,1,0,0); fctx.clearRect(0,0,fcv.width,fcv.height); fctx.setTransform(gd,0,0,gd,0,0);
+        drawFighters(fctx, now);
+        const fx = []; st.fx = st.fx.filter(f=>clock-f.t0 < f.dur);
+        st.fx.forEach(f=>{ const k = (clock-f.t0)/f.dur; if(k>=0) fx.push(Object.assign({}, f, {k})); });
+        st.waves = st.waves.filter(w=>clock-w.t0 < 520);
+        const waves = st.waves.map(w=>{ const k = (clock-w.t0)/520; return [w.x, w.y, 20+k*170, (1-k)*w.k]; });
+        const dis = outcome==="사살" && st.koAt!=null ? {v: clamp((clock-st.koAt-500)/1400,0,1)*0.95, rect:[POS.foe.x-160, POS.foe.gy-150, POS.foe.x+160, POS.foe.gy+40]} : null;
+        G.render({t: now/1000, horizon: 150, plats: PLATS, fig: fcv, dis, fx, waves, aberr: st.aberr, flash: st.flash, flashCol:[1,0.96,0.9], shake:[(Math.random()-0.5)*st.shake, (Math.random()-0.5)*st.shake]});
+      } else {
+        // WebGL이 안 되는 기기: 기존 2D 그림
+        const c = m.c; c.save(); streetBG(c, W, H, now/1000, st); drawFighters(c, now);
+        if(outcome==="사살" && st.koAt!=null) { c.globalAlpha = clamp((clock-st.koAt-500)/1400,0,1)*0.9; c.fillStyle = "#08070b"; c.fillRect(POS.foe.x-160, POS.foe.gy-150, 320, 190); c.globalAlpha = 1; }
+        c.restore();
+      }
+      overlay(now, !G);
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
