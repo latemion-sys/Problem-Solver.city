@@ -933,7 +933,7 @@ function buildShell(){
       }
       updateCard(qid); return;
     }
-    if(d.go){ const sel = teamSel[d.go]||[]; if(sel.length) dispatch(+d.go, sel.slice()); }
+    if(d.go){ if(scene || document.querySelector(".modal-bg")) return; const sel = teamSel[d.go]||[]; if(sel.length) dispatch(+d.go, sel.slice()); }
     if(d.nav==="recruit") openRecruit(); if(d.nav==="manage") openManage(); if(d.nav==="shop") openShop(); if(d.nav==="records") openRecords(); if(d.nav==="ach") openAchievements(); if(d.nav==="repay") openRepay();
     if(e.target.id==="endday"){ (async()=>{ if(S.requests.length && S.fixers.some(canGo)){ if(!await confirmBox("하루 끝내기","아직 처리하지 않은 의뢰와 출동 가능한 해결사가 있다. 하루를 끝낼까?")) return; } await endDay("하루를 마쳤다."); })(); }
   });
@@ -1303,6 +1303,7 @@ let scene = null;
 function playScene(kind, opt){
   return new Promise(res=>{
     const sc = SCENES[kind];
+    if(scene) endScene();
     if(!cx || !sc){ res(); return; }
     scene = {kind, opt, sc, t0: performance.now(), res, st: sc.init ? sc.init(opt) : {}};
     const t=document.getElementById("capt"), s=document.getElementById("caps"); if(t){ t.textContent=""; s.textContent=""; }
