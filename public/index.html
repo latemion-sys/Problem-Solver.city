@@ -964,20 +964,16 @@ function mgCombat(ctx){
     const THRUST = {spear:1, drill:1, gun:1};
     function poseFor(who, now){
       const P = POS[who], wt = who==="me" ? party[act].wt : foe.wt, th = THRUST[wt];
-      const idle = wt==="gun" ? {arm:1.3, elb:0.25} : th ? {arm:0.95, elb:0.75} : {arm:0.75, elb:1.05};
-      let dx = 0, dy = Math.sin(now/1000*2.1 + (who==="foe"?1:0))*P.h*0.006, rot = 0, arm = idle.arm + Math.sin(now/1000*2.1)*0.03, elb = idle.elb, flash = 0;
+      let dx = 0, dy = Math.sin(now/1000*2.1 + (who==="foe"?1:0))*P.h*0.006, rot = 0, sw = Math.sin(now/1000*2.1 + (who==="foe"?1:0))*0.04, flash = 0;
       st.ev.forEach(e=>{ const k = clock - e.t0; if(k<0 || k>760) return;
         const isAtk = e.by===who || e.by==="tie", isHit = (e.by==="me" && who==="foe") || (e.by==="foe" && who==="me");
         if(isAtk){ const tgt = who==="me" ? POS.foe : POS.me, tx = (e.by==="tie" ? 360 : tgt.x) - P.x, ty = (e.by==="tie" ? 230+P.h*0.5 : tgt.gy) - P.gy;
           const go = k<290 ? ease(k/290) : 1 - ease(clamp((k-380)/360,0,1)), f = e.by==="tie" ? 0.62 : (wt==="gun" ? 0.12 : 0.4);
           dx += tx*f*go; dy += ty*f*go; rot += 0.1*P.face*go;
-          const up = th ? {arm:0.8, elb:1.5} : {arm:2.75, elb:0.35}, hit = th ? {arm:1.5, elb:0.05} : {arm:1.0, elb:0.0};
-          const lerp = (a, b, t)=>({arm:a.arm+(b.arm-a.arm)*t, elb:a.elb+(b.elb-a.elb)*t});
-          const q = k<200 ? lerp(idle, up, ease(k/200)) : k<380 ? lerp(up, hit, ease(Math.min(1,(k-200)/90))) : lerp(hit, idle, ease((k-380)/360));
-          arm = q.arm; elb = q.elb; }
+          sw = k<200 ? -ease(k/200) : k<380 ? -1 + 2*ease(Math.min(1,(k-200)/90)) : 1 - ease((k-380)/360); }
         if(isHit && k>=290){ const s = clamp((k-290)/320,0,1), fs = clamp((k-290)/200,0,1);
-          flash = Math.max(flash, (1-fs)*(1-fs)*0.32); dx -= P.face*14*Math.sin(s*Math.PI)*(1-s*0.5); rot -= 0.1*P.face*Math.sin(s*Math.PI); arm -= 0.25*Math.sin(s*Math.PI); } });
-      return {dx, dy, rot, arm, elb, flash};
+          flash = Math.max(flash, (1-fs)*(1-fs)*0.32); dx -= P.face*14*Math.sin(s*Math.PI)*(1-s*0.5); rot -= 0.1*P.face*Math.sin(s*Math.PI); sw -= 0.35*Math.sin(s*Math.PI); } });
+      return {dx, dy, rot, sw, flash};
     }
     const hexMix = (a, b, t)=>{ const A = parseInt(a.slice(1),16), B = parseInt(b.slice(1),16);
       return "#"+[16,8,0].map(s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t).toString(16).padStart(2,"0")).join(""); };
@@ -992,7 +988,20 @@ function mgCombat(ctx){
         c.beginPath(); c.arc(b[0], b[1], w1, 0, 7); c.fill(); };
       // 뒷다리 · 뒷팔(어둡게)
       limb(P(-0.035,-0.32), P(-0.105,-0.01), 0.045*h, 0.03*h, dark); c.fillRect(-0.15*h, -0.025*h, 0.08*h, 0.025*h);
-      limb(P(-0.03,-0.74), P(-0.07,-0.5), 0.035*h, 0.028*h, dark);
+      // 손 위치·무기 각도: 대기 ↔ 젖힘(sw<0) ↔ 휘두름(sw>0)
+      const wt = o.wt || "none", G = GRIP[wt] || GRIP.none, sw = clamp(o.sw||0, -1.3, 1);
+      const mix = (p, q, t)=>[p[0]+(q[0]-p[0])*t, p[1]+(q[1]-p[1])*t];
+      const gp = sw<0 ? mix(G.g, G.w, -sw) : mix(G.g, G.s, sw), ang = sw<0 ? G.a+(G.wa-G.a)*(-sw) : G.a+(G.sa-G.a)*sw;
+      const S1 = P(0.065,-0.75), S2 = P(-0.03,-0.74), L1 = 0.2*h, L2 = 0.18*h;
+      const ik1 = ikArm(S1, P(gp[0], gp[1]), L1, L2), hand = ik1[1], ax = Math.cos(ang), ay = Math.sin(ang);
+      const twoH = G.two!=null && wt!=="none";
+      const hand2 = twoH ? (wt==="gun" ? [hand[0]-0.02*h, hand[1]+0.025*h] : [hand[0]+ax*G.two*h*0.85, hand[1]+ay*G.two*h*0.85])
+                  : wt==="none" ? [hand[0]-0.1*h, hand[1]+0.03*h] : P(0.0+sw*0.04, -0.47);
+      const ik2 = ikArm(S2, hand2, L1, L2);
+      const arm = (ik, w0, w1, color, sh)=>{ limb(sh, ik[0], w0, w0*0.85, color); limb(ik[0], ik[1], w0*0.85, w1, color); };
+      const fist = (pt, color)=>{ c.fillStyle = color; c.beginPath(); c.arc(pt[0], pt[1], 0.031*h, 0, 7); c.fill(); };
+      arm(ik2, 0.034*h, 0.026*h, dark, S2);                                        // 뒷팔(몸 뒤)
+      if(!twoH) fist(ik2[1], dark);
       // 앞다리
       c.fillStyle = col; limb(P(0.035,-0.32), P(0.1,-0.01), 0.046*h, 0.031*h, col); c.fillRect(0.075*h, -0.025*h, 0.085*h, 0.025*h);
       // 코트: 어깨는 둥글게, 허리에서 조였다가 자락이 뒤로 길게 흐른다
@@ -1005,11 +1014,11 @@ function mgCombat(ctx){
       c.fillRect(-0.022*h, -0.845*h, 0.044*h, 0.05*h);                           // 목
       c.beginPath(); c.arc(0.012*h, -0.893*h, 0.077*h, 0, 7); c.fill();           // 머리
       if(o.gear && o.gear.armor){ c.fillStyle = hexMix(col, "#c9d2de", 0.35); c.beginPath(); c.ellipse(0.07*h, -0.765*h, 0.065*h, 0.032*h, -0.15, 0, 7); c.fill(); }
-      // 앞팔과 무기
-      const sh = P(0.065,-0.75), a1 = o.arm, a2 = o.arm + o.elb;
-      const el = [sh[0]+Math.sin(a1)*0.2*h, sh[1]+Math.cos(a1)*0.2*h], hd = [el[0]+Math.sin(a2)*0.18*h, el[1]+Math.cos(a2)*0.18*h];
-      limb(sh, el, 0.036*h, 0.03*h, col); limb(el, hd, 0.03*h, 0.026*h, col);
-      if(o.wt && o.wt!=="none"){ c.save(); c.translate(hd[0]-h*0.2, hd[1]+h*0.55); drawWeapon(c, h*0.95, 1, o.wt, -(a2 + (THRUST[o.wt] ? 0 : 0.35)), o.wcol); c.restore(); }
+      // 무기 → (양손이면) 뒷손 → 앞팔 → 앞손: 주먹을 손잡이 위에 겹쳐 그려 쥔 모양을 만든다
+      if(wt!=="none"){ c.save(); c.translate(hand[0], hand[1]); c.rotate(ang); drawWeaponShape(c, wt, h*0.88, o.wcol, hexMix(col, "#000000", 0.55)); c.restore(); }
+      if(twoH){ limb(ik2[0], ik2[1], 0.029*h, 0.026*h, dark); fist(ik2[1], hexMix(col, "#000000", 0.12)); }
+      arm(ik1, 0.036*h, 0.027*h, col, S1);
+      fist(hand, hexMix(col, "#ffffff", 0.08));
       if(o.gear && o.gear.acc){ c.fillStyle = `rgb(${o.gear.accColor||"150,230,255"})`; c.beginPath(); c.arc(0.06*h, -0.66*h, 0.018*h, 0, 7); c.fill(); }
       c.restore();
     }
@@ -1018,13 +1027,13 @@ function mgCombat(ctx){
       const me = party[act], fp = poseFor("foe", now), mp = poseFor("me", now);
       let frot = 0, fdim = 0;
       if(outcome && st.koAt!=null){ const k = ease(clamp((clock-st.koAt)/600,0,1));
-        if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; fp.arm = 0.2; fp.elb = 0.3; } else { frot = 1.3*k; fdim = 0.25*k; } }
+        if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; fp.sw = -0.2; } else { frot = 1.3*k; fdim = 0.25*k; } }
       const fcol = hexMix(hexMix(SIDE_COL.foe.fill, "#000000", fdim), "#fff4e8", fp.flash);
-      figC(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, wcol:SIDE_COL.foe.wpn, wt: outcome ? null : foe.wt, arm:fp.arm, elb:fp.elb, rot: fp.rot + frot});
+      figC(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, wcol:"#b9aca9", wt: outcome ? null : foe.wt, sw:fp.sw, rot: fp.rot + frot});
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
       const mcol = hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash);
-      figC(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, col:mcol, wcol:SIDE_COL.ally.wpn, wt: me.wt, gear: me.lg, arm:mp.arm, elb:mp.elb, rot: mp.rot + mrot});
+      figC(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, col:mcol, wcol:"#aab5b1", wt: me.wt, gear: me.lg, sw:mp.sw, rot: mp.rot + mrot});
     }
     function overlay(now, keep){
       const c = m.c, me = party[act]; if(!keep) c.clearRect(0,0,W,H);
@@ -2311,6 +2320,47 @@ function drawWeapon(c, h, face, wt, wRot, col){
     c.strokeStyle="rgba(200,200,210,0.3)"; c.lineWidth=0.8; for(let k=0;k<4;k++){ const yy=h*0.22+k*(L-h*0.18)/4; c.beginPath(); c.moveTo(-4+k,yy); c.lineTo(4-k,yy+4); c.stroke(); } }
   else if(wt==="tool"){ c.fillRect(-1.2,0,2.4,L*0.7); c.beginPath(); c.arc(0,L*0.72,4,0.3,Math.PI*2-0.3); c.lineWidth=2.4; c.strokeStyle=col; c.stroke(); }
   c.restore();
+}
+/* ---- 무기 쥐는 법(전투 실루엣용) ----
+   실루엣 격투 게임 참고: 무기는 몸 윤곽 밖으로 뻗어 모양만으로 읽히게, 주먹은 손잡이 위에 겹쳐 그려 '쥐고 있음'을 보인다.
+   팔은 어깨→손 목표점을 2관절 IK로 풀고(팔꿈치는 아래로 굽힘), 양손 무기는 뒷손이 손잡이 아래쪽을 잡는다.
+   좌표: 발 기준, 키(h) 단위, 오른쪽을 보는 모양. g 손 위치 / a 무기 각도(0 = 앞, 음수 = 위로)
+   단계: 대기 → w(젖힘·겨눔) → s(휘두름·찌름·반동) */
+const GRIP = {
+  blade: {g:[0.27,-0.58], a:-0.95, w:[0.05,-0.88], wa:-2.4, s:[0.33,-0.5], sa:0.5},
+  great: {g:[0.21,-0.55], a:-1.1,  w:[0.03,-0.86], wa:-2.5, s:[0.31,-0.48], sa:0.6, two:-0.1},
+  blunt: {g:[0.16,-0.68], a:-2.3,  w:[0.03,-0.88], wa:-2.85, s:[0.33,-0.55], sa:0.3},
+  tool:  {g:[0.25,-0.56], a:-1.1,  w:[0.06,-0.85], wa:-2.4, s:[0.33,-0.5], sa:0.4},
+  spear: {g:[0.25,-0.56], a:-0.2,  w:[0.12,-0.57], wa:-0.22, s:[0.41,-0.6], sa:-0.1, two:-0.22},
+  drill: {g:[0.24,-0.52], a:-0.1,  w:[0.12,-0.53], wa:-0.1, s:[0.38,-0.55], sa:-0.06, two:-0.09},
+  gun:   {g:[0.4,-0.72],  a:0,     w:[0.42,-0.72], wa:0,    s:[0.35,-0.79], sa:-0.5, two:0},
+  none:  {g:[0.22,-0.7],  a:-1.3,  w:[0.1,-0.72],  wa:-1.3, s:[0.43,-0.7], sa:-0.1}
+};
+function ikArm(S, T, L1, L2){
+  const dx = T[0]-S[0], dy = T[1]-S[1], d = clamp(Math.hypot(dx,dy), Math.abs(L1-L2)+0.001, L1+L2-0.001), base = Math.atan2(dy, dx);
+  const al = Math.acos(clamp((L1*L1 + d*d - L2*L2)/(2*L1*d), -1, 1));
+  const e1 = [S[0]+Math.cos(base+al)*L1, S[1]+Math.sin(base+al)*L1], e2 = [S[0]+Math.cos(base-al)*L1, S[1]+Math.sin(base-al)*L1];
+  return [e1[1] >= e2[1] ? e1 : e2, [S[0]+Math.cos(base)*d, S[1]+Math.sin(base)*d]];   // 팔꿈치는 아래쪽 해
+}
+// 무기 모양: 손(원점)에서 +x로 뻗는다. u = 길이 단위. col 금속, dark 손잡이
+function drawWeaponShape(c, wt, u, col, dark){
+  const R = (x,y,w,hh)=>c.fillRect(x*u, y*u, w*u, hh*u);
+  const poly = pts=>{ c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.closePath(); c.fill(); };
+  const shine = (x0,x1,y,w)=>{ c.fillStyle="rgba(235,240,245,0.55)"; R(x0, y, x1-x0, w*0.8); };
+  if(wt==="blade"){ c.fillStyle=dark; R(-0.075,-0.013,0.13,0.026); c.beginPath(); c.arc(-0.08*u,0,0.018*u,0,7); c.fill();
+    c.fillStyle=col; R(0.05,-0.045,0.02,0.09); poly([[0.07,-0.018],[0.55,-0.015],[0.63,0.004],[0.55,0.017],[0.07,0.018]]); shine(0.085,0.54,-0.015,0.006); }
+  else if(wt==="great"){ c.fillStyle=dark; R(-0.17,-0.017,0.23,0.034); c.beginPath(); c.arc(-0.18*u,0,0.022*u,0,7); c.fill();
+    c.fillStyle=col; R(0.055,-0.075,0.03,0.15); poly([[0.085,-0.04],[0.83,-0.034],[0.95,0.005],[0.83,0.038],[0.085,0.04]]); shine(0.1,0.82,-0.034,0.009); }
+  else if(wt==="blunt"){ c.fillStyle=dark; poly([[-0.08,-0.015],[0.3,-0.021],[0.3,0.021],[-0.08,0.015]]);
+    c.fillStyle=col; poly([[0.28,-0.03],[0.5,-0.04],[0.54,-0.022],[0.54,0.022],[0.5,0.04],[0.28,0.03]]); shine(0.3,0.5,-0.03,0.009); }
+  else if(wt==="tool"){ c.fillStyle=dark; R(-0.06,-0.015,0.34,0.03); c.fillStyle=col;
+    c.beginPath(); c.arc(0.34*u, 0, 0.052*u, 0.55, Math.PI*2-0.55); c.lineTo(0.33*u, 0); c.closePath(); c.fill(); }
+  else if(wt==="spear"){ c.fillStyle=dark; R(-0.52,-0.011,1.06,0.022); c.fillStyle=col;
+    R(0.53,-0.024,0.018,0.048); poly([[0.55,-0.011],[0.6,-0.036],[0.74,0.002],[0.6,0.038],[0.55,0.011]]); }
+  else if(wt==="drill"){ c.fillStyle=dark; R(-0.12,-0.042,0.24,0.084); R(-0.04,0.03,0.03,0.07); c.fillStyle=col; poly([[0.12,-0.055],[0.48,0],[0.12,0.055]]);
+    c.strokeStyle="rgba(0,0,0,0.35)"; c.lineWidth=Math.max(1,u*0.008); for(let i=0;i<4;i++){ const x=0.15+i*0.075, w=0.055*(1-(x-0.12)/0.36); c.beginPath(); c.moveTo(x*u,-w*u); c.lineTo((x+0.035)*u, w*u); c.stroke(); } }
+  else if(wt==="gun"){ c.fillStyle=dark; poly([[-0.035,-0.04],[0.035,-0.04],[0.026,0.05],[-0.04,0.05]]); R(0.03,-0.04,0.05,0.025);
+    c.fillStyle=col; poly([[-0.045,-0.085],[0.25,-0.085],[0.25,-0.04],[-0.045,-0.036]]); c.fillStyle="rgba(0,0,0,0.3)"; R(0.0,-0.075,0.22,0.008); }
 }
 // 타격 순간 무기 종류에 따른 추가 효과(t0부터 약 0.6초)
 function weaponFx(c, st, o, t, t0, fromX, fromY, x, y){
