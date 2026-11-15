@@ -1604,6 +1604,165 @@ function genInvestigate(c, t, W, H, o, st){
   vignette(c, W, H, ok || t<3 ? "rgba(0,0,0,0.75)" : "rgba(60,0,0,0.85)");
 }
 
+/* ---- 호위 의뢰 ----
+   츠바이 협회의 '방패' 결: 의뢰인의 화물차를 해결사들이 둘러싸고 거리를 지난다.
+   지붕에서 그림자들이 덮치면 푸른 육각 방벽이 펼쳐진다.
+   성공: 막아 내고 차량이 무사히 빠져나간다 / 실패: 방벽이 깨지고 차량이 멈춰 연기에 싸인다 */
+SCENES["호위"] = {
+  dur: 4.8,
+  init(o){ return { foes: Array.from({length:5},(_,i)=>({side: i%2?1:-1, x: 0.25+i*0.13+Math.random()*0.05, d: 1.35+i*0.09})) }; },
+  draw(c, t, W, H, o, st){
+    const gy = streetBG(c, W, H, t, st), ok = o.success;
+    const fh = Math.min(H*0.3, 54), n = Math.max(1, Math.min(5, o.team.length));
+    // 차량 진행: 습격 순간 잠시 느려지고, 성공이면 빠져나가고 실패면 멈춘다
+    let vx;
+    if(t<1.4) vx = lerp(-W*0.12, W*0.4, ease(seg(t,0.1,1.4))*0.95+0.05*seg(t,0.1,1.4));
+    else if(ok) vx = lerp(W*0.4, W*0.47, seg(t,1.4,2.6)) + (t>2.6 ? ease(seg(t,2.6,4.0))*W*0.7 : 0);
+    else vx = lerp(W*0.4, W*0.44, ease(seg(t,1.4,2.3)));
+    const tw = Math.min(W*0.16, 170), th = fh*0.95, ty = gy - th - 8;
+    // 전조등 빛
+    const hl = !ok && t>2.6 ? (Math.sin(t*20)>0?0.15:0.05) : 1;
+    c.save(); c.globalCompositeOperation="lighter"; const lg=c.createLinearGradient(vx+tw,0,vx+tw+W*0.3,0); lg.addColorStop(0,`rgba(255,240,200,${0.3*hl})`); lg.addColorStop(1,"rgba(255,240,200,0)");
+    c.fillStyle=lg; c.beginPath(); c.moveTo(vx+tw, ty+th*0.55); c.lineTo(vx+tw+W*0.3, gy-th*0.1); c.lineTo(vx+tw+W*0.3, gy+12); c.lineTo(vx+tw, ty+th*0.75); c.fill(); c.restore();
+    // 차량(짐칸 + 운전석 + 바퀴)
+    c.fillStyle="#1d1c22"; c.fillRect(vx, ty, tw*0.7, th); c.fillStyle="#26252c"; c.fillRect(vx, ty, tw*0.7, 4);
+    for(let k=10;k<tw*0.7-6;k+=14){ c.fillStyle="rgba(0,0,0,0.25)"; c.fillRect(vx+k, ty+6, 2, th-12); }
+    c.save(); c.font=`800 9px "Noto Sans KR",sans-serif`; c.fillStyle="rgba(230,200,120,0.6)"; c.fillText("의뢰 화물", vx+8, ty+th*0.55); c.restore();
+    c.fillStyle="#1a191f"; c.beginPath(); c.moveTo(vx+tw*0.72, ty+th*0.25); c.lineTo(vx+tw*0.9, ty+th*0.25); c.lineTo(vx+tw, ty+th*0.6); c.lineTo(vx+tw, ty+th); c.lineTo(vx+tw*0.72, ty+th); c.fill();
+    c.fillStyle="rgba(150,180,220,0.25)"; c.beginPath(); c.moveTo(vx+tw*0.76, ty+th*0.32); c.lineTo(vx+tw*0.88, ty+th*0.32); c.lineTo(vx+tw*0.95, ty+th*0.58); c.lineTo(vx+tw*0.76, ty+th*0.58); c.fill();
+    c.fillStyle=`rgba(255,235,180,${0.9*hl})`; c.fillRect(vx+tw-4, ty+th*0.62, 4, 5);
+    if(!ok && t>2.6 && Math.sin(t*9)>0){ c.fillStyle="#ffb020"; c.fillRect(vx-2, ty+th*0.7, 3, 5); c.fillRect(vx+tw-2, ty+th*0.82, 3, 4); }
+    const spin = ok ? t*8 : Math.min(t,2.3)*8;
+    [vx+tw*0.18, vx+tw*0.82].forEach(wx=>{ c.fillStyle="#08070a"; c.beginPath(); c.arc(wx, gy-6, 9, 0, 7); c.fill(); c.strokeStyle="#3a3940"; c.lineWidth=1.5; c.beginPath(); c.arc(wx, gy-6, 5, spin, spin+4); c.stroke(); });
+    // 츠바이 결의 푸른 육각 방벽
+    const raise = seg(t, 1.25, 1.55), crack = !ok ? seg(t, 2.15, 2.6) : 0;
+    if(raise>0 && (ok ? t<3.2 : t<2.75)){
+      const cxs = vx+tw/2, cys = ty+th*0.45, rx = tw*0.75, ry = th*1.25, a0 = (ok ? 1-seg(t,2.8,3.2) : 1-seg(t,2.45,2.75));
+      c.save(); c.globalCompositeOperation="lighter";
+      const pulse = 0.5+0.5*Math.sin(t*14);
+      const hex = (hx,hy,r)=>{ c.beginPath(); for(let k=0;k<6;k++){ const a=k/6*Math.PI*2+Math.PI/6; c.lineTo(hx+Math.cos(a)*r, hy+Math.sin(a)*r); } c.closePath(); };
+      const R = 9;
+      for(let row=-8; row<=8; row++) for(let col=-14; col<=14; col++){
+        const hx = cxs + col*R*1.73 + (row%2?R*0.86:0), hy = cys + row*R*1.5;
+        const d = ((hx-cxs)/rx)**2 + ((hy-cys)/ry)**2; if(d>1 || d<0.72) continue;
+        const ang = Math.atan2(hy-cys, hx-cxs), appear = seg(raise*1.4, (ang+Math.PI)/(Math.PI*2)*0.4, 1);
+        let ox=0, oy=0, al = 0.45*appear*a0;
+        if(crack>0){ ox = Math.cos(ang)*crack*30*(1+((row*7+col*3)%5)/5); oy = Math.sin(ang)*crack*20 + crack*crack*30; al *= (1-crack); }
+        c.strokeStyle = crack>0 ? `rgba(160,200,255,${al})` : `rgba(110,170,255,${al*(0.7+0.3*pulse)})`; c.lineWidth=1.1; hex(hx+ox, hy+oy, R*0.92); c.stroke();
+        if(d>0.9){ c.fillStyle=`rgba(80,140,255,${al*0.35})`; hex(hx+ox,hy+oy,R*0.9); c.fill(); }
+      }
+      c.restore();
+    }
+    // 덮치는 그림자들
+    st.foes.forEach((f,i)=>{
+      if(t < f.d - 0.35) return;
+      const tx0 = W*f.x + (f.side>0 ? W*0.25 : -W*0.1), land = vx + tw/2 + f.side*tw*(0.85+0.12*i);
+      let k = seg(t, f.d-0.35, f.d), x = lerp(tx0, land, k), y = lerp(gy-H*0.75, gy, ease(k)), rot = 0, alpha = 1;
+      if(ok && t>f.d+0.25){ const kk = ease(seg(t, f.d+0.25, f.d+0.8)); x += f.side*kk*W*0.12; rot = f.side*kk*1.3; alpha = 1-seg(t,f.d+0.6,f.d+1.4); y = gy; }
+      if(!ok && t>2.3){ x = lerp(x, vx+tw/2+f.side*tw*0.35, ease(seg(t,2.3,2.8))); }
+      fig(c, x, y, fh*0.9, {face:-f.side, weapon:true, wRot:1.0, rot, alpha, rim:"rgba(255,90,90,0.4)"});
+      if(t>f.d && !f.hit){ f.hit=true; sparks(st, land, gy-fh*0.6, 16, ok?"#a8c8ff":"#ffb0a0", 3.5, 0.6); st.shake=ok?4:6; }
+    });
+    // 해결사들: 차량 앞뒤로 붙어 걷는다
+    const pos = [0.98, -0.25, 1.25, -0.5, 0.6];
+    for(let i=0;i<n;i++){
+      let x = vx + tw*pos[i], rot = 0;
+      if(i===0 && !ok && t>2.55) rot = -ease(seg(t,2.55,2.95))*1.2;
+      fig(c, x, gy, fh*(i===0?1:0.94), {face: pos[i]<0.5 ? -1 : 1, weapon:true, wRot:-0.5, coat:i===0, rot, color:"#06070c", rim:"rgba(150,190,255,0.55)"});
+    }
+    // 실패: 연기
+    if(!ok && t>2.45){ st.smoke = st.smoke || Array.from({length:20},()=>({o:Math.random()*4, x:(Math.random()-0.5)*0.4, s:14+Math.random()*16}));
+      st.smoke.forEach(sm=>{ const k = ((t-2.45)*0.5 + sm.o*0.12) % 1, x = vx+tw*0.5+sm.x*tw + k*20, y = ty - k*H*0.7, r = sm.s*(0.6+k*1.8);
+        const g=c.createRadialGradient(x,y,0,x,y,r); g.addColorStop(0,`rgba(70,65,70,${0.45*(1-k)})`); g.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=g; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); });
+      if(!st.crash){ st.crash=true; st.shake=12; sparks(st, vx+tw*0.5, ty+th*0.4, 34, "#ff8a5a", 4.5, 0.9); }
+      const k=seg(t,2.45,3.4); c.fillStyle=`rgba(150,20,20,${0.22*Math.sin(Math.PI*Math.min(1,k*1.3))+0.1*k})`; c.fillRect(0,0,W,H); }
+    drawParts(c, st);
+    rainFG(c, W, H, st); vignette(c, W, H, ok || t<2.45 ? "rgba(0,0,0,0.7)" : "rgba(70,0,0,0.8)");
+    banner(c, W, H, t, 0.2, 1.1, "호위 의뢰 · 물리+속도", "#6aa0c9", o.client||"");
+    if(t>3.35) banner(c, W, H, t, 3.35, 99, ok?"무사히 도착":"호위 실패", ok?"#9fc8ff":"#ff6a6a", o.team.join(" · "));
+  }
+};
+
+/* ---- 수색 의뢰 ----
+   지하 수로 깊숙이 들어가며 손전등으로 훑는다. 물 위로 반짝이는 것을 찾아낸다.
+   성공: 찾던 물건이 빛 속에 떠오른다 / 실패: 막다른 벽에 닿고 불빛이 꺼진다 */
+SCENES["수색"] = {
+  dur: 4.8,
+  init(o){ return { drops: [], glints: Array.from({length:7},(_,i)=>({x:i===0?(Math.random()-0.5)*0.6:(Math.random()-0.5)*1.1, y:i===0?0.5+Math.random()*0.08:0.12+Math.random()*0.4, p:Math.random()*6})) }; },
+  draw(c, t, W, H, o, st){
+    const ok = o.success, vx = W*0.5, vy = H*0.46;
+    const go = ease(seg(t, 0.1, 2.6)), travel = go*6 + (t>2.6 ? 0 : 0);
+    // 배경
+    c.fillStyle="#050607"; c.fillRect(0,0,W,H);
+    // 터널 고리: 앞으로 나아가며 다가온다
+    const ring = z => { const s = 1/z; return {rx: W*0.55*s, ry: H*0.9*s}; };
+    const zs = []; for(let i=0;i<14;i++){ let z = 0.35 + ((i*0.55 - travel*0.55) % (14*0.55) + 14*0.55) % (14*0.55); zs.push(z); }
+    zs.sort((a,b)=>b-a);
+    // 막다른 벽(실패) 혹은 넓은 방(성공)
+    const endZ = 7.2 - travel*0.55*1.0;
+    zs.forEach(z=>{ if(z<0.4) return; const {rx,ry} = ring(z), a = clamp(1.4/z,0,1)*0.9;
+      if(!ok && z>endZ+0.3) return;
+      c.strokeStyle=`rgba(${70+30*a},${80+30*a},${75+25*a},${0.15+0.5*a})`; c.lineWidth = 1+3*a;
+      c.beginPath(); c.ellipse(vx, vy, rx, ry, 0, Math.PI*1.02, Math.PI*1.98); c.stroke();
+      c.beginPath(); c.moveTo(vx-rx, vy); c.lineTo(vx-rx, vy+ry*0.55); c.moveTo(vx+rx, vy); c.lineTo(vx+rx, vy+ry*0.55); c.stroke();
+      // 벽의 배관
+      c.strokeStyle=`rgba(90,80,70,${0.25*a})`; c.lineWidth=2*a+0.5; c.beginPath(); c.moveTo(vx-rx*0.92, vy-ry*0.25); c.lineTo(vx-rx*0.92, vy+ry*0.5); c.stroke(); });
+    // 벽돌 결(원근선)
+    c.strokeStyle="rgba(120,110,95,0.07)"; c.lineWidth=1; for(let i=0;i<24;i++){ const a=Math.PI+i/23*Math.PI; c.beginPath(); c.moveTo(vx+Math.cos(a)*6, vy+Math.sin(a)*10); c.lineTo(vx+Math.cos(a)*W*1.5, vy+Math.sin(a)*H*2.4); c.stroke(); }
+    // 물길
+    const wy = vy + H*0.2; let g=c.createLinearGradient(0,vy,0,H); g.addColorStop(0,"#0b1214"); g.addColorStop(1,"#081012"); c.fillStyle=g;
+    c.beginPath(); c.moveTo(vx-8, vy+4); c.lineTo(vx+8, vy+4); c.lineTo(W*1.1, H); c.lineTo(-W*0.1, H); c.fill();
+    for(let i=0;i<9;i++){ const yy = vy+8+Math.pow(i/9,1.7)*(H-vy); const ww = (yy-vy)*2.4; c.strokeStyle=`rgba(140,190,200,${0.04+0.05*(i/9)})`; c.beginPath(); c.moveTo(vx-ww+Math.sin(t*2+i)*4, yy); c.lineTo(vx+ww+Math.sin(t*2+i)*4, yy); c.stroke(); }
+    // 막다른 벽
+    if(!ok && endZ < 6){ const {rx,ry} = ring(Math.max(0.6,endZ)); const a = clamp(1.4/endZ,0,1);
+      c.save(); c.beginPath(); c.ellipse(vx, vy, rx, ry, 0, Math.PI, Math.PI*2); c.lineTo(vx+rx, vy+ry*0.55); c.lineTo(vx-rx, vy+ry*0.55); c.closePath(); c.clip();
+      const wg=c.createRadialGradient(vx,vy,0,vx,vy,rx); wg.addColorStop(0,`rgba(78,70,62,${0.7+0.3*a})`); wg.addColorStop(1,`rgba(34,31,28,${0.7+0.3*a})`); c.fillStyle=wg; c.fillRect(vx-rx,vy-ry,rx*2,ry*2);
+      const bh=Math.max(4,ry*0.11), bw=bh*2.4; c.strokeStyle=`rgba(20,18,16,${0.8*a})`; c.lineWidth=1;
+      for(let yy=-ry, r=0; yy<ry*0.55; yy+=bh, r++){ c.beginPath(); c.moveTo(vx-rx, vy+yy); c.lineTo(vx+rx, vy+yy); c.stroke(); for(let xx=-rx+(r%2?bw/2:0); xx<rx; xx+=bw){ c.beginPath(); c.moveTo(vx+xx, vy+yy); c.lineTo(vx+xx, vy+yy+bh); c.stroke(); } }
+      c.restore();
+      if(t>2.9){ c.save(); c.globalAlpha=seg(t,2.9,3.3); c.fillStyle="#d8a0a0"; c.font=`600 12px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.fillText("막다른 길", vx, vy+ry*0.25); c.restore(); } }
+    // 손전등: 해결사 수만큼 빛줄기
+    const n = Math.max(1, Math.min(5, o.team.length)), fh = Math.min(H*0.5, 92);
+    let power = 1; if(!ok && t>3.0) power = Math.sin(t*40)>0.3 ? 0.2 : 0.9; if(!ok && t>3.4) power = 0.03;
+    st.glints.forEach(gl=>{ gl.sx = vx + gl.x*W*0.2*(0.4+gl.y); gl.sy = vy + gl.y*H*0.5; });
+    const beamT = t;
+    c.save(); c.globalCompositeOperation="lighter";
+    for(let i=0;i<n;i++){
+      const px = W*(0.36 + (i - (n-1)/2)*0.07), py = H*0.98 - fh*0.62;
+      let ax = vx + Math.sin(beamT*1.3+i*1.7)*W*0.18*(t>2.4?1.4:0.6), ay = vy + Math.cos(beamT*1.1+i)*H*0.1 + H*0.08;
+      if(ok && t>2.9){ ax = lerp(ax, st.glints[0].sx, ease(seg(t,2.9,3.2))); ay = lerp(ay, st.glints[0].sy, ease(seg(t,2.9,3.2))); }
+      const ang = Math.atan2(ay-py, ax-px), len = Math.hypot(ax-px, ay-py)*1.15;
+      const lg=c.createRadialGradient(px,py,0,px,py,len); lg.addColorStop(0,`rgba(255,240,205,${0.22*power})`); lg.addColorStop(1,"rgba(255,240,205,0)");
+      c.fillStyle=lg; c.beginPath(); c.moveTo(px,py); c.lineTo(px+Math.cos(ang-0.1)*len, py+Math.sin(ang-0.1)*len); c.lineTo(px+Math.cos(ang+0.1)*len, py+Math.sin(ang+0.1)*len); c.fill();
+      const sp=c.createRadialGradient(ax,ay,0,ax,ay,40); sp.addColorStop(0,`rgba(255,240,210,${0.3*power})`); sp.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=sp; c.fillRect(ax-40,ay-40,80,80);
+      st.glints.forEach((gl,j)=>{ if(Math.hypot(gl.sx-ax, gl.sy-ay)<45 && power>0.5){ gl.lit = t; } });
+    }
+    c.restore();
+    // 물 위의 반짝임(쓸모없는 것들)
+    st.glints.forEach((gl,j)=>{ if(j===0 && ok) return; const lit = gl.lit && t-gl.lit<0.5 ? 1-(t-gl.lit)/0.5 : 0; if(lit<=0) return;
+      c.save(); c.globalCompositeOperation="lighter"; c.fillStyle=`rgba(220,240,255,${0.8*lit})`; c.beginPath(); c.arc(gl.sx, gl.sy, 1.5+lit*1.5, 0, 7); c.fill();
+      c.strokeStyle=`rgba(220,240,255,${0.5*lit})`; c.beginPath(); c.moveTo(gl.sx-6*lit, gl.sy); c.lineTo(gl.sx+6*lit, gl.sy); c.moveTo(gl.sx, gl.sy-6*lit); c.lineTo(gl.sx, gl.sy+6*lit); c.stroke(); c.restore(); });
+    // 찾던 물건
+    if(ok && t>3.1){ const g0 = st.glints[0], k = ease(seg(t,3.1,3.7)), bx = g0.sx, by = g0.sy - k*H*0.06;
+      if(!st.found){ st.found=true; st.shake=4; sparks(st, bx, by, 26, "#bff5c8", 3, 0.9, 0.02); }
+      c.save(); c.globalCompositeOperation="lighter"; const gl=c.createRadialGradient(bx,by,0,bx,by,60); gl.addColorStop(0,`rgba(170,255,190,${0.55*k})`); gl.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=gl; c.fillRect(bx-60,by-60,120,120);
+      for(let i=0;i<8;i++){ const a=i/8*Math.PI*2+t; c.strokeStyle=`rgba(190,255,205,${0.5*k})`; c.beginPath(); c.moveTo(bx+Math.cos(a)*10, by+Math.sin(a)*10); c.lineTo(bx+Math.cos(a)*(16+k*20), by+Math.sin(a)*(16+k*20)); c.stroke(); } c.restore();
+      c.fillStyle="#e8d6a8"; c.fillRect(bx-9, by-6, 18, 12); c.strokeStyle="#7a6440"; c.strokeRect(bx-9, by-6, 18, 12);
+      c.save(); c.globalAlpha=k; c.fillStyle="#c8ffd6"; c.font=`700 12px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.fillText("찾았다", bx, by-20); c.restore(); }
+    // 물방울
+    if(Math.random()<0.15) st.drops.push({x:vx+(Math.random()-0.5)*W*0.6, y:vy-H*0.4*Math.random(), v:0});
+    c.fillStyle="rgba(170,200,210,0.5)"; st.drops = st.drops.filter(d=>{ d.v+=0.4; d.y+=d.v; c.fillRect(d.x,d.y,1,4); return d.y<H; });
+    // 해결사들(등을 보이며 앞으로)
+    for(let i=0;i<n;i++){ const px = W*(0.36 + (i - (n-1)/2)*0.07), bob = go<1 ? Math.sin(t*8+i)*2 : 0;
+      fig(c, px, H*1.02 + bob, fh*(i===0?1:0.92), {coat:i===0, color:"#030405", rim:"rgba(255,230,190,0.35)"}); }
+    drawParts(c, st);
+    if(!ok && t>3.3){ c.fillStyle=`rgba(80,10,10,${0.3*seg(t,3.3,3.9)})`; c.fillRect(0,0,W,H); }
+    vignette(c, W, H, ok || t<3.3 ? "rgba(0,0,0,0.8)" : "rgba(50,0,0,0.85)");
+    banner(c, W, H, t, 0.2, 1.1, "수색 의뢰 · 속도+정밀", "#7fb069", o.client||"");
+    if(t>3.45) banner(c, W, H, t, 3.45, 99, ok?"수색 성공":"수색 실패", ok?"#c8ffd6":"#ff6a6a", o.team.join(" · "));
+  }
+};
+
 /* ================= 도시의 소문(상단 연출) ================= */
 let floats = [];
 function spawnRumors(){
@@ -1658,7 +1817,8 @@ function fxTestPanel(){
   if(!S){ newGame("테스트 대표","연출 시험 사무소","테스트 동료"); leaveTitle(); render(); }
   const el=document.createElement("div"); el.className="fxtest";
   el.innerHTML=`<h4>연출 테스트</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
-   <b>일반 의뢰</b><div class="g">${[["str","물리"],["agi","속도"],["tec","정밀"]].map(([a,l])=>`<button data-fx="일반|${a}|1">${l} 성공</button><button data-fx="일반|${a}|0">${l} 실패</button>`).join("")}</div>`;
+   <b>일반 의뢰</b><div class="g">${[["str","물리"],["agi","속도"],["tec","정밀"]].map(([a,l])=>`<button data-fx="일반|${a}|1">${l} 성공</button><button data-fx="일반|${a}|0">${l} 실패</button>`).join("")}</div>
+   <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>`;
   document.body.appendChild(el);
   el.onclick=e=>{ const v=e.target.dataset.fx; if(!v||scene) return; const [k,a,ok]=v.split("|"); const n=+el.querySelector("#fxn").value;
     window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),client:"테스트 의뢰인"}); };
