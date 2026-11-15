@@ -127,6 +127,8 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .ach-empty{text-align:center;padding:26px 10px}
 .ach-empty-ic{font-size:40px;color:#3a3740;margin-bottom:6px}
 .ach-empty .d{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+.repay .amt{font-size:26px;font-weight:800;text-align:center;padding:8px;background:#101014;border:1px solid var(--line);border-radius:8px;margin-bottom:8px;color:#f3e3c0}
+.repay .steps{display:flex;flex-wrap:wrap;gap:6px}.repay .steps button{flex:1;min-width:64px}
 .toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-20px);opacity:0;background:#241d14;border:1px solid var(--accent);color:#f3e3c0;padding:10px 18px;border-radius:6px;z-index:80;transition:all .35s}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 </style>
@@ -147,7 +149,7 @@ const gName = g => g===0 ? "특색" : g+"급";
 const START_DEBT = 4000000;
 // 의뢰 등급별: 기준 보수, 요구치, 재해 등급
 // [기준 보수, 요구치(권장 인원 팀이 75%가 되는 값), 재해 등급]
-const REQ_BASE = {9:[2000,9,"뜬소문"],8:[4000,14,"도시 괴담"],7:[6000,28,"도시 괴담"],6:[12000,38,"도시 전설"],5:[24000,46,"도시 전설"],4:[48000,70,"도시 질병"],3:[96000,83,"도시 질병"],2:[120000,97,"도시 악몽"],1:[200000,132,"도시 악몽"],0:[450000,145,"도시의 별"]};
+const REQ_BASE = {9:[3000,9,"뜬소문"],8:[6000,14,"도시 괴담"],7:[9000,28,"도시 괴담"],6:[18000,38,"도시 전설"],5:[36000,46,"도시 전설"],4:[72000,70,"도시 질병"],3:[144000,83,"도시 질병"],2:[180000,97,"도시 악몽"],1:[300000,132,"도시 악몽"],0:[675000,145,"도시의 별"]};
 const RISK = g => g>=8?"ZAYIN":g>=6?"TETH":g>=4?"HE":g>=2?"WAW":"ALEPH";
 // 승급 기준: 현재 등급 -> 다음 등급 필요 총합
 const PROMO = {9:48,8:70,7:95,6:120,5:145,4:170,3:200,2:230};
@@ -296,7 +298,7 @@ function genStats(grade){
 function newGame(leaderName, officeName, partnerName){
   S = { v:VERSION, day:1, money:20000, debt:START_DEBT, scars:0, officeName, officeGrade:8,
         fixers:[], requests:[], records:[], log:[], reviewSuccess:0, recruitPool:[], nextId:1,
-        todayIncome:0, over:false, inventory:[] };
+        todayIncome:0, over:false, inventory:[], paidThisWeek:0 };
   const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, {isLeader:true});
   const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7});
   S.fixers.push(L,P);
@@ -553,23 +555,74 @@ async function endDayInner(reason){
 async function weekly(){
   await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
 }
+// 매주 수금: 그 주에 스스로 갚은 돈이 '최소 수금액'(보유 자금의 35%, 최소 1만 안)에 못 미치면 모자란 만큼 뜯어 간다
+function scarDue(){ return Math.min(S.debt, Math.max(Math.floor(S.money*0.35), 10000)); }
 async function scarVisit(){
   let html;
   playFx("흉터", "남겨진 흉터", "수금하러 왔다.", false);
-  if(S.money<=10000){
+  const due = scarDue(), paid = S.paidThisWeek||0;
+  if(paid >= due){
+    html = `<p>[남겨진 흉터]가 사무소 문을 열고 들어왔다. 장부를 넘겨 이번 주 상환 내역을 확인하더니, 아무것도 건드리지 않고 돌아갔다.</p><div class="kv"><span>이번 주 상환</span><b>${won(paid)}</b><span>최소 수금액</span><b>${won(due)}</b><span>남은 빚</span><b>${won(S.debt)}</b></div>`;
+  } else if(S.money<=10000){
     S.scars++;
     html = `<p>[남겨진 흉터]가 사무소 문을 열고 들어왔다. 금고를 들여다보고는 아무 말 없이 손을 뻗었다.</p><p style="color:var(--red)">흉터가 새겨졌다. (${S.scars} / 3)</p>`;
     if(S.scars>=3){ await modal("남겨진 흉터", html, [{t:"..."}]); return gameOver("세 번째 흉터", "세 번째 흉터가 새겨졌다. 사무소의 이름은 장부에서 지워졌다."); }
   } else {
-    let take = Math.max(Math.floor(S.money*0.35), 10000);
-    take = Math.min(take, S.debt);
+    const take = Math.min(due - paid, S.money, S.debt);
     S.money -= take; S.debt -= take;
-    html = `<p>[남겨진 흉터]가 사무소 문을 열고 들어왔다. 금고의 35%를 세어 챙긴다.</p><div class="kv"><span>수금액</span><b>${won(take)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>보유 자금</span><b>${won(S.money)}</b></div>`;
+    html = `<p>[남겨진 흉터]가 사무소 문을 열고 들어왔다. ${paid>0?"이번 주에 갚은 돈을 빼고, ":""}모자란 만큼을 금고에서 세어 챙긴다.</p><div class="kv"><span>최소 수금액</span><b>${won(due)}</b>${paid>0?`<span>이번 주 상환</span><b>${won(paid)}</b>`:""}<span>수금액</span><b>${won(take)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>보유 자금</span><b>${won(S.money)}</b></div>`;
     if(S.debt<=0) html += `<p style="color:var(--accent)">마지막 수금이었다. 흉터는 장부를 덮고 돌아갔다. 빚을 모두 갚았다.</p>`;
   }
+  S.paidThisWeek = 0;
   addLog(`남겨진 흉터 방문. 남은 빚 ${won(S.debt)}, 흉터 ${S.scars}/3`);
   await modal("남겨진 흉터", html, [{t:"확인",primary:true}]);
+  await checkRepaid();
+}
+async function checkRepaid(){
   if(S.debt<=0 && !S.repaidShown){ S.repaidShown=true; S.records.push({day:S.day,name:S.officeName,what:"빚 청산",note:"남겨진 흉터의 장부가 닫혔다"}); await modal("빚 청산", "사무소의 빚을 모두 갚았다. 이제부터는 도시의 강자가 될 차례다. 게임은 계속된다.", [{t:"계속",primary:true}]); }
+}
+
+/* ================= 상환 ================= */
+async function openRepay(){
+  if(S.debt<=0) return alertBox("상환", "갚을 빚이 남아 있지 않다.");
+  let amt = 0;
+  const unitMax = () => Math.floor(Math.min(S.money, S.debt)/10000)*10000;
+  const draw = () => {
+    const due = scarDue(), paid = S.paidThisWeek||0, left = Math.max(0, due-paid), nv = 7 - ((S.day-1)%7) - 1;
+    return `<div class="kv">
+      <span>보유 자금</span><b>${won(S.money)}</b>
+      <span>남은 빚</span><b>${won(S.debt)}</b>
+      <span>이번 주 상환</span><b>${won(paid)}</b>
+      <span>흉터 방문</span><b>${nv===0?"오늘 밤":nv+"일 뒤"} · 지금 기준 최소 수금액 ${won(due)} ${left>0?`<span class="muted">(모자란 ${won(left)}은 흉터가 걷어 간다)</span>`:`<span style="color:var(--green)">(이번 주는 걷어 가지 않는다)</span>`}</b>
+    </div>
+    <p class="muted" style="font-size:12px;margin:10px 0 6px">상환은 1만 안 단위로 언제든 할 수 있다. 그 주에 갚은 돈이 최소 수금액 이상이면 흉터는 걷어 가지 않는다.</p>
+    <div class="repay"><div class="amt">${won(amt)}</div>
+      <div class="steps">${[[-1000000,"-100만"],[-100000,"-10만"],[-10000,"-1만"],[10000,"+1만"],[100000,"+10만"],[1000000,"+100만"]].map(([v,t])=>`<button data-step="${v}">${t}</button>`).join("")}
+      <button data-step="max">최대</button><button data-step="due">최소 수금분</button></div>
+      <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px">
+        ${S.money>=S.debt?`<button data-pay="all">전액 상환 (${won(S.debt)})</button>`:""}
+        <button class="primary" data-pay="amt" ${amt<=0?"disabled":""}>${won(amt)} 상환</button></div></div>`;
+  };
+  await modal("상환", `<div id="rp">${draw()}</div>`, [{t:"닫기"}], false, root=>{
+    const box = root.querySelector("#rp");
+    root.addEventListener("click", async e=>{
+      const st = e.target.dataset.step, py = e.target.dataset.pay;
+      if(st){
+        const mx = unitMax();
+        if(st==="max") amt = mx;
+        else if(st==="due") amt = Math.min(mx, Math.ceil(Math.max(0, scarDue()-(S.paidThisWeek||0))/10000)*10000);
+        else amt = clamp(amt + (+st), 0, mx);
+      } else if(py){
+        const pay = py==="all" ? S.debt : amt;
+        if(pay<=0 || pay>S.money || pay>S.debt) return;
+        S.money -= pay; S.debt -= pay; S.paidThisWeek = (S.paidThisWeek||0) + pay; amt = 0;
+        addLog(`빚 ${won(pay)}을 상환했다. 남은 빚 ${won(S.debt)}`);
+        save(); render();
+        if(S.debt<=0){ closeAll(); await checkRepaid(); save(); render(); return; }
+      } else return;
+      box.innerHTML = draw();
+    });
+  });
 }
 async function review(){
   const lines = [];
@@ -855,7 +908,7 @@ function buildShell(){
      <div class="panel"><h2>의뢰 게시판 <small>해결사 1명은 하루 1건</small></h2><div class="reqs" id="reqs"></div></div>
      <div class="panel"><h2>해결사 <small>★ 대표</small></h2><div class="fixers" id="fxs"></div></div>
    </div>
-   <div class="nav"><button data-nav="recruit">영입</button><button data-nav="manage">관리</button><button data-nav="shop">공방</button><button data-nav="records">기록</button><button data-nav="ach">업적</button><button id="endday" class="primary">하루 끝내기</button></div>
+   <div class="nav"><button data-nav="recruit">영입</button><button data-nav="manage">관리</button><button data-nav="shop">공방</button><button data-nav="records">기록</button><button data-nav="ach">업적</button><button data-nav="repay">상환</button><button id="endday" class="primary">하루 끝내기</button></div>
    <div class="panel log" id="log"></div>`;
   initStage();
   if(shellBound) return; shellBound=true;
@@ -873,7 +926,7 @@ function buildShell(){
       updateCard(qid); return;
     }
     if(d.go){ const sel = teamSel[d.go]||[]; if(sel.length) dispatch(+d.go, sel.slice()); }
-    if(d.nav==="recruit") openRecruit(); if(d.nav==="manage") openManage(); if(d.nav==="shop") openShop(); if(d.nav==="records") openRecords(); if(d.nav==="ach") openAchievements();
+    if(d.nav==="recruit") openRecruit(); if(d.nav==="manage") openManage(); if(d.nav==="shop") openShop(); if(d.nav==="records") openRecords(); if(d.nav==="ach") openAchievements(); if(d.nav==="repay") openRepay();
     if(e.target.id==="endday"){ (async()=>{ if(S.requests.length && S.fixers.some(canGo)){ if(!await confirmBox("하루 끝내기","아직 처리하지 않은 의뢰와 출동 가능한 해결사가 있다. 하루를 끝낼까?")) return; } await endDay("하루를 마쳤다."); })(); }
   });
 }
