@@ -470,7 +470,7 @@ const powK = (ctx, a) => clamp(teamPower(ctx.team, [a]) / Math.max(1, ctx.q.req)
 /* ================= 전투 무대(WebGL2) =================
    2D 화면 위에 그리는 셰이더 연출. 과하지 않게, 실루엣은 은은한 입체감만 준다.
    ① 배경 패스: 노이즈로 만든 3겹 야경(창문·네온 번짐), 젖은 아스팔트 반사, 안개, 비, 포켓몬식 원형 발판
-   ② 인물 패스: 기존의 납작한 실루엣을 텍스처로 받아 가장자리 기울기로 은은한 명암·림 라이트만 더한다(사살 시 노이즈로 흩어짐).
+   ② 인물 패스: 납작한 실루엣을 텍스처로 받아, 흐린 알파로 만든 가짜 법선으로 두 단계 명암(밝은 면 따뜻·그늘 차갑게)과 림 하이라이트를 넣는다. 발밑엔 젖은 바닥 반사.
    ③ 효과 패스: 무기별 궤적 메시(호 잔상·찌르기·탄도), 충격 고리, GPU 파티클(정점 셰이더에서 시드로 궤적 계산)
    ④ 후처리: 충격파 굴절, 약한 색수차, 빛 번짐, 비네트, 그레인
    WebGL2가 안 되면 null을 돌려주고 기존 2D 연출을 쓴다. */
@@ -571,34 +571,60 @@ const CombatGL = (function(){
     }
     o = vec4(col,1.);
   }`;
-  // ② 인물: 기존의 납작한 실루엣(2D로 그린 것)을 텍스처로 받아, 가장자리 기울기로 은은한 명암·림 라이트만 더한다
+  // ② 인물: 납작한 실루엣을 텍스처로 받는다. 알파를 흐려 만든 '부풀린 높이'로 가짜 법선을 구해
+  //   (TF2식) 밝은 면/그늘 두 단계 + 따뜻·차가운 색 이동(Gooch) + 경계 채도, 실루엣은 어두운 외곽선 대신 림 하이라이트로 살린다.
+  //   발밑 젖은 바닥에는 일렁이는 반사를 옅게 깐다.
+  const FS_BLUR = `#version 300 es
+  precision highp float; in vec2 vUv; out vec4 o; uniform sampler2D uSrc; uniform vec2 uStep; uniform float uFlip;
+  float A(vec2 uv){ return texture(uSrc, uFlip > .5 ? vec2(uv.x, 1.-uv.y) : uv).a + texture(uSrc, uFlip > .5 ? vec2(uv.x, 1.-uv.y) : uv).r*0.; }
+  void main(){ float w[5] = float[](.227,.194,.121,.054,.016); float a = A(vUv)*w[0];
+    for(int i=1;i<5;i++){ a += (A(vUv+uStep*float(i)) + A(vUv-uStep*float(i)))*w[i]; } o = vec4(a,a,a,a); }`;
   const FS_FIG = `#version 300 es
   precision highp float; in vec2 vUv; out vec4 o;
-  uniform sampler2D uFig; uniform vec2 uTex; uniform float uSc, uDis; uniform vec4 uDisRect;
+  uniform sampler2D uFig, uBlur; uniform vec2 uTex, uBT; uniform float uSc, uDis, uT; uniform vec4 uDisRect, uFeet;
   ${NOISE}
-  float A(vec2 uv){ return texture(uFig, uv).a; }
+  float B(vec2 uv){ return texture(uBlur, uv).a; }
   void main(){
-    vec2 uv = vec2(vUv.x, 1.-vUv.y);
-    vec4 f = texture(uFig, uv); if(f.a < .01) discard;
-    vec2 px = 1./uTex, ex = vec2(px.x,0.), ey = vec2(0.,px.y);
-    float gx = (A(uv+ex*2.5)-A(uv-ex*2.5)) + .5*(A(uv+ex*6.)-A(uv-ex*6.));
-    float gy = (A(uv+ey*2.5)-A(uv-ey*2.5)) + .5*(A(uv+ey*6.)-A(uv-ey*6.));
-    vec2 nrm = -vec2(gx, gy); float edge = clamp(length(nrm)*.8, 0., 1.);
-    vec2 n2 = length(nrm) > .001 ? normalize(nrm) : vec2(0.);
-    vec3 col = f.rgb;
-    float lit = dot(n2, normalize(vec2(-.55,-.85)))*edge;           // 왼쪽 위에서 오는 약한 빛
-    float rim = max(dot(n2, normalize(vec2(1.,-.25))), 0.)*edge;      // 네온 쪽 림 라이트
-    col *= 1. + .28*lit;
-    col *= 1.04 - .12*smoothstep(.2, 1., uv.y);                       // 아래로 갈수록 살짝 어둡게
-    col += vec3(.5,.42,.85)*rim*.16;
+    vec2 uv = vec2(vUv.x, 1.-vUv.y), sp = uv*uTex/uSc;
+    vec4 f = texture(uFig, uv);
+    // 발밑 반사(젖은 바닥)
+    vec4 refl = vec4(0.);
+    if(f.a < .99){
+      float gy = sp.x > uFeet.z ? uFeet.x : uFeet.y, d = sp.y - gy;
+      if(d > 0. && d < 80.){
+        float rip = (vnoise(vec2(sp.x*.07, sp.y*.22 - uT*1.6)) - .5)*5.;
+        vec4 r = texture(uFig, vec2(sp.x + rip, gy - d)*uSc/uTex); float fade = pow(1.-d/80., 1.6)*.2;
+        refl = vec4(r.rgb*.55*r.a*fade, r.a*fade);
+      }
+    }
+    if(f.a < .01){ if(refl.a < .002) discard; o = refl; return; }
+    // 부풀린 높이 → 가짜 법선
+    vec2 px = 1./uBT; float H = B(vUv);
+    float hx = B(vUv+vec2(px.x,0.)) - B(vUv-vec2(px.x,0.)), hy = B(vUv+vec2(0.,px.y)) - B(vUv-vec2(0.,px.y));
+    vec3 n = normalize(vec3(-hx*4.5, -hy*4.5, 1.));
+    vec3 L = normalize(vec3(-.6,.55,.58));
+    float ndl = dot(n, L);
+    float lit = smoothstep(.22, .34, ndl);                                  // 두 단계(경계만 살짝 부드럽게)
+    vec3 base = f.rgb;
+    vec3 warm = base*vec3(1.07,1.03,.98) + .02, cool = base*vec3(.74,.77,.9);  // 밝은 면은 따뜻하게, 그늘은 차갑게
+    vec3 col = mix(cool, warm, lit);
+    float term = exp(-pow((ndl-.28)/.05, 2.));                               // 명암 경계는 채도를 살짝 올린다
+    col = mix(col, col*vec3(1.12,.95,.95), term*.35);
+    // 림 하이라이트: 뒤쪽 네온(오른쪽 위)을 향한 가장자리만, 얇고 단단하게
+    vec2 out2 = length(vec2(hx,hy)) > 1e-4 ? normalize(vec2(-hx,-hy)) : vec2(0.);
+    float edge = smoothstep(.62, .5, H);
+    float rim = edge * smoothstep(.15, .45, dot(out2, normalize(vec2(1.,.45))));
+    col = mix(col, base*1.25 + vec3(.2,.18,.32), smoothstep(.35,.6, rim)*.85);
+    float up = edge * smoothstep(.3, .7, out2.y) * lit;                     // 머리·어깨 위쪽에 아주 약한 하늘빛
+    col += vec3(.25,.22,.35)*up*.25;
+    col *= 1.03 - .1*smoothstep(-40., 60., sp.y - (sp.x > uFeet.z ? uFeet.x : uFeet.y) + 60.);  // 발치로 갈수록 살짝 어둡게
     // 사살: 노이즈 문턱으로 재처럼 흩어진다
-    vec2 sp = uv*uTex/uSc;
     if(uDis > 0. && sp.x > uDisRect.x && sp.x < uDisRect.z && sp.y > uDisRect.y && sp.y < uDisRect.w){
       float nz = vnoise(sp*.09)*.7 + vnoise(sp*.31)*.3;
-      if(nz < uDis) discard;
+      if(nz < uDis){ if(refl.a < .002) discard; o = refl; return; }
       col += vec3(1.,.55,.25)*smoothstep(uDis+.07, uDis, nz)*1.6;
     }
-    o = vec4(col*f.a, f.a);
+    o = vec4(col*f.a, f.a) + refl*(1.-f.a);
   }`;
   // ③ 효과: 궤적·충격·파티클
   const VS_FX = `#version 300 es
@@ -620,7 +646,7 @@ const CombatGL = (function(){
     } else if(uKind==1){ // 충격: 중심 빛 + 퍼지는 고리 + 방사 줄기
       vec2 q=vUV*2.-1.; float r=length(q), ang=atan(q.y,q.x);
       float ring = exp(-pow((r-k*.95)/.06,2.))*(1.-k);
-      float core = exp(-r*r*16.)*(1.-k)*.8;
+      float core = exp(-r*r*18.)*(1.-k)*.6;
       float rays = pow(vnoise(vec2(ang*5., 3.)),3.)*exp(-r*2.5)*(1.-k)*1.2*step(r,1.);
       a = ring + core + rays;
     } else { // 직선 궤적(찌르기·탄도)
@@ -682,7 +708,7 @@ const CombatGL = (function(){
       const u={}; const n=gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); for(let i=0;i<n;i++){ const nm=gl.getActiveUniform(p,i).name.replace("[0]",""); u[nm]=gl.getUniformLocation(p, gl.getActiveUniform(p,i).name); }
       return {p, u}; };
     let P;
-    try { P = { bg:prog(VS_FULL, FS_BG), fig:prog(VS_FULL, FS_FIG), fx:prog(VS_FX, FS_FX), pt:prog(VS_PT, FS_PT), post:prog(VS_FULL, FS_POST) }; }
+    try { P = { bg:prog(VS_FULL, FS_BG), fig:prog(VS_FULL, FS_FIG), blur:prog(VS_FULL, FS_BLUR), fx:prog(VS_FX, FS_FX), pt:prog(VS_PT, FS_PT), post:prog(VS_FULL, FS_POST) }; }
     catch(e){ console.warn("CombatGL", e); return null; }
     // 화면 전체 사각형
     const quad = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, quad); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
@@ -692,6 +718,13 @@ const CombatGL = (function(){
     const figTex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, figTex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    // 흐린 알파(높이) 버퍼: 절반 해상도, 가로 → 세로 두 번
+    const BW = Math.max(2, cv.width>>1), BH = Math.max(2, cv.height>>1);
+    const mkRT = ()=>{ const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,BW,BH,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); return {t, fb}; };
+    const RA = mkRT(), RB = mkRT(); gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     // 효과 메시
     const vaoFx = gl.createVertexArray(); gl.bindVertexArray(vaoFx); const fxBuf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, fxBuf);
     const lP = gl.getAttribLocation(P.fx.p,"aP"), lU = gl.getAttribLocation(P.fx.p,"aUV");
@@ -715,7 +748,15 @@ const CombatGL = (function(){
       if(!S.fig) return;
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, figTex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, S.fig);
-      gl.useProgram(P.fig.p); gl.uniform1i(P.fig.u.uFig, 1); gl.uniform2f(P.fig.u.uTex, S.fig.width, S.fig.height); gl.uniform1f(P.fig.u.uSc, S.fig.width/W);
+      // 높이 버퍼 만들기
+      gl.disable(gl.BLEND); gl.useProgram(P.blur.p); gl.bindVertexArray(vaoFull); gl.viewport(0,0,BW,BH);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, RA.fb); gl.uniform1i(P.blur.u.uSrc, 1); gl.uniform1f(P.blur.u.uFlip, 1); gl.uniform2f(P.blur.u.uStep, 1.6/BW, 0); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, RA.t);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, RB.fb); gl.uniform1i(P.blur.u.uSrc, 2); gl.uniform1f(P.blur.u.uFlip, 0); gl.uniform2f(P.blur.u.uStep, 0, 1.6/BH); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo); gl.viewport(0,0,cv.width,cv.height);
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, RB.t);
+      gl.useProgram(P.fig.p); gl.uniform1i(P.fig.u.uBlur, 2); gl.uniform2f(P.fig.u.uBT, BW, BH); gl.uniform1f(P.fig.u.uT, performance.now()/1000);
+      gl.uniform4fv(P.fig.u.uFeet, S.feet || [0,0,0,0]); gl.uniform1i(P.fig.u.uFig, 1); gl.uniform2f(P.fig.u.uTex, S.fig.width, S.fig.height); gl.uniform1f(P.fig.u.uSc, S.fig.width/W);
       gl.uniform1f(P.fig.u.uDis, S.dis ? S.dis.v : 0); gl.uniform4fv(P.fig.u.uDisRect, S.dis ? S.dis.rect : [0,0,0,0]);
       gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
       gl.bindVertexArray(vaoFull); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.disable(gl.BLEND); gl.activeTexture(gl.TEXTURE0);
@@ -805,7 +846,7 @@ function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
     const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal==="사살"?"머리·목을 무너뜨리거나 몸통을 세로로 갈라 사살":"양팔이나 양다리를 못 쓰게 하거나 몸통을 무너뜨려 제압"}</b>. 노릴 부위를 고르고 카드를 내 주사위 합을 겨룬다. 최대 5턴.`, ctx, 380);
-    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none"}));
+    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none"}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value) party.forEach(p=>p.wt = w.value); }
     const fwt = pick(FOE_WEAPONS);
     const foe = {name: FOE_NAMES[q.grade!=null?q.grade:9] || "적", wt:fwt, parts:{}, cards: CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1), b:c.b-1}))};
@@ -913,42 +954,77 @@ function mgCombat(ctx){
       else if(wt!=="blunt"){ const R = (wt==="great"?96:78)*sc, cx = x - dir*R*0.32, cy = y + R*0.62, a0 = dir>0 ? -2.45 : -0.7, a1 = dir>0 ? -0.15 : -3.0+0.01;
         addFx({kind:"arc", x:cx, y:cy, R, a0, a1, w:(wt==="great"?13:9)*sc, col}, 360, imp-90);
         if(card && card.cleave) addFx({kind:"arc", x:cx+dir*8, y:cy-10, R:R*0.86, a0:a0+0.15*dir, a1:a1+0.15*dir, w:4*sc, col}, 320, imp-50); }
-      addFx({kind:"hit", x, y, R:(wt==="blunt"?95:62)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
+      addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
       addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
       setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = clock + (st.crit?140:70);
         st.cond = JSON.parse(JSON.stringify(foe.parts)); party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt:`-${dmg}`, col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
     }
-    // 한 사람의 움직임: 대기(숨쉬기) · 돌진 · 무기 휘두르기 · 피격 반동
-    // 실루엣 모양은 그대로 두고 위치(dx, dy)·기울기(rot)·무기 각도(wRot)·번쩍임(flash)만 바꾼다
-    const BASE_W = { me:-0.35, foe:0.6 };
+    // 한 사람의 움직임: 대기(숨쉬기) · 돌진 · 무기 휘두르기/찌르기 · 피격 반동
+    // arm: 위팔 각도(아래 방향 0 → 앞쪽 +), elb: 팔꿈치 굽힘, tilt: 손목에서 무기가 더 젖혀지는 각도
+    const THRUST = {spear:1, drill:1, gun:1};
     function poseFor(who, now){
-      const P = POS[who]; let dx = 0, dy = Math.sin(now/1000*2.1 + (who==="foe"?1:0))*P.h*0.006, rot = 0, wRot = BASE_W[who], flash = 0;
+      const P = POS[who], wt = who==="me" ? party[act].wt : foe.wt, th = THRUST[wt];
+      const idle = wt==="gun" ? {arm:1.3, elb:0.25} : th ? {arm:0.95, elb:0.75} : {arm:0.75, elb:1.05};
+      let dx = 0, dy = Math.sin(now/1000*2.1 + (who==="foe"?1:0))*P.h*0.006, rot = 0, arm = idle.arm + Math.sin(now/1000*2.1)*0.03, elb = idle.elb, flash = 0;
       st.ev.forEach(e=>{ const k = clock - e.t0; if(k<0 || k>760) return;
         const isAtk = e.by===who || e.by==="tie", isHit = (e.by==="me" && who==="foe") || (e.by==="foe" && who==="me");
         if(isAtk){ const tgt = who==="me" ? POS.foe : POS.me, tx = (e.by==="tie" ? 360 : tgt.x) - P.x, ty = (e.by==="tie" ? 230+P.h*0.5 : tgt.gy) - P.gy;
-          const go = k<290 ? ease(k/290) : 1 - ease(clamp((k-380)/360,0,1)), f = e.by==="tie" ? 0.62 : 0.4;
-          dx += tx*f*go; dy += ty*f*go; rot += 0.12*P.face*go;
-          wRot = k<200 ? BASE_W[who] - 1.3*ease(k/200) : k<380 ? BASE_W[who] - 1.3 + 2.9*ease(Math.min(1,(k-200)/90)) : BASE_W[who] + 1.6*(1-ease((k-380)/360)); }
+          const go = k<290 ? ease(k/290) : 1 - ease(clamp((k-380)/360,0,1)), f = e.by==="tie" ? 0.62 : (wt==="gun" ? 0.12 : 0.4);
+          dx += tx*f*go; dy += ty*f*go; rot += 0.1*P.face*go;
+          const up = th ? {arm:0.8, elb:1.5} : {arm:2.75, elb:0.35}, hit = th ? {arm:1.5, elb:0.05} : {arm:1.0, elb:0.0};
+          const lerp = (a, b, t)=>({arm:a.arm+(b.arm-a.arm)*t, elb:a.elb+(b.elb-a.elb)*t});
+          const q = k<200 ? lerp(idle, up, ease(k/200)) : k<380 ? lerp(up, hit, ease(Math.min(1,(k-200)/90))) : lerp(hit, idle, ease((k-380)/360));
+          arm = q.arm; elb = q.elb; }
         if(isHit && k>=290){ const s = clamp((k-290)/320,0,1), fs = clamp((k-290)/200,0,1);
-          flash = Math.max(flash, (1-fs)*(1-fs)*0.32); dx -= P.face*14*Math.sin(s*Math.PI)*(1-s*0.5); rot -= 0.1*P.face*Math.sin(s*Math.PI); } });
-      return {dx, dy, rot, wRot, flash};
+          flash = Math.max(flash, (1-fs)*(1-fs)*0.32); dx -= P.face*14*Math.sin(s*Math.PI)*(1-s*0.5); rot -= 0.1*P.face*Math.sin(s*Math.PI); arm -= 0.25*Math.sin(s*Math.PI); } });
+      return {dx, dy, rot, arm, elb, flash};
     }
     const hexMix = (a, b, t)=>{ const A = parseInt(a.slice(1),16), B = parseInt(b.slice(1),16);
       return "#"+[16,8,0].map(s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t).toString(16).padStart(2,"0")).join(""); };
-    // 두 사람을 그린다(2D 실루엣). GL이면 이 그림을 텍스처로 넘겨 명암을 더한다
+    /* 전투용 실루엣: 코트 입은 해결사. 납작한 단색 덩어리로 그리고 명암은 셰이더가 얹는다.
+       뒤쪽 팔·다리는 한 톤 어둡게 해 겹침만 구분한다. 오른쪽을 보는 모양으로 그리고 face로 뒤집는다. */
+    function figC(c, x, gy, h, o){
+      const col = o.col, dark = hexMix(col, "#000000", 0.22), t = performance.now()/1000;
+      c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); c.scale(o.face, 1);
+      const P = (px, py)=>[px*h, py*h], poly = pts=>{ c.beginPath(); pts.forEach((p,i)=> i ? c.lineTo(p[0]*h, p[1]*h) : c.moveTo(p[0]*h, p[1]*h)); c.closePath(); c.fill(); };
+      const limb = (a, b, w0, w1, color)=>{ const dx = b[0]-a[0], dy = b[1]-a[1], L = Math.hypot(dx,dy)||1, nx = -dy/L, ny = dx/L;
+        c.fillStyle = color; c.beginPath(); c.moveTo(a[0]+nx*w0, a[1]+ny*w0); c.lineTo(b[0]+nx*w1, b[1]+ny*w1); c.lineTo(b[0]-nx*w1, b[1]-ny*w1); c.lineTo(a[0]-nx*w0, a[1]-ny*w0); c.closePath(); c.fill();
+        c.beginPath(); c.arc(b[0], b[1], w1, 0, 7); c.fill(); };
+      // 뒷다리 · 뒷팔(어둡게)
+      limb(P(-0.035,-0.32), P(-0.105,-0.01), 0.045*h, 0.03*h, dark); c.fillRect(-0.15*h, -0.025*h, 0.08*h, 0.025*h);
+      limb(P(-0.03,-0.74), P(-0.07,-0.5), 0.035*h, 0.028*h, dark);
+      // 앞다리
+      c.fillStyle = col; limb(P(0.035,-0.32), P(0.1,-0.01), 0.046*h, 0.031*h, col); c.fillRect(0.075*h, -0.025*h, 0.085*h, 0.025*h);
+      // 코트: 어깨는 둥글게, 허리에서 조였다가 자락이 뒤로 길게 흐른다
+      const sway = Math.sin(t*1.7 + x*0.01)*0.012 - (o.rot||0)*0.12*o.face;
+      c.fillStyle = col; c.beginPath();
+      c.moveTo(-0.115*h, -0.735*h); c.quadraticCurveTo(-0.12*h, -0.8*h, -0.06*h, -0.805*h); c.lineTo(0.06*h, -0.805*h);
+      c.quadraticCurveTo(0.125*h, -0.8*h, 0.12*h, -0.735*h); c.lineTo(0.104*h, -0.52*h); c.lineTo(0.14*h, -0.24*h);
+      c.quadraticCurveTo(0.06*h, -0.215*h, 0.005*h, -0.265*h); c.lineTo((-0.175+sway)*h, -0.2*h); c.lineTo(-0.12*h, -0.52*h); c.closePath(); c.fill();
+      poly([[-0.07,-0.8],[-0.045,-0.855],[-0.005,-0.8]]);                       // 세운 깃
+      c.fillRect(-0.022*h, -0.845*h, 0.044*h, 0.05*h);                           // 목
+      c.beginPath(); c.arc(0.012*h, -0.893*h, 0.077*h, 0, 7); c.fill();           // 머리
+      if(o.gear && o.gear.armor){ c.fillStyle = hexMix(col, "#c9d2de", 0.35); c.beginPath(); c.ellipse(0.07*h, -0.765*h, 0.065*h, 0.032*h, -0.15, 0, 7); c.fill(); }
+      // 앞팔과 무기
+      const sh = P(0.065,-0.75), a1 = o.arm, a2 = o.arm + o.elb;
+      const el = [sh[0]+Math.sin(a1)*0.2*h, sh[1]+Math.cos(a1)*0.2*h], hd = [el[0]+Math.sin(a2)*0.18*h, el[1]+Math.cos(a2)*0.18*h];
+      limb(sh, el, 0.036*h, 0.03*h, col); limb(el, hd, 0.03*h, 0.026*h, col);
+      if(o.wt && o.wt!=="none"){ c.save(); c.translate(hd[0]-h*0.2, hd[1]+h*0.55); drawWeapon(c, h*0.95, 1, o.wt, -(a2 + (THRUST[o.wt] ? 0 : 0.35)), o.wcol); c.restore(); }
+      if(o.gear && o.gear.acc){ c.fillStyle = `rgb(${o.gear.accColor||"150,230,255"})`; c.beginPath(); c.arc(0.06*h, -0.66*h, 0.018*h, 0, 7); c.fill(); }
+      c.restore();
+    }
+    // 두 사람을 그린다. GL이면 이 그림을 텍스처로 넘겨 명암을 더한다
     function drawFighters(c, now){
       const me = party[act], fp = poseFor("foe", now), mp = poseFor("me", now);
       let frot = 0, fdim = 0;
       if(outcome && st.koAt!=null){ const k = ease(clamp((clock-st.koAt)/600,0,1));
-        if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; } else { frot = 1.3*k; fdim = 0.25*k; } }
-      const fcol = SIDE_COL.foe.fill;
-      const ftint = (fp.flash>0.02 || fdim>0) ? hexMix(hexMix(fcol, "#000000", fdim), "#fff4e8", fp.flash) : null;
-      fig(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.86, {side:"foe", face:-1, weapon:!outcome, ewt:foe.wt, wRot:fp.wRot, coat:true, rot: fp.rot + frot, tint: ftint});
+        if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; fp.arm = 0.2; fp.elb = 0.3; } else { frot = 1.3*k; fdim = 0.25*k; } }
+      const fcol = hexMix(hexMix(SIDE_COL.foe.fill, "#000000", fdim), "#fff4e8", fp.flash);
+      figC(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, wcol:SIDE_COL.foe.wpn, wt: outcome ? null : foe.wt, arm:fp.arm, elb:fp.elb, rot: fp.rot + frot});
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
-      const mtint = (mp.flash>0.02 || mdim>0) ? hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash) : null;
-      const gear = Object.assign({}, me.lg||{}, {wtype: me.wt==="none" ? null : me.wt});
-      fig(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.86, {side:"ally", face:1, weapon: me.wt!=="none", wRot:mp.wRot, coat:true, gear, rot: mp.rot + mrot, tint: mtint});
+      const mcol = hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash);
+      figC(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, col:mcol, wcol:SIDE_COL.ally.wpn, wt: me.wt, gear: me.lg, arm:mp.arm, elb:mp.elb, rot: mp.rot + mrot});
     }
     function overlay(now, keep){
       const c = m.c, me = party[act]; if(!keep) c.clearRect(0,0,W,H);
@@ -1002,7 +1078,7 @@ function mgCombat(ctx){
         st.waves = st.waves.filter(w=>clock-w.t0 < 520);
         const waves = st.waves.map(w=>{ const k = (clock-w.t0)/520; return [w.x, w.y, 20+k*170, (1-k)*w.k]; });
         const dis = outcome==="사살" && st.koAt!=null ? {v: clamp((clock-st.koAt-500)/1400,0,1)*0.95, rect:[POS.foe.x-160, POS.foe.gy-150, POS.foe.x+160, POS.foe.gy+40]} : null;
-        G.render({t: now/1000, horizon: 150, plats: PLATS, fig: fcv, dis, fx, waves, aberr: st.aberr, flash: st.flash, flashCol:[1,0.96,0.9], shake:[(Math.random()-0.5)*st.shake, (Math.random()-0.5)*st.shake]});
+        G.render({t: now/1000, horizon: 150, plats: PLATS, fig: fcv, dis, feet:[POS.foe.gy, POS.me.gy, 360, 0], fx, waves, aberr: st.aberr, flash: st.flash, flashCol:[1,0.96,0.9], shake:[(Math.random()-0.5)*st.shake, (Math.random()-0.5)*st.shake]});
       } else {
         // WebGL이 안 되는 기기: 기존 2D 그림
         const c = m.c; c.save(); streetBG(c, W, H, now/1000, st); drawFighters(c, now);
