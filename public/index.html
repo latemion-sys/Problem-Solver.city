@@ -30,6 +30,9 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .stage .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;pointer-events:none;text-shadow:0 0 12px #000,0 0 4px #000}
 .stage .cap .t{font-size:20px;font-weight:700;letter-spacing:.05em}
 .stage .cap .s{font-size:13px;color:#d6cfc2}
+.stage{cursor:default}
+.fxtest{position:fixed;right:10px;bottom:10px;z-index:60;background:rgba(15,14,18,.95);border:1px solid var(--accent);border-radius:8px;padding:10px;width:250px;font-size:12px}
+.fxtest h4{margin:0 0 6px}.fxtest .g{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.fxtest button{padding:4px 7px;font-size:12px}
 /* layout */
 .main{display:grid;grid-template-columns:1fr 360px;gap:10px;margin-top:10px}
 @media (max-width:900px){.main{grid-template-columns:1fr}}
@@ -434,6 +437,7 @@ async function dispatch(qid, fids){
     lines.push(q.kind==="뒤틀림 토벌" ? "토벌에 실패했다. 뒤틀림은 아직 남아 있다." : "의뢰는 다른 곳으로 넘어갔다.");
     if(q.kind==="특색 심사"){ team[0].unavailUntil = S.day+2; lines.push("심사 실패. 2일간 출동할 수 없다."); }
   }
+  await playScene(q.kind, {attr:q.attrs[0], success, team:team.map(f=>f.name), client:q.client, grade:q.grade, risk:q.risk, hazard:q.hazard});
   playFx(q.kind, `${q.kind} — ${success?"성공":"실패"}`, `${names} · ${q.client}`, success);
   addLog(`[${q.kind}] ${names}: ${q.text} → ${success?"성공":"실패"}${success?" (+"+won(q.reward)+")":""}`);
   await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${lines.join("<br>")}</p>`, [{t:"확인",primary:true}]);
@@ -801,7 +805,8 @@ async function openRecords(){
   });
 }
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
-function save(){ if(S) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
+const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
+function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
 function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over) return d; }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
@@ -1241,6 +1246,7 @@ function initStage(){
   resizeStage();
   if(loopOn) return; loopOn=true;
   window.addEventListener("resize", resizeStage);
+  document.addEventListener("click", e=>{ if(scene && e.target.closest(".stage")) endScene(); });
   for(let i=0;i<90;i++) rain.push({x:Math.random(),y:Math.random(),v:0.6+Math.random()*0.8});
   requestAnimationFrame(loop);
 }
@@ -1260,6 +1266,7 @@ function playFx(kind, title, sub, good){
 }
 function loop(now){
   if(!cx){ return; }
+  if(scene && drawScene(now)){ requestAnimationFrame(loop); return; }
   const W=cv.width,H=cv.height; const age=(now-fx.t)/1000;
   const g=cx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0a0a12"); g.addColorStop(1,"#14121a"); cx.fillStyle=g; cx.fillRect(0,0,W,H);
   // 은은한 빛무리
@@ -1286,6 +1293,190 @@ function loop(now){
   if(fx.good===false && age<1.5 && fx.kind!=="흉터"){ cx.fillStyle=`rgba(0,0,0,${0.35*(1-age/1.5)})`; cx.fillRect(0,0,W,H); }
   requestAnimationFrame(loop);
 }
+
+/* ================= 의뢰 수행 연출 ================= */
+// 장면은 CSS 픽셀 좌표로 그린다. opt: {attr, success, team:[이름], kind}
+let scene = null;
+function playScene(kind, opt){
+  return new Promise(res=>{
+    const sc = SCENES[kind];
+    if(!cx || !sc){ res(); return; }
+    scene = {kind, opt, sc, t0: performance.now(), res, st: sc.init ? sc.init(opt) : {}};
+    const t=document.getElementById("capt"), s=document.getElementById("caps"); if(t){ t.textContent=""; s.textContent=""; }
+  });
+}
+function endScene(){ if(!scene) return; const r = scene.res; scene = null; r(); }
+function drawScene(now){
+  const d = devicePixelRatio, W = cv.width/d, H = cv.height/d, t = (now-scene.t0)/1000;
+  if(t > scene.sc.dur){ endScene(); return false; }
+  cx.save(); cx.setTransform(d,0,0,d,0,0);
+  const sh = scene.st.shake || 0;
+  if(sh>0.01){ cx.translate((Math.random()-0.5)*sh, (Math.random()-0.5)*sh); scene.st.shake *= 0.86; }
+  scene.sc.draw(cx, t, W, H, scene.opt, scene.st);
+  // 시작·끝 페이드
+  const fin = Math.min(1, t/0.35), fout = Math.min(1, (scene.sc.dur - t)/0.4);
+  const k = Math.min(fin, fout); if(k<1){ cx.fillStyle=`rgba(0,0,0,${1-k})`; cx.fillRect(-20,-20,W+40,H+40); }
+  cx.restore();
+  return true;
+}
+const ease = x => x<0?0:x>1?1:1-Math.pow(1-x,3);
+const lerp = (a,b,k) => a+(b-a)*k;
+const seg = (t,a,b) => clamp((t-a)/(b-a),0,1);
+
+/* ---- 공통: 뒷골목 거리(측면 2.5D) ---- */
+function streetBG(c, W, H, t, st, tint){
+  const gy = H*0.8;
+  if(!st.bg){
+    const R=(a,b)=>a+Math.random()*(b-a), fac=[]; let x=-20;
+    while(x<W+40){ const w=R(70,150), h=R(H*0.45,H*0.78), wins=[];
+      for(let wy=10; wy<h-H*0.22; wy+=13) for(let wx=8; wx<w-10; wx+=13) if(Math.random()<0.3) wins.push([wx,wy,Math.random()]);
+      fac.push({x,w,h,wins,shutter:Math.random()<0.6,sign:Math.random()<0.5?{c:pick(["#ff5a5a","#5ad1ff","#ffd35a","#9b7bff"]),t:pick(["수리","전당포","국밥","24시","당구","약국"]),fl:Math.random()}:null}); x+=w+R(2,10); }
+    const far=[]; x=-20; while(x<W+40){ const w=R(40,90), h=R(H*0.6,H*0.95); far.push({x,w,h}); x+=w+R(0,20); }
+    st.bg = {fac, far, rain: Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,v:R(5,9)}))};
+  }
+  const bg = st.bg;
+  let g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#07070c"); g.addColorStop(1,"#17131b"); c.fillStyle=g; c.fillRect(0,0,W,H);
+  bg.far.forEach(b=>{ c.fillStyle="#101018"; c.fillRect(b.x, gy-b.h, b.w, b.h); });
+  // 건물 정면
+  bg.fac.forEach(f=>{
+    const y = gy-f.h;
+    c.fillStyle="#141219"; c.fillRect(f.x,y,f.w,f.h);
+    c.fillStyle="#1c1922"; c.fillRect(f.x,y,f.w,3); c.fillRect(f.x+f.w-3,y,3,f.h);
+    f.wins.forEach(w=>{ if(Math.sin(t*0.4+w[2]*30)<-0.8) return; c.fillStyle=`rgba(255,196,120,${0.18+0.35*w[2]})`; c.fillRect(f.x+w[0],y+w[1],6,8); });
+    if(f.shutter){ const sx=f.x+f.w*0.15, sw=f.w*0.7, sy=gy-H*0.2; for(let k=0;k<H*0.2;k+=4){ c.fillStyle = k%8?"#1e1c23":"#25232b"; c.fillRect(sx,sy+k,sw,4);} }
+    if(f.sign){ const on = Math.sin(t*15+f.sign.fl*40)>-0.85; c.save(); c.font=`700 11px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.textBaseline="middle";
+      const tw=c.measureText(f.sign.t).width+12, sx=f.x+f.w/2, sy=gy-H*0.27; c.fillStyle="#0b0a0e"; c.fillRect(sx-tw/2,sy-8,tw,16);
+      c.strokeStyle=on?f.sign.c:"#333"; c.strokeRect(sx-tw/2,sy-8,tw,16); c.shadowColor=f.sign.c; c.shadowBlur=on?12:0; c.fillStyle=on?f.sign.c:"#333"; c.fillText(f.sign.t,sx,sy+1); c.restore(); }
+  });
+  // 바닥: 원근 이음매 + 젖은 반사
+  g = c.createLinearGradient(0,gy,0,H); g.addColorStop(0,"#121016"); g.addColorStop(1,"#09080b"); c.fillStyle=g; c.fillRect(0,gy,W,H-gy);
+  c.strokeStyle="rgba(255,255,255,0.05)"; c.lineWidth=1;
+  for(let i=-12;i<=12;i++){ c.beginPath(); c.moveTo(W/2+i*W*0.02, gy); c.lineTo(W/2+i*W*0.12, H); c.stroke(); }
+  for(let k=1;k<5;k++){ const yy = gy + (H-gy)*Math.pow(k/5,1.6); c.beginPath(); c.moveTo(0,yy); c.lineTo(W,yy); c.stroke(); }
+  bg.fac.forEach(f=>{ if(!f.sign) return; const sx=f.x+f.w/2; const rg=c.createLinearGradient(0,gy,0,H); rg.addColorStop(0,f.sign.c+"30"); rg.addColorStop(1,"transparent"); c.fillStyle=rg; c.fillRect(sx-14,gy+2,28,H-gy); });
+  if(tint){ c.fillStyle=tint; c.fillRect(0,0,W,H); }
+  return gy;
+}
+function rainFG(c, W, H, st, a=0.25){
+  c.strokeStyle=`rgba(180,190,215,${a})`; c.lineWidth=1; c.beginPath();
+  st.bg.rain.forEach(r=>{ r.y+=r.v; r.x-=r.v*0.15; if(r.y>H){ r.y=-10; r.x=Math.random()*W*1.1; } c.moveTo(r.x,r.y); c.lineTo(r.x+2,r.y-11); }); c.stroke();
+}
+function vignette(c,W,H,color="rgba(0,0,0,0.7)"){ const v=c.createRadialGradient(W/2,H*0.55,H*0.4,W/2,H*0.55,W*0.6); v.addColorStop(0,"rgba(0,0,0,0)"); v.addColorStop(1,color); c.fillStyle=v; c.fillRect(0,0,W,H); }
+
+/* ---- 공통: 단순 실루엣(머리 + 몸통) ---- */
+function fig(c, x, gy, h, o={}){
+  c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); if(o.alpha!=null) c.globalAlpha = o.alpha;
+  const col = o.color || "#050507";
+  c.fillStyle = col;
+  c.beginPath(); c.arc(0, -h-2, h*0.12, 0, 7); c.fill();
+  c.beginPath(); c.moveTo(-h*0.17, -h*0.88); c.lineTo(h*0.17, -h*0.88); c.lineTo(h*(o.coat?0.27:0.22), 0); c.lineTo(-h*(o.coat?0.27:0.22), 0); c.closePath(); c.fill();
+  if(o.weapon){ c.save(); c.translate(h*0.2*(o.face||1), -h*0.55); c.rotate((o.wRot||0.5)*(o.face||1)); c.fillRect(-1.2,0,2.4,h*0.6); c.restore(); }
+  if(o.rim){ c.strokeStyle=o.rim; c.lineWidth=1.2; c.beginPath(); c.arc(0,-h-2,h*0.12,(o.face||1)>0?-1.2:2.0,(o.face||1)>0?0.9:4.2); c.stroke();
+    c.beginPath(); const sx=(o.face||1)*h*0.17; c.moveTo(sx,-h*0.88); c.lineTo((o.face||1)*h*(o.coat?0.27:0.22),0); c.stroke(); }
+  c.restore();
+}
+function sparks(st, x, y, n, color, spd=4, life=0.8, grav=0.15){
+  st.parts = st.parts||[];
+  for(let i=0;i<n;i++){ const a=Math.random()*Math.PI*2, v=spd*(0.4+Math.random()); st.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-1,l:life*(0.6+Math.random()*0.6),t:0,color,g:grav,s:1+Math.random()*1.8}); }
+}
+function drawParts(c, st, dt=1/60){
+  if(!st.parts) return;
+  st.parts = st.parts.filter(p=>{ p.t+=dt; if(p.t>p.l) return false; p.x+=p.vx; p.y+=p.vy; p.vy+=p.g; p.vx*=0.98;
+    c.globalAlpha = 1-p.t/p.l; c.fillStyle=p.color; c.fillRect(p.x,p.y,p.s,p.s); c.globalAlpha=1; return true; });
+}
+function banner(c, W, H, t, t0, t1, text, color, sub){
+  const k = ease(seg(t,t0,t0+0.4)) * (1-seg(t,t1,t1+0.35)); if(k<=0) return;
+  c.save(); c.globalAlpha=k; c.textAlign="center"; c.textBaseline="middle";
+  const y = H*0.2; const bw = W*0.36*k;
+  const g = c.createLinearGradient(W/2-bw,0,W/2+bw,0); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(0.5,"rgba(0,0,0,0.7)"); g.addColorStop(1,"rgba(0,0,0,0)");
+  c.fillStyle=g; c.fillRect(W/2-bw, y-20, bw*2, sub?50:40);
+  c.font=`800 22px "Noto Sans KR",sans-serif`; c.shadowColor=color; c.shadowBlur=18; c.fillStyle=color; c.fillText(text, W/2, y);
+  if(sub){ c.shadowBlur=0; c.font=`400 12px "Noto Sans KR",sans-serif`; c.fillStyle="#cfc8bb"; c.fillText(sub, W/2, y+20); }
+  c.restore();
+}
+
+const SCENES = {};
+/* ---- 일반 의뢰 ----
+   뒷골목 거리에서 해결사들이 걸어 들어와 불량배 무리와 맞선다.
+   물리: 무거운 일격과 충격파 / 속도: 잔상을 남기는 연속 베기 / 정밀: 표적을 차례로 조준한 뒤 한 줄기 섬광
+   성공: 상대가 쓰러지고 보수가 반짝인다 / 실패: 반격에 밀려 쓰러지고 붉게 물든다 */
+SCENES["일반"] = {
+  dur: 4.2,
+  init(o){ return { foes: Array.from({length: 3}, (_,i)=>({ox: i, w: Math.random()<0.6, hit:false, fly:0, rot:0, vy:0, y:0 })) }; },
+  draw(c, t, W, H, o, st){
+    const gy = streetBG(c, W, H, t, st);
+    const n = Math.max(1, Math.min(5, o.team.length)), fh = Math.min(H*0.34, 62);
+    const attr = o.attr || "str", ok = o.success;
+    // 해결사 등장(왼쪽에서 걸어 들어옴)
+    const walk = ease(seg(t, 0.15, 1.1));
+    const baseX = lerp(-W*0.08, W*0.3, walk);
+    const foeX = i => W*0.62 + i*W*0.07;
+    const clash = seg(t, 1.25, 2.35);
+    // 일격 위치(대표 해결사)
+    let lx = baseX, lean = 0;
+    if(attr==="str"){ lx = lerp(baseX, foeX(0)-fh*0.5, ease(seg(t,1.25,1.5))) ; if(t>1.5 && t<2.4) lean = 0.15; }
+    if(attr==="agi"){ const k = seg(t,1.25,1.95); lx = lerp(baseX, foeX(2)+fh*0.6, ease(k)); }
+    if(attr==="tec"){ lx = baseX; }
+    if(!ok && t>2.35){ const k=ease(seg(t,2.35,2.75)); lx -= k*W*0.06; }
+    // 상대
+    st.foes.forEach((f,i)=>{
+      let x = foeX(i), rot = 0, alpha = 1, gyo = 0;
+      if(ok && f.hit){ const k = ease(seg(t, f.hitT, f.hitT+0.55)); x += k*W*0.05*(attr==="str"?2:1); rot = k*(1.25+i*0.1); gyo = -k*3; alpha = 1 - seg(t, f.hitT+0.4, f.hitT+1.4)*0.6; }
+      if(!ok && t>2.35){ x -= ease(seg(t,2.35,2.7))*W*0.05; }
+      fig(c, x, gy-gyo, fh*(0.92+0.05*i), {face:-1, weapon:f.w, wRot: ok&&f.hit?1.6:0.6, rot, alpha, coat:i===1, rim:"rgba(255,90,90,0.35)"});
+    });
+    // 해결사 무리
+    for(let i=n-1;i>=0;i--){
+      const bob = Math.sin(t*9+i)*1.2*(walk<1?1:0.2);
+      let x = (i===0 ? lx : baseX - i*fh*0.42), rot = 0;
+      if(!ok && t>2.45 && i===0){ rot = -ease(seg(t,2.45,2.9))*1.2; }
+      if(i===0 && lean) rot = lean;
+      fig(c, x, gy+bob*0, fh*(i===0?1:0.94), {face:1, weapon:true, wRot:-0.4, coat:i===0, rot, rim:"rgba(255,210,150,0.55)"});
+      // 속도: 잔상
+      if(i===0 && attr==="agi" && clash>0 && clash<1){ c.save(); c.globalCompositeOperation="lighter"; for(let k=1;k<=6;k++){ const px = lerp(baseX, foeX(2)+fh*0.6, ease(Math.max(0,seg(t,1.25,1.95)-k*0.06))); fig(c, px, gy, fh, {face:1, alpha:0.16-k*0.02, color:"#5fa8e0"}); }
+        const hx = lerp(baseX, foeX(2)+fh*0.6, ease(seg(t,1.25,1.95))); const sg=c.createLinearGradient(baseX,0,hx,0); sg.addColorStop(0,"rgba(120,200,255,0)"); sg.addColorStop(1,"rgba(170,225,255,0.4)"); c.fillStyle=sg; c.shadowColor="#8fd0ff"; c.shadowBlur=14;
+        [[-0.62,0.10],[-0.35,0.06],[-0.85,0.04]].forEach(([yy,th])=>{ c.beginPath(); c.moveTo(baseX, gy+fh*yy); c.quadraticCurveTo((baseX+hx)/2, gy+fh*yy-fh*th*0.6, hx, gy+fh*yy-fh*th); c.lineTo(hx, gy+fh*yy+fh*th); c.quadraticCurveTo((baseX+hx)/2, gy+fh*yy+fh*th*0.4, baseX, gy+fh*yy); c.fill(); }); c.restore(); }
+    }
+    // 공격 연출
+    if(attr==="str" && t>1.48 && !st.boom){ st.boom=true; st.shake=10; sparks(st, foeX(0), gy-fh*0.6, 40, "#ffd9a0", 5, 0.9); if(ok) st.foes.forEach((f,i)=>{ f.hit=true; f.hitT=1.5+i*0.06; }); }
+    if(attr==="str" && t>1.48 && t<2.4){ const k=seg(t,1.48,2.4), cx0=foeX(0)-fh*0.15;
+      // 바닥 균열
+      c.save(); c.strokeStyle=`rgba(255,200,140,${0.7*(1-k)})`; c.lineWidth=1.5; c.shadowColor="#ffb060"; c.shadowBlur=8;
+      st.cracks = st.cracks || Array.from({length:7},()=>({a:(Math.random()-0.5)*Math.PI*0.9, l:30+Math.random()*60}));
+      st.cracks.forEach(cr=>{ c.beginPath(); c.moveTo(cx0,gy); let x=cx0,y=gy; for(let j=1;j<=4;j++){ x+=Math.cos(cr.a)*cr.l/4*ease(k*3)+(Math.random()-0.5)*2; y+=Math.abs(Math.sin(cr.a))*cr.l/16; c.lineTo(x,y); } c.stroke(); }); c.restore();
+      // 겹친 충격 고리(두께 있는 빛)
+      [0,0.12,0.24].forEach((dl,j)=>{ const kk=seg(t,1.48+dl,2.3+dl); if(kk<=0||kk>=1) return; const rx=12+ease(kk)*W*(0.22-j*0.04), ry=5+ease(kk)*H*(0.12-j*0.02);
+        c.save(); c.globalCompositeOperation="lighter"; c.strokeStyle=`rgba(255,${200-j*30},${140-j*30},${0.55*(1-kk)})`; c.lineWidth=7*(1-kk)+1; c.shadowColor="#ffb060"; c.shadowBlur=16; c.beginPath(); c.ellipse(cx0, gy-2, rx, ry, 0, 0, 7); c.stroke(); c.restore(); });
+      // 먼지 구름
+      st.dust = st.dust || Array.from({length:14},()=>({a:Math.random()*Math.PI, r:0.5+Math.random(), s:12+Math.random()*16}));
+      st.dust.forEach(du=>{ const r=du.s*(0.6+ease(k)*1.8), x=cx0+Math.cos(du.a)*ease(k)*W*0.12*du.r*(Math.random()<0.5?1:1), y=gy-Math.sin(du.a)*ease(k)*20*du.r;
+        const g2=c.createRadialGradient(x,y,0,x,y,r); g2.addColorStop(0,`rgba(140,125,115,${0.28*(1-k)})`); g2.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=g2; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); });
+      const fl=c.createRadialGradient(cx0,gy-fh*0.5,0,cx0,gy-fh*0.5,W*0.25); fl.addColorStop(0,`rgba(255,220,170,${0.35*(1-seg(t,1.48,1.75))})`); fl.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=fl; c.fillRect(0,0,W,H); }
+    if(attr==="agi"){ [0,1,2].forEach(i=>{ const ts = 1.45+i*0.16; if(t>ts && t<ts+0.45){ const k=seg(t,ts,ts+0.45); const x=foeX(i), y=gy-fh*0.6;
+        c.save(); c.strokeStyle=`rgba(200,235,255,${1-k})`; c.lineWidth=2.5*(1-k)+0.5; c.shadowColor="#9fd6ff"; c.shadowBlur=12; c.beginPath(); c.arc(x, y, fh*0.55, -2.4+k*0.6, -0.4+k*0.6); c.stroke(); c.restore(); }
+        if(t>ts && !st["s"+i]){ st["s"+i]=true; sparks(st, foeX(i), gy-fh*0.6, 14, "#cfeaff", 3, 0.5); st.shake=4; if(ok){ st.foes[i].hit=true; st.foes[i].hitT=2.0; } } }); }
+    if(attr==="tec"){
+      [0,1,2].forEach(i=>{ const ts=1.25+i*0.28; if(t>ts && t<2.2){ const k=ease(seg(t,ts,ts+0.25)); const x=foeX(i), y=gy-fh*0.62, r=lerp(fh*0.9, fh*0.3, k);
+        c.save(); c.setLineDash([3,5]); c.strokeStyle=`rgba(120,255,200,${0.35*k})`; c.lineWidth=1; c.beginPath(); c.moveTo(lx+fh*0.2, gy-fh*0.62); c.lineTo(x,y); c.stroke(); c.setLineDash([]);
+        c.shadowColor="#78ffc8"; c.shadowBlur=8; c.strokeStyle="rgba(120,255,200,0.85)"; c.lineWidth=1.2; c.beginPath(); c.arc(x,y,r,0,7); c.stroke();
+        c.beginPath(); c.moveTo(x-r-6,y); c.lineTo(x-r+4,y); c.moveTo(x+r-4,y); c.lineTo(x+r+6,y); c.moveTo(x,y-r-6); c.lineTo(x,y-r+4); c.moveTo(x,y+r-4); c.lineTo(x,y+r+6); c.stroke(); c.restore(); } });
+      if(t>2.2 && t<2.6){ const k=seg(t,2.2,2.6); c.save(); c.strokeStyle=`rgba(200,255,230,${1-k})`; c.lineWidth=3*(1-k)+0.5; c.shadowColor="#78ffc8"; c.shadowBlur=20;
+        c.beginPath(); c.moveTo(lx+fh*0.2, gy-fh*0.6); c.lineTo(W*1.02, gy-fh*0.62); c.stroke(); c.restore(); }
+      if(t>2.2 && !st.flash){ st.flash=true; st.shake=5; st.foes.forEach((f,i)=>{ sparks(st, foeX(i), gy-fh*0.62, 10, "#b8ffe2", 3, 0.5); if(ok){ f.hit=true; f.hitT=2.25+i*0.05; } }); }
+    }
+    // 실패: 반격
+    if(!ok && t>2.35 && !st.counter){ st.counter=true; st.shake=12; sparks(st, lx, gy-fh*0.6, 30, "#ff6a6a", 4.5, 0.8); }
+    if(!ok && t>2.35){ const k=seg(t,2.35,3.2); c.fillStyle=`rgba(150,20,20,${0.28*Math.sin(Math.PI*Math.min(1,k*1.4))+0.12*seg(t,2.6,3.4)})`; c.fillRect(0,0,W,H); }
+    drawParts(c, st);
+    // 성공: 보수가 반짝이며 떠오름
+    if(ok && t>2.8){ if(!st.coins){ st.coins=true; for(let i=0;i<26;i++) (st.parts=st.parts||[]).push({x:W*0.5+(Math.random()-0.5)*W*0.3,y:gy,vx:(Math.random()-0.5)*0.6,vy:-1.2-Math.random()*1.6,l:1.2,t:0,color:"#f2d27a",g:0.005,s:2}); } }
+    rainFG(c, W, H, st);
+    vignette(c, W, H, ok || t<2.35 ? "rgba(0,0,0,0.7)" : "rgba(70,0,0,0.8)");
+    const label = {str:"물리", agi:"속도", tec:"정밀"}[attr] || "";
+    banner(c, W, H, t, 0.25, 1.15, `일반 의뢰 · ${label}`, "#c9a86a", o.client||"");
+    if(t>2.85){ c.save(); banner(c, W, H, t, 2.85, 99, ok?"의뢰 성공":"의뢰 실패", ok?"#f2d27a":"#ff6a6a", o.team.join(" · ")); c.restore(); }
+  }
+};
 
 /* ================= 도시의 소문(상단 연출) ================= */
 let floats = [];
@@ -1335,9 +1526,22 @@ function drawRumors(now, L){
   if(L===1) floats = floats.filter(f=>!f.dead);
 }
 
+/* ================= 연출 테스트 패널 (#fxtest) ================= */
+function fxTestPanel(){
+  if(location.hash!=="#fxtest") return;
+  if(!S){ newGame("테스트 대표","연출 시험 사무소","테스트 동료"); leaveTitle(); render(); }
+  const el=document.createElement("div"); el.className="fxtest";
+  el.innerHTML=`<h4>연출 테스트</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
+   <b>일반 의뢰</b><div class="g">${[["str","물리"],["agi","속도"],["tec","정밀"]].map(([a,l])=>`<button data-fx="일반|${a}|1">${l} 성공</button><button data-fx="일반|${a}|0">${l} 실패</button>`).join("")}</div>`;
+  document.body.appendChild(el);
+  el.onclick=e=>{ const v=e.target.dataset.fx; if(!v||scene) return; const [k,a,ok]=v.split("|"); const n=+el.querySelector("#fxn").value;
+    window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),client:"테스트 의뢰인"}); };
+}
+
 /* ================= 부팅 ================= */
 S = null;
 renderStart();
+fxTestPanel();
 </script>
 </body>
 </html>
