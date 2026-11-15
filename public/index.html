@@ -457,73 +457,78 @@ function mgResult(m, score, text){
 }
 const powK = (ctx, a) => clamp(teamPower(ctx.team, [a]) / Math.max(1, ctx.q.req), 0.55, 1.7);
 
-/* ---- 물리: 기술을 골라 싸우는 턴제 전투 ----
-   출동한 해결사들이 한 명씩 나서 4가지 기술 중 하나를 고른다(쓰러지면 다음 해결사로 교체).
-   적은 참격·관통·타격에 각각 취약/보통/내성을 가진다. 민첩이 높은 쪽이 먼저 움직인다.
-   이기면 0.6 + 0.4×남은 체력, 지거나 턴이 다하면 0.5×깎은 체력 비율이 점수가 된다. */
-const DMG_TYPES = ["참격","관통","타격"];
-function movesFor(f){
-  const w = weaponTypeOf(f.gear.weapon);
-  const M = (name,type,pow,acc)=>({name,type,pow,acc});
-  const BUFF = {name:"자세 가다듬기", type:null, pow:0, acc:100, buff:true};
-  const sets = {
-    blade:[M("베기","참격",40,100), M("찌르기","관통",35,100), M("칼등치기","타격",30,100), BUFF],
-    great:[M("내려베기","참격",55,85), M("밀어치기","타격",40,95), M("관통 일격","관통",45,85), BUFF],
-    blunt:[M("내려치기","타격",50,90), M("휘두르기","타격",35,100), M("자루 찌르기","관통",25,100), BUFF],
-    gun:  [M("속사","관통",35,100), M("조준 사격","관통",55,80), M("개머리판","타격",30,100), BUFF],
-    spear:[M("찌르기","관통",45,100), M("휘둘러 베기","참격",35,95), M("자루 치기","타격",30,100), BUFF],
-    drill:[M("천공","관통",55,85), M("갈아내기","참격",40,95), M("몸통 박치기","타격",35,100), BUFF],
-    tool: [M("공구 휘두르기","타격",40,95), M("날 세운 끝","참격",30,100), M("맨손 제압","타격",30,100), BUFF],
-  };
-  const list = (sets[w] || [M("주먹","타격",30,100), M("발차기","타격",40,90), M("잡아 던지기","타격",35,95), BUFF]).slice();
-  if(f.ego && f.ego.type==="weapon") list[2] = M(`E.G.O. ${f.ego.name}`, pick(DMG_TYPES), 70, 95);
-  return list;
-}
+/* ---- 물리: 가위바위보 턴제 전투 ----
+   양쪽 모두 매 턴 네 가지 행동 중 하나를 고른다.
+     크게 공격하기(가위) > 받아쳐 공격하기(보) > 빈틈 공격하기(바위) > 크게 공격하기(가위)
+     이기면 큰 피해(1.6배), 비기면 보통 피해(1배), 지면 약한 피해(0.4배)를 준다.
+     회피: 상대 공격을 피한다(민첩에 따라 성공률). 대신 이번 턴엔 공격하지 않는다.
+   행동 이름은 들고 있는 무기에 맞춰 바뀐다. 적의 기색(예고)은 재주가 높을수록 잘 맞는다. */
+const ACTS = ["big","gap","counter","evade"]; // 가위, 바위, 보, 회피
+const BEATS = {big:"counter", counter:"gap", gap:"big"};
+const ACT_LABEL = {big:"크게 공격하기", gap:"빈틈 공격하기", counter:"받아쳐 공격하기", evade:"회피"};
+const WEAPON_ACTS = {
+  blade:{big:"크게 베어 가르기", gap:"빈틈 찌르기", counter:"흘리고 받아베기", evade:"몸 빼기"},
+  great:{big:"대검 내려찍기", gap:"칼자루로 틈 치기", counter:"막고 되받아치기", evade:"물러서기"},
+  blunt:{big:"힘껏 내려치기", gap:"빈틈 후려치기", counter:"받아내고 되치기", evade:"옆으로 피하기"},
+  gun:  {big:"연사 퍼붓기", gap:"빈틈 조준 사격", counter:"엄폐 후 반격 사격", evade:"몸 숨기기"},
+  spear:{big:"크게 휘둘러 치기", gap:"빈틈 꿰뚫기", counter:"자루로 막고 찌르기", evade:"거리 벌리기"},
+  drill:{big:"드릴 들이밀기", gap:"빈틈 천공", counter:"막고 갈아내기", evade:"굴러 피하기"},
+  tool: {big:"공구로 후려치기", gap:"틈새 쑤시기", counter:"막고 되치기", evade:"피하기"},
+  none: {big:"힘껏 주먹 내지르기", gap:"빈틈 걷어차기", counter:"잡아 메치기", evade:"피하기"}
+};
+const TELLS = {big:"크게 뒤로 젖히며 힘을 모은다", gap:"이쪽의 빈틈을 노려본다", counter:"자세를 낮추고 기다린다", evade:"발을 뒤로 뺀다"};
+const FOE_WEAPONS = ["blade","blunt","gun","spear","great","drill"];
 const FOE_NAMES = {9:"골목 불량배",8:"조직 행동대원",7:"조직 행동대장",6:"뒷골목 해결사 출신 깡패",5:"하청 조직 간부",4:"조직 간부",3:"현상금 걸린 해결사",2:"조직의 대리인",1:"도시의 악몽급 괴인",0:"도시의 별급 위협"};
+const actName = (wt, a) => (WEAPON_ACTS[wt] || WEAPON_ACTS.none)[a];
 function mgCombat(ctx){
   return new Promise(resolve=>{
-    const q = ctx.q, m = mgOpen("정면 돌파 · 전투", "기술을 골라 싸운다. 적은 참격·관통·타격 중 약한 것이 있다. 쓰러진 해결사는 다음 해결사로 교체된다.", ctx);
-    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, max:100, moves:movesFor(f), buff:1, lg:leadGear(f)}));
-    const vals = [2, 1, 0.5].sort(()=>Math.random()-0.5);
-    const foe = {name: FOE_NAMES[q.grade!=null?q.grade:9] || "적", hp:100, shown:{}, res:{}, spd: q.req*(0.8+Math.random()*0.4),
-      moves:[{name:"쇠파이프 휘두르기",pow:40,acc:95},{name:"칼 찌르기",pow:35,acc:100},{name:"몸으로 들이받기",pow:30,acc:100},{name:"날뛰기",pow:55,acc:75}]};
-    DMG_TYPES.forEach((t,i)=>foe.res[t]=vals[i]);
-    let act = 0, turn = 1; const MAXT = 10, st = {}; let msgs = [], mode = "msg", done = false, anim = null, dispHP = {foe:100, me:100};
-    const P = f => power(f,["str"]), SP = f => power(f,["agi"]);
+    const q = ctx.q, m = mgOpen("정면 돌파 · 전투", "네 가지 행동 중 하나를 고른다. <b>크게 공격 > 받아쳐 공격 > 빈틈 공격 > 크게 공격</b>. 이기면 큰 피해, 비기면 보통, 지면 약한 피해. 회피는 공격을 피하는 대신 공격하지 않는다.", ctx);
+    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none"}));
+    const fwt = pick(FOE_WEAPONS);
+    const bias = pick(["big","gap","counter"]);
+    const foe = {name: FOE_NAMES[q.grade!=null?q.grade:9] || "적", hp:100, wt:fwt, last:null};
+    const tecK = clamp(teamPower(ctx.team,["tec"]) / Math.max(1,q.req), 0.5, 1.7);
+    const tellAcc = clamp(0.45 + 0.25*tecK, 0.5, 0.88);
+    let act = 0, turn = 1; const MAXT = 10, st = {}; let msgs = [], mode = "msg", done = false, anim = [], dispHP = {foe:100, me:100}, foeNext = null, tell = null;
+    const P = f => power(f,["str"]), AG = f => power(f,["agi"]);
+    function planFoe(){ // 적 행동: 성향 쪽으로 약간 치우침, 회피는 가끔
+      const r = Math.random(); foeNext = r<0.12 ? "evade" : r<0.42 ? bias : pick(["big","gap","counter"]);
+      tell = Math.random() < tellAcc ? foeNext : pick(ACTS.filter(a=>a!==foeNext)); }
     function say(list, next){ msgs = list.slice(); mode = "msg"; showMsg(next); }
     function showMsg(next){
       if(!msgs.length){ next ? next() : menu(); return; }
       const t = msgs.shift(); if(typeof t === "function"){ t(); showMsg(next); return; }
       m.info.innerHTML = `<div class="pk-text">${t}</div>`; m.ctrl.innerHTML = "";
-      clearTimeout(st.tm); st.tm = setTimeout(()=>showMsg(next), 950); m.info.onclick = ()=>{ clearTimeout(st.tm); showMsg(next); };
+      clearTimeout(st.tm); st.tm = setTimeout(()=>showMsg(next), 1000); m.info.onclick = ()=>{ clearTimeout(st.tm); showMsg(next); };
     }
     function menu(){
-      if(done) return; mode = "menu"; m.info.onclick = null;
-      const me = party[act];
-      m.info.innerHTML = `<div class="pk-text">${esc(me.name)}은(는) 무엇을 할까? <span class="muted">(${turn}/${MAXT}턴)</span></div>`;
-      m.ctrl.innerHTML = `<div class="pk-moves">${me.moves.map((mv,i)=>`<button data-mv="${i}"><b>${esc(mv.name)}</b><small>${mv.buff?"다음 공격 1.5배":`${mv.type} · 위력 ${mv.pow} · 명중 ${mv.acc}`}${mv.type&&foe.shown[mv.type]?` · <i class="${foe.res[mv.type]>1?"good":foe.res[mv.type]<1?"bad":""}">${foe.res[mv.type]>1?"취약":foe.res[mv.type]<1?"내성":"보통"}</i>`:""}</small></button>`).join("")}</div>
+      if(done) return; mode = "menu"; m.info.onclick = null; const me = party[act];
+      m.info.innerHTML = `<div class="pk-text">${foe.name}이(가) <b style="color:#ffb0a0">${TELLS[tell]}</b>. ${esc(me.name)}은(는) 무엇을 할까? <span class="muted">(${turn}/${MAXT}턴 · 기색 적중률 약 ${Math.round(tellAcc*100)}%)</span></div>`;
+      m.ctrl.innerHTML = `<div class="pk-moves">${ACTS.map(a=>`<button data-act="${a}"><b>${esc(actName(me.wt,a))}</b><small>${ACT_LABEL[a]}${a==="evade"?` · 성공률 약 ${Math.round(evadeRate(me.f)*100)}%`:a==="big"?" · 받아쳐 공격에 강함":a==="gap"?" · 크게 공격에 강함":" · 빈틈 공격에 강함"}</small></button>`).join("")}</div>
         ${party.length>1?`<button class="pk-sw" data-sw="1">교체</button>`:""}`;
     }
+    const evadeRate = f => clamp(0.4 + 0.3*(AG(f)/Math.max(1,q.req)), 0.35, 0.85);
     function switchMenu(forced){
-      mode = "switch";
+      mode = "switch"; st.forced = forced;
       m.info.innerHTML = `<div class="pk-text">${forced?"다음으로 나설 해결사를 고른다.":"누구와 교체할까?"}</div>`;
       m.ctrl.innerHTML = `<div class="pk-moves">${party.map((p,i)=>`<button data-to="${i}" ${p.hp<=0||i===act?"disabled":""}><b>${esc(p.name)}</b><small>체력 ${p.hp}/${p.max}</small></button>`).join("")}</div>${forced?"":`<button class="pk-sw" data-back="1">돌아가기</button>`}`;
-      st.forced = forced;
     }
-    function hit(atkName, mv, isFoe){
-      const out = [];
-      if(Math.random()*100 >= mv.acc){ out.push(`${atkName}의 ${mv.name}! 하지만 빗나갔다.`); return out; }
-      if(isFoe){
-        const me = party[act], dmg = Math.max(1, Math.round(mv.pow * Math.pow(q.req/Math.max(1,P(me.f)),0.6) * (1-redHP(me.f)) * (0.85+Math.random()*0.15) * 0.5));
-        out.push(`${atkName}의 ${mv.name}!`); out.push(()=>{ me.hp = Math.max(0, me.hp-dmg); anim={who:"me",t:performance.now()}; st.shake=8; sparks(st, 190, 200, 16, "#ff6a6a", 3.5, 0.6); });
-        out.push(`${esc(me.name)}은(는) ${dmg}의 피해를 입었다.`);
-      } else {
-        const me = party[act];
-        if(mv.buff){ me.buff = 1.5; out.push(`${esc(me.name)}은(는) 자세를 가다듬었다. 다음 공격이 강해진다.`); return out; }
-        const mult = foe.res[mv.type], dmg = Math.max(1, Math.round(mv.pow * (P(me.f)/Math.max(1,q.req)) * mult * me.buff * (0.85+Math.random()*0.15) * 0.45)); me.buff = 1;
-        out.push(`${esc(me.name)}의 ${mv.name}!`); out.push(()=>{ foe.hp = Math.max(0, foe.hp-dmg); foe.shown[mv.type]=true; anim={who:"foe",t:performance.now()}; st.shake=5+dmg/8; sparks(st, 540, 130, 14+dmg/2, "#ffd9a0", 4, 0.7); });
-        if(mult>1) out.push("치명적으로 들어갔다!"); else if(mult<1) out.push("잘 먹히지 않는다…");
-      }
+    function resolveTurn(pa){
+      const me = party[act], fa = foeNext, out = [];
+      const baseTo = 18 * (P(me.f)/Math.max(1,q.req)), baseFrom = 18 * Math.pow(q.req/Math.max(1,P(me.f)),0.6) * (1-redHP(me.f));
+      out.push(`${esc(me.name)}의 ${actName(me.wt,pa)}! · ${foe.name}의 ${actName(foe.wt,fa)}!`);
+      let toFoe = 0, toMe = 0, res = "";
+      if(pa==="evade" && fa==="evade"){ res = "서로 거리를 재며 물러섰다."; }
+      else if(pa==="evade"){ if(Math.random()<evadeRate(me.f)){ res = `${esc(me.name)}은(는) 공격을 피했다!`; } else { toMe = baseFrom; res = "피하지 못했다!"; } }
+      else if(fa==="evade"){ if(Math.random()<0.5){ res = `${foe.name}이(가) 몸을 빼 피했다.`; } else { toFoe = baseTo; res = `${foe.name}은(는) 피하지 못했다.`; } }
+      else if(pa===fa){ toFoe = baseTo; toMe = baseFrom; res = "정면으로 부딪쳤다!"; }
+      else if(BEATS[pa]===fa){ toFoe = baseTo*1.6; toMe = baseFrom*0.4; res = "수를 읽었다! 큰 피해!"; }
+      else { toFoe = baseTo*0.4; toMe = baseFrom*1.6; res = "수를 읽혔다… 큰 피해를 입었다."; }
+      const r = () => 0.88 + Math.random()*0.12;
+      toFoe = Math.round(toFoe*r()); toMe = Math.round(toMe*r());
+      out.push(()=>{ if(toFoe){ foe.hp = Math.max(0, foe.hp-toFoe); anim.push({who:"foe", t:performance.now(), a:pa}); sparks(st, 540, 120, 10+toFoe/2, "#ffd9a0", 4, 0.7); st.shake = 4+toFoe/6; }
+        if(toMe){ me.hp = Math.max(0, me.hp-toMe); anim.push({who:"me", t:performance.now()+120, a:fa}); sparks(st, 200, 190, 10+toMe/2, "#ff6a6a", 3.5, 0.6); st.shake = Math.max(st.shake||0, 4+toMe/5); } });
+      out.push(`${res}${toFoe?` 적 -${toFoe}`:""}${toMe?` · ${esc(me.name)} -${toMe}`:""}`);
       return out;
     }
     function endBattle(win, why){
@@ -540,51 +545,48 @@ function mgCombat(ctx){
         say([`${esc(name)}은(는) 쓰러졌다…`], ()=>switchMenu(true)); return;
       }
       turn++; if(turn>MAXT){ say([`${foe.name}은(는) 틈을 타 달아났다.`], ()=>endBattle(false, "놓쳤다")); return; }
-      menu();
-    }
-    function doTurn(playerAction){
-      const fm = pick(foe.moves), me = party[act]; let seq = [];
-      const foeFirst = playerAction.type!=="move" ? true : foe.spd > SP(me.f);
-      const playerPart = () => playerAction.type==="move" ? hit(esc(me.name), me.moves[playerAction.i], false) : [];
-      const foePart = () => hit(foe.name, fm, true);
-      if(playerAction.type==="switch"){ seq = [`${esc(me.name)}, 물러나! ${esc(party[playerAction.to].name)}, 나서라!`, ()=>{ act = playerAction.to; }, ...[]]; say(seq, ()=>{ say(foePart(), afterTurn); }); return; }
-      if(foeFirst){ say(foePart(), ()=>{ if(party[act].hp<=0) return afterTurn(); say(playerPart(), afterTurn); }); }
-      else { say(playerPart(), ()=>{ if(foe.hp<=0) return afterTurn(); say(foePart(), afterTurn); }); }
+      planFoe(); menu();
     }
     m.ctrl.onclick = e=>{
       const b = e.target.closest("button"); if(!b || done) return;
-      if(b.dataset.mv!==undefined && mode==="menu") doTurn({type:"move", i:+b.dataset.mv});
+      if(b.dataset.act && mode==="menu") say(resolveTurn(b.dataset.act), afterTurn);
       else if(b.dataset.sw) switchMenu(false);
       else if(b.dataset.back) menu();
-      else if(b.dataset.to!==undefined){ const to=+b.dataset.to; if(st.forced){ act = to; say([`${esc(party[to].name)}, 나서라!`], menu); } else doTurn({type:"switch", to}); }
+      else if(b.dataset.to!==undefined){ const to=+b.dataset.to;
+        if(st.forced){ act = to; say([`${esc(party[to].name)}, 나서라!`], ()=>{ planFoe(); menu(); }); }
+        else { const prev = party[act]; act = to; const me = party[act];
+          const dmg = foeNext==="evade" ? 0 : Math.round(18*Math.pow(q.req/Math.max(1,P(me.f)),0.6)*(1-redHP(me.f))*(0.88+Math.random()*0.12));
+          say([`${esc(prev.name)}, 물러나! ${esc(me.name)}, 나서라!`, ()=>{ if(dmg){ me.hp=Math.max(0,me.hp-dmg); anim.push({who:"me",t:performance.now(),a:foeNext}); st.shake=6; } },
+               dmg ? `교대하는 틈에 ${foe.name}의 ${actName(foe.wt,foeNext)}! ${esc(me.name)} -${dmg}` : `${foe.name}은(는) 상황을 지켜봤다.`], afterTurn); } }
     };
     m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve(0); };
     let raf; const t0 = performance.now()/1000;
     function draw(){
-      const t = performance.now()/1000 - t0, c = m.c, W=720, H=300, me = party[act];
+      const now = performance.now(), t = now/1000 - t0, c = m.c, W=720, H=300, me = party[act];
       c.save(); if(st.shake>0.2){ c.translate((Math.random()-0.5)*st.shake,(Math.random()-0.5)*st.shake); st.shake*=0.85; }
       let g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0a10"); g.addColorStop(1,"#1d1720"); c.fillStyle=g; c.fillRect(0,0,W,H);
       c.fillStyle="#141219"; for(let i=0;i<9;i++){ const h=60+((i*53)%70); c.fillRect(i*84-10, 150-h, 78, h); }
       for(let i=0;i<40;i++){ c.fillStyle=`rgba(255,196,120,${0.15+((i*37)%10)/40})`; c.fillRect((i*97)%720, 40+((i*61)%90), 4, 5); }
-      // 발판
-      const pad=(x,y,rx)=>{ const pg=c.createRadialGradient(x,y,0,x,y,rx); pg.addColorStop(0,"rgba(120,100,90,0.35)"); pg.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=pg; c.beginPath(); c.ellipse(x,y,rx,rx*0.25,0,0,7); c.fill(); };
-      pad(540, 160, 120); pad(190, 280, 150);
-      const fa = anim && anim.who==="foe" ? (performance.now()-anim.t)/400 : 9, ma = anim && anim.who==="me" ? (performance.now()-anim.t)/400 : 9;
-      const foeBlink = fa<1 && Math.floor(fa*8)%2 ? 0.25 : 1, meBlink = ma<1 && Math.floor(ma*8)%2 ? 0.25 : 1;
-      fig(c, 540, 160, 92, {face:-1, weapon:true, wRot:0.7, coat:true, alpha: foe.hp<=0 ? 0.25 : foeBlink, rot: foe.hp<=0?1.2:0, rim:"rgba(255,90,90,0.55)"});
-      fig(c, 190, 288, 150, {face:1, weapon:true, wRot:-0.4, coat:true, gear: me.lg, alpha: me.hp<=0?0.25:meBlink, rim:"rgba(255,210,150,0.65)"});
-      if(fa<0.7) weaponFx(c, st, {lead: me.lg}, fa+1, 1, 240, 200, 540, 120);
-      // 체력 상자
+      const pad=(x,y,rx,col)=>{ const pg=c.createRadialGradient(x,y,0,x,y,rx); pg.addColorStop(0,col); pg.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=pg; c.beginPath(); c.ellipse(x,y,rx,rx*0.25,0,0,7); c.fill(); };
+      pad(540, 160, 120, "rgba(200,70,70,0.3)"); pad(190, 280, 150, "rgba(80,200,120,0.25)");
+      anim = anim.filter(a=>now-a.t<500);
+      const fa = anim.find(a=>a.who==="foe"), ma = anim.find(a=>a.who==="me");
+      const fx = fa ? Math.sin(Math.max(0,now-fa.t)/500*Math.PI)*-22 : 0, mx = ma ? Math.sin(Math.max(0,now-ma.t)/500*Math.PI)*-18 : 0;
+      const lunge = fa ? Math.sin(Math.max(0,now-fa.t)/500*Math.PI)*60 : 0, flunge = ma ? Math.sin(Math.max(0,now-ma.t)/500*Math.PI)*-50 : 0;
+      fig(c, 540 - fx + flunge, 160, 92, {side:"foe", face:-1, weapon:true, ewt:foe.wt, wRot:0.7, coat:true, alpha: foe.hp<=0 ? 0.35 : 1, rot: foe.hp<=0?1.2:0});
+      fig(c, 190 + mx + lunge, 288, 150, {side:"ally", face:1, weapon:true, wRot:-0.4, coat:true, gear: me.lg, alpha: me.hp<=0?0.35:1});
+      if(fa) weaponFx(c, st, {lead: me.lg}, (now-fa.t)/1000+1, 1, 240+lunge, 200, 540, 120);
       dispHP.foe += (foe.hp - dispHP.foe)*0.12; dispHP.me += (me.hp - dispHP.me)*0.12;
-      const box=(x,y,name,sub,v)=>{ c.fillStyle="rgba(12,11,15,0.85)"; c.fillRect(x,y,230,46); c.strokeStyle="#3a3740"; c.strokeRect(x,y,230,46);
-        c.fillStyle="#e6e1d8"; c.font=`700 13px "Noto Sans KR",sans-serif`; c.fillText(name, x+10, y+18); c.fillStyle="#8f8a80"; c.font=`400 10px "Noto Sans KR",sans-serif`; c.textAlign="right"; c.fillText(sub, x+222, y+18); c.textAlign="left";
-        c.fillStyle="#222"; c.fillRect(x+10,y+28,210,8); c.fillStyle = v>50?"#7fb069":v>20?"#d8b24a":"#c94a4a"; c.fillRect(x+10,y+28,210*Math.max(0,v)/100,8); };
-      { const known = DMG_TYPES.filter(t=>foe.shown[t]); box(30, 20, foe.name, known.length ? known.map(t=>`${t} ${foe.res[t]>1?"취약":foe.res[t]<1?"내성":"보통"}`).join(" · ") : "약점: 알 수 없음", dispHP.foe); }
-      box(460, 220, me.name, `${party.filter(p=>p.hp>0).length}/${party.length}명 · 체력 ${me.hp}`, dispHP.me);
-      drawParts(c, st); vignette(c, W, H, "rgba(0,0,0,0.55)"); c.restore();
+      const box=(x,y,name,sub,v,col)=>{ c.fillStyle="rgba(12,11,15,0.88)"; c.fillRect(x,y,240,46); c.strokeStyle=col; c.strokeRect(x,y,240,46);
+        c.fillStyle="#e6e1d8"; c.font=`700 13px "Noto Sans KR",sans-serif`; c.fillText(name, x+10, y+18); c.fillStyle="#8f8a80"; c.font=`400 10px "Noto Sans KR",sans-serif`; c.textAlign="right"; c.fillText(sub, x+232, y+18); c.textAlign="left";
+        c.fillStyle="#222"; c.fillRect(x+10,y+28,220,8); c.fillStyle = v>50?"#7fb069":v>20?"#d8b24a":"#c94a4a"; c.fillRect(x+10,y+28,220*Math.max(0,v)/100,8); };
+      box(30, 20, foe.name, ({blade:"도검",great:"대검",blunt:"둔기",gun:"총기",spear:"창",drill:"드릴"})[foe.wt]+" 사용", dispHP.foe, "rgba(200,80,80,0.6)");
+      box(450, 220, me.name, `${party.filter(p=>p.hp>0).length}/${party.length}명 · 체력 ${me.hp}`, dispHP.me, "rgba(90,200,130,0.6)");
+      drawParts(c, st); vignette(c, W, H, "rgba(0,0,0,0.5)"); c.restore();
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
+    planFoe();
     say([`${foe.name}이(가) 앞을 막아섰다!`, `${esc(party[0].name)}, 나서라!`], menu);
   });
 }
@@ -696,6 +698,7 @@ function mgShield(ctx){
       c.strokeStyle="rgba(110,170,255,0.12)"; c.setLineDash([6,10]); c.beginPath(); c.moveTo(0,CY); c.lineTo(W,CY); c.moveTo(CX,0); c.lineTo(CX,H); c.stroke(); c.setLineDash([]);
       // 화물과 의뢰인
       c.fillStyle="#2a2620"; c.fillRect(CX-20,CY-14,40,28); c.strokeStyle="#5a4c38"; c.strokeRect(CX-20,CY-14,40,28); c.fillStyle="rgba(230,200,120,0.6)"; c.font=`700 9px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.fillText("의뢰 화물",CX,CY+3); c.textAlign="left";
+      fig(c, CX+30, CY+16, 34, {side:"friend", face:-1});
       // 방벽(츠바이 결 푸른 육각 호)
       const a0 = ANG[G.dir]; c.save(); c.globalCompositeOperation="lighter"; c.strokeStyle="rgba(110,170,255,0.9)"; c.shadowColor="#6aa0ff"; c.shadowBlur=16; c.lineWidth=5;
       c.beginPath(); c.arc(CX,CY,SR,a0-0.75,a0+0.75); c.stroke();
@@ -1594,7 +1597,7 @@ const Title = {
     cx.fillRect(dkx,dky,dkw,sh*0.05); cx.fillRect(dkx+6,dky,7,sh*0.3); cx.fillRect(dkx+dkw-13,dky,7,sh*0.3); cx.fillRect(dkx+dkw*0.55,dky+sh*0.05,dkw*0.4,sh*0.14);
     cx.fillStyle="#3a2c1c"; cx.save(); cx.translate(dkx+dkw*0.25,dky-2); cx.rotate(-0.08); cx.fillRect(0,-3,34,4); cx.restore();
     cx.fillStyle="#120c08"; cx.fillRect(dkx+dkw*0.42,dky-sh*0.17,dkw*0.16,sh*0.04); cx.fillRect(dkx+dkw*0.43,dky-sh*0.17,5,sh*0.17);
-    cx.fillStyle="#0d0907";
+    cx.fillStyle=SIDE_COL.ally.fill;
     const person=(px,h)=>{ cx.beginPath(); cx.arc(px,sy+sh-h-8,h*0.09,0,7); cx.fill(); cx.beginPath(); cx.moveTo(px-h*0.14,sy+sh-h*0.9); cx.lineTo(px+h*0.14,sy+sh-h*0.9); cx.lineTo(px+h*0.2,sy+sh); cx.lineTo(px-h*0.2,sy+sh); cx.fill(); };
     person(sx+sw*0.2, sh*0.62); person(sx+sw*0.81, sh*0.56);
     // 먼지
@@ -1767,20 +1770,26 @@ function rainFG(c, W, H, st, a=0.25){
 function vignette(c,W,H,color="rgba(0,0,0,0.7)"){ const v=c.createRadialGradient(W/2,H*0.55,H*0.4,W/2,H*0.55,W*0.6); v.addColorStop(0,"rgba(0,0,0,0)"); v.addColorStop(1,color); c.fillStyle=v; c.fillRect(0,0,W,H); }
 
 /* ---- 공통: 단순 실루엣(머리 + 몸통) ---- */
+// 실루엣 색: 우리(초록) / 적(붉은색) / 우호 세력(하늘색)
+const SIDE_COL = {
+  ally:  {fill:"#2f8452", head:"#3a9a62", rim:"rgba(170,255,200,0.9)",  wpn:"#d9e6dc"},
+  foe:   {fill:"#a32f2f", head:"#b83a3a", rim:"rgba(255,170,160,0.9)",  wpn:"#f0d8d4"},
+  friend:{fill:"#3d9fd6", head:"#4fb0e6", rim:"rgba(195,235,255,0.95)", wpn:"#e0f0ff"}
+};
 function fig(c, x, gy, h, o={}){
+  const side = o.side || (o.rim && /255,\s*90,\s*90/.test(o.rim) ? "foe" : "ally"), sc = SIDE_COL[side];
   c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); if(o.alpha!=null) c.globalAlpha = o.alpha;
-  const col = o.color || "#050507";
-  c.fillStyle = col;
-  c.beginPath(); c.arc(0, -h-2, h*0.12, 0, 7); c.fill();
-  c.beginPath(); c.moveTo(-h*0.17, -h*0.88); c.lineTo(h*0.17, -h*0.88); c.lineTo(h*(o.coat?0.27:0.22), 0); c.lineTo(-h*(o.coat?0.27:0.22), 0); c.closePath(); c.fill();
-  const gr = o.gear, face = o.face||1;
-  if(gr && gr.ego){ c.save(); c.globalCompositeOperation="lighter"; const ag=c.createRadialGradient(0,-h*0.5,0,0,-h*0.5,h*0.9); ag.addColorStop(0,"rgba(255,225,150,0.18)"); ag.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=ag; c.fillRect(-h,-h*1.5,h*2,h*1.6); c.restore(); c.fillStyle=col; }
-  if(gr && gr.armor){ c.fillRect(-h*0.24,-h*0.9,h*0.48,h*0.07); c.fillRect(-h*0.21,-h*0.6,h*0.42,h*0.05); }
-  if(gr && gr.wtype) drawWeapon(c, h, face, gr.wtype, o.wRot, col);
-  else if(o.weapon){ c.save(); c.translate(h*0.2*face, -h*0.55); c.rotate((o.wRot||0.5)*face); c.fillRect(-1.2,0,2.4,h*0.6); c.restore(); }
-  if(gr && gr.acc){ c.save(); c.globalCompositeOperation="lighter"; const pulse=0.6+0.4*Math.sin(performance.now()/300); c.fillStyle=`rgba(${gr.accColor||"150,230,255"},${0.9*pulse})`; c.shadowColor=`rgb(${gr.accColor||"150,230,255"})`; c.shadowBlur=8; c.beginPath(); c.arc(face*h*0.05,-h*0.72,1.8,0,7); c.fill(); c.restore(); c.fillStyle=col; }
-  if(o.rim){ c.strokeStyle=(gr && gr.armor) ? o.rim.replace(/[\d.]+\)$/,"0.95)") : o.rim; c.lineWidth=(gr && gr.armor)?1.6:1.2; c.beginPath(); c.arc(0,-h-2,h*0.12,(o.face||1)>0?-1.2:2.0,(o.face||1)>0?0.9:4.2); c.stroke();
-    c.beginPath(); const sx=(o.face||1)*h*0.17; c.moveTo(sx,-h*0.88); c.lineTo((o.face||1)*h*(o.coat?0.27:0.22),0); c.stroke(); }
+  const col = o.tint || sc.fill, face = o.face||1, gr = o.gear;
+  if(gr && gr.ego){ c.save(); c.globalCompositeOperation="lighter"; const ag=c.createRadialGradient(0,-h*0.5,0,0,-h*0.5,h*0.9); ag.addColorStop(0,"rgba(255,225,150,0.2)"); ag.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=ag; c.fillRect(-h,-h*1.5,h*2,h*1.6); c.restore(); }
+  c.fillStyle = o.tint || sc.head; c.beginPath(); c.arc(0, -h-2, h*0.12, 0, 7); c.fill();
+  c.fillStyle = col; c.beginPath(); c.moveTo(-h*0.17, -h*0.88); c.lineTo(h*0.17, -h*0.88); c.lineTo(h*(o.coat?0.27:0.22), 0); c.lineTo(-h*(o.coat?0.27:0.22), 0); c.closePath(); c.fill();
+  if(gr && gr.armor){ c.fillStyle="rgba(255,255,255,0.22)"; c.fillRect(-h*0.24,-h*0.9,h*0.48,h*0.07); c.fillRect(-h*0.21,-h*0.6,h*0.42,h*0.05); }
+  const wt = (gr && gr.wtype) || (o.weapon ? (o.ewt || (side==="foe" ? "blunt" : null)) : null);
+  if(wt) drawWeapon(c, h, face, wt, o.wRot, sc.wpn);
+  else if(o.weapon){ c.save(); c.fillStyle=sc.wpn; c.translate(h*0.2*face, -h*0.55); c.rotate((o.wRot||0.5)*face); c.fillRect(-1.2,0,2.4,h*0.6); c.restore(); }
+  if(gr && gr.acc){ c.save(); c.globalCompositeOperation="lighter"; const pulse=0.6+0.4*Math.sin(performance.now()/300); c.fillStyle=`rgba(${gr.accColor||"150,230,255"},${0.9*pulse})`; c.shadowColor=`rgb(${gr.accColor||"150,230,255"})`; c.shadowBlur=8; c.beginPath(); c.arc(face*h*0.05,-h*0.72,1.8,0,7); c.fill(); c.restore(); }
+  if(!o.tint){ c.strokeStyle=sc.rim; c.lineWidth=(gr && gr.armor)?1.8:1.3; c.beginPath(); c.arc(0,-h-2,h*0.12,face>0?-1.2:2.0,face>0?0.9:4.2); c.stroke();
+    c.beginPath(); const sx=face*h*0.17; c.moveTo(sx,-h*0.88); c.lineTo(face*h*(o.coat?0.27:0.22),0); c.stroke(); }
   c.restore();
 }
 // 무기 모양: 칼날 / 둔기 / 총 / 창 / 대검 / 드릴 / 공구
@@ -1892,10 +1901,10 @@ function genBreach(c, t, W, H, o, st){
   st.mob.forEach((m,i)=>{
     if(ok){ if(t<hit+0.15) return; const k = seg(t, hit+0.15+i*0.04, hit+0.9+i*0.04);
       const x = lerp(sx+sw*0.5, sx+sw*0.5 + W*0.12*m.r*(i%2?1:-0.4), ease(k)), rot = ease(k)*1.4*(i%2?1:-1);
-      fig(c, x, gy+m.y*0.2, fh*m.h, {face:-1, rot, alpha: 1-seg(t,hit+1.2,hit+2.2)*0.6}); }
+      fig(c, x, gy+m.y*0.2, fh*m.h, {face:-1, side:"foe", rot, alpha: 1-seg(t,hit+1.2,hit+2.2)*0.6}); }
     else { if(t<hit+0.6) return; const k = seg(t, hit+0.6+i*0.06, hit+1.4+i*0.06);
       const x = lerp(sx+sw*0.5, sx - W*0.05 - i*fh*0.35, ease(k));
-      fig(c, x, gy, fh*m.h, {face:-1, weapon:true, wRot:0.8, rim:"rgba(255,90,90,0.4)"}); }
+      fig(c, x, gy, fh*m.h, {face:-1, side:"foe", weapon:true, ewt:FOE_WEAPONS[i%FOE_WEAPONS.length], wRot:0.8}); }
   });
   // 해결사들
   for(let i=n-1;i>=0;i--){
@@ -1962,7 +1971,7 @@ function genChase(c, t, W, H, o, st){
   if(ok && t>2.9){ cxp = lerp(chaserX, tx, ease(seg(t,2.9,3.1))); }
   if(!ok && t>2.6){ crot = 0; }
   // 잔상
-  c.save(); c.globalCompositeOperation="lighter"; for(let k=1;k<=4;k++) fig(c, cxp - k*12, gy, fh, {face:1, rot:0.18, alpha:0.1-k*0.02, color:"#5fa8e0"}); c.restore();
+  c.save(); c.globalCompositeOperation="lighter"; for(let k=1;k<=4;k++) fig(c, cxp - k*12, gy, fh, {face:1, rot:0.18, alpha:0.14-k*0.025, tint:"#7fe0a8"}); c.restore();
   runner(cxp, t*2.2, {face:1, weapon:true, wRot:-0.6, coat:true, gear:o.lead, rim:"rgba(255,210,150,0.6)", rot: crot});
   // 붙잡는 순간
   if(ok) weaponFx(c, st, o, t, 3.0, cxp+fh*0.2, gy-fh*0.62, tx, gy-fh*0.6);
@@ -2074,6 +2083,7 @@ SCENES["호위"] = {
     c.save(); c.font=`800 9px "Noto Sans KR",sans-serif`; c.fillStyle="rgba(230,200,120,0.6)"; c.fillText("의뢰 화물", vx+8, ty+th*0.55); c.restore();
     c.fillStyle="#1a191f"; c.beginPath(); c.moveTo(vx+tw*0.72, ty+th*0.25); c.lineTo(vx+tw*0.9, ty+th*0.25); c.lineTo(vx+tw, ty+th*0.6); c.lineTo(vx+tw, ty+th); c.lineTo(vx+tw*0.72, ty+th); c.fill();
     c.fillStyle="rgba(150,180,220,0.25)"; c.beginPath(); c.moveTo(vx+tw*0.76, ty+th*0.32); c.lineTo(vx+tw*0.88, ty+th*0.32); c.lineTo(vx+tw*0.95, ty+th*0.58); c.lineTo(vx+tw*0.76, ty+th*0.58); c.fill();
+    c.fillStyle=SIDE_COL.friend.head; c.beginPath(); c.arc(vx+tw*0.84, ty+th*0.43, th*0.1, 0, 7); c.fill(); c.fillStyle=SIDE_COL.friend.fill; c.fillRect(vx+tw*0.79, ty+th*0.5, th*0.22, th*0.1);
     c.fillStyle=`rgba(255,235,180,${0.9*hl})`; c.fillRect(vx+tw-4, ty+th*0.62, 4, 5);
     if(!ok && t>2.6 && Math.sin(t*9)>0){ c.fillStyle="#ffb020"; c.fillRect(vx-2, ty+th*0.7, 3, 5); c.fillRect(vx+tw-2, ty+th*0.82, 3, 4); }
     const spin = ok ? t*8 : Math.min(t,2.3)*8;
@@ -2104,7 +2114,7 @@ SCENES["호위"] = {
       let k = seg(t, f.d-0.35, f.d), x = lerp(tx0, land, k), y = lerp(gy-H*0.75, gy, ease(k)), rot = 0, alpha = 1;
       if(ok && t>f.d+0.25){ const kk = ease(seg(t, f.d+0.25, f.d+0.8)); x += f.side*kk*W*0.12; rot = f.side*kk*1.3; alpha = 1-seg(t,f.d+0.6,f.d+1.4); y = gy; }
       if(!ok && t>2.3){ x = lerp(x, vx+tw/2+f.side*tw*0.35, ease(seg(t,2.3,2.8))); }
-      fig(c, x, y, fh*0.9, {face:-f.side, weapon:true, wRot:1.0, rot, alpha, rim:"rgba(255,90,90,0.4)"});
+      fig(c, x, y, fh*0.9, {face:-f.side, side:"foe", weapon:true, ewt:FOE_WEAPONS[i%FOE_WEAPONS.length], wRot:1.0, rot, alpha});
       if(t>f.d && !f.hit){ f.hit=true; sparks(st, land, gy-fh*0.6, 16, ok?"#a8c8ff":"#ffb0a0", 3.5, 0.6); st.shake=ok?4:6; }
     });
     // 해결사들: 차량 앞뒤로 붙어 걷는다
