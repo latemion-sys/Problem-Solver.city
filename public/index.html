@@ -567,7 +567,7 @@ function mgClues(ctx){
     const items = [], place = () => { for(let tries=0;tries<200;tries++){ const x=60+Math.random()*600, y=70+Math.random()*190; if(items.every(o=>Math.hypot(o.x-x,o.y-y)>70)) return {x,y}; } return {x:360,y:150}; };
     NAMES.sort(()=>Math.random()-0.5).slice(0,5).forEach(nm=>items.push(Object.assign(place(),{nm, clue:true})));
     JUNK.sort(()=>Math.random()-0.5).slice(0,decoyN).forEach(nm=>items.push(Object.assign(place(),{nm, clue:false})));
-    const G = {lx:360, ly:150, left:T, found:0, done:false, msg:"", msgT:0}, st = {};
+    const G = {lx:360, ly:150, left:T, found:0, done:false, msg:"", msgT:0}, st = {}; if(FXTEST) window.__clue = {G, items};
     const mask = document.createElement("canvas"); mask.width=720; mask.height=300; const mc = mask.getContext("2d");
     const bgc = document.createElement("canvas"); bgc.width=720; bgc.height=300; const b = bgc.getContext("2d");
     // 방 배경(한 번만 그림)
