@@ -1053,7 +1053,6 @@ const Title = {
     cx.fillStyle=inner; cx.fillRect(sx,sy,sw,sh);
     // 실내: 뒷벽 블라인드 빛, 서류장, 벽시계, 매달린 등, 책상, 두 해결사
     cx.save(); cx.beginPath(); cx.rect(sx,sy,sw,sh); cx.clip();
-    for(let i=0;i<9;i++){ cx.fillStyle=`rgba(255,200,130,${0.05+0.03*(i%2)})`; cx.beginPath(); const bx0=sx+sw*0.42+i*14, by0=sy+sh*0.08+i*10; cx.moveTo(bx0,by0); cx.lineTo(bx0+sw*0.28,by0); cx.lineTo(bx0+sw*0.28-30,by0+6); cx.lineTo(bx0-30,by0+6); cx.fill(); }
     cx.fillStyle="#1b130c"; cx.fillRect(sx+sw*0.04,sy+sh*0.3,sw*0.1,sh*0.7);
     cx.strokeStyle="#2b1f14"; for(let i=1;i<4;i++){ cx.beginPath(); cx.moveTo(sx+sw*0.04,sy+sh*(0.3+i*0.175)); cx.lineTo(sx+sw*0.14,sy+sh*(0.3+i*0.175)); cx.stroke(); }
     const ckx=sx+sw*0.5, cky=sy+sh*0.17; cx.fillStyle="#140e09"; cx.beginPath(); cx.arc(ckx,cky,sh*0.06,0,7); cx.fill(); cx.strokeStyle="#5a4630"; cx.lineWidth=1.5; cx.stroke();
@@ -1066,24 +1065,9 @@ const Title = {
     cx.fillRect(dkx,dky,dkw,sh*0.05); cx.fillRect(dkx+6,dky,7,sh*0.3); cx.fillRect(dkx+dkw-13,dky,7,sh*0.3); cx.fillRect(dkx+dkw*0.55,dky+sh*0.05,dkw*0.4,sh*0.14);
     cx.fillStyle="#3a2c1c"; cx.save(); cx.translate(dkx+dkw*0.25,dky-2); cx.rotate(-0.08); cx.fillRect(0,-3,34,4); cx.restore();
     cx.fillStyle="#120c08"; cx.fillRect(dkx+dkw*0.42,dky-sh*0.17,dkw*0.16,sh*0.04); cx.fillRect(dkx+dkw*0.43,dky-sh*0.17,5,sh*0.17);
-    const fixerFig=(px,h,coat,face,sword)=>{ // h: 키
-      const top=sy+sh-h, sh2=h*0.13;
-      cx.fillStyle="#0b0705";
-      cx.beginPath(); cx.ellipse(px,top+h*0.07,h*0.055,h*0.07,0,0,7); cx.fill(); // 머리
-      cx.fillRect(px-h*0.025,top+h*0.13,h*0.05,h*0.04); // 목
-      cx.beginPath(); cx.moveTo(px-sh2,top+h*0.19); cx.quadraticCurveTo(px,top+h*0.15,px+sh2,top+h*0.19);
-      cx.lineTo(px+sh2*1.05,top+h*0.5); cx.lineTo(px+sh2*(coat?1.45:1.0),top+h*(coat?0.86:0.56)); cx.lineTo(px+sh2*0.35,top+h*(coat?0.88:0.56));
-      cx.lineTo(px+sh2*0.4,sy+sh); cx.lineTo(px+sh2*0.1,sy+sh); cx.lineTo(px,top+h*0.6); cx.lineTo(px-sh2*0.1,sy+sh); cx.lineTo(px-sh2*0.4,sy+sh);
-      cx.lineTo(px-sh2*0.35,top+h*(coat?0.88:0.56)); cx.lineTo(px-sh2*(coat?1.45:1.0),top+h*(coat?0.86:0.56)); cx.lineTo(px-sh2*1.05,top+h*0.5); cx.closePath(); cx.fill();
-      cx.beginPath(); cx.moveTo(px-sh2,top+h*0.2); cx.lineTo(px-sh2*1.35,top+h*0.48); cx.lineTo(px-sh2*1.15,top+h*0.5); cx.lineTo(px-sh2*0.85,top+h*0.3); cx.fill(); // 팔
-      cx.beginPath(); cx.moveTo(px+sh2,top+h*0.2); cx.lineTo(px+sh2*1.35,top+h*0.48); cx.lineTo(px+sh2*1.15,top+h*0.5); cx.lineTo(px+sh2*0.85,top+h*0.3); cx.fill();
-      if(sword){ cx.save(); cx.translate(px+sh2*1.2,top+h*0.42); cx.rotate(0.18); cx.fillRect(-1.5,0,3,h*0.45); cx.fillRect(-6,-2,12,3); cx.restore(); }
-      // 등 뒤 조명에 잡힌 테두리
-      cx.strokeStyle="rgba(255,190,110,0.45)"; cx.lineWidth=1.2; cx.beginPath(); cx.ellipse(px,top+h*0.07,h*0.055,h*0.07,0,-1.2,0.6); cx.stroke();
-      cx.beginPath(); cx.moveTo(px+sh2*(face>0?1:-1),top+h*0.2); cx.lineTo(px+sh2*1.05*(face>0?1:-1),top+h*0.5); cx.stroke();
-    };
-    fixerFig(sx+sw*0.2, sh*0.74, true, -1, true);
-    fixerFig(sx+sw*0.81, sh*0.66, false, 1, false);
+    cx.fillStyle="#0d0907";
+    const person=(px,h)=>{ cx.beginPath(); cx.arc(px,sy+sh-h-8,h*0.09,0,7); cx.fill(); cx.beginPath(); cx.moveTo(px-h*0.14,sy+sh-h*0.9); cx.lineTo(px+h*0.14,sy+sh-h*0.9); cx.lineTo(px+h*0.2,sy+sh); cx.lineTo(px-h*0.2,sy+sh); cx.fill(); };
+    person(sx+sw*0.2, sh*0.62); person(sx+sw*0.81, sh*0.56);
     // 먼지
     for(let i=0;i<24;i++){ const px=sx+((i*97+tm*12*(1+i%3))%sw), py=sy+sh*0.45+((i*53+Math.sin(tm+i)*8)%(sh*0.5)); cx.fillStyle="rgba(255,220,170,0.35)"; cx.fillRect(px,py,1.5,1.5); }
     cx.restore();
