@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>해결사 사무소 — Problem Solver Office</title>
+<style>
+:root{
+  --bg:#0d0d10; --panel:#16161b; --panel2:#1d1d24; --line:#2c2c36; --text:#e6e1d8; --muted:#8f8a80;
+  --accent:#c9a86a; --red:#c94a4a; --yellow:#d8b24a; --green:#7fb069; --violet:#a37ad1; --blue:#6aa0c9;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;line-height:1.5}
+button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:#3a2f1c;border-color:var(--accent);color:#f3e3c0}
+button.danger{border-color:var(--red);color:#f0b0b0}
+input,select{font:inherit;color:var(--text);background:#101014;border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+.wrap{max-width:1200px;margin:0 auto;padding:12px}
+/* top bar */
+.topbar{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.topbar .office{font-weight:700;font-size:16px}
+.topbar .stat{color:var(--muted)} .topbar .stat b{color:var(--text)}
+.scars span{display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid var(--red);margin-left:3px;vertical-align:-1px}
+.scars span.on{background:var(--red)}
+/* stage */
+.stage{position:relative;margin-top:10px;height:190px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:#07070a}
+.stage canvas{width:100%;height:100%;display:block}
+.stage .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;pointer-events:none;text-shadow:0 0 12px #000,0 0 4px #000}
+.stage .cap .t{font-size:20px;font-weight:700;letter-spacing:.05em}
+.stage .cap .s{font-size:13px;color:#d6cfc2}
+/* layout */
+.main{display:grid;grid-template-columns:1fr 360px;gap:10px;margin-top:10px}
+@media (max-width:900px){.main{grid-template-columns:1fr}}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+.panel h2{margin:0 0 10px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.panel h2 small{color:var(--muted);font-weight:400;font-size:12px}
+.reqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.req{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.req.special{border-color:var(--accent)} .req.distort{border-color:var(--red)}
+.req .head{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.badge{font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);color:var(--muted)}
+.badge.k{color:#111;border:none;font-weight:700}
+.req .client{color:var(--muted);font-size:12px}
+.req .txt{font-size:13px}
+.req .row{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.req .row b{color:var(--text)}
+.req .loot{font-size:12px;color:var(--accent)}
+.req .assign{display:flex;gap:6px;margin-top:auto}
+.req .assign select{flex:1;min-width:0}
+.req .est{font-size:12px;color:var(--muted);min-height:18px}
+.fixers{display:flex;flex-direction:column;gap:8px}
+.fx{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px}
+.fx .n{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.fx .n b{font-size:14px} .fx .n span{font-size:12px;color:var(--muted)}
+.fx .title{color:var(--accent);font-size:12px}
+.bar{height:7px;background:#0b0b0e;border-radius:4px;overflow:hidden;margin:3px 0}
+.bar i{display:block;height:100%}
+.lv{font-size:11px;margin-left:4px}
+.lv.s{color:#a9a59d}.lv.b{color:var(--yellow)}.lv.d{color:var(--red)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;font-size:12px;margin-top:4px}
+.stats div{background:#121217;border-radius:4px;text-align:center;padding:2px 0}
+.stats small{color:var(--muted)}
+.fx .state{font-size:12px;color:var(--muted);margin-top:4px}
+.nav{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.nav button{flex:1;min-width:110px;padding:10px}
+.log{margin-top:10px;max-height:160px;overflow:auto;font-size:12px;color:var(--muted)}
+.log div{padding:2px 0;border-bottom:1px dashed #22222a}
+.log .rumor{color:#9aa7b8}
+footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);line-height:1.6}
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50;padding:12px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:640px;width:100%;max-height:88vh;display:flex;flex-direction:column}
+.modal .mh{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:16px}
+.modal .mb{padding:14px 16px;overflow:auto}
+.modal .mf{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px;display:flex;justify-content:space-between;gap:10px;align-items:center}
+.item .d{font-size:12px;color:var(--muted)}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tabs button.on{border-color:var(--accent);color:var(--accent)}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:13px}
+.kv span{color:var(--muted)}
+.field{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.field label{width:90px;color:var(--muted)}
+.field input{flex:1}
+.muted{color:var(--muted)}
+.big{font-size:22px;font-weight:700}
+.start{max-width:560px;margin:40px auto}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<footer>이 게임은 Project Moon 세계관을 바탕으로 비영리적인 목적으로 만들어진 팬게임입니다. 플레이를 제외한 일체의 수익성 행위를 금지합니다.<br>또한 모든 수치와 사건은 이 게임을 위해 만든 허구입니다.</footer>
+<div id="modal-root"></div>
+<script>
+"use strict";
+/* ================= 데이터 ================= */
+const VERSION = "1.0.0";
+const SAVE_KEY = "problem-solver-office-save-v1";
+const ATTRS = ["str","agi","tec","wil"];
+const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
+const REQ_TYPE = {str:"물리",agi:"속도",tec:"정밀",wil:"이상"};
+const gName = g => g===0 ? "특색" : g+"급";
+const START_DEBT = 10000000;
+// 의뢰 등급별: 기준 보수, 요구치, 재해 등급
+const REQ_BASE = {9:[2000,8,"뜬소문"],8:[4000,11,"도시 괴담"],7:[6000,15,"도시 괴담"],6:[12000,22,"도시 전설"],5:[24000,29,"도시 전설"],4:[48000,36,"도시 질병"],3:[96000,43,"도시 질병"],2:[120000,52,"도시 악몽"],1:[200000,60,"도시 악몽"],0:[450000,66,"도시의 별"]};
+const RISK = g => g>=8?"ZAYIN":g>=6?"TETH":g>=4?"HE":g>=2?"WAW":"ALEPH";
+// 승급 기준: 현재 등급 -> 다음 등급 필요 총합
+const PROMO = {9:48,8:70,7:95,6:120,5:145,4:170,3:200,2:230};
+const COLOR_REQ_TOTAL = 250;
+const HIRE_COST = {9:10000,8:20000,7:40000,6:80000,5:160000,4:320000,3:640000,2:1280000};
+const KIND_COLOR = {"일반":"#c9a86a","호위":"#6aa0c9","수색":"#7fb069","환상체":"#a37ad1","뒤틀림 토벌":"#c94a4a","특색 심사":"#e8d27a","지명":"#e8d27a"};
+
+const PERSONALITIES = [
+ ["공격적","weapon","들끓는 맹세"],["신중함","armor","겹겹의 숙고"],["헌신","armor","닳지 않는 등"],["냉소","weapon","식은 웃음"],
+ ["충동적","weapon","꺼지지 않는 불씨"],["침착함","armor","고요한 수면"],["집요함","weapon","놓지 않는 갈고리"],["낙천적","armor","내일의 햇볕"],
+ ["비관적","armor","무너질 지붕"],["오만함","weapon","하늘을 긋는 선"],["소심함","armor","작은 껍데기"],["정의감","weapon","굽지 않는 저울"],
+ ["탐욕","weapon","모자란 주머니"],["다정함","armor","내민 손바닥"],["무심함","armor","빈 액자"],["광기","weapon","웃는 톱니"]
+];
+const SURNAMES = ["김","이","박","최","정","강","조","윤","장","임","한","오","서","신","권","황","안","송","류","홍"];
+const GIVEN = ["민준","서연","도윤","하은","지호","수아","현우","지민","예준","채원","건우","다인","우진","소율","태오","유나","시우","하린","준서","서윤","은호","나연","재원","가온","도현","이안","세아","한결","무진","단비"];
+const FOREIGN = ["올리비에","레오나르","미셸","카를로","이자벨","마르타","에반","루카","오스카","니나","빅토르","엘리안","줄리아","하인츠","아델","로렌츠","세바스티안","클라라","펠릭스","노아","마야","휴고","레나","라울","에디트","테오","실비아","얀","미라","케이"];
+const OFFICE_WORDS = ["새벽","잔돌","등대","모퉁이","회색 우산","녹슨 열쇠","작은 불","늦은 종","외길","빈 상자","철길","가로등","북향","굽은 못"];
+const COLOR_WORDS = ["잿빛","새벽빛","구릿빛","푸른","붉은","은빛","쪽빛","황금빛","달빛","먹빛"];
+const COLOR_NOUNS = ["잔향","안개","서리","칼날","등불","메아리","발자국","서약","그림자","바람","파도","가시"];
+const COLOR_BANNED = ["붉은 안개","푸른 잔향","보라 눈물","검은 침묵"];
+
+const CLIENTS = {
+ str:["뒷골목 상인회","국밥집 주인 노씨","폐건물 관리인","고물상 '두 바퀴'","골목 세탁소 사장","하청 공사 현장 반장"],
+ agi:["택배 중개소","'김씨 부품상'","전당포 '둥근 저울'","급전 대부 사무실","골목 약국 약사","배달 조합"],
+ tec:["둥지 하청 연구소","의수 정비소 '손끝'","소규모 출판사","합법 경매장 감정사","골목 사진관","중고 기계상"],
+ wil:["지하 노래방 주인","오래된 아파트 관리소","폐교 재건 위원회","장례식장 야간 관리인","작은 교회 신부","폐역 관리 사무소"]
+};
+const TEXTS = {
+ str:["골목을 점거한 불량배 무리를 쫓아내 달라","무너진 창고 입구를 뚫고 남은 재고를 꺼내 달라","가게 앞에서 행패를 부리는 자들을 손봐 달라","폐건물 철거 현장에 눌러앉은 자들을 몰아내 달라"],
+ agi:["부품을 들고 연락이 끊긴 배달원을 찾아 물건을 회수해 달라","도망친 채무자를 날이 밝기 전에 붙잡아 달라","급한 서류를 둥지 경계까지 기한 안에 전해 달라","소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라"],
+ tec:["거래 자리에 동석해 조건을 맞춰 계약을 성사시켜 달라","고장 난 경비 장치를 고치고 침입 흔적을 정리해 달라","위조된 감정서를 가려내고 진짜 출처를 알아내 달라","말이 통하지 않는 두 조직 사이에서 협상을 중재해 달라"],
+ wil:["밤마다 노래가 들리는 지하실을 조사해 달라","같은 얼굴의 아이가 계단에 서 있다는 층을 확인해 달라","비어 있어야 할 교실에서 출석을 부르는 소리를 멈춰 달라","시계가 모두 거꾸로 도는 대기실을 정리해 달라"]
+};
+const ESCORT = ["둥지 경계까지 화물 차량을 호위해 달라","협회 사무실까지 증인을 안전하게 데려다 달라","야간 시장 개장 시간 동안 상인을 지켜 달라"];
+const SEARCH = ["폐공장에 숨겨진 장부를 찾아 달라","사흘째 연락이 없는 수리공을 찾아 달라","뒷골목 하수로 어딘가에 떨어진 열쇠를 찾아 달라"];
+
+// 장비: slot, 이름, 가격, 보너스, 피해감소
+const SHOP = [
+ // 양산형(창작)
+ {id:"w1",tier:0,slot:"weapon",name:"뒷골목 쇠파이프",price:1500,bonus:{str:2}},
+ {id:"w2",tier:0,slot:"weapon",name:"해결사 표준 단검",price:1500,bonus:{agi:2}},
+ {id:"w3",tier:0,slot:"weapon",name:"정비 공구 세트",price:1500,bonus:{tec:2}},
+ {id:"w4",tier:0,slot:"weapon",name:"개조 마체테",price:4500,bonus:{str:3,agi:1}},
+ {id:"w5",tier:0,slot:"weapon",name:"구형 리볼버",price:4500,bonus:{tec:3,agi:1}},
+ {id:"w6",tier:0,slot:"weapon",name:"체인 블레이드",price:12000,bonus:{str:5,agi:1}},
+ {id:"a1",tier:0,slot:"armor",name:"표준 해결사 코트",price:3000,hpRed:0.10},
+ {id:"a2",tier:0,slot:"armor",name:"방검 조끼",price:8000,hpRed:0.15},
+ {id:"c1",tier:0,slot:"acc",name:"싸구려 진정 패치",price:3000,mpRed:0.10},
+ {id:"c2",tier:0,slot:"acc",name:"손때 묻은 염주",price:3500,bonus:{wil:2}},
+ {id:"c3",tier:0,slot:"acc",name:"보급형 경보 팔찌",price:9000,mpRed:0.15,bonus:{wil:1}},
+ // 고급(원작 공방, 6급 사무소부터)
+ {id:"g1",tier:1,slot:"weapon",name:"아틀리에 로직 권총",price:70000,bonus:{tec:6,agi:2}},
+ {id:"g2",tier:1,slot:"weapon",name:"묵 공방 환도",price:70000,bonus:{agi:6,tec:2}},
+ {id:"g3",tier:1,slot:"weapon",name:"젤코바 공방 철퇴·도끼",price:70000,bonus:{str:6,agi:2}},
+ {id:"g4",tier:1,slot:"weapon",name:"알라스 공방 창",price:70000,bonus:{agi:5,str:3}},
+ {id:"g5",tier:1,slot:"armor",name:"강화 섬유 코트",price:55000,hpRed:0.25},
+ {id:"g6",tier:1,slot:"acc",name:"정신 안정 이식칩",price:60000,mpRed:0.25,bonus:{wil:2}},
+ // 희귀(원작 공방, 3급 사무소부터)
+ {id:"r1",tier:2,slot:"weapon",name:"휠스 인더스트리 대검",price:420000,bonus:{str:12,agi:1}},
+ {id:"r2",tier:2,slot:"weapon",name:"스티그마 공방 장검",price:420000,bonus:{str:6,tec:6,agi:2}},
+ {id:"r3",tier:2,slot:"weapon",name:"스크류 아틀리에 드릴",price:420000,bonus:{str:8,tec:5}},
+ {id:"r4",tier:2,slot:"armor",name:"특주 다층 방호복",price:380000,hpRed:0.35},
+ {id:"r5",tier:2,slot:"acc",name:"특주 정신 보호 장치",price:380000,mpRed:0.35,bonus:{wil:4}}
+];
+const LOOT = [
+ {slot:"acc",name:"이름 없는 은반지",bonus:{agi:2,tec:2}},
+ {slot:"acc",name:"누군가의 낡은 회중시계",mpRed:0.12,bonus:{wil:2}},
+ {slot:"acc",name:"정체불명의 파편",bonus:{wil:4}},
+ {slot:"acc",name:"피 묻은 협회 배지",bonus:{str:2,agi:2}},
+ {slot:"acc",name:"멈춘 오르골",mpRed:0.2}
+];
+const RUMORS = [
+ "어젯밤 어느 둥지 근처에서 사람이 형체를 잃고 괴물이 되었다는 소문이 돈다.",
+ "도서관이 사라진 자리에 아무것도 남지 않았다고들 한다.",
+ "요즘 들어 '목소리를 들었다'는 해결사가 부쩍 늘었다는 이야기가 있다.",
+ "낡은 버스 한 대가 구역 경계를 넘어 다닌다는 목격담이 있다.",
+ "어느 회사가 뒤틀림을 연구한다며 사람을 모은다는 말이 들린다.",
+ "손가락 조직 쪽이 요즘 시끄럽다는 이야기가 골목에 돈다.",
+ "하나 협회가 재해 등급 기준을 다시 손본다는 소문이 있다.",
+ "뒷골목의 밤에는 여전히 밖에 나가지 말라는 말이 돈다.",
+ "어떤 해결사가 스스로 빛나는 갑옷을 두르고 돌아왔다는 이야기가 있다.",
+ "외곽에서 돌아온 사람이 말을 잃었다는 소문이 있다.",
+ "한 둥지에서 날개의 지사가 갑자기 문을 닫았다는 말이 들린다.",
+ "대호수 쪽으로 배를 띄운 사람들이 있다는 소문이 있다.",
+ "공방 몇 곳이 신형 의수를 내놓는다며 손님을 끌고 있다.",
+ "특색 하나가 이 구역을 지나갔다는 말에 골목이 조용해졌다."
+];
+
+/* ================= 유틸 ================= */
+const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = arr => arr[Math.floor(Math.random()*arr.length)];
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const won = n => Math.floor(n).toLocaleString("ko-KR")+"안";
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const randomName = () => { for(let i=0;i<30;i++){ const n = Math.random()<0.5 ? pick(SURNAMES)+pick(GIVEN) : pick(FOREIGN); if(!S || !S.fixers.some(f=>f.name===n)) return n; } return pick(SURNAMES)+pick(GIVEN); };
+const randomOffice = () => pick(OFFICE_WORDS)+" 사무소";
+
+/* ================= 상태 ================= */
+let S = null;
+
+function newFixer(name, grade, stats, opts={}){
+  return Object.assign({
+    id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
+    hp:100, hpMax:100, mp:100, mpMax:100, personality: pick(PERSONALITIES)[0],
+    gear:{weapon:null,armor:null,acc:null}, ego:null, title:null, cap:70,
+    lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0
+  }, opts);
+}
+function total(f){ return ATTRS.reduce((s,a)=>s+f.stats[a],0); }
+function topAttr(f){ return ATTRS.reduce((b,a)=>f.stats[a]>f.stats[b]?a:b, "str"); }
+function alive(){ return S.fixers; }
+function leader(){ return S.fixers.find(f=>f.isLeader); }
+
+function genStats(grade){
+  // 9급: 최고 11, 나머지 6~10 / 그 외: 등급 구간 안의 총합
+  const keys = ATTRS.slice().sort(()=>Math.random()-0.5);
+  const st = {};
+  if(grade===9){ st[keys[0]]=11; for(let i=1;i<4;i++) st[keys[i]]=rnd(6,10); return st; }
+  const lo = PROMO[grade+1]||48, hi = (PROMO[grade]||250)-1;
+  const tot = rnd(lo, hi);
+  const w = [rnd(32,40), rnd(22,28), rnd(18,24), rnd(14,20)];
+  const ws = w.reduce((a,b)=>a+b,0);
+  let sum=0; keys.forEach((k,i)=>{ st[k]=Math.max(4,Math.round(tot*w[i]/ws)); sum+=st[k]; });
+  st[keys[0]] += tot-sum;
+  ATTRS.forEach(a=>st[a]=clamp(st[a],1,70));
+  return st;
+}
+
+function newGame(leaderName, officeName, partnerName){
+  S = { v:VERSION, day:1, money:20000, debt:START_DEBT, scars:0, officeName, officeGrade:8,
+        fixers:[], requests:[], records:[], log:[], reviewSuccess:0, recruitPool:[], nextId:1,
+        todayIncome:0, over:false, inventory:[] };
+  const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, {isLeader:true});
+  const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7});
+  S.fixers.push(L,P);
+  startDay(true);
+  addLog(`${S.officeName}의 문을 열었다. 남은 빚은 ${won(S.debt)}.`);
+  save();
+}
+
+/* ================= 의뢰 생성 ================= */
+function makeRequest(grade, opts={}){
+  const early = S.day<=3;
+  let kind = "일반", attrs;
+  const tops = [...new Set(S.fixers.map(topAttr))];
+  if(opts.kind){ kind = opts.kind; attrs = opts.attrs; }
+  else if(early){ const a = pick(tops); attrs=[a]; kind = a==="wil"?"환상체":"일반"; }
+  else {
+    const r = Math.random();
+    if(r<0.2){ kind="환상체"; attrs=["wil"]; }
+    else if(grade<=6 && r<0.45){ if(Math.random()<0.5){kind="호위"; attrs=["str","agi"];} else {kind="수색"; attrs=["agi","tec"];} }
+    else { attrs=[pick(["str","agi","tec"])]; }
+  }
+  const [base, req, threat] = REQ_BASE[grade];
+  const key = attrs[0];
+  let text, client;
+  if(kind==="호위"){ text=pick(ESCORT); client=pick(CLIENTS.agi.concat(CLIENTS.str)); }
+  else if(kind==="수색"){ text=pick(SEARCH); client=pick(CLIENTS.tec.concat(CLIENTS.agi)); }
+  else { text=pick(TEXTS[key]); client=pick(CLIENTS[key]); }
+  let lootChance = kind==="수색"?0.07:kind==="환상체"?0.05:0.03;
+  const r = {
+    id:S.nextId++, kind, attrs, grade, threat, risk: kind==="환상체"?RISK(grade):null,
+    client, text, reward: Math.round(base*(0.75+Math.random()*0.5)/100)*100,
+    req: req + rnd(-1,2), deadline: rnd(1,3), loot: Math.random()<lootChance ? Object.assign({},pick(LOOT)) : null,
+    special:false
+  };
+  return Object.assign(r, opts.over||{});
+}
+function genRequests(){
+  const n = 12 - S.officeGrade; // 9급 3개, 8급 4개, 7급 5개 ...
+  for(let i=0;i<n;i++){
+    const r = Math.random();
+    const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9);
+    S.requests.push(makeRequest(g));
+  }
+  // 1급 사무소: 가끔 도시의 별 지명 의뢰
+  if(S.officeGrade===1 && Math.random()<0.1 && !S.requests.some(q=>q.grade===0&&q.kind==="지명")){
+    const a = pick(ATTRS), b = pick(ATTRS.filter(x=>x!==a));
+    S.requests.push(makeRequest(0,{kind:"지명",attrs:[a,b],over:{deadline:null,special:true,client:"익명의 의뢰인",text:"도시의 별 등급 위협을 처리해 달라. 아는 자는 적을수록 좋다."}}));
+  }
+}
+
+/* ================= 판정 ================= */
+function gearList(f){ return [f.gear.weapon,f.gear.armor,f.gear.acc].filter(Boolean); }
+function power(f, attrs){
+  let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
+  gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
+  if(f.ego) p += f.ego.type==="weapon" ? 8 : 3;
+  return p;
+}
+function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego&&f.ego.type==="armor") r+=0.35; return Math.min(r,0.7); }
+function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego&&f.ego.type==="armor") r+=0.35; return Math.min(r,0.7); }
+function rate(f, q){ return clamp(Math.round(50 + (power(f,q.attrs)-q.req)*3), 5, 95); }
+function isMental(q){ return q.attrs.includes("wil") && (q.kind==="환상체"||q.kind==="뒤틀림 토벌"||q.attrs[0]==="wil"); }
+function dmgFactor(f,q){ return clamp(1 + (q.req - power(f,q.attrs))*0.04, 0.5, 2.5); }
+function estimate(f,q){
+  const k = dmgFactor(f,q), mental = isMental(q);
+  const red = mental? redMP(f) : redHP(f);
+  const s = [Math.round(4*k*(1-red)), Math.round(9*k*(1-red))];
+  const l = [Math.round(14*k*(1-red)), Math.round(26*k*(1-red))];
+  return {rate:rate(f,q), stat: mental?"정신력":"체력", s, l};
+}
+function canGo(f){ return f.lastDispatch!==S.day && f.unavailUntil < S.day; }
+function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30?["나쁨","b"]:["위험","d"]; }
+
+/* ================= 출동 ================= */
+async function dispatch(qid, fid){
+  const q = S.requests.find(x=>x.id===qid), f = S.fixers.find(x=>x.id===fid);
+  if(!q||!f||!canGo(f)) return;
+  const mental = isMental(q);
+  const lvH = level(f.hp,f.hpMax)[1], lvM = level(f.mp,f.mpMax)[1];
+  if((mental?lvM:lvH)==="d" || lvH==="d"){
+    const ok = await confirmBox("위험 상태", `${esc(f.name)}의 ${mental?"정신력":"체력"}이 위험 단계다. 그래도 보내겠는가?`);
+    if(!ok) return;
+  }
+  f.lastDispatch = S.day;
+  const pr = rate(f,q), success = Math.random()*100 < pr;
+  const k = dmgFactor(f,q);
+  let main = success ? rnd(4,9)*k : rnd(14,26)*k, minor = rnd(0,2);
+  let dH, dM;
+  if(mental){ dM = Math.round(main*(1-redMP(f))); dH = minor; }
+  else { dH = Math.round(main*(1-redHP(f))); dM = minor; }
+  f.hp = Math.max(0, f.hp-dH); f.mp = Math.max(0, f.mp-dM);
+  let lines = [`성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`, `체력 -${dH}, 정신력 -${dM}`];
+  S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
+  if(success){
+    S.money += q.reward; S.todayIncome += q.reward; f.done++;
+    lines.push(`보수 +${won(q.reward)}`);
+    if(q.grade===S.officeGrade) S.reviewSuccess++;
+    if(q.grade===0 && f.grade===1) f.starCleared = true;
+    // 경험: 관련 능력치 +1, 2회마다 능력치 +1, 상위 등급 의뢰는 2배
+    const gain = (q.grade < f.grade || (q.grade===0 && f.grade>0)) ? 2 : 1;
+    q.attrs.forEach(a=>{
+      f.exp[a] += gain;
+      while(f.exp[a]>=2){ f.exp[a]-=2; if(f.stats[a]<f.cap){ f.stats[a]++; lines.push(`${ATTR_NAME[a]} +1 (${f.stats[a]})`);} }
+    });
+    if(q.loot){ lines.push(`전리품: <b>${esc(q.loot.name)}</b> 획득(관리에서 장착)`); S.inventory = S.inventory||[]; S.inventory.push(q.loot); }
+    if(q.kind==="특색 심사") await passColor(f);
+  } else {
+    lines.push(q.kind==="뒤틀림 토벌" ? "토벌에 실패했다. 뒤틀림은 아직 남아 있다." : "의뢰는 다른 곳으로 넘어갔다.");
+    if(q.kind==="특색 심사"){ f.unavailUntil = S.day+2; lines.push("심사 실패. 2일간 출동할 수 없다."); }
+  }
+  playFx(q.kind, `${q.kind} — ${success?"성공":"실패"}`, `${f.name} · ${q.client}`, success);
+  addLog(`[${q.kind}] ${f.name}: ${q.text} → ${success?"성공":"실패"}${success?" (+"+won(q.reward)+")":""}`);
+  await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${lines.join("<br>")}</p>`, [{t:"확인",primary:true}]);
+  await checkCollapse(f);
+  save(); render();
+  if(S && !S.over) await maybeEndDay();
+}
+
+async function checkCollapse(f){
+  if(f.hp<=0){
+    if(f.isLeader){ return gameOver("대표 사망", `${esc(f.name)}이(가) 숨을 거두었다. 사무소는 그날로 문을 닫았다.`); }
+    removeFixer(f, "사망", "체력 소진으로 사망");
+    playFx("사망", "사망", f.name, false);
+    await modal("사망", `${esc(f.name)}이(가) 돌아오지 못했다. 사무소 인사 기록에 이름이 남는다.`, [{t:"확인"}]);
+    return;
+  }
+  if(f.mp<=0){
+    if(f.ego){
+      f.mp = Math.round(f.mpMax*0.25); f.unavailUntil = S.day+1;
+      await modal("기절", `${esc(f.name)}은(는) E.G.O. 사용 후유증으로 쓰러졌다. 다음 날 출동할 수 없다.`, [{t:"확인"}]);
+      return;
+    }
+    const r = Math.random()*100;
+    if(r<45){
+      if(f.isLeader) return gameOver("대표 사망", `${esc(f.name)}의 정신이 끝내 버티지 못했다.`);
+      removeFixer(f,"사망","정신력 소진으로 사망");
+      await modal("사망", `${esc(f.name)}의 정신이 무너졌고, 다시 눈을 뜨지 않았다.`, [{t:"확인"}]);
+    } else if(r<75){
+      playFx("뒤틀림", "뒤틀림", f.name, false);
+      if(f.isLeader) return gameOver("대표 뒤틀림", `${esc(f.name)}은(는) 목소리를 들었다. 사무소의 대표는 더 이상 사람이 아니다.`);
+      const g = f.grade, threatGrade = g>=8?6:g>=6?4:g>=3?2:0;
+      const [base, req, threat] = REQ_BASE[threatGrade];
+      removeFixer(f,"뒤틀림","목소리를 듣고 뒤틀림이 됨");
+      S.requests.unshift({id:S.nextId++, kind:"뒤틀림 토벌", attrs:["wil", topAttr(f)==="wil"?"str":topAttr(f)], grade:threatGrade, threat, risk:null,
+        client:"하나 협회 (강제 배정)", text:`뒤틀림이 된 ${f.name}을(를) 토벌하라.`, reward:base, req:req+3, deadline:5, loot:null, special:true, distorted:f.name});
+      await modal("뒤틀림", `${esc(f.name)}은(는) 목소리를 들었다.<br>사무소에 <b>'뒤틀림 토벌'</b> 의뢰가 강제로 배정되었다. 재해 등급: ${threat}. 기한 5일.<br><span class="muted">기한을 넘기면 다른 사무소가 처리하고, 대표를 제외한 모든 해결사의 정신력이 15% 줄어든다.</span>`, [{t:"확인",primary:true}]);
+    } else {
+      await bloomEgo(f);
+    }
+  }
+}
+async function bloomEgo(f){
+  let type;
+  const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
+  if(f.isLeader){
+    type = await modal("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 어떤 형태로 드러낼 것인가?`, [{t:"무기",v:"weapon",primary:true},{t:"방어구",v:"armor"}], true);
+  } else type = p[1];
+  f.ego = {type, name: f.isLeader ? (await promptBox("E.G.O. 이름", "개화한 E.G.O.의 이름을 정한다.", p[2])) || p[2] : p[2]};
+  f.mp = Math.round(f.mpMax*0.5);
+  playFx("에고", "E.G.O. 개화", `${f.name} — ${f.ego.name}`, true);
+  S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${f.ego.name} (${type==="weapon"?"무기":"방어구"})`});
+  await modal("E.G.O. 개화", `${esc(f.name)}이(가) <b>${esc(f.ego.name)}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.`, [{t:"확인",primary:true}]);
+}
+function removeFixer(f, what, note){
+  S.fixers = S.fixers.filter(x=>x.id!==f.id);
+  S.records.push({day:S.day, name:f.name, what, note:`${gName(f.grade)} · ${note}`});
+  addLog(`${f.name}: ${note}`);
+}
+async function passColor(f){
+  const title = f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle();
+  f.grade = 0; f.title = title; f.cap = 80;
+  f.gear.acc = {slot:"acc", name:`${title}의 고유 장비`, bonus:{str:4,agi:4,tec:4,wil:4}, mpRed:0.2};
+  S.records.push({day:S.day, name:f.name, what:"특색 지정", note:title});
+  playFx("특색 심사", title, f.name, true);
+  await modal("특색 지정", `${esc(f.name)}이(가) 특색 <b>[${esc(title)}]</b>(으)로 지정되었다.<br>능력치 최대치가 80으로 오르고, 고유 장비를 제조받았다.`, [{t:"확인",primary:true}]);
+}
+function randomColorTitle(){
+  let t; do { t = pick(COLOR_WORDS)+" "+pick(COLOR_NOUNS); } while(COLOR_BANNED.includes(t) || S.fixers.some(f=>f.title===t));
+  return t;
+}
+
+/* ================= 하루 흐름 ================= */
+function startDay(first){
+  genRequests();
+  genRecruits();
+  if(!first && Math.random()<0.6) addLog(pick(RUMORS), "rumor");
+  S.todayIncome = 0;
+}
+async function maybeEndDay(){
+  const open = S.requests.length;
+  const avail = S.fixers.filter(canGo).length;
+  if(open===0 || avail===0) await endDay(open===0 ? "받은 의뢰를 모두 처리했다." : "출동할 수 있는 해결사가 없다.");
+}
+async function endDay(reason){
+  if(!S || S.over || S.ending) return;
+  S.ending = true;
+  try { await endDayInner(reason); } finally { if(S) S.ending = false; }
+}
+async function endDayInner(reason){
+  const ended = S.day;
+  // 회복
+  S.fixers.forEach(f=>{ f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*0.2)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*0.2)); });
+  // 마감
+  const expired = [];
+  S.requests.forEach(q=>{ if(q.deadline!=null){ q.deadline--; if(q.deadline<=0) expired.push(q);} });
+  S.requests = S.requests.filter(q=>!expired.includes(q));
+  let html = `<p class="muted">${reason||""}</p><div class="kv">
+    <span>오늘 수입</span><b>${won(S.todayIncome)}</b>
+    <span>보유 자금</span><b>${won(S.money)}</b>
+    <span>남은 빚</span><b>${won(S.debt)}</b>
+    <span>회복</span><b>전원 체력·정신력 20% 회복</b>
+    <span>마감된 의뢰</span><b>${expired.length}건</b></div>`;
+  const distortExpired = expired.filter(q=>q.kind==="뒤틀림 토벌");
+  if(distortExpired.length){
+    S.fixers.forEach(f=>{ if(!f.isLeader) f.mp = Math.max(1, f.mp - Math.round(f.mpMax*0.15)); });
+    html += `<p style="color:var(--red)">토벌 기한이 지났다. ${distortExpired.map(q=>esc(q.distorted)).join(", ")}의 뒤틀림은 다른 해결사 사무소가 처리했다. 대표를 제외한 모든 해결사의 정신력이 15% 줄었다.</p>`;
+  }
+  await modal(`${ended}일차 정산`, html, [{t:"다음으로",primary:true}]);
+  if(ended%14===0) await review();
+  if(ended%7===0 && S.debt>0) { await scarVisit(); if(!S||S.over) return; }
+  if(ended%7===0) await weekly();
+  S.day++;
+  startDay(false);
+  save(); render();
+  playFx("아침", `${S.day}일차`, `의뢰 ${S.requests.length}건이 게시판에 올라왔다.`, true);
+}
+async function weekly(){
+  await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
+}
+async function scarVisit(){
+  let html;
+  playFx("흉터", "남겨진 흉터", "수금하러 왔다.", false);
+  if(S.money<=10000){
+    S.scars++;
+    html = `<p>[남겨진 흉터]가 사무소 문을 열고 들어왔다. 금고를 들여다보고는 아무 말 없이 손을 뻗었다.</p><p style="color:var(--red)">흉터가 새겨졌다. (${S.scars} / 3)</p>`;
+    if(S.scars>=3){ await modal("남겨진 흉터", html, [{t:"..."}]); return gameOver("세 번째 흉터", "세 번째 흉터가 새겨졌다. 사무소의 이름은 장부에서 지워졌다."); }
+  } else {
+    let take = Math.max(Math.floor(S.money*0.35), 10000);
+    take = Math.min(take, S.debt);
+    S.money -= take; S.debt -= take;
+    html = `<p>[남겨진 흉터]가 사무소 문을 열고 들어왔다. 금고의 35%를 세어 챙긴다.</p><div class="kv"><span>수금액</span><b>${won(take)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>보유 자금</span><b>${won(S.money)}</b></div>`;
+    if(S.debt<=0) html += `<p style="color:var(--accent)">마지막 수금이었다. 흉터는 장부를 덮고 돌아갔다. 빚을 모두 갚았다.</p>`;
+  }
+  addLog(`남겨진 흉터 방문. 남은 빚 ${won(S.debt)}, 흉터 ${S.scars}/3`);
+  await modal("남겨진 흉터", html, [{t:"확인",primary:true}]);
+  if(S.debt<=0 && !S.repaidShown){ S.repaidShown=true; S.records.push({day:S.day,name:S.officeName,what:"빚 청산",note:"남겨진 흉터의 장부가 닫혔다"}); await modal("빚 청산", "사무소의 빚을 모두 갚았다. 이제부터는 도시의 강자가 될 차례다. 게임은 계속된다.", [{t:"계속",primary:true}]); }
+}
+async function review(){
+  const lines = [];
+  S.fixers.forEach(f=>{
+    if(f.grade>=2 && total(f)>=PROMO[f.grade]){
+      f.grade--; f.hpMax+=10; f.mpMax+=10; f.hp+=10; f.mp+=10;
+      lines.push(`${esc(f.name)}: ${gName(f.grade+1)} → <b>${gName(f.grade)}</b>`);
+      S.records.push({day:S.day,name:f.name,what:"승급",note:gName(f.grade)});
+    }
+  });
+  // 특색 심사 지명
+  S.fixers.forEach(f=>{
+    if(f.grade===1 && total(f)>COLOR_REQ_TOTAL && f.starCleared && !S.requests.some(q=>q.kind==="특색 심사"&&q.target===f.id) && Math.random()<0.3){
+      const a = pick(ATTRS), b = pick(ATTRS.filter(x=>x!==a));
+      S.requests.unshift({id:S.nextId++, kind:"특색 심사", attrs:[a,b], grade:0, threat:"도시의 별", risk:null, client:"하나 협회",
+        text:`${f.name}에 대한 특색 심사. 홀로 출동해야 한다.`, reward:REQ_BASE[0][0], req:68, deadline:null, loot:null, special:true, target:f.id});
+      lines.push(`${esc(f.name)}: <b>특색 심사 지명</b>을 받았다.`);
+    }
+  });
+  // 사무소
+  const L = leader(), target = S.officeGrade-1;
+  let off = "";
+  if(S.officeGrade>1){
+    const needOk = L && L.grade<=target && L.grade!==null;
+    const doneOk = S.reviewSuccess>=10;
+    if(needOk && doneOk){ S.officeGrade--; off = `<p style="color:var(--accent)">사무소가 <b>${gName(S.officeGrade)} 사무소</b>로 승급했다.</p>`; S.records.push({day:S.day,name:S.officeName,what:"사무소 승급",note:gName(S.officeGrade)}); }
+    else off = `<p class="muted">사무소 승급 조건: 대표 ${gName(target)} 이상(${L?(L.grade<=target?"충족":"미충족"):"-"}), 지난 14일 ${gName(S.officeGrade)} 의뢰 성공 10건(${S.reviewSuccess}건).</p>`;
+  }
+  S.reviewSuccess = 0;
+  playFx("심사", "하나 협회 등급 심사", lines.length?"결과가 나왔다.":"변동 없음", true);
+  await modal("하나 협회 등급 심사", (lines.length? lines.join("<br>") : "<span class='muted'>승급한 해결사가 없다.</span>")+off, [{t:"확인",primary:true}]);
+}
+async function gameOver(title, text){
+  S.over = true; save(); render();
+  playFx("종료", title, "", false);
+  await modal(title, `<p>${text}</p><div class="kv"><span>버틴 날</span><b>${S.day}일</b><span>남은 빚</span><b>${won(S.debt)}</b><span>사무소 등급</span><b>${gName(S.officeGrade)}</b></div>`, [{t:"새 게임",primary:true,v:"new"}]);
+  clearSave(); S=null; renderStart();
+}
+
+/* ================= 영입 ================= */
+function genRecruits(){
+  const og = S.officeGrade;
+  const n = og>=8?2: og>=5?3:4;
+  const top = Math.max(2, og-1);
+  S.recruitPool = [];
+  for(let i=0;i<n;i++){
+    const g = rnd(top, 9);
+    const f = newFixer(randomName(), g, genStats(g));
+    f.hpMax = f.mpMax = 100 + (9-g)*10; f.hp=f.hpMax; f.mp=f.mpMax;
+    f.cost = Math.round(HIRE_COST[g]*(0.9+Math.random()*0.2)/100)*100;
+    S.recruitPool.push(f);
+  }
+}
+async function openRecruit(){
+  const draw = () => S.recruitPool.length ? S.recruitPool.map(f=>`<div class="item"><div><b>${esc(f.name)}</b> <span class="badge">${gName(f.grade)}</span> <span class="badge">${f.personality}</span>
+    <div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">고용비 ${won(f.cost)}</div></div>
+    <button class="primary" data-hire="${f.id}" ${S.money<f.cost||S.fixers.length>=10?"disabled":""}>고용</button></div>`).join("") : `<p class="muted">오늘은 더 이상 찾아온 해결사가 없다. 명단은 매일 아침 바뀐다.</p>`;
+  await modal("영입", `<p class="muted">${gName(S.officeGrade)} 사무소 · 최대 ${gName(Math.max(2,S.officeGrade-1))}까지 찾아온다. 1급과 특색은 영입으로 오지 않는다. 소속 ${S.fixers.length}/10명.</p><div class="list" id="rlist">${draw()}</div>`, [{t:"닫기"}], false, root=>{
+    root.addEventListener("click", async e=>{
+      const id = +e.target.dataset.hire; if(!id) return;
+      const f = S.recruitPool.find(x=>x.id===id); if(!f || S.money<f.cost) return;
+      const nm = await promptBox("이름", "이 해결사의 이름을 정한다(그대로 두거나 랜덤).", f.name, true);
+      if(nm===null) return;
+      f.name = nm || f.name; S.money -= f.cost; f.hiredDay=S.day; delete f.cost;
+      S.fixers.push(f); S.recruitPool = S.recruitPool.filter(x=>x!==f);
+      addLog(`${f.name}(${gName(f.grade)})을(를) 고용했다.`);
+      root.querySelector("#rlist").innerHTML = draw(); save(); render();
+    });
+  });
+}
+
+/* ================= 관리 ================= */
+const healCost = f => 1000 * (f.grade===0?10:(10-f.grade));
+async function openManage(){
+  let sel = S.fixers[0]?.id;
+  const draw = () => {
+    const f = S.fixers.find(x=>x.id===sel) || S.fixers[0]; if(!f) return "";
+    sel = f.id;
+    const inv = (S.inventory||[]);
+    const gearRow = (slot,label) => { const g=f.gear[slot]; return `<span>${label}</span><b>${g?esc(g.name)+" <span class='muted'>"+gearDesc(g)+"</span>":"<span class='muted'>없음</span>"}</b>`; };
+    const hc = healCost(f);
+    return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}">${esc(x.name)}</button>`).join("")}</div>
+    <div class="kv">
+      <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} <button data-rename="1" style="padding:2px 8px">이름 변경</button></b>
+      <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
+      <span>성격</span><b>${f.personality}</b>
+      <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)}${f.grade>=2?" / 다음 승급 "+PROMO[f.grade]:""})</b>
+      <span>경험</span><b class="muted">근력 ${f.exp.str}/2 · 민첩 ${f.exp.agi}/2 · 재주 ${f.exp.tec}/2 · 의지 ${f.exp.wil}/2</b>
+      <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
+      <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(f.ego.name)} (${f.ego.type==="weapon"?"무기":"방어구"})</b>`:""}
+      ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
+      <span>완료 의뢰</span><b>${f.done}건</b>
+    </div>
+    <h4 style="margin:14px 0 6px">유료 회복 <span class="muted" style="font-weight:400">(10당 ${won(hc)})</span></h4>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button data-heal="hp" ${f.hp>=f.hpMax||S.money<hc?"disabled":""}>체력 치료 +10</button>
+      <button data-heal="hpall" ${f.hp>=f.hpMax?"disabled":""}>체력 전부 (${won(Math.ceil((f.hpMax-f.hp)/10)*hc)})</button>
+      <button data-heal="mp" ${f.mp>=f.mpMax||S.money<hc?"disabled":""}>정신력 상담 +10</button>
+      <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
+    </div>
+    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품</h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><button data-equipinv="${i}">${esc(f.name)}에게 장착</button></div>`).join("")}</div>`:""}
+    ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
+  };
+  await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
+    const box = root.querySelector("#mg");
+    root.addEventListener("click", async e=>{
+      const d = e.target.dataset; const f = S.fixers.find(x=>x.id===sel);
+      if(d.sel){ sel=+d.sel; }
+      else if(d.heal && f){
+        const hc = healCost(f), isH = d.heal.startsWith("hp"), all = d.heal.endsWith("all");
+        const cur = isH?f.hp:f.mp, max = isH?f.hpMax:f.mpMax;
+        let steps = all ? Math.ceil((max-cur)/10) : 1;
+        steps = Math.min(steps, Math.floor(S.money/hc));
+        if(steps<=0) return;
+        S.money -= steps*hc;
+        if(isH) f.hp = Math.min(max, f.hp+steps*10); else f.mp = Math.min(max, f.mp+steps*10);
+      }
+      else if(d.rename && f){ const nm = await promptBox("이름 변경", "새 이름", f.name, true); if(nm) f.name = nm; }
+      else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
+      else if(d.fire && f){ if(await confirmBox("해고", `${esc(f.name)}을(를) 내보낸다. 되돌릴 수 없다.`)){ removeFixer(f,"해고","사무소를 떠남"); sel=S.fixers[0]?.id; } }
+      else return;
+      box.innerHTML = draw(); save(); render();
+    });
+  });
+}
+function gearDesc(g){
+  const p=[]; if(g.bonus) Object.entries(g.bonus).forEach(([k,v])=>p.push(`${ATTR_NAME[k]}+${v}`));
+  if(g.hpRed) p.push(`체력 피해 -${Math.round(g.hpRed*100)}%`); if(g.mpRed) p.push(`정신력 피해 -${Math.round(g.mpRed*100)}%`);
+  return p.join(" · ");
+}
+
+/* ================= 공방 ================= */
+async function openShop(){
+  const tierMax = S.officeGrade<=3?2 : S.officeGrade<=6?1 : 0;
+  let who = S.fixers[0]?.id, tab=0;
+  const draw = () => {
+    const f = S.fixers.find(x=>x.id===who);
+    const items = SHOP.filter(i=>i.tier===tab);
+    const locked = tab>tierMax;
+    return `<div class="field"><label>장착할 사람</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>
+    <div class="tabs">${["양산형","고급 공방","희귀 공방"].map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${i>tierMax?" 🔒":""}</button>`).join("")}</div>
+    ${locked?`<p class="muted">${tab===1?"6급":"3급"} 사무소부터 거래할 수 있다.</p>`:""}
+    <div class="list">${items.map(i=>{ const cur=f&&f.gear[i.slot]; return `<div class="item"><div><b>${esc(i.name)}</b> <span class="badge">${{weapon:"무기",armor:"방어구",acc:"장신구"}[i.slot]}</span><div class="d">${gearDesc(i)}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
+      <button class="primary" data-buy="${i.id}" ${locked||!f||S.money<i.price?"disabled":""}>구매·장착</button></div>`;}).join("")}</div>
+    <p class="muted" style="font-size:12px">원래 끼고 있던 장비는 보관함으로 옮겨진다. 원작 공방 장비는 이름과 특징만 따왔고 수치는 이 게임용이다.</p>`;
+  };
+  await modal("공방", `<div id="sh">${draw()}</div>`, [{t:"닫기"}], false, root=>{
+    const box = root.querySelector("#sh");
+    root.addEventListener("change", e=>{ if(e.target.id==="who"){ who=+e.target.value; box.innerHTML=draw(); } });
+    root.addEventListener("click", e=>{
+      const d=e.target.dataset;
+      if(d.tab!==undefined){ tab=+d.tab; }
+      else if(d.buy){ const it=SHOP.find(i=>i.id===d.buy), f=S.fixers.find(x=>x.id===who); if(!it||!f||S.money<it.price) return;
+        S.money-=it.price; const old=f.gear[it.slot]; f.gear[it.slot]=Object.assign({},it); if(old){ S.inventory=S.inventory||[]; S.inventory.push(old);} addLog(`${f.name}: ${it.name} 장착`); }
+      else return;
+      box.innerHTML=draw(); save(); render();
+    });
+  });
+}
+
+/* ================= 기록 / 저장 ================= */
+async function openRecords(){
+  const rec = S.records.slice().reverse();
+  await modal("기록", `<div class="tabs"><button class="on">사무소 인사 기록</button></div>
+   ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}
+   <h4 style="margin:16px 0 6px">저장 관리</h4>
+   <p class="muted" style="font-size:12px">진행 상황은 이 브라우저에 자동 저장된다. 브라우저 저장소는 지워질 수 있으니 가끔 코드를 복사해 두자.</p>
+   <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-x="export">저장 코드 복사</button><button data-x="import">저장 코드 불러오기</button><button class="danger" data-x="reset">처음부터 다시</button></div>`, [{t:"닫기"}], false, root=>{
+    root.addEventListener("click", async e=>{
+      const x=e.target.dataset.x; if(!x) return;
+      if(x==="export"){ const code=btoa(unescape(encodeURIComponent(JSON.stringify(S)))); try{ await navigator.clipboard.writeText(code); e.target.textContent="복사됨"; }catch(_){ await promptBox("저장 코드","아래 코드를 복사해 두자.",code,true);} }
+      if(x==="import"){ const code=await promptBox("불러오기","저장 코드를 붙여 넣는다.","",true); if(!code) return; try{ const d=JSON.parse(decodeURIComponent(escape(atob(code.trim())))); if(!d.fixers) throw 0; S=d; save(); closeAll(); render(); }catch(_){ alertBox("불러오기 실패","코드가 올바르지 않다."); } }
+      if(x==="reset"){ if(await confirmBox("처음부터","지금 진행 상황이 사라진다.")){ clearSave(); S=null; closeAll(); renderStart(); } }
+    });
+  });
+}
+function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
+function save(){ if(S) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over) return d; }catch(_){} return null; }
+function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
+
+/* ================= 모달 ================= */
+let modalStack = [];
+function modal(title, body, buttons, returnValue, onMount){
+  return new Promise(res=>{
+    const bg = document.createElement("div"); bg.className="modal-bg";
+    bg.innerHTML = `<div class="modal"><div class="mh">${title}</div><div class="mb">${body}</div><div class="mf"></div></div>`;
+    const mf = bg.querySelector(".mf");
+    buttons.forEach(b=>{ const el=document.createElement("button"); el.textContent=b.t; if(b.primary) el.className="primary"; if(b.danger) el.className="danger";
+      el.onclick=()=>{ close(); res(b.v!==undefined?b.v:true); }; mf.appendChild(el); });
+    const close = ()=>{ bg.remove(); modalStack = modalStack.filter(x=>x!==close); };
+    modalStack.push(()=>{ bg.remove(); res(null); });
+    document.getElementById("modal-root").appendChild(bg);
+    if(onMount) onMount(bg);
+  });
+}
+function closeAll(){ modalStack.slice().forEach(c=>c()); modalStack=[]; }
+const confirmBox = (t,b) => modal(t, b, [{t:"취소",v:false},{t:"확인",v:true,primary:true}]);
+const alertBox = (t,b) => modal(t, b, [{t:"확인",primary:true}]);
+function promptBox(title, label, def, allowRandom){
+  return new Promise(res=>{
+    modal(title, `<p class="muted">${label}</p><div class="field"><input id="pb" value="${esc(def||"")}" maxlength="400">${allowRandom?'<button id="pbr">랜덤</button>':""}</div>`,
+      [{t:"취소",v:"__c"},{t:"확인",v:"__ok",primary:true}], false, root=>{
+        const i=root.querySelector("#pb"); i.focus(); i.select();
+        const r=root.querySelector("#pbr"); if(r) r.onclick=()=>{ i.value = title.includes("특색")?randomColorTitle():randomName(); };
+        i.addEventListener("keydown",e=>{ if(e.key==="Enter") root.querySelector(".mf .primary").click(); });
+        root.querySelector(".mf .primary").addEventListener("click",()=>res(i.value.trim()), {capture:true});
+        root.querySelector(".mf button").addEventListener("click",()=>res(null), {capture:true});
+      });
+  });
+}
+
+/* ================= 렌더 ================= */
+function bar(cur,max,color){ return `<div class="bar"><i style="width:${clamp(cur/max*100,0,100)}%;background:${color}"></i></div>`; }
+function render(){
+  if(!S) return;
+  const app = document.getElementById("app");
+  if(!app.querySelector(".topbar")) buildShell();
+  const nextVisit = 7 - ((S.day-1)%7);
+  app.querySelector(".topbar").innerHTML = `
+    <span class="office">${esc(S.officeName)} <span class="badge">${gName(S.officeGrade)} 사무소</span></span>
+    <span class="stat">${S.day}일차</span>
+    <span class="stat">자금 <b>${won(S.money)}</b></span>
+    <span class="stat">남은 빚 <b>${won(S.debt)}</b></span>
+    <span class="stat">${S.debt>0?`흉터 방문 <b>${nextVisit-1===0?"오늘 밤":(nextVisit-1)+"일 뒤"}</b>`:"<b style='color:var(--accent)'>빚 청산</b>"}</span>
+    <span class="stat scars">흉터 경고 ${[0,1,2].map(i=>`<span class="${i<S.scars?"on":""}"></span>`).join("")}</span>
+    <span class="stat">등급 심사 <b>${(13-((S.day-1)%14))===0?"오늘 밤":(13-((S.day-1)%14))+"일 뒤"}</b></span>`;
+  // 의뢰
+  const avail = S.fixers.filter(canGo);
+  app.querySelector("#reqs").innerHTML = S.requests.length ? S.requests.map(q=>{
+    const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
+    return `<div class="req ${q.kind==="뒤틀림 토벌"?"distort":q.special?"special":""}" data-q="${q.id}">
+      <div class="head"><span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>
+        <span class="badge">${gName(q.grade)} · ${q.threat}</span>${q.risk?`<span class="badge">${q.risk}</span>`:""}
+        <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span></div>
+      <div class="client">의뢰자: ${esc(q.client)}</div>
+      <div class="txt">${esc(q.text)}</div>
+      <div class="row"><span>보수 <b>${won(q.reward)}</b></span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
+      ${q.loot?`<div class="loot">특수 전리품 가능: ${esc(q.loot.name)}</div>`:""}
+      <div class="est" id="est-${q.id}"></div>
+      <div class="assign"><select data-pick="${q.id}"><option value="">해결사 선택</option>${opts.map(f=>`<option value="${f.id}">${esc(f.name)} (${gName(f.grade)})</option>`).join("")}</select>
+      <button class="primary" data-go="${q.id}" disabled>출동</button></div></div>`;
+  }).join("") : `<p class="muted">게시판이 비었다.</p>`;
+  // 해결사
+  app.querySelector("#fxs").innerHTML = S.fixers.map(f=>{
+    const lh=level(f.hp,f.hpMax), lm=level(f.mp,f.mpMax);
+    const st = f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? "오늘 출동함" : "대기 중";
+    const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
+    return `<div class="fx"><div class="n"><b>${esc(f.name)}${f.isLeader?" ★":""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
+      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">E.G.O. ${esc(f.ego.name)}</div>`:""}
+      <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
+      <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
+      <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
+      <div class="state">${st} · 총합 ${total(f)}</div></div>`;
+  }).join("");
+  app.querySelector("#log").innerHTML = S.log.map(l=>`<div class="${l.cls||""}">${l.d}일 · ${esc(l.t)}</div>`).join("");
+  app.querySelector("#endday").disabled = S.over;
+}
+let shellBound=false;
+function buildShell(){
+  const app = document.getElementById("app");
+  app.innerHTML = `<div class="topbar"></div>
+   <div class="stage"><canvas id="cv"></canvas><div class="cap"><div class="t" id="capt"></div><div class="s" id="caps"></div></div></div>
+   <div class="main">
+     <div class="panel"><h2>의뢰 게시판 <small>해결사 1명은 하루 1건</small></h2><div class="reqs" id="reqs"></div></div>
+     <div class="panel"><h2>해결사 <small>★ 대표</small></h2><div class="fixers" id="fxs"></div></div>
+   </div>
+   <div class="nav"><button data-nav="recruit">영입</button><button data-nav="manage">관리</button><button data-nav="shop">공방</button><button data-nav="records">기록</button><button id="endday" class="primary">하루 끝내기</button></div>
+   <div class="panel log" id="log"></div>`;
+  initStage();
+  if(shellBound) return; shellBound=true;
+  app.addEventListener("change", e=>{
+    const qid = e.target.dataset.pick; if(!qid) return;
+    const q = S.requests.find(x=>x.id==qid), f = S.fixers.find(x=>x.id==e.target.value);
+    const est = app.querySelector("#est-"+qid), go = app.querySelector(`[data-go="${qid}"]`);
+    if(!f){ est.innerHTML=""; go.disabled=true; return; }
+    const m = estimate(f,q);
+    est.innerHTML = `예상 성공률 <b style="color:${m.rate>=60?"var(--green)":m.rate>=35?"var(--yellow)":"var(--red)"}">${m.rate}%</b> · 예상 ${m.stat} 피해 성공 ${m.s[0]}~${m.s[1]} / 실패 ${m.l[0]}~${m.l[1]}`;
+    go.disabled=false;
+  });
+  app.addEventListener("click", e=>{
+    const d = e.target.dataset;
+    if(d.go){ const sel = app.querySelector(`[data-pick="${d.go}"]`); if(sel.value) dispatch(+d.go, +sel.value); }
+    if(d.nav==="recruit") openRecruit(); if(d.nav==="manage") openManage(); if(d.nav==="shop") openShop(); if(d.nav==="records") openRecords();
+    if(e.target.id==="endday"){ (async()=>{ if(S.requests.length && S.fixers.some(canGo)){ if(!await confirmBox("하루 끝내기","아직 처리하지 않은 의뢰와 출동 가능한 해결사가 있다. 하루를 끝낼까?")) return; } await endDay("하루를 마쳤다."); })(); }
+  });
+}
+
+/* ================= 시작 화면 ================= */
+function renderStart(){
+  const app = document.getElementById("app");
+  app.innerHTML = `<div class="start panel">
+    <div class="big">해결사 사무소</div>
+    <p class="muted">빚 ${won(START_DEBT)}을 진 8급 사무소. 대표인 당신과 9급 해결사 한 명으로 시작한다.<br>매주 [남겨진 흉터]가 금고의 35%를 걷어 간다. 흉터가 세 번 새겨지면 끝이다.</p>
+    <div class="field"><label>대표 이름</label><input id="s1" value="${esc(randomName())}"><button data-r="s1">랜덤</button></div>
+    <div class="field"><label>사무소 이름</label><input id="s2" value="${esc(randomOffice())}"><button data-r="s2">랜덤</button></div>
+    <div class="field"><label>동료 이름</label><input id="s3" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px"><button class="primary" id="go">사무소 열기</button></div>
+    <p class="muted" style="font-size:12px;margin-top:14px">v${VERSION}</p></div>`;
+  app.onclick = e=>{
+    const r = e.target.dataset.r; if(r){ app.querySelector("#"+r).value = r==="s2"?randomOffice():randomName(); }
+    if(e.target.id==="go"){
+      const v = id => app.querySelector("#"+id).value.trim();
+      app.onclick = null;
+      newGame(v("s1")||randomName(), v("s2")||randomOffice(), v("s3")||randomName());
+      app.innerHTML=""; render();
+      playFx("아침", "1일차", `${S.officeName}의 첫날. 의뢰 ${S.requests.length}건.`, true);
+    }
+  };
+}
+
+/* ================= 연출(상단) ================= */
+let cv, cx, skyline=[], rain=[], fx={t:0,color:"#c9a86a",kind:"",good:true};
+let loopOn=false;
+function resizeStage(){ if(!cv) return; const r=cv.getBoundingClientRect(); cv.width=Math.max(1,r.width*devicePixelRatio); cv.height=Math.max(1,r.height*devicePixelRatio); buildSky(); }
+function initStage(){
+  cv = document.getElementById("cv"); cx = cv.getContext("2d");
+  resizeStage();
+  if(loopOn) return; loopOn=true;
+  window.addEventListener("resize", resizeStage);
+  for(let i=0;i<90;i++) rain.push({x:Math.random(),y:Math.random(),v:0.6+Math.random()*0.8});
+  requestAnimationFrame(loop);
+}
+function buildSky(){
+  skyline=[]; const W=cv.width,H=cv.height;
+  [0.35,0.55,0.8].forEach((depth,li)=>{
+    let x=-20;
+    while(x<W+20){ const w=(30+Math.random()*70)*devicePixelRatio*(0.6+depth*0.5), h=H*(0.25+Math.random()*0.45)*(0.5+depth*0.6);
+      const wins=[]; for(let wy=8;wy<h-6;wy+=9*devicePixelRatio) for(let wx=5;wx<w-6;wx+=8*devicePixelRatio) if(Math.random()<0.18) wins.push([wx,wy,Math.random()]);
+      skyline.push({x,w,h,layer:li,depth,wins}); x+=w+Math.random()*6*devicePixelRatio; }
+  });
+}
+function playFx(kind, title, sub, good){
+  fx = {t:performance.now(), kind, good, color: kind==="흉터"||kind==="뒤틀림"||kind==="사망"||kind==="종료" ? "#c94a4a" : kind==="에고"?"#f4e6b8" : KIND_COLOR[kind] || "#c9a86a"};
+  const t=document.getElementById("capt"), s=document.getElementById("caps");
+  if(t){ t.textContent=title; t.style.color=fx.color; s.textContent=sub||""; }
+}
+function loop(now){
+  if(!cx){ return; }
+  const W=cv.width,H=cv.height; const age=(now-fx.t)/1000;
+  const g=cx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0a0a12"); g.addColorStop(1,"#14121a"); cx.fillStyle=g; cx.fillRect(0,0,W,H);
+  // 은은한 빛무리
+  const glow = Math.max(0, 1-age/3);
+  if(glow>0){ const rg=cx.createRadialGradient(W/2,H*0.55,0,W/2,H*0.55,W*0.5); rg.addColorStop(0,fx.color+"55"); rg.addColorStop(1,"transparent"); cx.globalAlpha=glow; cx.fillStyle=rg; cx.fillRect(0,0,W,H); cx.globalAlpha=1; }
+  const shake = (fx.kind==="뒤틀림"||fx.kind==="흉터") && age<1.2 ? (1.2-age)*6*devicePixelRatio : 0;
+  skyline.forEach(b=>{
+    const off = Math.sin(now/4000+b.depth)*2*b.depth + (shake? (Math.random()-0.5)*shake:0);
+    const shade = Math.round(10+b.layer*9);
+    cx.fillStyle=`rgb(${shade},${shade},${shade+6})`;
+    cx.fillRect(b.x+off, H-b.h, b.w, b.h);
+    b.wins.forEach(w=>{ const fl = 0.5+0.5*Math.sin(now/700+w[2]*40); if(fl<0.15) return; cx.fillStyle=`rgba(232,200,130,${0.25+0.5*fl*b.depth})`; cx.fillRect(b.x+off+w[0], H-b.h+w[1], 3*devicePixelRatio, 4*devicePixelRatio); });
+  });
+  // 비
+  cx.strokeStyle="rgba(170,180,200,0.18)"; cx.lineWidth=1*devicePixelRatio; cx.beginPath();
+  rain.forEach(r=>{ r.y+=0.012*r.v; if(r.y>1){r.y=0;r.x=Math.random();} const x=r.x*W,y=r.y*H; cx.moveTo(x,y); cx.lineTo(x-3*devicePixelRatio,y+12*devicePixelRatio); }); cx.stroke();
+  // 뒤틀림: 화면 조각 어긋남
+  if(fx.kind==="뒤틀림" && age<2.5){ for(let i=0;i<6;i++){ const y=Math.random()*H, h=6+Math.random()*20; cx.drawImage(cv,0,y,W,h,(Math.random()-0.5)*40*devicePixelRatio,y,W,h);} }
+  // 에고/특색: 위로 솟는 빛줄기
+  if((fx.kind==="에고"||fx.kind==="특색 심사") && age<3){ for(let i=0;i<14;i++){ const x=W/2+(Math.sin(i*13.7)*W*0.25); const a=(1-age/3)*0.35; cx.fillStyle=`rgba(255,240,200,${a})`; cx.fillRect(x,0,2*devicePixelRatio,H*(0.4+0.6*((i*7)%5)/5)); } }
+  // 흉터: 붉은 사선
+  if(fx.kind==="흉터" && age<2.5){ cx.strokeStyle=`rgba(201,74,74,${0.8*(1-age/2.5)})`; cx.lineWidth=4*devicePixelRatio; cx.beginPath(); const p=Math.min(1,age/0.4); cx.moveTo(W*0.3,H*0.2); cx.lineTo(W*0.3+W*0.4*p,H*0.2+H*0.6*p); cx.stroke(); }
+  // 실패 시 어두워짐
+  if(fx.good===false && age<1.5 && fx.kind!=="흉터"){ cx.fillStyle=`rgba(0,0,0,${0.35*(1-age/1.5)})`; cx.fillRect(0,0,W,H); }
+  requestAnimationFrame(loop);
+}
+
+/* ================= 부팅 ================= */
+S = load();
+if(S){ render(); playFx("아침", `${S.day}일차`, "사무소에 돌아왔다.", true); } else renderStart();
+</script>
+</body>
+</html>
