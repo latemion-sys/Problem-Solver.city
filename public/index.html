@@ -88,6 +88,22 @@ footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);lin
 .item .d{font-size:12px;color:var(--muted)}
 .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .tabs button.on{border-color:var(--accent);color:var(--accent)}
+/* 공방 · 고유 장비 제작 */
+.modal.modal-wide{max-width:860px}
+.sh-mk{margin:14px 0 6px;font-size:14px} .sh-mk .muted{font-weight:400;font-size:12px;margin-left:6px}
+.sh-item{justify-content:flex-start} .wicon{width:64px;height:40px;flex:none;display:block} .sh-slot{display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);border:1px dashed var(--line);border-radius:6px}
+.fg-steps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;font-size:12px} .fg-steps span{padding:3px 9px;border-radius:12px;border:1px solid var(--line);color:var(--muted)} .fg-steps span.on{border-color:var(--accent);color:var(--accent)} .fg-steps span.done{color:var(--text)}
+.fg-pick{display:grid;grid-template-columns:1fr 1fr;gap:10px} .fg-pick button{padding:18px 12px;display:flex;flex-direction:column;gap:4px;text-align:left} .fg-pick b{font-size:16px} .fg-pick small,.fg-kinds small{color:var(--muted);font-size:11px}
+.fg-kinds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px} .fg-kinds button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px} .fg-kinds button.on{border-color:var(--accent)} .fg-kinds .wicon{width:90px;height:46px}
+.fg-body{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
+.fg-prev .fg-cv{width:100%;aspect-ratio:4/3.4;display:block;border-radius:8px;border:1px solid var(--line)} .fg-view{margin-top:6px}
+.fg-row{display:flex;align-items:center;gap:10px;margin-bottom:9px} .fg-row>span{width:62px;flex:none;font-size:12px;color:var(--muted)} .fg-row input[type=range]{flex:1} .fg-row input#fgname{flex:1}
+.fg-seg{display:flex;gap:4px;flex-wrap:wrap} .fg-seg button{padding:4px 9px;font-size:12px} .fg-seg button.on{border-color:var(--accent);color:var(--accent)}
+.fg-sw{display:flex;gap:5px;flex-wrap:wrap} .fg-sw .sw{width:24px;height:24px;padding:0;border-radius:50%;font-size:11px;color:var(--muted)} .fg-sw .sw.on{outline:2px solid var(--accent);outline-offset:2px}
+.fg-nav{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.mg-prev{display:flex;gap:10px;align-items:flex-end;margin-bottom:10px} .mg-prev canvas{width:180px;height:170px;border-radius:8px;border:1px solid var(--line);flex:none}
+.rig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px} .rig-grid figure{margin:0;text-align:center;font-size:12px;color:var(--muted)} .rig-grid canvas{width:100%;aspect-ratio:1/1.05;display:block;border-radius:6px;border:1px solid var(--line)}
+@media (max-width:640px){ .fg-body{grid-template-columns:1fr} .fg-kinds{grid-template-columns:repeat(2,1fr)} }
 .kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:13px}
 .kv span{color:var(--muted)}
 .field{display:flex;gap:6px;margin-bottom:8px;align-items:center}
@@ -214,34 +230,106 @@ const TEXTS = {
 const ESCORT = ["둥지 경계까지 화물 차량을 호위해 달라","협회 사무실까지 증인을 안전하게 데려다 달라","야간 시장 개장 시간 동안 상인을 지켜 달라"];
 const SEARCH = ["폐공장에 숨겨진 장부를 찾아 달라","사흘째 연락이 없는 수리공을 찾아 달라","뒷골목 하수로 어딘가에 떨어진 열쇠를 찾아 달라"];
 
-// 장비: slot, 이름, 가격, 보너스, 피해감소
+/* ================= 장비 · 공방 =================
+   양산 제작: 이름 없는 공방의 흔한 물건. 7급 의뢰까지 쓸 만하다.
+   고급 제작: 원작 세계관의 공방. 4급 의뢰까지 쓸 만하다(6급 사무소부터 거래).
+   특수 제작: 원작 세계관의 고급 공방·인더스트리·아틀리에. 1급 의뢰까지 쓸 만하다(3급 사무소부터 거래).
+   고유 장비: 특색이 된 해결사만 한 벌씩 주문 제작한다(무기·방어구 각각).
+   무기 보너스 = 위력 예산 × 종류별 능력치 비율. 공방 이름과 특징만 원작에서 따왔고 물건·수치는 이 게임용이다. */
+const WEAPON_KINDS = {
+  blade:{n:"한손검", vars:["직검","곡도","톱날검","단검"],   prof:{str:.4,agi:.4,tec:.2},   carry:"hip",      two:false},
+  great:{n:"대검",   vars:["처형검","양날 대검","외날 대검"], prof:{str:.75,agi:.1,tec:.15}, carry:"back",     two:true},
+  blunt:{n:"둔기",   vars:["망치","메이스","도끼"],          prof:{str:.7,agi:.15,tec:.15}, carry:"shoulder", two:false},
+  spear:{n:"창",     vars:["잎날창","랜스","갈고리창"],      prof:{agi:.5,str:.3,tec:.2},   carry:"upright",  two:true},
+  gun:  {n:"총",     vars:["권총","산탄총","장총"],          prof:{tec:.6,agi:.3,str:.1},   carry:"holster",  two:false},
+  drill:{n:"드릴",   vars:["원뿔 드릴","이중 드릴"],         prof:{str:.55,tec:.45},        carry:"hang",     two:true},
+  tool: {n:"공구",   vars:["렌치","전기톱"],                prof:{tec:.6,str:.25,agi:.15}, carry:"hip",      two:false},
+  twin: {n:"쌍검",   vars:["팔시온","단검"],                prof:{agi:.6,str:.2,tec:.2},   carry:"back",     two:false},
+  fist: {n:"건틀릿", vars:["건틀릿","갈퀴 장갑"],            prof:{str:.5,agi:.5},          carry:"worn",     two:false}
+};
+const ARMOR_TYPES = ["경량 재킷","해결사 코트","롱코트","중장갑"];
+const METALS = ["#aab5b1","#c8ccd2","#8e959e","#c9a86a","#b07a5a","#5f6670"];
+const GLOWS  = [null,"#7fe0ff","#ff8a3a","#ff4f6a","#b48cff","#f2d27a","#7fffb0"];
+const defaultSpec = kind => ({kind, v:0, len:1, wid:1, metal:METALS[0], glow:null, deco:0});
+function profBonus(kind, b){ const out = {}; Object.entries(WEAPON_KINDS[kind].prof).forEach(([k,v])=>{ const n = Math.round(b*v); if(n>0) out[k] = n; }); return out; }
+const TIER_NAME = ["양산 제작","고급 제작","특수 제작","고유 장비"];
+const MAKERS = {
+  "이름 없는 공방":"골목 어딘가에서 찍어 내는 양산품. 싸고 흔하다.",
+  "묵 공방":"환도 같은 한국식 무기를 만든다.",
+  "랑가 공방":"갈퀴 달린 건틀릿과 단검.",
+  "젤코바 공방":"메이스와 도끼.",
+  "올드 보이즈 공방":"망치.",
+  "알라스 공방":"손놀림을 빠르게 해 주는 장갑과 랜스.",
+  "네스터 공방":"진동으로 좁은 곳에서도 충격을 키우는 작은 망치.",
+  "로즈스패너 공방":"거대한 렌치나 전기톱을 닮은 무기.",
+  "나미르 공방":"떠올랐다가 내리꽂는 건틀릿.",
+  "클라우드 공방":"흑운회에 대는 칼날.",
+  "리플렛 공방":"실험적인 증기 동력 무기.",
+  "유니온 공방":"기성품 생체 무기·장비와 의체 시술.",
+  "파나르 공방":"압박 붕대.",
+  "스티그마 공방":"[고급 공방] 달군 칼날로 오래 남는 낙인을 새긴다. 비싸다.",
+  "메즈틸 공방":"[고급 공방] 빠르지만 다루기 어렵고 위험한 검.",
+  "휠스 인더스트리":"[인더스트리] 처형인의 대검.",
+  "슈바르츠 인더스트리":"[인더스트리] 의체 전문.",
+  "아틀리에 로직":"[아틀리에] 총기와 부품.",
+  "크리스탈 아틀리에":"[아틀리에] 팔시온.",
+  "스크류 아틀리에":"[아틀리에] 전기로 강화한 드릴형 무기."
+};
+const W_ = (id, tier, maker, name, kind, look, b, price) => ({id, tier, slot:"weapon", maker, name, wtype:kind, look:Object.assign({kind}, look), power:b, price, bonus:profBonus(kind, b)});
+const A_ = (id, tier, maker, name, look, price, extra) => Object.assign({id, tier, slot:"armor", maker, name, look, price}, extra);
+const C_ = (id, tier, maker, name, price, extra) => Object.assign({id, tier, slot:"acc", maker, name, price}, extra);
 const SHOP = [
- // 양산형(창작)
- {id:"w1",wtype:"blunt",tier:0,slot:"weapon",name:"뒷골목 쇠파이프",price:1500,bonus:{str:2}},
- {id:"w2",wtype:"blade",tier:0,slot:"weapon",name:"해결사 표준 단검",price:1500,bonus:{agi:2}},
- {id:"w3",wtype:"tool",tier:0,slot:"weapon",name:"정비 공구 세트",price:1500,bonus:{tec:2}},
- {id:"w4",wtype:"blade",tier:0,slot:"weapon",name:"개조 마체테",price:4500,bonus:{str:3,agi:1}},
- {id:"w5",wtype:"gun",tier:0,slot:"weapon",name:"구형 리볼버",price:4500,bonus:{tec:3,agi:1}},
- {id:"w6",wtype:"blade",tier:0,slot:"weapon",name:"체인 블레이드",price:12000,bonus:{str:5,agi:1}},
- {id:"a1",tier:0,slot:"armor",name:"표준 해결사 코트",price:3000,hpRed:0.10},
- {id:"a2",tier:0,slot:"armor",name:"방검 조끼",price:8000,hpRed:0.15},
- {id:"c1",tier:0,slot:"acc",name:"싸구려 진정 패치",price:3000,mpRed:0.10},
- {id:"c2",tier:0,slot:"acc",name:"손때 묻은 염주",price:3500,bonus:{wil:2}},
- {id:"c3",tier:0,slot:"acc",name:"보급형 경보 팔찌",price:9000,mpRed:0.15,bonus:{wil:1}},
- // 고급(원작 공방, 6급 사무소부터)
- {id:"g1",wtype:"gun",tier:1,slot:"weapon",name:"아틀리에 로직 권총",price:70000,bonus:{tec:6,agi:2}},
- {id:"g2",wtype:"blade",tier:1,slot:"weapon",name:"묵 공방 환도",price:70000,bonus:{agi:6,tec:2}},
- {id:"g3",wtype:"blunt",tier:1,slot:"weapon",name:"젤코바 공방 철퇴·도끼",price:70000,bonus:{str:6,agi:2}},
- {id:"g4",wtype:"spear",tier:1,slot:"weapon",name:"알라스 공방 창",price:70000,bonus:{agi:5,str:3}},
- {id:"g5",tier:1,slot:"armor",name:"강화 섬유 코트",price:55000,hpRed:0.25},
- {id:"g6",tier:1,slot:"acc",name:"정신 안정 이식칩",price:60000,mpRed:0.25,bonus:{wil:2}},
- // 희귀(원작 공방, 3급 사무소부터)
- {id:"r1",wtype:"great",tier:2,slot:"weapon",name:"휠스 인더스트리 대검",price:420000,bonus:{str:12,agi:1}},
- {id:"r2",wtype:"blade",tier:2,slot:"weapon",name:"스티그마 공방 장검",price:420000,bonus:{str:6,tec:6,agi:2}},
- {id:"r3",wtype:"drill",tier:2,slot:"weapon",name:"스크류 아틀리에 드릴",price:420000,bonus:{str:8,tec:5}},
- {id:"r4",tier:2,slot:"armor",name:"특주 다층 방호복",price:380000,hpRed:0.35},
- {id:"r5",tier:2,slot:"acc",name:"특주 정신 보호 장치",price:380000,mpRed:0.35,bonus:{wil:4}}
+  // 양산 제작 — 이름 없는 공방 (위력 2~6)
+  W_("n1",0,"이름 없는 공방","보급형 단검","blade",{v:3},2,1500),
+  W_("n4",0,"이름 없는 공방","쇠파이프","blunt",{v:0,len:0.9,wid:0.45},2,1500),
+  W_("n6",0,"이름 없는 공방","정비 공구","tool",{v:0},2,1500),
+  W_("n11",0,"이름 없는 공방","강철 너클","fist",{v:0,wid:0.85},3,3000),
+  W_("n2",0,"이름 없는 공방","양산 마체테","blade",{v:0,len:0.85,wid:1.25},4,5000),
+  W_("n7",0,"이름 없는 공방","구형 리볼버","gun",{v:0},4,5000),
+  W_("n9",0,"이름 없는 공방","철근 창","spear",{v:0,metal:"#8e959e"},4,6000),
+  W_("n5",0,"이름 없는 공방","공사용 해머","blunt",{v:0,wid:1.1},5,9000),
+  W_("n12",0,"이름 없는 공방","소형 드릴","drill",{v:0,len:0.7},5,11000),
+  W_("n3",0,"이름 없는 공방","체인 블레이드","blade",{v:2},6,14000),
+  W_("n8",0,"이름 없는 공방","양산 산탄총","gun",{v:1},6,15000),
+  W_("n10",0,"이름 없는 공방","절단용 대검","great",{v:2,len:0.85},6,16000),
+  A_("na1",0,"이름 없는 공방","표준 해결사 코트",{type:1,pad:0},3000,{hpRed:0.10}),
+  A_("na2",0,"이름 없는 공방","방검 조끼",{type:0,pad:1},8000,{hpRed:0.15}),
+  A_("na3",0,"이름 없는 공방","덧댄 롱코트",{type:2,pad:1},16000,{hpRed:0.18}),
+  C_("nc1",0,"이름 없는 공방","싸구려 진정 패치",3000,{mpRed:0.10}),
+  C_("nc2",0,"이름 없는 공방","손때 묻은 염주",3500,{bonus:{wil:2}}),
+  C_("nc3",0,"이름 없는 공방","보급형 경보 팔찌",9000,{mpRed:0.15,bonus:{wil:1}}),
+  // 고급 제작 — 원작 공방 (위력 8~13)
+  W_("m2",1,"랑가 공방","랑가 공방 단검","blade",{v:3,metal:"#c8ccd2"},8,70000),
+  W_("m8",1,"네스터 공방","네스터 공방 진동 망치","blunt",{v:0,len:0.75,wid:0.9},8,70000),
+  W_("m4",1,"젤코바 공방","젤코바 공방 메이스","blunt",{v:1},9,90000),
+  W_("m5",1,"젤코바 공방","젤코바 공방 도끼","blunt",{v:2},9,90000),
+  W_("m3",1,"랑가 공방","랑가 공방 갈퀴 장갑","fist",{v:1,metal:"#c8ccd2"},10,120000),
+  W_("m9",1,"로즈스패너 공방","로즈스패너 공방 렌치","tool",{v:0,len:1.25,wid:1.3,metal:"#b07a5a"},10,120000),
+  W_("m12",1,"클라우드 공방","클라우드 공방 직검","blade",{v:0,len:1.1,metal:"#c8ccd2"},10,120000),
+  W_("m1",1,"묵 공방","묵 공방 환도","blade",{v:1,len:1.1,deco:1},11,160000),
+  W_("m6",1,"올드 보이즈 공방","올드 보이즈 공방 망치","blunt",{v:0,wid:1.25,deco:1},12,200000),
+  W_("m7",1,"알라스 공방","알라스 공방 랜스","spear",{v:1,metal:"#c8ccd2"},12,200000),
+  W_("m10",1,"로즈스패너 공방","로즈스패너 공방 전기톱","tool",{v:1,metal:"#b07a5a"},13,260000),
+  W_("m11",1,"나미르 공방","나미르 공방 건틀릿","fist",{v:0,wid:1.3,glow:"#b48cff"},13,260000),
+  W_("m13",1,"리플렛 공방","리플렛 공방 증기 대검","great",{v:2,glow:"#ff8a3a",metal:"#8e959e"},13,260000),
+  A_("ma2",1,"유니온 공방","유니온 공방 경량 방호 코트",{type:1,pad:1,collar:1},90000,{hpRed:0.2}),
+  A_("ma1",1,"유니온 공방","유니온 공방 생체 보호구",{type:3,pad:1},160000,{hpRed:0.25}),
+  C_("mc1",1,"파나르 공방","파나르 공방 압박 붕대",80000,{hpRed:0.08,mpRed:0.1}),
+  C_("mc2",1,"유니온 공방","유니온 공방 신경 안정 칩",150000,{mpRed:0.25,bonus:{wil:2}}),
+  // 특수 제작 — 고급 공방·인더스트리·아틀리에 (위력 16~24)
+  W_("s3",2,"아틀리에 로직","아틀리에 로직 권총","gun",{v:0,metal:"#5f6670",deco:2},16,650000),
+  W_("s7",2,"메즈틸 공방","메즈틸 공방 쾌검","blade",{v:1,len:1.1,wid:0.85,metal:"#c8ccd2"},19,1100000),
+  W_("s4",2,"아틀리에 로직","아틀리에 로직 산탄총","gun",{v:1,metal:"#5f6670",deco:2},20,1300000),
+  W_("s5",2,"스크류 아틀리에","스크류 아틀리에 드릴","drill",{v:1,glow:"#7fe0ff"},20,1300000),
+  W_("s2",2,"크리스탈 아틀리에","크리스탈 아틀리에 팔시온","twin",{v:0,metal:"#c8ccd2",glow:"#7fe0ff"},21,1700000),
+  W_("s6",2,"스티그마 공방","스티그마 공방 장검","blade",{v:0,len:1.15,glow:"#ff8a3a",deco:2},22,1900000),
+  W_("s1",2,"휠스 인더스트리","휠스 인더스트리 처형검","great",{v:0,len:1.05,wid:1.2},24,2400000),
+  A_("sa1",2,"슈바르츠 인더스트리","슈바르츠 인더스트리 의체 장갑",{type:3,pad:2,collar:1},1400000,{hpRed:0.38}),
+  C_("sc1",2,"슈바르츠 인더스트리","슈바르츠 인더스트리 신경 의체",1200000,{mpRed:0.35,bonus:{wil:4}})
 ];
+// 고유 장비(특색 전용): 무기 위력 30, 방어구 피해 감소 크게
+const UNIQUE_POWER = 30;
+const UNIQUE_ARMOR = {hpRed:0.45, mpRed:0.3, bonus:{wil:3}};
 const LOOT = [
  {slot:"acc",name:"이름 없는 은반지",bonus:{agi:2,tec:2}},
  {slot:"acc",name:"누군가의 낡은 회중시계",mpRed:0.12,bonus:{wil:2}},
@@ -426,7 +514,7 @@ function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30
 function weaponTypeOf(g){ if(!g) return null; if(g.wtype) return g.wtype; const s = SHOP.find(i=>i.name===g.name); return s ? s.wtype : "blade"; }
 function leadGear(f){
   if(!f) return null; const w = f.gear.weapon, acc = f.gear.acc;
-  return { wtype: weaponTypeOf(w), weaponName: w ? w.name : null, armor: !!f.gear.armor, acc: !!acc,
+  return { wtype: weaponTypeOf(w), weaponName: w ? w.name : null, spec: weaponSpecOf(w), armorSpec: armorSpecOf(f.gear.armor), armor: !!f.gear.armor, acc: !!acc,
            accColor: acc && acc.mpRed ? "180,150,255" : "150,230,255", ego: !!f.ego };
 }
 
@@ -839,6 +927,8 @@ const CARDS = {
   spear:[{n:"꿰뚫기",a:4,b:9},{n:"휘둘러 치기",a:4,b:8},{n:"자루로 막기",a:4,b:6,def:true}],
   drill:[{n:"천공",a:3,b:10},{n:"갈아내기",a:5,b:7},{n:"몸통 막기",a:3,b:7,def:true}],
   tool: [{n:"공구 휘두르기",a:4,b:8},{n:"틈새 쑤시기",a:4,b:7},{n:"막아서기",a:3,b:6,def:true}],
+  twin: [{n:"연속 베기",a:4,b:8,cleave:true},{n:"교차 베기",a:5,b:7},{n:"쳐내기",a:3,b:6,def:true}],
+  fist: [{n:"연타",a:4,b:8},{n:"올려치기",a:3,b:9},{n:"가드",a:3,b:6,def:true}],
   none: [{n:"주먹",a:3,b:7},{n:"발차기",a:4,b:7},{n:"팔로 막기",a:3,b:5,def:true}]
 };
 const FOE_WEAPONS = ["blade","blunt","gun","spear","great","drill"];
@@ -848,10 +938,10 @@ function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
     const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal==="사살"?"머리·목을 무너뜨리거나 몸통을 세로로 갈라 사살":"양팔이나 양다리를 못 쓰게 하거나 몸통을 무너뜨려 제압"}</b>. 노릴 부위를 고르고 카드를 내 주사위 합을 겨룬다. 최대 5턴.`, ctx, 380);
-    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none"}));
-    if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value) party.forEach(p=>p.wt = w.value); }
+    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none", spec: weaponSpecOf(f.gear.weapon), armor: armorSpecOf(f.gear.armor)}));
+    if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     const fwt = pick(FOE_WEAPONS);
-    const foe = {name: FOE_NAMES[q.grade!=null?q.grade:9] || "적", wt:fwt, parts:{}, cards: CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1), b:c.b-1}))};
+    const foe = {name: FOE_NAMES[q.grade!=null?q.grade:9] || "적", wt:fwt, spec: Object.assign(defaultSpec(fwt), {metal:"#b9aca9", v: Math.floor(Math.random()*WEAPON_KINDS[fwt].vars.length)}), parts:{}, cards: CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1), b:c.b-1}))};
     const g0 = q.grade!=null ? q.grade : 9, augChance = 0.12 + (9-g0)*0.09;
     foe.aug = Math.random()<augChance ? pick(AUGMENTS) : null;
     if(foe.aug && (9-g0)>=5 && Math.random()<0.4){ const b = pick(AUGMENTS.filter(x=>x!==foe.aug)); foe.aug = {n:`${foe.aug.n} + ${b.n}`, desc:`${foe.aug.desc}, ${b.desc}`, mul:Object.assign({}, b.mul, foe.aug.mul)}; }
@@ -940,7 +1030,7 @@ function mgCombat(ctx){
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
     let G = null; try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; }
     if(!G){ glc.remove(); m.cvs.classList.remove("mg-over"); }
-    const FX_COL = { blade:[0.8,0.9,1], great:[0.85,0.9,1], spear:[0.8,0.92,1], blunt:[1,0.72,0.42], drill:[1,0.66,0.3], gun:[1,0.85,0.5], tool:[0.95,0.85,0.7], none:[1,0.85,0.7] };
+    const FX_COL = { blade:[0.8,0.9,1], great:[0.85,0.9,1], spear:[0.8,0.92,1], blunt:[1,0.72,0.42], drill:[1,0.66,0.3], gun:[1,0.85,0.5], tool:[0.95,0.85,0.7], twin:[0.8,0.92,1], fist:[1,0.78,0.5], none:[1,0.85,0.7] };
     let clock = 0, last = performance.now(); st.ev = []; st.fx = []; st.waves = []; st.pop = [];
     const chestOf = who => who==="foe" ? [POS.foe.x, POS.foe.gy - POS.foe.h*0.52] : [POS.me.x + 6, POS.me.gy - POS.me.h*0.52];
     const addFx = (o, dur, delay=0)=>{ st.fx.push(Object.assign({t0: clock+delay, dur}, o)); };
@@ -950,7 +1040,7 @@ function mgCombat(ctx){
       if(by==="tie"){ const x = 360, y = 230;
         addFx({kind:"hit", x, y, R:70, col:[1,0.9,0.7]}, 380, imp); addFx({kind:"pt", x, y, n:50, spd:120, dx:0, dy:-1, col:[1,0.8,0.45], seed:Math.random()*99}, 900, imp);
         setTimeout(()=>{ st.waves.push({x, y, t0:clock, k:0.6}); st.shake = 6; }, imp); return; }
-      const tgt = by==="me" ? "foe" : "me", wt = by==="me" ? party[act].wt : foe.wt, col = FX_COL[wt] || FX_COL.none;
+      const tgt = by==="me" ? "foe" : "me", wt0 = by==="me" ? party[act].wt : foe.wt, wt = wt0==="fist" ? "blunt" : wt0, col = FX_COL[wt0] || FX_COL.none;
       const [x, y] = chestOf(tgt), sc = tgt==="foe" ? 0.75 : 1.15, dir = by==="me" ? 1 : -1;
       if(wt==="gun"){ const from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
         [0,90,180].forEach((d,i)=>{ addFx({kind:"hit", x:from[0], y:from[1], R:26, col:[1,0.8,0.4]}, 120, imp-180+d);
@@ -980,53 +1070,6 @@ function mgCombat(ctx){
           flash = Math.max(flash, (1-fs)*(1-fs)*0.32); dx -= P.face*14*Math.sin(s*Math.PI)*(1-s*0.5); rot -= 0.1*P.face*Math.sin(s*Math.PI); sw -= 0.35*Math.sin(s*Math.PI); } });
       return {dx, dy, rot, sw, flash};
     }
-    const hexMix = (a, b, t)=>{ const A = parseInt(a.slice(1),16), B = parseInt(b.slice(1),16);
-      return "#"+[16,8,0].map(s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t).toString(16).padStart(2,"0")).join(""); };
-    /* 전투용 실루엣: 코트 입은 해결사. 납작한 단색 덩어리로 그리고 명암은 셰이더가 얹는다.
-       뒤쪽 팔·다리는 한 톤 어둡게 해 겹침만 구분한다. 오른쪽을 보는 모양으로 그리고 face로 뒤집는다. */
-    function figC(c, x, gy, h, o){
-      const col = o.col, dark = hexMix(col, "#000000", 0.22), t = performance.now()/1000;
-      c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); c.scale(o.face, 1);
-      const P = (px, py)=>[px*h, py*h], poly = pts=>{ c.beginPath(); pts.forEach((p,i)=> i ? c.lineTo(p[0]*h, p[1]*h) : c.moveTo(p[0]*h, p[1]*h)); c.closePath(); c.fill(); };
-      const limb = (a, b, w0, w1, color)=>{ const dx = b[0]-a[0], dy = b[1]-a[1], L = Math.hypot(dx,dy)||1, nx = -dy/L, ny = dx/L;
-        c.fillStyle = color; c.beginPath(); c.moveTo(a[0]+nx*w0, a[1]+ny*w0); c.lineTo(b[0]+nx*w1, b[1]+ny*w1); c.lineTo(b[0]-nx*w1, b[1]-ny*w1); c.lineTo(a[0]-nx*w0, a[1]-ny*w0); c.closePath(); c.fill();
-        c.beginPath(); c.arc(b[0], b[1], w1, 0, 7); c.fill(); };
-      // 뒷다리 · 뒷팔(어둡게)
-      limb(P(-0.035,-0.32), P(-0.105,-0.01), 0.045*h, 0.03*h, dark); c.fillRect(-0.15*h, -0.025*h, 0.08*h, 0.025*h);
-      // 손 위치·무기 각도: 대기 ↔ 젖힘(sw<0) ↔ 휘두름(sw>0)
-      const wt = o.wt || "none", G = GRIP[wt] || GRIP.none, sw = clamp(o.sw||0, -1.3, 1);
-      const mix = (p, q, t)=>[p[0]+(q[0]-p[0])*t, p[1]+(q[1]-p[1])*t];
-      const gp = sw<0 ? mix(G.g, G.w, -sw) : mix(G.g, G.s, sw), ang = sw<0 ? G.a+(G.wa-G.a)*(-sw) : G.a+(G.sa-G.a)*sw;
-      const S1 = P(0.065,-0.75), S2 = P(-0.03,-0.74), L1 = 0.2*h, L2 = 0.18*h;
-      const ik1 = ikArm(S1, P(gp[0], gp[1]), L1, L2), hand = ik1[1], ax = Math.cos(ang), ay = Math.sin(ang);
-      const twoH = G.two!=null && wt!=="none";
-      const hand2 = twoH ? (wt==="gun" ? [hand[0]-0.02*h, hand[1]+0.025*h] : [hand[0]+ax*G.two*h*0.85, hand[1]+ay*G.two*h*0.85])
-                  : wt==="none" ? [hand[0]-0.1*h, hand[1]+0.03*h] : P(0.0+sw*0.04, -0.47);
-      const ik2 = ikArm(S2, hand2, L1, L2);
-      const arm = (ik, w0, w1, color, sh)=>{ limb(sh, ik[0], w0, w0*0.85, color); limb(ik[0], ik[1], w0*0.85, w1, color); };
-      const fist = (pt, color)=>{ c.fillStyle = color; c.beginPath(); c.arc(pt[0], pt[1], 0.031*h, 0, 7); c.fill(); };
-      arm(ik2, 0.034*h, 0.026*h, dark, S2);                                        // 뒷팔(몸 뒤)
-      if(!twoH) fist(ik2[1], dark);
-      // 앞다리
-      c.fillStyle = col; limb(P(0.035,-0.32), P(0.1,-0.01), 0.046*h, 0.031*h, col); c.fillRect(0.075*h, -0.025*h, 0.085*h, 0.025*h);
-      // 코트: 어깨는 둥글게, 허리에서 조였다가 자락이 뒤로 길게 흐른다
-      const sway = Math.sin(t*1.7 + x*0.01)*0.012 - (o.rot||0)*0.12*o.face;
-      c.fillStyle = col; c.beginPath();
-      c.moveTo(-0.115*h, -0.735*h); c.quadraticCurveTo(-0.12*h, -0.8*h, -0.06*h, -0.805*h); c.lineTo(0.06*h, -0.805*h);
-      c.quadraticCurveTo(0.125*h, -0.8*h, 0.12*h, -0.735*h); c.lineTo(0.104*h, -0.52*h); c.lineTo(0.14*h, -0.24*h);
-      c.quadraticCurveTo(0.06*h, -0.215*h, 0.005*h, -0.265*h); c.lineTo((-0.175+sway)*h, -0.2*h); c.lineTo(-0.12*h, -0.52*h); c.closePath(); c.fill();
-      poly([[-0.07,-0.8],[-0.045,-0.855],[-0.005,-0.8]]);                       // 세운 깃
-      c.fillRect(-0.022*h, -0.845*h, 0.044*h, 0.05*h);                           // 목
-      c.beginPath(); c.arc(0.012*h, -0.893*h, 0.077*h, 0, 7); c.fill();           // 머리
-      if(o.gear && o.gear.armor){ c.fillStyle = hexMix(col, "#c9d2de", 0.35); c.beginPath(); c.ellipse(0.07*h, -0.765*h, 0.065*h, 0.032*h, -0.15, 0, 7); c.fill(); }
-      // 무기 → (양손이면) 뒷손 → 앞팔 → 앞손: 주먹을 손잡이 위에 겹쳐 그려 쥔 모양을 만든다
-      if(wt!=="none"){ c.save(); c.translate(hand[0], hand[1]); c.rotate(ang); drawWeaponShape(c, wt, h*0.88, o.wcol, hexMix(col, "#000000", 0.55)); c.restore(); }
-      if(twoH){ limb(ik2[0], ik2[1], 0.029*h, 0.026*h, dark); fist(ik2[1], hexMix(col, "#000000", 0.12)); }
-      arm(ik1, 0.036*h, 0.027*h, col, S1);
-      fist(hand, hexMix(col, "#ffffff", 0.08));
-      if(o.gear && o.gear.acc){ c.fillStyle = `rgb(${o.gear.accColor||"150,230,255"})`; c.beginPath(); c.arc(0.06*h, -0.66*h, 0.018*h, 0, 7); c.fill(); }
-      c.restore();
-    }
     // 두 사람을 그린다. GL이면 이 그림을 텍스처로 넘겨 명암을 더한다
     function drawFighters(c, now){
       const me = party[act], fp = poseFor("foe", now), mp = poseFor("me", now);
@@ -1034,11 +1077,14 @@ function mgCombat(ctx){
       if(outcome && st.koAt!=null){ const k = ease(clamp((clock-st.koAt)/600,0,1));
         if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; fp.sw = -0.2; } else { frot = 1.3*k; fdim = 0.25*k; } }
       const fcol = hexMix(hexMix(SIDE_COL.foe.fill, "#000000", fdim), "#fff4e8", fp.flash);
-      figC(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, wcol:"#b9aca9", wt: outcome ? null : foe.wt, sw:fp.sw, rot: fp.rot + frot});
+      const fworst = st.cond ? Math.min(...Object.keys(PARTS).map(k=>Math.max(0,st.cond[k])/foe.max[k])) : 1;
+      drawFixer(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, state: outcome==="제압" ? "hurt" : "combat", weapon: outcome ? null : foe.spec, sw:fp.sw, rot: fp.rot + frot, hurt: 1-fworst});
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
       const mcol = hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash);
-      figC(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, col:mcol, wcol:"#aab5b1", wt: me.wt, gear: me.lg, sw:mp.sw, rot: mp.rot + mrot});
+      const mhp = me.shownHp==null ? me.hp : me.shownHp;
+      drawFixer(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, col:mcol, state:"combat", weapon: me.spec, armor: me.armor, sw:mp.sw, rot: mp.rot + mrot,
+        hurt: mhp<50 ? (50-mhp)/50 : 0, acc: me.lg && me.lg.acc ? me.lg.accColor : null});
     }
     function overlay(now, keep){
       const c = m.c, me = party[act]; if(!keep) c.clearRect(0,0,W,H);
@@ -1424,10 +1470,11 @@ function removeFixer(f, what, note){
 async function passColor(f){
   const title = f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle();
   f.grade = 0; f.title = title; f.cap = 80;
-  f.gear.acc = {slot:"acc", name:`${title}의 고유 장비`, bonus:{str:4,agi:4,tec:4,wil:4}, mpRed:0.2};
+  f.unique = f.unique || {};
   S.records.push({day:S.day, name:f.name, what:"특색 지정", note:title});
-  playFx("특색 심사", title, f.name, true);
-  await modal("특색 지정", `${esc(f.name)}이(가) 특색 <b>[${esc(title)}]</b>(으)로 지정되었다.<br>능력치 최대치가 80으로 오르고, 고유 장비를 제조받았다.`, [{t:"확인",primary:true}]);
+  playFx("특색 심사", title, f.name, true); save();
+  const go = await modal("특색 지정", `${esc(f.name)}이(가) 특색 <b>[${esc(title)}]</b>(으)로 지정되었다.<br>능력치 최대치가 80으로 오르고, <b>고유 장비 제작</b> 칸이 열렸다.<br><span class="muted">공방 → 고유 장비에서 무기·방어구를 한 벌씩 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
+  if(go) await openForge(f);
 }
 function randomColorTitle(){
   let t; do { t = pick(COLOR_WORDS)+" "+pick(COLOR_NOUNS); } while(COLOR_BANNED.includes(t) || S.fixers.some(f=>f.title===t));
@@ -1624,14 +1671,16 @@ async function openRecruit(){
 /* ================= 관리 ================= */
 const healCost = f => 1000 * (f.grade===0?10:(10-f.grade));
 async function openManage(){
-  let sel = S.fixers[0]?.id;
+  let sel = S.fixers[0]?.id, mview = null;
   const draw = () => {
     const f = S.fixers.find(x=>x.id===sel) || S.fixers[0]; if(!f) return "";
-    sel = f.id;
+    sel = f.id; if(!mview) mview = f.hp < f.hpMax*0.4 ? "hurt" : "idle";
     const inv = (S.inventory||[]);
     const gearRow = (slot,label) => { const g=f.gear[slot]; return `<span>${label}</span><b>${g?esc(g.name)+" <span class='muted'>"+gearDesc(g)+"</span>":"<span class='muted'>없음</span>"}</b>`; };
     const hc = healCost(f);
     return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}">${esc(x.name)}</button>`).join("")}</div>
+    <div class="mg-prev"><canvas class="mgp"></canvas><div><div class="fg-seg">${STATE_TABS.map(([k,n])=>`<button class="${mview===k?"on":""}" data-mview="${k}">${n}</button>`).join("")}</div>
+      ${f.grade===0?`<button style="margin-top:8px" data-forgego="1">고유 장비 제작</button>`:""}</div></div>
     <div class="kv">
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} <button data-rename="1" style="padding:2px 8px">이름 변경</button></b>
       <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
@@ -1656,9 +1705,13 @@ async function openManage(){
   };
   await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
     const box = root.querySelector("#mg");
+    const prev = ()=>{ const cv = box.querySelector(".mgp"), f = S.fixers.find(x=>x.id===sel); if(cv && f) animPreview(cv, ()=>Object.assign(fixerLook(f), stateOpts(mview))); };
+    prev();
     root.addEventListener("click", async e=>{
       const d = e.target.dataset; const f = S.fixers.find(x=>x.id===sel);
-      if(d.sel){ sel=+d.sel; }
+      if(d.mview){ mview = d.mview; box.querySelectorAll("[data-mview]").forEach(x=>x.classList.toggle("on", x.dataset.mview===mview)); return; }
+      if(d.forgego && f){ await openForge(f); }
+      else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.heal && f){
         const hc = healCost(f), isH = d.heal.startsWith("hp"), all = d.heal.endsWith("all");
         const cur = isH?f.hp:f.mp, max = isH?f.hpMax:f.mpMax;
@@ -1672,7 +1725,7 @@ async function openManage(){
       else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
       else if(d.fire && f){ if(await confirmBox("해고", `${esc(f.name)}을(를) 내보낸다. 되돌릴 수 없다.`)){ removeFixer(f,"해고","사무소를 떠남"); sel=S.fixers[0]?.id; } }
       else return;
-      box.innerHTML = draw(); save(); render();
+      box.innerHTML = draw(); prev(); save(); render();
     });
   });
 }
@@ -1683,32 +1736,160 @@ function gearDesc(g){
 }
 
 /* ================= 공방 ================= */
-async function openShop(){
+// 미리보기: 캔버스 하나에 해결사 실루엣을 계속 그린다(캔버스가 화면에서 사라지면 멈춘다)
+function animPreview(cv, getOpts){
+  const c = cv.getContext("2d");
+  const loop = ()=>{
+    if(!cv.isConnected) return;
+    const d = devicePixelRatio||1, W = cv.clientWidth||300, H = cv.clientHeight||200;
+    if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
+    c.setTransform(d,0,0,d,0,0);
+    const g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#15131c"); g.addColorStop(1,"#0a090d"); c.fillStyle = g; c.fillRect(0,0,W,H);
+    const o = getOpts(), t = performance.now()/1000, gy = H*0.9;
+    c.fillStyle = "rgba(255,255,255,0.05)"; c.beginPath(); c.ellipse(W/2, gy, W*0.3, H*0.05, 0, 0, 7); c.fill();
+    let sw = 0;
+    if(o.state==="combat"){ const p = (t % 2.6)/2.6; sw = p<0.3 ? -ease(p/0.3) : p<0.42 ? -1+2*ease((p-0.3)/0.12) : p<0.7 ? 1-ease((p-0.42)/0.28) : 0; }
+    drawFixer(c, W/2 - (o.state==="combat" ? H*0.08 : 0), gy, H*0.82, {face:1, col:SIDE_COL.ally.fill, state:o.state, alert:o.alert, weapon:o.weapon, armor:o.armor, sw, acc:o.acc});
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+const STATE_TABS = [["idle","평상"],["alert","평상(경계)"],["combat","전투"],["hurt","부상"]];
+const stateOpts = k => k==="alert" ? {state:"idle", alert:true} : {state:k, alert:false};
+function fixerLook(f){ const lg = leadGear(f); return {weapon: lg.spec, armor: lg.armorSpec, acc: lg.acc ? lg.accColor : null}; }
+
+async function openShop(startTab){
   const tierMax = S.officeGrade<=3?2 : S.officeGrade<=6?1 : 0;
-  let who = S.fixers[0]?.id, tab=0;
+  const colors = () => S.fixers.filter(x=>x.grade===0);
+  let who = S.fixers[0]?.id, tab = startTab!=null ? startTab : 0;
+  const lockMsg = t => t===1 ? (tierMax<1 ? "6급 사무소부터 거래할 수 있다." : "") : t===2 ? (tierMax<2 ? "3급 사무소부터 거래할 수 있다." : "") : t===3 ? (colors().length ? "" : "특색이 된 해결사가 생기면 열린다.") : "";
   const draw = () => {
     const f = S.fixers.find(x=>x.id===who);
-    const items = SHOP.filter(i=>i.tier===tab);
-    const locked = tab>tierMax;
+    const tabs = `<div class="tabs">${TIER_NAME.map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${lockMsg(i)?" 🔒":""}</button>`).join("")}</div>`;
+    if(tab===3){
+      const cs = colors();
+      return tabs + `<p class="muted" style="font-size:12px">특색이 되면 그 사람만의 고유 장비를 무기·방어구 한 벌씩 주문 제작할 수 있다. 무기/방어구 → 종류 → 생김새 → 확정 순서로 만든다. 만든 장비는 의뢰 연출에도 그대로 나온다.</p>
+        ${cs.length ? `<div class="list">${cs.map(x=>{ const u = x.unique||{}, w = x.gear.weapon, a = x.gear.armor;
+          return `<div class="item"><div><b>${esc(x.name)}</b> <span class="badge">특색 · ${esc(x.title||"")}</span>
+            <div class="d">무기: ${u.weapon && w ? esc(w.name) : "<span style='color:var(--accent)'>제작 가능</span>"} · 방어구: ${u.armor && a ? esc(a.name) : "<span style='color:var(--accent)'>제작 가능</span>"}</div></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="primary" data-forge="${x.id}" data-slot="weapon">${u.weapon?"무기 다시 만들기":"무기 제작"}</button><button class="primary" data-forge="${x.id}" data-slot="armor">${u.armor?"방어구 다시 만들기":"방어구 제작"}</button></div></div>`; }).join("")}</div>`
+          : `<p class="muted">${lockMsg(3)}</p>`}`;
+    }
+    const items = SHOP.filter(i=>i.tier===tab), locked = !!lockMsg(tab), makers = [...new Set(items.map(i=>i.maker))];
     return `<div class="field"><label>장착할 사람</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>
-    <div class="tabs">${["양산형","고급 공방","희귀 공방"].map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${i>tierMax?" 🔒":""}</button>`).join("")}</div>
-    ${locked?`<p class="muted">${tab===1?"6급":"3급"} 사무소부터 거래할 수 있다.</p>`:""}
-    <div class="list">${items.map(i=>{ const cur=f&&f.gear[i.slot]; return `<div class="item"><div><b>${esc(i.name)}</b> <span class="badge">${{weapon:"무기",armor:"방어구",acc:"장신구"}[i.slot]}</span><div class="d">${gearDesc(i)}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
-      <button class="primary" data-buy="${i.id}" ${locked||!f||S.money<i.price?"disabled":""}>구매·장착</button></div>`;}).join("")}</div>
-    <p class="muted" style="font-size:12px">원래 끼고 있던 장비는 보관함으로 옮겨진다. 원작 공방 장비는 이름과 특징만 따왔고 수치는 이 게임용이다.</p>`;
+    ${tabs}
+    <p class="muted" style="font-size:12px">${["보통 7급 의뢰까지 쓸 만한 양산품.","원작 세계관의 공방 제품. 보통 4급 의뢰까지 쓸 만하다.","원작 세계관의 고급 공방·인더스트리·아틀리에 제품. 1급 의뢰까지 쓸 만하다."][tab]}</p>
+    ${locked?`<p class="muted">${lockMsg(tab)}</p>`:""}
+    ${makers.map(mk=>`<h4 class="sh-mk">${esc(mk)} <span class="muted">${esc(MAKERS[mk]||"")}</span></h4>
+      <div class="list">${items.filter(i=>i.maker===mk).map(i=>{ const cur=f&&f.gear[i.slot];
+        return `<div class="item sh-item">${i.slot==="weapon"?`<canvas class="wicon" data-icon="${i.id}"></canvas>`:`<div class="wicon sh-slot">${{armor:"방어구",acc:"장신구"}[i.slot]}</div>`}
+        <div style="flex:1"><b>${esc(i.name)}</b> <span class="badge">${i.slot==="weapon" ? WEAPON_KINDS[i.wtype].n+" · "+WEAPON_KINDS[i.wtype].vars[i.look.v||0] : {armor:"방어구",acc:"장신구"}[i.slot]}</span>
+          <div class="d">${gearDesc(i)}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
+        <button class="primary" data-buy="${i.id}" ${locked||!f||S.money<i.price||(cur&&cur.unique)?"disabled":""}>${cur&&cur.unique?"고유 장비 착용 중":"구매·장착"}</button></div>`;}).join("")}</div>`).join("")}
+    <p class="muted" style="font-size:12px">원래 끼고 있던 장비는 보관함으로 옮겨진다. 공방 이름과 특징만 원작에서 따왔고, 물건과 수치는 이 게임을 위해 만든 것이다.</p>`;
   };
-  await modal("공방", `<div id="sh">${draw()}</div>`, [{t:"닫기"}], false, root=>{
-    const box = root.querySelector("#sh");
-    root.addEventListener("change", e=>{ if(e.target.id==="who"){ who=+e.target.value; box.innerHTML=draw(); } });
-    root.addEventListener("click", e=>{
-      const d=e.target.dataset;
+  const paint = box => { box.innerHTML = draw(); box.querySelectorAll("canvas[data-icon]").forEach(cv=>{ const it = SHOP.find(i=>i.id===cv.dataset.icon); drawWeaponIcon(cv, weaponSpecOf(it)); }); };
+  await modal("공방", `<div id="sh"></div>`, [{t:"닫기"}], false, root=>{
+    const box = root.querySelector("#sh"); paint(box);
+    root.addEventListener("change", e=>{ if(e.target.id==="who"){ who=+e.target.value; paint(box); } });
+    root.addEventListener("click", async e=>{
+      const d = e.target.closest("button")?.dataset || {};
       if(d.tab!==undefined){ tab=+d.tab; }
       else if(d.buy){ const it=SHOP.find(i=>i.id===d.buy), f=S.fixers.find(x=>x.id===who); if(!it||!f||S.money<it.price) return;
         S.money-=it.price; const old=f.gear[it.slot]; f.gear[it.slot]=Object.assign({},it); if(old){ S.inventory=S.inventory||[]; S.inventory.push(old);} addLog(`${f.name}: ${it.name} 장착`); }
+      else if(d.forge){ const f = S.fixers.find(x=>x.id===+d.forge); if(f) await openForge(f, d.slot); }
       else return;
-      box.innerHTML=draw(); save(); render();
+      paint(box); save(); render();
     });
   });
+}
+
+/* ---- 고유 장비 제작(특색 전용): ① 무기/방어구 → ② 종류 → ③ 생김새 → ④ 확정 ---- */
+async function openForge(f, slot0){
+  const prevW = f.unique && f.unique.weapon && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null;
+  const prevA = f.unique && f.unique.armor && f.gear.armor && f.gear.armor.unique ? f.gear.armor : null;
+  const st = {step: slot0 ? 2 : 1, slot: slot0 || null, view:"combat",
+    w: prevW ? Object.assign({}, prevW.look) : null, a: prevA ? Object.assign({}, prevA.look) : null,
+    name: ""};
+  const kindName = () => st.slot==="weapon" ? WEAPON_KINDS[st.w.kind].n : ARMOR_TYPES[st.a.type];
+  const defName = () => `${f.title||f.name}의 ${kindName()}`;
+  let doneRes = null;
+  const look = () => { const base = fixerLook(f); if(st.slot==="weapon" && st.w) base.weapon = st.w; if(st.slot==="armor" && st.a) base.armor = st.a; return base; };
+  const sw = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-sw">${arr.map(cl=>`<button class="sw ${cur===cl?"on":""}" data-${key}="${cl||"none"}" style="background:${cl||"transparent"}">${cl?"":"✕"}</button>`).join("")}</div></div>`;
+  const seg = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-seg">${arr.map((n,i)=>`<button class="${cur===i?"on":""}" data-${key}="${i}">${n}</button>`).join("")}</div></div>`;
+  const statLine = () => st.slot==="weapon" ? Object.entries(profBonus(st.w.kind, UNIQUE_POWER)).map(([k,v])=>`${ATTR_NAME[k]}+${v}`).join(" · ")
+    : `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}% · 의지+${UNIQUE_ARMOR.bonus.wil}`;
+  const steps = ["무기/방어구","종류","생김새","확정"];
+  const draw = () => {
+    const head = `<div class="fg-steps">${steps.map((n,i)=>`<span class="${st.step===i+1?"on":st.step>i+1?"done":""}">${i+1}. ${n}</span>`).join("")}</div>`;
+    if(st.step===1) return head + `<p class="muted">${esc(f.name)} [${esc(f.title||"")}]의 고유 장비. 무엇을 만들까?</p>
+      <div class="fg-pick"><button data-slot="weapon"><b>무기</b><small>${prevW?"지금: "+esc(prevW.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button>
+      <button data-slot="armor"><b>방어구</b><small>${prevA?"지금: "+esc(prevA.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button></div>`;
+    if(st.step===2){
+      if(st.slot==="weapon") return head + `<p class="muted">무기 종류를 고른다. 종류에 따라 오르는 능력치가 다르다(위력 ${UNIQUE_POWER}).</p>
+        <div class="fg-kinds">${Object.entries(WEAPON_KINDS).map(([k,K])=>`<button data-kind="${k}" class="${st.w&&st.w.kind===k?"on":""}"><canvas class="wicon" data-ik="${k}"></canvas><b>${K.n}</b><small>${Object.entries(profBonus(k, UNIQUE_POWER)).map(([a,v])=>`${ATTR_NAME[a]}+${v}`).join(" ")}</small></button>`).join("")}</div>
+        <div class="fg-nav"><button data-fgo="1">이전</button></div>`;
+      return head + `<p class="muted">방어구 형태를 고른다. 능력은 형태와 상관없이 같다(${statLine()}).</p>
+        <div class="fg-kinds">${ARMOR_TYPES.map((n,i)=>`<button data-atype="${i}" class="${st.a&&st.a.type===i?"on":""}"><b>${n}</b><small>${["몸에 붙는 짧은 상의","무릎 위까지 오는 코트","발목까지 내려오는 코트","가슴판과 넓은 어깨"][i]}</small></button>`).join("")}</div>
+        <div class="fg-nav"><button data-fgo="1">이전</button></div>`;
+    }
+    const prev = `<div class="fg-prev"><canvas class="fg-cv"></canvas><div class="fg-seg fg-view">${STATE_TABS.map(([k,n])=>`<button class="${st.view===k?"on":""}" data-view="${k}">${n}</button>`).join("")}</div></div>`;
+    if(st.step===3){
+      let ctl;
+      if(st.slot==="weapon"){ const K = WEAPON_KINDS[st.w.kind];
+        ctl = seg(K.vars, st.w.v||0, "wv", "모양")
+          + `<div class="fg-row"><span>길이</span><input type="range" min="0.8" max="1.3" step="0.05" value="${st.w.len}" data-wlen="1"></div>`
+          + `<div class="fg-row"><span>폭·두께</span><input type="range" min="0.75" max="1.4" step="0.05" value="${st.w.wid}" data-wwid="1"></div>`
+          + sw(METALS, st.w.metal, "metal", "금속색") + sw(GLOWS, st.w.glow, "glow", "발광") + seg(["없음","손잡이 띠","문양"], st.w.deco||0, "deco", "장식");
+      } else ctl = seg(ARMOR_TYPES, st.a.type, "atype", "형태") + seg(["없음","작게","크게"], st.a.pad||0, "pad", "어깨 장갑") + seg(["낮게","세움"], st.a.collar||0, "collar", "깃") + sw(GLOWS, st.a.trim, "trim", "장식선");
+      return head + `<div class="fg-body">${prev}<div class="fg-ctl">${ctl}
+        <div class="fg-row"><span>이름</span><input id="fgname" maxlength="30" value="${esc(st.name || defName())}"></div>
+        <div class="fg-nav"><button data-fgo="2">이전</button><button class="primary" data-fgo="4">다음</button></div></div></div>`;
+    }
+    return head + `<div class="fg-body">${prev}<div class="fg-ctl">
+      <h4 style="margin:0 0 6px">${esc(st.name || defName())}</h4>
+      <div class="kv"><span>주인</span><b>${esc(f.name)} [${esc(f.title||"")}]</b><span>종류</span><b>${st.slot==="weapon" ? kindName()+" · "+WEAPON_KINDS[st.w.kind].vars[st.w.v||0] : "방어구 · "+kindName()}</b><span>능력</span><b>${statLine()}</b></div>
+      <p class="muted" style="font-size:12px">확정하면 바로 장착한다. ${st.slot==="weapon"?(prevW?"기존 고유 무기는 이 무기로 대체된다.":"지금 끼고 있는 무기는 보관함으로 옮겨진다."):(prevA?"기존 고유 방어구는 대체된다.":"지금 입고 있는 방어구는 보관함으로 옮겨진다.")}</p>
+      <div class="fg-nav"><button data-fgo="3">이전</button><button class="primary" data-confirm="1">확정</button></div></div></div>`;
+  };
+  await modal("고유 장비 제작", `<div id="fg"></div>`, [{t:"닫기"}], false, root=>{
+    const box = root.querySelector("#fg"); root.querySelector(".modal").classList.add("modal-wide");
+    const paint = () => { box.innerHTML = draw();
+      box.querySelectorAll("canvas[data-ik]").forEach(cv=>drawWeaponIcon(cv, defaultSpec(cv.dataset.ik)));
+      const cv = box.querySelector(".fg-cv"); if(cv) animPreview(cv, ()=>Object.assign(look(), stateOpts(st.view))); };
+    paint();
+    box.addEventListener("input", e=>{ const d = e.target.dataset;
+      if(d.wlen){ st.w.len = +e.target.value; } else if(d.wwid){ st.w.wid = +e.target.value; } else if(e.target.id==="fgname"){ st.name = e.target.value.trim(); } });
+    box.addEventListener("click", e=>{
+      const b = e.target.closest("button"); if(!b) return; const d = b.dataset;
+      if(d.slot){ st.slot = d.slot; st.step = 2; st.name = ""; }
+      else if(d.kind){ st.w = Object.assign(defaultSpec(d.kind), st.w && st.w.kind===d.kind ? st.w : {}); st.step = 3; }
+      else if(d.atype!==undefined){ st.a = Object.assign({type:1, pad:1, collar:0, trim:null}, st.a||{}, {type:+d.atype}); if(st.step===2) st.step = 3; }
+      else if(d.wv!==undefined){ st.w.v = +d.wv; }
+      else if(d.metal){ st.w.metal = d.metal; }
+      else if(d.glow){ st.w.glow = d.glow==="none" ? null : d.glow; }
+      else if(d.deco!==undefined){ st.w.deco = +d.deco; }
+      else if(d.pad!==undefined){ st.a.pad = +d.pad; }
+      else if(d.collar!==undefined){ st.a.collar = +d.collar; }
+      else if(d.trim){ st.a.trim = d.trim==="none" ? null : d.trim; }
+      else if(d.view){ st.view = d.view; box.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on", x.dataset.view===st.view)); return; }
+      else if(d.fgo){ const n = +d.fgo; if(n===4){ const i = box.querySelector("#fgname"); if(i) st.name = i.value.trim(); } st.step = n; if(n===1) st.slot = null; }
+      else if(d.confirm){
+        const name = st.name || defName(); f.unique = f.unique || {};
+        let g;
+        if(st.slot==="weapon") g = {slot:"weapon", unique:true, name, wtype:st.w.kind, look:Object.assign({}, st.w), bonus:profBonus(st.w.kind, UNIQUE_POWER)};
+        else g = Object.assign({slot:"armor", unique:true, name, look:Object.assign({}, st.a)}, JSON.parse(JSON.stringify(UNIQUE_ARMOR)));
+        const old = f.gear[st.slot]; f.gear[st.slot] = g; if(old && !old.unique){ S.inventory = S.inventory||[]; S.inventory.push(old); }
+        f.unique[st.slot] = true;
+        S.records.push({day:S.day, name:f.name, what:"고유 장비 제작", note:`${name} (${st.slot==="weapon"?"무기":"방어구"})`});
+        addLog(`${f.name}: 고유 장비 [${name}] 완성`); save(); render(); doneRes = g;
+        root.querySelector(".mf button").click(); return;
+      }
+      else return;
+      paint();
+    });
+  });
+  if(doneRes) await alertBox("고유 장비 완성", `<b>${esc(doneRes.name)}</b>이(가) 완성되어 ${esc(f.name)}에게 장착되었다.<br><span class="muted">이제 의뢰 연출에서도 이 장비를 들고 나온다.</span>`);
 }
 
 /* ================= 기록 / 저장 ================= */
@@ -2294,43 +2475,131 @@ const SIDE_COL = {
   foe:   {fill:"#a32f2f", head:"#b83a3a", rim:"rgba(255,170,160,0.9)",  wpn:"#f0d8d4"},
   friend:{fill:"#3d9fd6", head:"#4fb0e6", rim:"rgba(195,235,255,0.95)", wpn:"#e0f0ff"}
 };
+// 연출 장면용: 새 실루엣(drawFixer)으로 그린다. weapon:true면 전투 자세, 아니면 평상 자세(무기는 등·허리에 찬다)
 function fig(c, x, gy, h, o={}){
-  const side = o.side || (o.rim && /255,\s*90,\s*90/.test(o.rim) ? "foe" : "ally"), sc = SIDE_COL[side];
-  c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); if(o.alpha!=null) c.globalAlpha = o.alpha;
-  const col = o.tint || sc.fill, face = o.face||1, gr = o.gear;
-  if(gr && gr.ego){ c.save(); c.globalCompositeOperation="lighter"; const ag=c.createRadialGradient(0,-h*0.5,0,0,-h*0.5,h*0.9); ag.addColorStop(0,"rgba(255,225,150,0.2)"); ag.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=ag; c.fillRect(-h,-h*1.5,h*2,h*1.6); c.restore(); }
-  c.fillStyle = o.tint || sc.head; c.beginPath(); c.arc(0, -h-2, h*0.12, 0, 7); c.fill();
-  c.fillStyle = col; c.beginPath(); c.moveTo(-h*0.17, -h*0.88); c.lineTo(h*0.17, -h*0.88); c.lineTo(h*(o.coat?0.27:0.22), 0); c.lineTo(-h*(o.coat?0.27:0.22), 0); c.closePath(); c.fill();
-  if(gr && gr.armor){ c.fillStyle="rgba(255,255,255,0.22)"; c.fillRect(-h*0.24,-h*0.9,h*0.48,h*0.07); c.fillRect(-h*0.21,-h*0.6,h*0.42,h*0.05); }
-  const wt = (gr && gr.wtype) || (o.weapon ? (o.ewt || (side==="foe" ? "blunt" : null)) : null);
-  if(wt) drawWeapon(c, h, face, wt, o.wRot, sc.wpn);
-  else if(o.weapon){ c.save(); c.fillStyle=sc.wpn; c.translate(h*0.2*face, -h*0.55); c.rotate((o.wRot||0.5)*face); c.fillRect(-1.2,0,2.4,h*0.6); c.restore(); }
-  if(gr && gr.acc){ c.save(); c.globalCompositeOperation="lighter"; const pulse=0.6+0.4*Math.sin(performance.now()/300); c.fillStyle=`rgba(${gr.accColor||"150,230,255"},${0.9*pulse})`; c.shadowColor=`rgb(${gr.accColor||"150,230,255"})`; c.shadowBlur=8; c.beginPath(); c.arc(face*h*0.05,-h*0.72,1.8,0,7); c.fill(); c.restore(); }
-  if(!o.tint){ c.strokeStyle=sc.rim; c.lineWidth=(gr && gr.armor)?1.8:1.3; c.beginPath(); c.arc(0,-h-2,h*0.12,face>0?-1.2:2.0,face>0?0.9:4.2); c.stroke();
-    c.beginPath(); const sx=face*h*0.17; c.moveTo(sx,-h*0.88); c.lineTo(face*h*(o.coat?0.27:0.22),0); c.stroke(); }
+  const side = o.side || (o.rim && /255,\s*90,\s*90/.test(o.rim) ? "foe" : "ally"), sc = SIDE_COL[side], gr = o.gear;
+  let spec = (gr && gr.spec) || (gr && gr.wtype ? defaultSpec(gr.wtype) : null);
+  if(!spec && o.weapon) spec = defaultSpec(o.ewt || (side==="foe" ? "blunt" : "blade"));
+  if(spec && side==="foe") spec = Object.assign({}, spec, {metal:"#b9aca9"});
+  if(gr && gr.ego){ c.save(); c.globalCompositeOperation="lighter"; const ag=c.createRadialGradient(x,gy-h*0.5,0,x,gy-h*0.5,h*0.9); ag.addColorStop(0,"rgba(255,225,150,0.2)"); ag.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=ag; c.fillRect(x-h,gy-h*1.5,h*2,h*1.6); c.restore(); }
+  drawFixer(c, x, gy, h*1.15, {face:o.face||1, col: o.tint || o.color || sc.fill, state: o.state || (o.weapon ? "combat" : "idle"), alert:o.alert, weapon:spec,
+    armor: (gr && gr.armorSpec) || null, rot:o.rot, alpha:o.alpha, sw:o.sw||0, rim: o.tint ? null : (o.rim || sc.rim), acc: gr && gr.acc ? gr.accColor : null});
+}
+/* ================= 인물 · 무기 실루엣 =================
+   사람과 무기를 따로 그린다.
+   · 사람(drawFixer): 상태 3가지 — 평상(idle) / 전투(combat) / 부상(hurt).
+     상태마다 허리 높이·몸 기울기·발 간격·숨쉬기가 다르고, 옷(방어구 외형)은 코트 길이·어깨 장갑·깃·장식선으로 바뀐다.
+   · 무기(drawWeaponSpec): 종류(kind) + 외형(모양·길이·폭·금속색·발광색·장식). 상태에 맞춰 드는 위치가 바뀐다.
+       평상: 등에 멤(대검·쌍검·장총) / 허리에 참(검·권총·공구) / 어깨에 걸침(둔기) / 세워 듦(창) / 늘어뜨림(드릴) / 손에 낌(건틀릿)
+       평상 + 경계(alert): 등·허리에 찬 무기 손잡이에 손을 올린다
+       전투: 꺼내 쥐고 겨눈다(GRIP) — 양손 무기는 뒷손이 손잡이를 함께 잡는다
+       부상: 몸을 숙이고 뒷손으로 옆구리를 감싼 채, 무기는 낮게 늘어뜨린다
+   좌표는 발 기준·키(h) 단위·오른쪽을 보는 모양으로 잡고 face로 뒤집는다. */
+// 상점·고유 장비 → 연출용 외형
+function weaponSpecOf(g){
+  if(!g) return null; const kind = weaponTypeOf(g) || "blade";
+  const s = g.look ? g : (SHOP.find(i=>i.id===g.id) || SHOP.find(i=>i.name===g.name) || {});
+  return Object.assign(defaultSpec(kind), s.look || {}, {kind});
+}
+function armorSpecOf(g){
+  if(!g) return {type:1, pad:0, collar:0, trim:null};
+  const s = g.look ? g : (SHOP.find(i=>i.id===g.id) || SHOP.find(i=>i.name===g.name) || {});
+  return Object.assign({type:1, pad:0, collar:0, trim:null}, s.look || {type:1, pad:1});
+}
+const carryOf = s => !s ? null : (s.kind==="gun" && s.v>0) ? "back" : (WEAPON_KINDS[s.kind]||{}).carry;
+
+/* ---- 무기 모양: 손(원점)에서 +x로 뻗는다. u = 길이 단위 ---- */
+function drawWeaponSpec(c, s, u, dark, opt={}){
+  if(!s) return;
+  const L = s.len||1, Wd = s.wid||1, col = s.metal || METALS[0];
+  const R = (x,y,w,hh)=>c.fillRect(x*u, y*u, w*u, hh*u);
+  const poly = pts=>{ c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.closePath(); c.fill(); };
+  const shine = (x0,x1,y,w)=>{ c.fillStyle="rgba(235,240,245,0.5)"; R(x0, y, x1-x0, w); };
+  const edges = [];                                   // 발광선(가장자리)
+  const grip = (len, w)=>{ c.fillStyle=dark; R(-len,-w/2,len+0.05,w); c.beginPath(); c.arc(-len*u,0,w*0.75*u,0,7); c.fill();
+    if(s.deco===1){ c.fillStyle="rgba(255,255,255,0.25)"; for(let i=0;i<4;i++) R(-len+0.02+i*len/4, -w/2, 0.008, w); } };
+  const k = s.kind, v = s.v||0;
+  if(k==="blade" || k==="twin"){
+    const short = (k==="blade" && v===3) || (k==="twin" && v===1), curved = (k==="blade" && v===1) || (k==="twin" && v===0);
+    const len = (short ? 0.3 : k==="twin" ? 0.44 : 0.56)*L, w = (short ? 0.022 : k==="twin" ? 0.026 : 0.018)*Wd;
+    grip(0.075, 0.026); c.fillStyle=col; R(0.05,-0.045*Math.max(1,Wd*0.9),0.02,0.09*Math.max(1,Wd*0.9));
+    const pts = [], N = 10;
+    for(let i=0;i<=N;i++){ const x = 0.07 + len*i/N, bend = curved ? -0.07*L*Math.pow(i/N,2) : 0, ww = w*(k==="twin"&&v===0 ? 0.8+0.6*i/N : 1)*(i===N?0.2:1);
+      pts.push([x, bend - ww]); }
+    const tip = [0.07+len+0.07*L*(short?0.6:1), curved ? -0.07*L - 0.01 : 0.002];
+    const back = []; for(let i=N;i>=0;i--){ const x = 0.07 + len*i/N, bend = curved ? -0.07*L*Math.pow(i/N,2) : 0, ww = w*(k==="twin"&&v===0 ? 0.8+0.6*i/N : 1)*(i===N?0.2:1);
+      const saw = (k==="blade" && v===2 && i>0 && i<N && i%2===0) ? 0.012 : 0; back.push([x, bend + ww + saw]); }
+    poly([...pts, tip, ...back]); shine(0.09, 0.07+len*0.9, curved ? -0.03*L : -w*0.8, 0.006);
+    edges.push([[0.08, curved?-0.01:-w], [tip[0], tip[1]]]);
+    if(s.deco===2){ c.fillStyle="rgba(0,0,0,0.3)"; for(let i=1;i<5;i++) R(0.07+len*i/5.5, -w*0.3, 0.025, 0.004); }
+  }
+  else if(k==="great"){
+    grip(0.17, 0.034); c.fillStyle=col; R(0.055,-0.075*Wd,0.03,0.15*Wd);
+    const len = 0.82*L, w = 0.04*Wd;
+    if(v===0){ poly([[0.085,-w],[0.085+len,-w*1.1],[0.085+len+0.03,-w*0.6],[0.085+len+0.03,w*1.1],[0.085,w]]);
+      c.fillStyle=dark; c.beginPath(); c.arc((0.085+len*0.82)*u, 0, w*0.4*u, 0, 7); c.fill(); }
+    else if(v===1) poly([[0.085,-w],[0.085+len,-w*0.85],[0.085+len+0.12,0.003],[0.085+len,w*0.9],[0.085,w]]);
+    else poly([[0.085,-w*0.8],[0.085+len,-w*1.5],[0.085+len+0.05,-w*1.2],[0.085+len,w*0.9],[0.085,w*0.7]]);
+    c.fillStyle=col; shine(0.1, 0.07+len, -w*0.85, 0.009);
+    edges.push([[0.09,-w],[0.085+len,-w]]);
+    if(s.deco===2){ c.fillStyle="rgba(0,0,0,0.28)"; R(0.12, -0.004, len*0.7, 0.008); }
+  }
+  else if(k==="blunt"){
+    const sh = 0.42*L; c.fillStyle=dark; poly([[-0.08,-0.015],[sh,-0.02],[sh,0.02],[-0.08,0.015]]);
+    if(s.deco===1){ c.fillStyle="rgba(255,255,255,0.25)"; for(let i=0;i<3;i++) R(-0.06+i*0.03,-0.016,0.008,0.032); }
+    c.fillStyle=col; const hw = 0.075*Wd;
+    if(v===0){ R(sh-0.02, -hw, 0.09*Wd, hw*2); shine(sh-0.015, sh+0.06, -hw, 0.01); edges.push([[sh+0.07*Wd,-hw],[sh+0.07*Wd,hw]]); }
+    else if(v===1){ c.beginPath(); c.arc((sh+0.03)*u, 0, 0.045*Wd*u, 0, 7); c.fill();
+      for(let i=0;i<6;i++){ const a = i/6*Math.PI*2; poly([[sh+0.03+Math.cos(a)*0.04*Wd, Math.sin(a)*0.04*Wd],[sh+0.03+Math.cos(a+0.25)*0.07*Wd, Math.sin(a+0.25)*0.07*Wd],[sh+0.03+Math.cos(a+0.5)*0.04*Wd, Math.sin(a+0.5)*0.04*Wd]]); }
+      edges.push([[sh+0.03, -0.07*Wd],[sh+0.03, 0.07*Wd]]); }
+    else { poly([[sh-0.06,-0.02],[sh+0.02,-0.02],[sh+0.07,-hw*1.3],[sh+0.1,0],[sh+0.07,hw*0.9],[sh+0.02,0.02],[sh-0.06,0.02]]); edges.push([[sh+0.07,-hw*1.3],[sh+0.1,0],[sh+0.07,hw*0.9]]); }
+  }
+  else if(k==="spear"){
+    const sh = 0.55*L; c.fillStyle=dark; R(-0.52,-0.011,0.52+sh,0.022);
+    if(s.deco===1){ c.fillStyle="rgba(255,255,255,0.25)"; for(let i=0;i<5;i++) R(sh-0.15+i*0.025,-0.011,0.008,0.022); }
+    c.fillStyle=col;
+    if(v===1){ c.beginPath(); c.arc(0.06*u, 0, 0.05*Wd*u, Math.PI/2, -Math.PI/2, true); c.fill(); poly([[0.06,-0.045*Wd],[0.06+sh+0.25,0],[0.06,0.045*Wd]]); edges.push([[0.06,-0.045*Wd],[0.06+sh+0.25,0]]); }
+    else { R(sh-0.02,-0.024,0.018,0.048); poly([[sh,-0.011],[sh+0.05,-0.036*Wd],[sh+0.19*L,0.002],[sh+0.05,0.038*Wd],[sh,0.011]]); edges.push([[sh+0.05,-0.036*Wd],[sh+0.19*L,0]]);
+      if(v===2) poly([[sh+0.03,0.01],[sh+0.06,0.08*Wd],[sh+0.08,0.075*Wd],[sh+0.06,0.01]]); }
+  }
+  else if(k==="gun"){
+    if(v===0){ c.fillStyle=dark; poly([[-0.035,-0.04],[0.035,-0.04],[0.026,0.05],[-0.04,0.05]]); R(0.03,-0.04,0.05,0.025);
+      c.fillStyle=col; poly([[-0.045,-0.085],[0.25*L,-0.085],[0.25*L,-0.04],[-0.045,-0.036]]); c.fillStyle="rgba(0,0,0,0.3)"; R(0.0,-0.075,0.22*L,0.008); edges.push([[0,-0.085],[0.25*L,-0.085]]); }
+    else { const bl = (v===1 ? 0.5 : 0.68)*L; c.fillStyle=dark; poly([[-0.24,-0.03],[-0.02,-0.04],[0.02,0.03],[-0.03,0.05],[-0.24,0.035]]);
+      c.fillStyle=col; R(-0.02,-0.06,bl,0.032*Wd); if(v===1){ c.fillStyle=dark; R(0.12,-0.035,0.12,0.028); } else { c.fillStyle=col; R(0.05,-0.095,0.14,0.022); }
+      edges.push([[-0.02,-0.06],[bl,-0.06]]); }
+  }
+  else if(k==="drill"){
+    c.fillStyle=dark; R(-0.12,-0.042*Wd,0.24,0.084*Wd); R(-0.04,0.03,0.03,0.07); c.fillStyle=col;
+    const cl = 0.36*L, cw = 0.055*Wd;
+    if(v===1){ poly([[0.12,-cw*1.15],[0.12+cl*0.5,-cw*0.6],[0.12+cl*0.5,cw*0.6],[0.12,cw*1.15]]); poly([[0.12+cl*0.45,-cw*0.6],[0.12+cl*1.05,0],[0.12+cl*0.45,cw*0.6]]); }
+    else poly([[0.12,-cw],[0.12+cl,0],[0.12,cw]]);
+    c.strokeStyle="rgba(0,0,0,0.35)"; c.lineWidth=Math.max(1,u*0.008);
+    for(let i=0;i<5;i++){ const x=0.15+i*cl/5.5, w=cw*(1-(x-0.12)/cl); c.beginPath(); c.moveTo(x*u,-w*u); c.lineTo((x+0.035)*u, w*u); c.stroke(); }
+    edges.push([[0.12,-cw],[0.12+cl,0]]);
+  }
+  else if(k==="tool"){
+    if(v===1){ c.fillStyle=dark; R(-0.1,-0.04,0.14,0.08); c.fillStyle=col; R(0.04,-0.03*Wd,0.4*L,0.06*Wd);
+      c.beginPath(); c.arc((0.04+0.4*L)*u,0,0.03*Wd*u,-Math.PI/2,Math.PI/2); c.fill();
+      c.fillStyle=dark; for(let i=0;i<9;i++) R(0.05+i*0.045*L,-0.036*Wd,0.016,0.007); edges.push([[0.04,-0.036*Wd],[0.04+0.4*L,-0.036*Wd]]); }
+    else { c.fillStyle=dark; R(-0.06,-0.015,0.36*L,0.03); c.fillStyle=col;
+      c.beginPath(); c.arc(0.34*L*u, 0, 0.052*Wd*u, 0.55, Math.PI*2-0.55); c.lineTo(0.33*L*u, 0); c.closePath(); c.fill(); edges.push([[0.3*L,-0.05*Wd],[0.38*L,-0.04*Wd]]); }
+  }
+  // 발광: 날 가장자리에 가는 빛
+  if(s.glow && !opt.noGlow){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round";
+    edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); c.restore(); }
+}
+// 건틀릿은 손에 낀다: 팔뚝 끝 + 주먹을 감싼다(a: 팔뚝 방향)
+function drawGauntlet(c, s, hand, a, h, dark){
+  c.save(); c.translate(hand[0], hand[1]); c.rotate(a); const u = h, W = s.wid||1;
+  c.fillStyle = s.metal || METALS[0]; c.beginPath(); c.roundRect(-0.085*u, -0.032*W*u, 0.12*u, 0.064*W*u, 0.02*u); c.fill();
+  c.beginPath(); c.arc(0.02*u, 0, 0.04*W*u, 0, 7); c.fill();
+  c.fillStyle = dark; c.fillRect(-0.06*u, -0.033*W*u, 0.012*u, 0.066*W*u);
+  if(s.v===1){ c.fillStyle = s.metal || METALS[0]; for(let i=-1;i<=1;i++){ c.beginPath(); c.moveTo(0.04*u, i*0.022*u-0.006*u); c.lineTo((0.14+0.03*(s.len||1))*u, i*0.03*u); c.lineTo(0.04*u, i*0.022*u+0.006*u); c.closePath(); c.fill(); } }
+  if(s.glow){ c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=6; c.lineWidth=Math.max(1,u*0.006); c.beginPath(); c.moveTo(-0.07*u,-0.02*u); c.lineTo(0.02*u,-0.03*u); c.stroke(); }
   c.restore();
 }
-// 무기 모양: 칼날 / 둔기 / 총 / 창 / 대검 / 드릴 / 공구
-function drawWeapon(c, h, face, wt, wRot, col){
-  c.save(); c.translate(h*0.2*face, -h*0.55); c.rotate((wRot==null?0.5:wRot)*face); c.fillStyle=col;
-  const L = h*0.62;
-  if(wt==="blade"){ c.fillRect(-1,0,2,h*0.1); c.fillRect(-4,h*0.1,8,2); c.beginPath(); c.moveTo(-1.6,h*0.12); c.lineTo(1.6,h*0.12); c.lineTo(0.6,L); c.lineTo(-0.4,L+4); c.closePath(); c.fill();
-    c.strokeStyle="rgba(220,230,255,0.35)"; c.lineWidth=0.8; c.beginPath(); c.moveTo(1.2,h*0.14); c.lineTo(0.5,L); c.stroke(); }
-  else if(wt==="great"){ c.fillRect(-1.5,0,3,h*0.14); c.fillRect(-6,h*0.14,12,3); c.beginPath(); c.moveTo(-3.5,h*0.17); c.lineTo(3.5,h*0.17); c.lineTo(3,L*1.25); c.lineTo(0,L*1.25+6); c.lineTo(-3,L*1.25); c.closePath(); c.fill();
-    c.strokeStyle="rgba(220,230,255,0.3)"; c.lineWidth=1; c.beginPath(); c.moveTo(2.6,h*0.2); c.lineTo(2.4,L*1.2); c.stroke(); }
-  else if(wt==="blunt"){ c.fillRect(-1.2,0,2.4,L*0.8); c.fillRect(-5,L*0.78,10,h*0.14); }
-  else if(wt==="gun"){ c.rotate(-(wRot==null?0.5:wRot)*face); c.fillRect(-1.5,0,3,h*0.13); c.fillRect(face>0?-1.5:-h*0.3+1.5, -1.5, h*0.3, 3.4); }
-  else if(wt==="spear"){ c.fillRect(-1,-L*0.3,2,L*1.5); c.beginPath(); c.moveTo(-3,L*1.2); c.lineTo(3,L*1.2); c.lineTo(0,L*1.2+10); c.closePath(); c.fill(); }
-  else if(wt==="drill"){ c.fillRect(-3,0,6,h*0.18); c.beginPath(); c.moveTo(-5,h*0.18); c.lineTo(5,h*0.18); c.lineTo(0,L+4); c.closePath(); c.fill();
-    c.strokeStyle="rgba(200,200,210,0.3)"; c.lineWidth=0.8; for(let k=0;k<4;k++){ const yy=h*0.22+k*(L-h*0.18)/4; c.beginPath(); c.moveTo(-4+k,yy); c.lineTo(4-k,yy+4); c.stroke(); } }
-  else if(wt==="tool"){ c.fillRect(-1.2,0,2.4,L*0.7); c.beginPath(); c.arc(0,L*0.72,4,0.3,Math.PI*2-0.3); c.lineWidth=2.4; c.strokeStyle=col; c.stroke(); }
-  c.restore();
-}
-/* ---- 무기 쥐는 법(전투 실루엣용) ----
-   실루엣 격투 게임 참고: 무기는 몸 윤곽 밖으로 뻗어 모양만으로 읽히게, 주먹은 손잡이 위에 겹쳐 그려 '쥐고 있음'을 보인다.
-   팔은 어깨→손 목표점을 2관절 IK로 풀고(팔꿈치는 아래로 굽힘), 양손 무기는 뒷손이 손잡이 아래쪽을 잡는다.
-   좌표: 발 기준, 키(h) 단위, 오른쪽을 보는 모양. g 손 위치 / a 무기 각도(0 = 앞, 음수 = 위로)
-   단계: 대기 → w(젖힘·겨눔) → s(휘두름·찌름·반동) */
+/* 전투 자세(손 위치 g · 무기 각도 a) — 대기 → w(젖힘·겨눔) → s(휘두름·찌름·반동). two: 뒷손이 잡는 손잡이 위치 */
 const GRIP = {
   blade: {g:[0.27,-0.58], a:-0.95, w:[0.05,-0.88], wa:-2.4, s:[0.33,-0.5], sa:0.5},
   great: {g:[0.21,-0.55], a:-1.1,  w:[0.03,-0.86], wa:-2.5, s:[0.31,-0.48], sa:0.6, two:-0.1},
@@ -2339,37 +2608,152 @@ const GRIP = {
   spear: {g:[0.25,-0.56], a:-0.2,  w:[0.12,-0.57], wa:-0.22, s:[0.41,-0.6], sa:-0.1, two:-0.22},
   drill: {g:[0.24,-0.52], a:-0.1,  w:[0.12,-0.53], wa:-0.1, s:[0.38,-0.55], sa:-0.06, two:-0.09},
   gun:   {g:[0.4,-0.72],  a:0,     w:[0.42,-0.72], wa:0,    s:[0.35,-0.79], sa:-0.5, two:0},
+  rifle: {g:[0.2,-0.68],  a:-0.04, w:[0.22,-0.68], wa:-0.04, s:[0.16,-0.71], sa:-0.3, two:0.17},
+  twin:  {g:[0.28,-0.6],  a:-0.7,  w:[0.08,-0.84], wa:-2.3, s:[0.42,-0.52], sa:0.55},
+  fist:  {g:[0.24,-0.7],  a:-1.3,  w:[0.12,-0.72], wa:-1.3, s:[0.47,-0.68], sa:-0.1},
   none:  {g:[0.22,-0.7],  a:-1.3,  w:[0.1,-0.72],  wa:-1.3, s:[0.43,-0.7], sa:-0.1}
 };
-function ikArm(S, T, L1, L2){
+function ikArm(S, T, L1, L2, bendFwd){
   const dx = T[0]-S[0], dy = T[1]-S[1], d = clamp(Math.hypot(dx,dy), Math.abs(L1-L2)+0.001, L1+L2-0.001), base = Math.atan2(dy, dx);
   const al = Math.acos(clamp((L1*L1 + d*d - L2*L2)/(2*L1*d), -1, 1));
   const e1 = [S[0]+Math.cos(base+al)*L1, S[1]+Math.sin(base+al)*L1], e2 = [S[0]+Math.cos(base-al)*L1, S[1]+Math.sin(base-al)*L1];
-  return [e1[1] >= e2[1] ? e1 : e2, [S[0]+Math.cos(base)*d, S[1]+Math.sin(base)*d]];   // 팔꿈치는 아래쪽 해
+  const pickE = bendFwd ? (e1[0] >= e2[0] ? e1 : e2) : (e1[1] >= e2[1] ? e1 : e2);   // 팔꿈치는 아래, 무릎은 앞
+  return [pickE, [S[0]+Math.cos(base)*d, S[1]+Math.sin(base)*d]];
 }
-// 무기 모양: 손(원점)에서 +x로 뻗는다. u = 길이 단위. col 금속, dark 손잡이
-function drawWeaponShape(c, wt, u, col, dark){
-  const R = (x,y,w,hh)=>c.fillRect(x*u, y*u, w*u, hh*u);
-  const poly = pts=>{ c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.closePath(); c.fill(); };
-  const shine = (x0,x1,y,w)=>{ c.fillStyle="rgba(235,240,245,0.55)"; R(x0, y, x1-x0, w*0.8); };
-  if(wt==="blade"){ c.fillStyle=dark; R(-0.075,-0.013,0.13,0.026); c.beginPath(); c.arc(-0.08*u,0,0.018*u,0,7); c.fill();
-    c.fillStyle=col; R(0.05,-0.045,0.02,0.09); poly([[0.07,-0.018],[0.55,-0.015],[0.63,0.004],[0.55,0.017],[0.07,0.018]]); shine(0.085,0.54,-0.015,0.006); }
-  else if(wt==="great"){ c.fillStyle=dark; R(-0.17,-0.017,0.23,0.034); c.beginPath(); c.arc(-0.18*u,0,0.022*u,0,7); c.fill();
-    c.fillStyle=col; R(0.055,-0.075,0.03,0.15); poly([[0.085,-0.04],[0.83,-0.034],[0.95,0.005],[0.83,0.038],[0.085,0.04]]); shine(0.1,0.82,-0.034,0.009); }
-  else if(wt==="blunt"){ c.fillStyle=dark; poly([[-0.08,-0.015],[0.3,-0.021],[0.3,0.021],[-0.08,0.015]]);
-    c.fillStyle=col; poly([[0.28,-0.03],[0.5,-0.04],[0.54,-0.022],[0.54,0.022],[0.5,0.04],[0.28,0.03]]); shine(0.3,0.5,-0.03,0.009); }
-  else if(wt==="tool"){ c.fillStyle=dark; R(-0.06,-0.015,0.34,0.03); c.fillStyle=col;
-    c.beginPath(); c.arc(0.34*u, 0, 0.052*u, 0.55, Math.PI*2-0.55); c.lineTo(0.33*u, 0); c.closePath(); c.fill(); }
-  else if(wt==="spear"){ c.fillStyle=dark; R(-0.52,-0.011,1.06,0.022); c.fillStyle=col;
-    R(0.53,-0.024,0.018,0.048); poly([[0.55,-0.011],[0.6,-0.036],[0.74,0.002],[0.6,0.038],[0.55,0.011]]); }
-  else if(wt==="drill"){ c.fillStyle=dark; R(-0.12,-0.042,0.24,0.084); R(-0.04,0.03,0.03,0.07); c.fillStyle=col; poly([[0.12,-0.055],[0.48,0],[0.12,0.055]]);
-    c.strokeStyle="rgba(0,0,0,0.35)"; c.lineWidth=Math.max(1,u*0.008); for(let i=0;i<4;i++){ const x=0.15+i*0.075, w=0.055*(1-(x-0.12)/0.36); c.beginPath(); c.moveTo(x*u,-w*u); c.lineTo((x+0.035)*u, w*u); c.stroke(); } }
-  else if(wt==="gun"){ c.fillStyle=dark; poly([[-0.035,-0.04],[0.035,-0.04],[0.026,0.05],[-0.04,0.05]]); R(0.03,-0.04,0.05,0.025);
-    c.fillStyle=col; poly([[-0.045,-0.085],[0.25,-0.085],[0.25,-0.04],[-0.045,-0.036]]); c.fillStyle="rgba(0,0,0,0.3)"; R(0.0,-0.075,0.22,0.008); }
+const hexMix = (a, b, t)=>{ const A = parseInt(a.slice(1),16), B = parseInt(b.slice(1),16);
+  return "#"+[16,8,0].map(s=>Math.round(((A>>s)&255)*(1-t)+((B>>s)&255)*t).toString(16).padStart(2,"0")).join(""); };
+// 상태별 몸 자세
+const BODY_STATE = {
+  idle:   {crouch:0.0,  lean:0.02, stance:0.35, amp:0.004, rate:1.3},
+  combat: {crouch:0.035,lean:0.09, stance:1.0,  amp:0.006, rate:2.0},
+  hurt:   {crouch:0.075,lean:0.22, stance:0.7,  amp:0.012, rate:0.85}
+};
+/* o: {face, col, state, alert, sw, rot, alpha, hurt(전투 중 지친 정도 0~1), weapon: spec, armor: spec, t, rim} */
+function drawFixer(c, x, gy, h, o={}){
+  const t = o.t!=null ? o.t : performance.now()/1000, state = o.state || "idle", face = o.face || 1;
+  const B = BODY_STATE[state] || BODY_STATE.idle, hk = state==="combat" ? clamp(o.hurt||0,0,1) : 0;
+  const col = o.col || SIDE_COL.ally.fill, dark = hexMix(col, "#000000", 0.24), hand1C = hexMix(col, "#ffffff", 0.08);
+  const ws = o.weapon || null, ar = o.armor || {type:1, pad:0, collar:0, trim:null}, carry = carryOf(ws);
+  const ph = t*B.rate*Math.PI*2 + x*0.013, breath = Math.sin(ph)*B.amp;
+  const crouch = B.crouch + hk*0.04, lean = B.lean + hk*0.12 + (state==="hurt" ? Math.sin(ph*0.5)*0.02 : 0);
+  c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); if(o.alpha!=null) c.globalAlpha *= o.alpha; c.scale(face, 1);
+  const P = (px, py)=>[px*h, py*h];
+  const limb = (a, b, w0, w1, color)=>{ const dx = b[0]-a[0], dy = b[1]-a[1], L = Math.hypot(dx,dy)||1, nx = -dy/L, ny = dx/L;
+    c.fillStyle = color; c.beginPath(); c.moveTo(a[0]+nx*w0, a[1]+ny*w0); c.lineTo(b[0]+nx*w1, b[1]+ny*w1); c.lineTo(b[0]-nx*w1, b[1]-ny*w1); c.lineTo(a[0]-nx*w0, a[1]-ny*w0); c.closePath(); c.fill();
+    c.beginPath(); c.arc(b[0], b[1], w1, 0, 7); c.fill(); };
+  const fist = (pt, color, r=0.031)=>{ c.fillStyle = color; c.beginPath(); c.arc(pt[0], pt[1], r*h, 0, 7); c.fill(); };
+  // 허리(골반)와 몸통 변환: 몸통 좌표(허리 기준) → 화면
+  const hip = [0, (-0.42 + crouch + breath*0.3)*h], cs = Math.cos(lean), sn = Math.sin(lean);
+  const T = (lx, ly)=>[hip[0] + (lx*cs - ly*sn)*h, hip[1] + (lx*sn + ly*cs)*h + breath*h*(ly<-0.2?1:0)];
+  // 다리: 발 위치(상태별 보폭), 무릎은 앞으로 굽는다
+  const st = B.stance, f1 = state==="hurt" ? P(0.1, 0) : P(0.04+0.06*st, 0), f2 = state==="hurt" ? P(-0.09, 0) : P(-0.04-0.065*st, 0);
+  const leg = (from, foot, color, w)=>{ const [K, F] = ikArm(from, foot, 0.17*h, 0.166*h, true); limb(from, K, w*h, w*0.8*h, color); limb(K, F, w*0.8*h, w*0.62*h, color);
+    c.fillStyle = color; c.beginPath(); c.moveTo(F[0]-0.03*h, F[1]); c.lineTo(F[0]+0.075*h, F[1]); c.lineTo(F[0]+0.06*h, F[1]-0.028*h); c.lineTo(F[0]-0.03*h, F[1]-0.03*h); c.closePath(); c.fill(); };
+  // 어깨·팔 길이
+  const S1 = T(0.065,-0.33), S2 = T(-0.03,-0.32), L1 = 0.2*h, L2 = 0.18*h;
+  // ── 손 위치와 무기 자세 결정 ──
+  let hand1T, hand2T, wAng = 0, wAt = null, wBehind = false, wInHand = false, w2 = null, alertGrab = false;
+  const kind = ws ? ws.kind : "none", sw = clamp(o.sw||0, -1.3, 1);
+  const relaxed1 = T(0.07, 0.03 + Math.sin(ph)*0.004), relaxed2 = T(-0.055, 0.02);
+  if(state==="combat"){
+    const G = GRIP[kind==="gun" && ws.v>0 ? "rifle" : kind] || GRIP.none, mix = (p, q, k)=>[p[0]+(q[0]-p[0])*k, p[1]+(q[1]-p[1])*k];
+    const gp = sw<0 ? mix(G.g, G.w, -sw) : mix(G.g, G.s, sw); wAng = sw<0 ? G.a+(G.wa-G.a)*(-sw) : G.a+(G.sa-G.a)*sw;
+    // 지칠수록 겨눈 손이 내려간다
+    hand1T = P(gp[0] - hk*0.04, gp[1] + hk*0.12 + (lean-B.lean)*0.2); wAng += hk*0.5; wInHand = kind!=="none" && kind!=="fist";
+    const ax = Math.cos(wAng), ay = Math.sin(wAng);
+    if(G.two!=null && ws) hand2T = kind==="gun" && ws.v===0 ? [hand1T[0]-0.02*h, hand1T[1]+0.025*h] : [hand1T[0]+ax*G.two*h*0.85, hand1T[1]+ay*G.two*h*0.85];
+    else if(kind==="twin"){ hand2T = [hand1T[0]-0.13*h, hand1T[1]+0.07*h]; w2 = {ang: wAng + 0.75}; }
+    else if(kind==="fist" || kind==="none") hand2T = [hand1T[0]-0.1*h, hand1T[1]+0.03*h];
+    else hand2T = P(0.0+sw*0.04, -0.47);
+  } else if(state==="hurt"){
+    // 뒷손으로 옆구리를 감싸고, 무기는 앞손에 낮게 늘어뜨린다(끝이 바닥 쪽)
+    hand2T = T(0.075, -0.12); hand1T = T(0.15, 0.02);
+    if(ws){ wInHand = kind!=="fist"; wAng = kind==="gun" ? 1.35 : kind==="spear" ? 0.75 : kind==="great" ? 1.2 : 1.05; }
+  } else {
+    hand1T = relaxed1; hand2T = relaxed2;
+    if(carry==="shoulder"){ hand1T = T(0.13, -0.27); wInHand = true; wAng = -2.3 - lean; }
+    else if(carry==="upright"){ hand1T = T(0.17, -0.1); wInHand = true; wAng = -Math.PI/2 - 0.04; }
+    else if(carry==="hang"){ hand1T = T(0.1, 0.0); wInHand = true; wAng = 1.45; }
+    else if(carry==="back" || carry==="hip" || carry==="holster"){
+      // 꽂아 둔 무기의 손잡이 위치
+      wAt = carry==="back" ? {p:T(-0.05,-0.43), a: kind==="twin" ? 1.95 : 1.75 + (kind==="gun"?0.3:0)} : {p: kind==="gun" ? T(0.0, 0.04) : T(-0.005, 0.03), a: kind==="gun" ? 1.72 : kind==="tool" ? 2.0 : 2.25};
+      wBehind = carry==="back";
+      if(o.alert){ alertGrab = true; hand1T = carry==="back" ? [wAt.p[0]+0.01*h, wAt.p[1]-0.005*h] : [wAt.p[0]+0.005*h, wAt.p[1]]; }
+    }
+  }
+  const ik1 = ikArm(S1, hand1T, L1, L2), hand1 = ik1[1], ik2 = ikArm(S2, hand2T, L1, L2), hand2 = ik2[1];
+  const arm = (ik, sh, w0, w1, color)=>{ limb(sh, ik[0], w0, w0*0.85, color); limb(ik[0], ik[1], w0*0.85, w1, color); };
+  const wDark = hexMix(col, "#000000", 0.55), wu = h*0.88;
+  const weaponAt = (p, a, opt)=>{ c.save(); c.translate(p[0], p[1]); c.rotate(a); drawWeaponSpec(c, ws, wu, wDark, opt); c.restore(); };
+  const sheath = (p, a, len)=>{ c.save(); c.translate(p[0], p[1]); c.rotate(a); c.fillStyle = wDark; c.beginPath(); c.roundRect(0.06*wu, -0.026*wu, len*wu, 0.052*wu, 0.02*wu); c.fill(); c.restore(); };
+  // ── 그리기(뒤 → 앞) ──
+  // ① 등에 멘 무기(몸 뒤)
+  if(wAt && wBehind){
+    if(kind==="twin"){ weaponAt(wAt.p, wAt.a); weaponAt([wAt.p[0]-0.03*h, wAt.p[1]+0.01*h], wAt.a-0.45); }
+    else weaponAt(wAt.p, wAt.a);
+  }
+  // ② 뒷다리 · 뒷팔(어둡게)
+  leg(T(-0.035, 0.1), f2, dark, 0.045);
+  const twoGrip = state==="combat" && ws && (GRIP[kind==="gun"&&ws.v>0?"rifle":kind]||{}).two!=null;
+  const backLate = state==="hurt";      // 부상: 옆구리를 감싼 뒷손은 몸 앞에 보인다
+  if(!twoGrip && !backLate){ arm(ik2, S2, 0.034*h, 0.026*h, dark); fist(hand2, dark); }
+  // ③ 앞다리
+  leg(T(0.035, 0.1), f1, col, 0.046);
+  // ④ 몸통(코트) · 목 · 머리 — 몸통 좌표로 그린다
+  c.save(); c.translate(hip[0], hip[1]); c.rotate(lean); c.translate(0, breath*h*0.5);
+  const sway = Math.sin(t*1.7 + x*0.01)*0.012 - (o.rot||0)*0.12*face - lean*0.1;
+  const hem = [[0.06,0.08],[0.18,0.22],[0.3,0.34],[0.2,0.24]][ar.type] || [0.18,0.22], wide = ar.type===3 ? 0.018 : 0;
+  c.fillStyle = col; c.beginPath();
+  c.moveTo((-0.115-wide)*h, -0.315*h); c.quadraticCurveTo((-0.12-wide)*h, -0.38*h, -0.06*h, -0.385*h); c.lineTo(0.06*h, -0.385*h);
+  c.quadraticCurveTo((0.125+wide)*h, -0.38*h, (0.12+wide)*h, -0.315*h); c.lineTo(0.104*h, -0.1*h); c.lineTo(0.14*h, hem[0]*h);
+  c.quadraticCurveTo(0.06*h, (hem[0]+0.025)*h, 0.005*h, (hem[0]-0.025)*h); c.lineTo((-0.175+sway)*h, hem[1]*h); c.lineTo(-0.12*h, -0.1*h); c.closePath(); c.fill();
+  // 깃 · 목 · 머리(부상이면 고개를 숙인다)
+  const hd = state==="hurt" ? [0.03, 0.025] : [0, 0];
+  c.beginPath(); c.moveTo(-0.07*h,-0.38*h); c.lineTo(-0.045*h,(ar.collar?-0.47:-0.435)*h); c.lineTo(ar.collar?0.02*h:-0.005*h,-0.38*h); c.closePath(); c.fill();
+  c.fillRect(-0.022*h, -0.425*h, 0.044*h, 0.05*h);
+  c.beginPath(); c.arc((0.012+hd[0])*h, (-0.473+hd[1])*h, 0.077*h, 0, 7); c.fill();
+  // 방어구 외형: 어깨 장갑 · 가슴판 · 장식선
+  if(ar.pad){ c.fillStyle = hexMix(col, "#c9d2de", 0.35); c.beginPath(); c.ellipse(0.07*h, -0.345*h, (ar.pad===2?0.08:0.062)*h, (ar.pad===2?0.04:0.03)*h, -0.15, 0, 7); c.fill(); }
+  if(ar.type===3){ c.fillStyle = hexMix(col, "#c9d2de", 0.25); c.beginPath(); c.roundRect(-0.06*h, -0.29*h, 0.16*h, 0.14*h, 0.02*h); c.fill(); }
+  if(ar.trim){ c.save(); c.strokeStyle = ar.trim; c.shadowColor = ar.trim; c.shadowBlur = Math.max(3, h*0.03); c.lineWidth = Math.max(1, h*0.008);
+    c.beginPath(); c.moveTo(0.104*h, -0.1*h); c.lineTo(0.14*h, hem[0]*h); c.stroke(); c.beginPath(); c.moveTo(-0.1*h, -0.12*h); c.lineTo(0.1*h, -0.12*h); c.stroke(); c.restore(); }
+  if(o.rim){ c.strokeStyle = o.rim; c.lineWidth = Math.max(1, h*0.012); c.beginPath(); c.arc((0.012+hd[0])*h, (-0.473+hd[1])*h, 0.077*h, -1.2, 0.9); c.stroke();
+    c.beginPath(); c.moveTo(0.12*h, -0.315*h); c.lineTo(0.104*h, -0.1*h); c.lineTo(0.14*h, hem[0]*h); c.stroke(); }
+  c.restore();
+  if(backLate){ arm(ik2, S2, 0.032*h, 0.026*h, hexMix(col, "#000000", 0.12)); fist(hand2, hexMix(col, "#000000", 0.08)); }
+  // ⑤ 허리에 찬 무기(칼집·권총집) — 몸 앞쪽
+  if(wAt && !wBehind){
+    if(kind==="gun"){ weaponAt(wAt.p, wAt.a, {noGlow:true});           // 총열은 권총집 속, 손잡이만 뒤로 삐죽
+      c.save(); c.translate(wAt.p[0], wAt.p[1]); c.rotate(wAt.a); c.fillStyle = wDark; c.beginPath(); c.roundRect(0.0, -0.1*wu, 0.27*wu, 0.075*wu, 0.02*wu); c.fill(); c.restore(); }
+    else if(kind==="tool") weaponAt(wAt.p, wAt.a - 0.4);
+    else { const sl = (ws.v===3 ? 0.3 : 0.5)*(ws.len||1); sheath(wAt.p, wAt.a, sl); c.save(); c.translate(wAt.p[0], wAt.p[1]); c.rotate(wAt.a);
+      c.fillStyle = wDark; c.fillRect(-0.075*wu, -0.013*wu, 0.13*wu, 0.026*wu); c.fillStyle = ws.metal; c.fillRect(0.05*wu, -0.04*wu, 0.02*wu, 0.08*wu); c.restore(); }
+  }
+  // ⑥ 손에 든 무기 → (양손이면) 뒷손 → 앞팔 → 앞손. 주먹을 손잡이 위에 겹쳐 '쥔' 모양을 만든다
+  if(wInHand) weaponAt(hand1, wAng);
+  if(w2 && ws) weaponAt(hand2, w2.ang);
+  if(twoGrip){ limb(ik2[0], ik2[1], 0.029*h, 0.026*h, dark); fist(hand2, hexMix(col, "#000000", 0.12)); }
+  arm(ik1, S1, 0.036*h, 0.027*h, col);
+  fist(hand1, hand1C);
+  if(kind==="fist" && ws){ drawGauntlet(c, ws, hand1, Math.atan2(hand1[1]-ik1[0][1], hand1[0]-ik1[0][0]), h, wDark);
+    if(!twoGrip) drawGauntlet(c, ws, hand2, Math.atan2(hand2[1]-ik2[0][1], hand2[0]-ik2[0][0]), h*0.95, wDark); }
+  if(o.acc){ c.fillStyle = `rgb(${o.acc})`; c.beginPath(); c.arc(...T(0.06,-0.25), 0.016*h, 0, 7); c.fill(); }
+  c.restore();
+  return {hand: hand1, alertGrab};
+}
+// 작은 아이콘: 무기 하나만 비스듬히
+function drawWeaponIcon(cv, spec){
+  const c = cv.getContext("2d"), d = devicePixelRatio||1, W = cv.clientWidth||cv.width, H = cv.clientHeight||cv.height;
+  cv.width = W*d; cv.height = H*d; c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H);
+  if(!spec) return;
+  const u = spec.kind==="spear" ? W*0.62 : spec.kind==="great" ? W*0.68 : spec.kind==="fist" ? W*1.6 : W*0.95;
+  if(spec.kind==="fist"){ drawGauntlet(c, spec, [W*0.45, H*0.55], -0.5, W*1.2, "#2a2d33"); return; }
+  c.save(); c.translate(spec.kind==="spear" ? W*0.5 : W*0.16, H*0.82); c.rotate(-0.62); drawWeaponSpec(c, spec, u, "#3a3f46"); c.restore();
 }
 // 타격 순간 무기 종류에 따른 추가 효과(t0부터 약 0.6초)
 function weaponFx(c, st, o, t, t0, fromX, fromY, x, y){
-  const g = o.lead; if(!g || !g.wtype || t<t0-0.35 || t>t0+0.7) return;
+  const g0 = o.lead; if(!g0 || !g0.wtype || t<t0-0.35 || t>t0+0.7) return;
+  const g = Object.assign({}, g0, {wtype: g0.wtype==="twin" ? "blade" : g0.wtype==="fist" ? "blunt" : g0.wtype});
   const k = seg(t, t0, t0+0.6), key = "wfx"+t0;
   c.save(); c.globalCompositeOperation="lighter";
   if(g.wtype==="blade" || g.wtype==="great"){ const big = g.wtype==="great" ? 1.6 : 1;
@@ -2471,7 +2855,10 @@ function genBreach(c, t, W, H, o, st){
     if(!ok && t>hit+1.0 && i===0) rot = -ease(seg(t, hit+1.0, hit+1.4))*1.25;
     if(i>0 && ok && t>hit+0.6) x = lerp(front - i*fh*0.45, sx + sw*0.1 - i*fh*0.45, ease(seg(t, hit+0.6, hit+1.6)));
     if(i>0 && !ok && t>hit+0.8) x -= ease(seg(t, hit+0.8, hit+1.3))*W*0.06;
-    fig(c, x, gy, fh*(i===0?1:0.94), {face:1, weapon:true, wRot:-0.4, coat:i===0, gear:i===0?o.lead:null, rot, rim:"rgba(255,210,150,0.55)"});
+    // 상태: 다가가며 손잡이에 손(평상·경계) → 꺼내 들고 싸움(전투) → 이기면 다시 넣음(평상) / 지면 부상
+    const state = t < 0.95 ? "idle" : ok ? (t > hit+1.7 ? "idle" : "combat") : (t > hit+0.7 ? "hurt" : "combat");
+    const swv = i===0 && state==="combat" ? (t<hit-0.28 ? 0 : t<hit ? -ease(seg(t,hit-0.28,hit)) : t<hit+0.1 ? -1+2*ease(seg(t,hit,hit+0.1)) : 1-ease(seg(t,hit+0.1,hit+0.5))) : 0;
+    fig(c, x, gy, fh*(i===0?1:0.94), {face:1, weapon:true, state, alert: t>0.5, sw:swv, coat:i===0, gear:i===0?o.lead:null, rot, rim:"rgba(255,210,150,0.55)"});
   }
   // 충돌
   if(t>hit && !st.boom){ st.boom=true; st.shake = ok?13:7; sparks(st, sx, gy-sh*0.5, ok?50:25, "#ffd9a0", ok?5:3.5, 0.9); }
@@ -2833,17 +3220,35 @@ function fxTestPanel(){
   const el=document.createElement("div"); el.className="fxtest";
   el.innerHTML=`<h4>연출 테스트</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>일반 의뢰</b><div class="g">${[["str","물리"],["agi","속도"],["tec","정밀"]].map(([a,l])=>`<button data-fx="일반|${a}|1">${l} 성공</button><button data-fx="일반|${a}|0">${l} 실패</button>`).join("")}</div>
-   <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">칼날</option><option value="great">대검</option><option value="blunt">둔기</option><option value="gun">총</option><option value="spear">창</option><option value="drill">드릴</option><option value="tool">공구</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
+   <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">칼날</option><option value="great">대검</option><option value="blunt">둔기</option><option value="gun">총</option><option value="spear">창</option><option value="drill">드릴</option><option value="tool">공구</option><option value="twin">쌍검</option><option value="fist">건틀릿</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">원 누르기</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
-   <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>`;
+   <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
+   <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 장비 제작</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>`;
   document.body.appendChild(el);
+  el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
+    if(k==="color"){ f.grade = 0; f.title = f.title || randomColorTitle(); f.unique = f.unique || {}; S.officeGrade = 1; render(); toast(`${f.name} → 특색 [${f.title}]`); }
+    else if(k==="forge"){ if(f.grade!==0){ f.grade = 0; f.title = randomColorTitle(); f.unique = {}; } await openForge(f); }
+    else if(k==="shop") await openShop();
+    else if(k==="rig") await openRigGallery(); });
   el.onclick=e=>{ const v=e.target.dataset.fx; if(!v||scene) return; const [k,a,ok]=v.split("|"); const n=+el.querySelector("#fxn").value;
-    const wv=el.querySelector("#fxw").value, lead={wtype:wv||null, weaponName: wv?el.querySelector("#fxw").selectedOptions[0].text:null, armor:el.querySelector("#fxa").checked, acc:el.querySelector("#fxc").checked, accColor:"150,230,255"};
+    const wv=el.querySelector("#fxw").value, f0=S.fixers[0], lead = f0.gear.weapon && f0.gear.weapon.unique ? leadGear(f0) : {wtype:wv||null, spec: wv?defaultSpec(wv):null, weaponName: wv?el.querySelector("#fxw").selectedOptions[0].text:null, armor:el.querySelector("#fxa").checked, acc:el.querySelector("#fxc").checked, accColor:"150,230,255"};
     window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),lead,client:"테스트 의뢰인"}); };
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
     const team=S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean); const at = g==="shield"?["str","agi"]:[g];
     const q={kind: g==="shield"?"호위":"일반", goal: el.querySelector("#fxgoal").value, grade:+el.querySelector("#fxgr").value, attrs:at, req: Math.max(1, teamPower(team,at)/kk), client:"테스트 의뢰인"};
     const sc = await runMinigames(q, team); toast(`미니게임 점수 ${Math.round(sc*100)}점`); });
+}
+
+// 테스트: 무기 종류 × 상태 실루엣 한눈에 보기
+async function openRigGallery(){
+  let view = "idle";
+  await modal("실루엣 상태", `<div class="fg-seg" id="rgv" style="margin-bottom:8px">${STATE_TABS.map(([k,n])=>`<button class="${k===view?"on":""}" data-rv="${k}">${n}</button>`).join("")}</div>
+    <div class="rig-grid">${[null, ...Object.keys(WEAPON_KINDS)].map(k=>`<figure><canvas data-rk="${k||""}"></canvas>${k?WEAPON_KINDS[k].n:"맨손"}</figure>`).join("")}</div>`, [{t:"닫기"}], false, root=>{
+    root.querySelector(".modal").classList.add("modal-wide");
+    root.querySelectorAll("canvas[data-rk]").forEach(cv=>{ const k = cv.dataset.rk, spec = k ? defaultSpec(k) : null;
+      animPreview(cv, ()=>Object.assign({weapon:spec, armor:{type:1,pad:0,collar:0,trim:null}}, stateOpts(view))); });
+    root.addEventListener("click", e=>{ const v = e.target.dataset.rv; if(!v) return; view = v; root.querySelectorAll("[data-rv]").forEach(x=>x.classList.toggle("on", x.dataset.rv===v)); });
+  });
 }
 
 /* ================= 부팅 ================= */
