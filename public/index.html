@@ -3001,8 +3001,10 @@ function drawFixer(c, x, gy, h, o={}){
   // 밑단은 여러 점이 물결처럼 흔들리고, 내디디거나 휘두르면 몸보다 반 박자 늦게 크게 펄럭인다(겹침 동작)
   { const fx = (S.f1 + step)*h, bx = S.f2*h, vel = clamp(step - stepLag, -0.05, 0.05);
     const amp = (state==="idle" ? 0.003 : state==="hurt" ? 0.004 : 0.006)*h + Math.abs(vel)*0.25*h + (atk && o.atk.ph>0.8 && o.atk.ph<2.6 ? 0.008*h : 0);
-    const fr = Math.max(fx + 0.05*h, fTop[0] + 0.035*h) - sway*0.4*h, bk = Math.min(bx - 0.05*h, butt[0] - 0.025*h) - sway*h - vel*0.8*h - (atk ? 0.02*h*Math.sin(Math.min(3,o.atk.ph)/3*Math.PI) : 0);
-    const bkC = Math.min(bk, fr - 0.14*h);
+    // 천은 중력으로 늘어진다: 밑단 폭은 허리 아래 일정하게(키의 약 0.22) 두고, 안의 다리가 내디디면 앞자락만 조금 밀려 나간다
+    const cx = hipJ[0], fr = cx + 0.1*h + clamp(fx - (cx + 0.05*h), 0, 0.14*h)*0.3 - sway*0.4*h,
+      bk = cx - 0.115*h - clamp(cx - 0.04*h - bx, 0, 0.14*h)*0.2 - sway*h - vel*0.5*h - (atk ? 0.012*h*Math.sin(Math.min(3,o.atk.ph)/3*Math.PI) : 0);
+    const bkC = Math.min(bk, fr - 0.16*h);
     const hemB = -0.006*h, N = 9, hem = [];
     for(let k=0;k<=N;k++){ const u = k/N, x = fr + (bkC - fr)*u, edge = 0.4 + 0.6*Math.abs(u-0.5)*2;
       const wv = Math.sin(t*(state==="idle"?2.2:6.5) - u*4.2 + seed)*amp*edge, lift = u>0.6 ? -Math.abs(vel)*0.9*h*(u-0.6) : 0;
