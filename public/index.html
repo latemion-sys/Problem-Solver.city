@@ -1095,17 +1095,19 @@ function mgCombat(ctx){
     const SPN = id => { const x = EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor).find(e=>e.id===id); return x ? x.n : id; };
     const support = ()=> party.filter((p,i)=>i!==act && p.hp>0);
     const supBase = ()=> Math.min(3, support().length), supCp = ()=> support().length>=2 ? 1 : 0;
-    const mySkill = sk => { const me = party[act]; return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + (me.charge||0)), cp: sk.cp + supCp()}); };
+    const mySkill = sk => { const me = party[act]; return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase()), cp: sk.cp + supCp()}); };
     const headP = sp => clamp(50 + sp, 5, 95)/100;
     const flip = (n, sp)=>{ const r = []; for(let i=0;i<n;i++) r.push(Math.random() < headP(sp)); return r; };
     const powOf = (sk, heads)=> sk.base + heads.filter(Boolean).length*sk.cp;
-    function simClash(a, spA, b, spB){
-      let ca = a.coins, cb = b.coins, n = 0; const ex = [];
+    // chg: E.G.O. 충전 — 합을 한 번 겨룰 때마다 2씩 쌓이고, 10이 되면 전부 소모해 그 턴 동안 코인 위력 +1
+    function simClash(a, spA, b, spB, chg){
+      let ca = a.coins, cb = b.coins, n = 0, c = chg, fired = false; const ex = [];
       while(ca>0 && cb>0 && n<24){ const ha = flip(ca, spA), hb = flip(cb, spB), pa = powOf(a, ha), pb = powOf(b, hb);
-        ex.push({ha, hb, pa, pb, loser: pa>pb ? "foe" : pb>pa ? "me" : null}); if(pa>pb) cb--; else if(pb>pa) ca--; n++; }
-      return {ex, win: ca>0 ? "me" : "foe", left: ca>0 ? ca : cb, count: ex.filter(e=>e.loser).length};
+        const e = {ha, hb, pa, pb, loser: pa>pb ? "foe" : pb>pa ? "me" : null}; ex.push(e); if(pa>pb) cb--; else if(pb>pa) ca--; n++;
+        if(c!=null){ c += 2; if(c>=10 && !fired){ c = 0; fired = true; a = Object.assign({}, a, {cp: a.cp + 1}); e.charged = true; } } }
+      return {ex, win: ca>0 ? "me" : "foe", left: ca>0 ? ca : cb, count: ex.filter(e=>e.loser).length, a, chg: c, fired};
     }
-    function odds(a, spA, b, spB){ let w = 0; for(let i=0;i<300;i++) if(simClash(a, spA, b, spB).win==="me") w++; return w/300; }
+    function odds(a, spA, b, spB, chg){ let w = 0; for(let i=0;i<300;i++) if(simClash(a, spA, b, spB, chg).win==="me") w++; return w/300; }
     const oddLabel = p => p>=0.8 ? ["압도", "#7fe0a8"] : p>=0.6 ? ["우세", "#a8e07f"] : p>=0.4 ? ["호각", "#e0d27f"] : p>=0.2 ? ["열세", "#e0a37f"] : ["절망", "#e07f7f"];
     let act = 0, turn = 1; const MAXT = 6, st = {}; let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
     const S2 = {log:[]};
@@ -1113,7 +1115,7 @@ function mgCombat(ctx){
     const coinStr = sk => "●".repeat(sk.coins);
     function statusLine(){ const me = party[act], a = [], b = [];
       if(foe.burn) a.push(`화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`);
-      if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge) b.push(`충전 +${me.charge}`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
+      if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.sp2==="charge") b.push(`충전 ${me.charge||0}/10`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
       return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
@@ -1121,14 +1123,15 @@ function mgCombat(ctx){
         <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""})을 내려 한다.</span>
         ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}
         ${statusLine()}${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
-      m.ctrl.innerHTML = `<div class="pk-moves">${CARDS[me.wt].map((c,i)=>{ const sk = mySkill(skillOf(c)), p = odds(sk, me.sp, foeSkill, foe.sp), [lb, lc] = oddLabel(p);
+      m.ctrl.innerHTML = `<div class="pk-moves">${CARDS[me.wt].map((c,i)=>{ const sk = mySkill(skillOf(c)), p = odds(sk, me.sp, foeSkill, foe.sp, me.sp2==="charge" ? (me.charge||0) : null), [lb, lc] = oddLabel(p);
         return `<button data-sk="${i}"><b>${c.n}</b><small>${sk.def?"방어 · ":""}기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 위력 ${sk.base}~${sk.base+sk.coins*sk.cp}<br><span style="color:${lc}">합 ${lb} ${Math.round(p*100)}%</span>${sk.def?" · 이기면 반격, 지면 피해 절반":""}</small></button>`; }).join("")}</div>`;
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
       phase = "anim"; m.ctrl.innerHTML = "";
       const me = party[act], c = CARDS[me.wt][si], sk = mySkill(skillOf(c)), fk = foeSkill;
-      const R = simClash(sk, me.sp, fk, foe.sp);
+      const R = simClash(sk, me.sp, fk, foe.sp, me.sp2==="charge" ? (me.charge||0) : null);
+      if(me.sp2==="charge") me.charge = R.chg;
       const lines = [`${esc(me.name)}의 ${c.n} vs ${foe.name}의 ${fk.n}`];
       clash = {mine:{sk, coins:sk.coins, broken:0, heads:[], p:sk.base}, foe:{sk:fk, coins:fk.coins, broken:0, heads:[], p:fk.base}, t: performance.now(), res:null};
       m.info.innerHTML = `<div class="pk-text">${lines[0]} — 합!</div>`;
@@ -1140,11 +1143,10 @@ function mgCombat(ctx){
       }
       if(foe.bleed > 0){ const bd = foe.bleed; foe.hp = Math.max(0, foe.hp - bd); foe.bleed = Math.floor(foe.bleed*2/3); lines.push(`<span style="color:#ff8a7a">출혈</span> — 합을 겨루느라 ${foe.name}이(가) ${bd}의 피해를 입었다.`);
         if(foe.hp<=0){ clash = null; m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`; await wait(1100); S2.log = lines.concat(S2.log).slice(0,4); return next(); } }
-      const won = R.win==="me", wSk = won ? sk : fk, bonusK = 1 + 0.04*Math.max(0, R.count-1);
+      const won = R.win==="me", wSk = won ? R.a : fk, bonusK = 1 + 0.04*Math.max(0, R.count-1);
       // 합 결과로 정신력이 움직인다
       if(won){ me.sp = clamp(me.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); foe.sp = clamp(foe.sp - 4, -45, 45); }
       else { if(me.sp2!=="mind") me.sp = clamp(me.sp - 5, -45, 45); else me.sp = Math.max(0, me.sp); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
-      if(won && me.sp2==="charge" && me.charge < 4){ me.charge++; }
       lines.push(won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${foe.name}이(가) 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       // 피해: 이긴 쪽이 남은 코인을 한 번 더 던져 나온 최종 위력만큼 한 번에 준다
@@ -1159,7 +1161,6 @@ function mgCombat(ctx){
         if(me.sp2==="burn"){ foe.burn = Math.min(9, foe.burn + 3); egoNote.push(`화상 ${foe.burn}`); }
         if(me.sp2==="bleed"){ foe.bleed = Math.min(9, foe.bleed + 3); egoNote.push(`출혈 ${foe.bleed}`); }
         if(me.sp2==="sink"){ foe.sp = clamp(foe.sp - 10, -45, 45); egoNote.push(`침잠 — 적 정신력 ${foe.sp}`); }
-        if(me.sp2==="charge") egoNote.push(`충전 +${me.charge}`);
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c); }
       else { let dmg = Math.round(P*3*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(me.sp2==="evade" && Math.random()<0.25){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
@@ -1170,6 +1171,7 @@ function mgCombat(ctx){
       await wait(900);
       clash = null;
       lines.push(won ? `남은 코인 위력 ${P} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${esc(me.name)}은(는) 상처 없이 버텼다.` : `${esc(me.name)}이(가) 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}`);
+      if(R.fired) egoNote.unshift("충전 10 소모 — 이번 턴 코인 위력 +1");
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       S2.log = lines.concat(S2.log).slice(0,4);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
@@ -2232,7 +2234,7 @@ const EGO_SPECIAL = {
     {id:"rupture", n:"파열", d:"맞힐 때마다 파열이 2씩 쌓이고, 쌓인 파열만큼 피해가 더 들어간다."},
     {id:"sink",    n:"침잠", d:"맞힐 때마다 적의 정신력을 10 깎는다 — 적 코인의 앞면이 잘 안 나온다."},
     {id:"poise",   n:"호흡", d:"남은 코인으로 칠 때 앞면 코인마다 35% 확률로 치명타(그 코인 위력 2배)."},
-    {id:"charge",  n:"충전", d:"합을 이길 때마다 이번 전투 동안 기본 위력이 1씩 오른다(최대 +4)."}],
+    {id:"charge",  n:"충전", d:"합을 겨룰 때마다 충전이 2씩 쌓인다. 10이 되면 전부 소모해 그 턴의 코인 위력 +1."}],
   armor:[
     {id:"shield",  n:"보호막", d:"매 턴 시작에 받는 피해 10을 막아 주는 보호막이 생긴다."},
     {id:"thorns",  n:"가시",   d:"맞으면 받은 피해의 20%(최소 1)를 상대에게 되돌려 준다."},
