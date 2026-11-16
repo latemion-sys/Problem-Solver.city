@@ -2542,8 +2542,8 @@ function armorSpecOf(g){
 const carryOf = s => !s ? null : (s.kind==="gun" && s.v>0) ? "back" : (WEAPON_KINDS[s.kind]||{}).carry;
 
 /* ---- 무기 모양: 손(원점)에서 +x로 뻗는다. u = 길이 단위 ---- */
-function drawWeaponSpec(c, s, u, dark, opt={}){
-  if(!s) return;
+function drawWeaponSpec(c, s, u, dark, opt){
+  if(!s) return; opt = opt || {};
   const L = s.len||1, Wd = s.wid||1, col = s.metal || METALS[0];
   const R = (x,y,w,hh)=>c.fillRect(x*u, y*u, w*u, hh*u);
   const poly = pts=>{ c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.closePath(); c.fill(); };
