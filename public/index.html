@@ -437,32 +437,92 @@ function newGame(leaderName, officeName, partnerName){
 function makeRequest(grade, opts={}){
   let kind = "일반", attrs;
   if(opts.kind){ kind = opts.kind; attrs = opts.attrs; }
-  else {
+  const P = REQ_POOL[reqTier(grade)];
+  if(!opts.kind){
     const r = Math.random();
-    if(r<0.2){ kind="환상체"; attrs=["wil"]; }
-    else if(grade<=6 && r<0.45){ if(Math.random()<0.5){kind="호위"; attrs=["str","agi"];} else {kind="수색"; attrs=["agi","tec"];} }
+    if(r < P.pW){ kind="환상체"; attrs=["wil"]; }
+    else if(r < P.pW + P.pE){ kind="호위"; attrs=["str","agi"]; }
+    else if(r < P.pW + P.pE + P.pS){ kind="수색"; attrs=["agi","tec"]; }
     else { attrs=[pick(["str","agi","tec"])]; }
   }
   const [base, req, threat] = REQ_BASE[grade];
   const key = attrs[0];
-  let text, client;
-  if(kind==="호위"){ text=pick(ESCORT); client=pick(CLIENTS.agi.concat(CLIENTS.str)); }
-  else if(kind==="수색"){ text=pick(SEARCH); client=pick(CLIENTS.tec.concat(CLIENTS.agi)); }
-  else { text=pick(TEXTS[key]); client=pick(CLIENTS[key]); }
-  // 물리 일반 의뢰는 제압 / 사살로 나뉜다
+  let text, client, foe = null, chase = null, row;
+  if(kind==="호위"){ row = pick(P.esc); }
+  else if(kind==="수색"){ row = pick(P.srch); }
+  else if(kind==="환상체"){ row = pick(P.wil); }
+  else if(P[key]){ row = pick(P[key]); }
+  if(row){ text = row[0]; client = row[1]; if(key==="str") foe = row[2] || null; else chase = row[2] || null; }
+  else { text = pick(TEXTS[key] || TEXTS.str); client = pick(CLIENTS[key] || CLIENTS.str); }
+  // 물리 일반 의뢰는 제압 / 사살로 나뉜다(낮은 등급은 대부분 제압)
   let goal = null;
-  if(kind==="일반" && key==="str"){ goal = Math.random()<0.35 ? "사살" : "제압"; if(goal==="사살") text = pick(TEXTS.str_kill); }
+  if(kind==="일반" && key==="str"){ goal = Math.random()<P.kill ? "사살" : "제압"; if(goal==="사살"){ const k2 = pick(P.str_kill); text = k2[0]; client = k2[1]; foe = k2[2]; } }
   const lootChance = kind==="수색"?0.07:kind==="환상체"?0.05:0.03;
   // 환상체 의뢰 일부는 고위험(75% 기준을 넘김)
   const hazard = kind==="환상체" && !opts.kind && Math.random()<0.25;
   const q = {
-    id:S.nextId++, kind, attrs, grade, threat, risk: kind==="환상체"?RISK(grade):null, hazard, goal,
+    id:S.nextId++, kind, attrs, grade, threat, risk: kind==="환상체"?RISK(grade):null, hazard, goal, foe, chase,
     client, text, reward: Math.round(base*(hazard?1.5:1)*(0.85+Math.random()*0.3)/100)*100,
     req: Math.round(req*(hazard?1.25:1)) + rnd(-1,1), deadline: rnd(1,3),
     loot: Math.random()<lootChance*(hazard?2:1) ? Object.assign({},pick(LOOT)) : null, special:false
   };
   return Object.assign(q, opts.over||{});
 }
+/* 의뢰 등급대별 의뢰 내용. 사무소 등급이 오를수록 의뢰가 다양하고 위험해진다.
+   [의뢰 내용, 의뢰인, 상대(물리 전투의 적 이름) 또는 쫓는 대상(추적: person·cat·dog·rat)]
+   · 9~8급(뜬소문·괴담): 뒷골목 쥐·부랑자·동네 양아치와의 싸움, 고양이·잃어버린 물건 찾기, 간단한 호위
+   · 7~6급: 조직 행동대·하청 업체·채무자, 현장 조사, 화물 호위
+   · 5~4급: 조직 간부·사람 사냥꾼, 둥지 경계의 일, 협회 증인 호위, 뒤틀림 소문
+   · 3급 이상: 현상금 걸린 해결사, 조직의 대리인, 날개(기업)와 얽힌 일 */
+const REQ_POOL = [
+ { // 9~8급
+  pW:0.05, pE:0.16, pS:0.16, kill:0.12,
+  str:[["가게 앞에서 행패 부리는 동네 양아치들을 쫓아내 달라","골목 분식집 사장","동네 양아치"],["창고에 눌러앉은 부랑자들을 내보내 달라","고물상 '두 바퀴'","부랑자"],
+       ["밤마다 골목에서 돈을 뜯는 쥐 몇 놈을 혼내 달라","뒷골목 상인회","뒷골목 쥐"],["술에 취해 가게를 부수는 손님을 제압해 달라","국밥집 주인 노씨","취객"],
+       ["고철을 훔쳐 가는 좀도둑을 붙잡아 혼내 달라","폐건물 관리인","좀도둑"],["세탁소 뒷문을 노리는 쥐들을 쫓아 달라","골목 세탁소 사장","뒷골목 쥐"]],
+  str_kill:[["골목 아이들을 노리는 쥐를 처리해 달라. 살려 둘 필요는 없다","골목 학원 원장","뒷골목 쥐"],["가게를 세 번이나 턴 쥐 놈을 다시는 못 오게 해 달라","골목 약국 약사","뒷골목 쥐"]],
+  agi:[["집 나간 고양이 '보리'를 찾아 데려와 달라","아파트 3층 할머니","cat"],["지갑을 낚아채 달아난 아이를 쫓아 지갑을 되찾아 달라","버스 정류장 노점상","person"],
+       ["산책 중 줄이 풀려 달아난 강아지를 붙잡아 달라","골목 사진관","dog"],["외상값을 안 갚고 달아난 손님을 붙잡아 달라","국밥집 주인 노씨","person"],
+       ["가게 생선을 물고 달아난 길고양이를 쫓아 달라","시장 생선 가게","cat"]],
+  tec:[["잃어버린 결혼반지를 찾아 달라. 어제 지나간 골목 어딘가다","신혼부부","item"],["버스에 두고 내린 서류 가방을 찾아 달라","소규모 출판사","item"],
+       ["누가 매일 아침 우유를 훔쳐 가는지 알아내 달라","골목 슈퍼","item"],["사라진 우편물이 어디로 갔는지 알아내 달라","오래된 아파트 관리소","item"]],
+  esc:[["시장까지 할머니의 짐수레를 지켜 달라","아파트 3층 할머니"],["밤늦게 퇴근하는 직원을 집까지 데려다 달라","골목 약국 약사"],["하루 매출을 은행까지 옮기는 길을 지켜 달라","국밥집 주인 노씨"]],
+  srch:[["사흘째 안 보이는 고양이를 골목 일대에서 찾아 달라","골목 세탁소 사장"],["놀이터에서 잃어버린 아이의 인형을 찾아 달라","골목 학원 원장"]],
+  wil:[["밤마다 이상한 소리가 나는 창고를 확인해 달라","폐건물 관리인"]]},
+ { // 7~6급
+  pW:0.15, pE:0.13, pS:0.14, kill:0.3,
+  str:[["계약을 어기고 버티는 하청 업체 사무실 문을 열게 만들어 달라","하청 공사 현장 반장","하청 업체 경비"],["골목을 점거한 조직 은신처의 셔터를 뚫고 정리해 달라","뒷골목 상인회","조직 행동대원"],
+       ["밀린 빚을 갚지 않는 자의 가게를 찾아가 받아 와 달라","급전 대부 사무실","채무자의 경호원"],["무너진 창고 입구를 막고 선 자들을 치우고 재고를 꺼내 달라","고물상 '두 바퀴'","조직 행동대원"]],
+  str_kill:[["현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다","합법 경매장 감정사","현상금 걸린 강도"],["배신한 조직원을 찾아 끝내 달라","전당포 '둥근 저울'","배신한 조직원"]],
+  agi:[["부품을 들고 달아난 배달원을 붙잡아 물건을 회수해 달라","'김씨 부품상'","person"],["도망친 채무자를 날이 밝기 전에 붙잡아 달라","급전 대부 사무실","person"],
+       ["소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라","배달 조합","person"],["실험실에서 달아난 개조 동물을 붙잡아 달라","둥지 하청 연구소","dog"]],
+  tec:[["가게가 털린 현장을 조사해 누구 짓인지 알아내 달라","골목 사진관","item"],["위조된 감정서를 가려내고 진짜 출처를 알아내 달라","합법 경매장 감정사","item"],
+       ["사라진 직원의 마지막 행적을 조사해 달라","의수 정비소 '손끝'","item"],["거래 장부에서 빠져나간 돈의 흐름을 밝혀 달라","중고 기계상","item"]],
+  esc:[["둥지 경계까지 화물 차량을 호위해 달라","택배 중개소"],["야간 시장 개장 시간 동안 상인을 지켜 달라","뒷골목 상인회"]],
+  srch:[["폐공장에 숨겨진 장부를 찾아 달라","중고 기계상"],["사흘째 연락이 없는 수리공을 찾아 달라","의수 정비소 '손끝'"],["뒷골목 하수로 어딘가에 떨어진 열쇠를 찾아 달라","폐역 관리 사무소"]],
+  wil:[["밤마다 노래가 들리는 지하실을 조사해 달라","지하 노래방 주인"],["같은 얼굴의 아이가 계단에 서 있다는 층을 확인해 달라","오래된 아파트 관리소"]]},
+ { // 5~4급
+  pW:0.2, pE:0.13, pS:0.13, kill:0.4,
+  str:[["둥지 경계에서 통행세를 뜯는 조직 간부를 끌어내 달라","둥지 하청 연구소","조직 간부"],["사무소 셋을 무너뜨린 해결사 무리를 제압해 달라","협회 지부 연락관","무법 해결사"],
+       ["뒷골목 경매장 경비를 뚫고 도난품을 회수해 달라","합법 경매장 감정사","경매장 경비대장"]],
+  str_kill:[["뒷골목에서 사람을 사냥하는 자를 처리해 달라","장례식장 야간 관리인","사람 사냥꾼"],["의뢰인을 둘이나 죽인 조직 간부를 끝내 달라","익명의 의뢰인","조직 간부"]],
+  agi:[["둥지 기밀을 들고 달아난 연구원을 붙잡아 달라","둥지 하청 연구소","person"],["밤의 시장에서 사라진 물건을 실은 수레를 쫓아 달라","뒷골목 상인회","person"],
+       ["뒷골목 하수로로 숨어든 개조 짐승을 몰아 붙잡아 달라","폐역 관리 사무소","rat"]],
+  tec:[["실종된 해결사가 마지막으로 맡은 의뢰를 추적해 달라","협회 지부 연락관","item"],["둥지 경계 검문소의 기록이 조작된 흔적을 찾아 달라","둥지 하청 연구소","item"]],
+  esc:[["협회 사무실까지 증인을 안전하게 데려다 달라","협회 지부 연락관"],["둥지 안으로 들어가는 의약품 수송을 지켜 달라","골목 약국 약사"]],
+  srch:[["뒷골목 깊숙한 곳에 숨은 밀수 창고를 찾아 달라","합법 경매장 감정사"],["사라진 해결사 셋의 행방을 찾아 달라","협회 지부 연락관"]],
+  wil:[["비어 있어야 할 교실에서 출석을 부르는 소리를 멈춰 달라","폐교 재건 위원회"],["시계가 모두 거꾸로 도는 대기실을 정리해 달라","폐역 관리 사무소"]]},
+ { // 3급 이상
+  pW:0.22, pE:0.12, pS:0.12, kill:0.45,
+  str:[["날개의 하청을 무너뜨리려는 조직의 대리인을 막아 달라","익명의 의뢰인","조직의 대리인"],["협회도 손을 뗀 현상금 해결사를 제압해 달라","협회 지부 연락관","현상금 걸린 해결사"]],
+  str_kill:[["도시의 악몽급으로 지정된 괴인을 처리해 달라","익명의 의뢰인","도시의 악몽급 괴인"],["둥지 하나를 피로 물들인 자를 끝내 달라","둥지 하청 연구소","피에 젖은 해결사"]],
+  agi:[["날개의 특이점 설계도를 들고 달아난 자를 붙잡아 달라","익명의 의뢰인","person"],["뒷골목의 밤에 사라진 아이를 날이 밝기 전에 찾아 달라","작은 교회 신부","person"]],
+  tec:[["날개 내부의 배신자를 기록 속에서 찾아내 달라","익명의 의뢰인","item"],["열두 명이 사라진 건물의 진짜 설계도를 찾아 달라","협회 지부 연락관","item"]],
+  esc:[["날개 경계까지 핵심 인물을 호위해 달라","익명의 의뢰인"],["조직이 노리는 증인을 사흘 동안 지켜 달라","협회 지부 연락관"]],
+  srch:[["폐쇄된 둥지 구역에 남은 생존자를 찾아 달라","작은 교회 신부"]],
+  wil:[["밤마다 장례 행렬이 지나가는 거리를 확인해 달라","장례식장 야간 관리인"]]}
+];
+const reqTier = g => g>=8 ? 0 : g>=6 ? 1 : g>=4 ? 2 : 3;
 function genRequests(){
   const n = 12 - S.officeGrade; // 9급 3개, 8급 4개, 7급 5개 ...
   if(S.day<=3){
@@ -471,7 +531,7 @@ function genRequests(){
       const f = S.fixers[i % S.fixers.length], a = topAttr(f);
       const g = f.grade>=9 || i>=S.fixers.length ? 9 : Math.max(S.officeGrade, f.grade);
       const q = makeRequest(g, {kind: a==="wil"?"환상체":"일반", attrs:[a]});
-      if(a==="str"){ q.goal = Math.random()<0.3 ? "사살" : "제압"; q.text = q.goal==="사살" ? pick(TEXTS.str_kill) : pick(TEXTS.str); }
+      if(a==="str"){ const P = REQ_POOL[reqTier(g)]; q.goal = Math.random()<P.kill ? "사살" : "제압"; const r2 = pick(q.goal==="사살" ? P.str_kill : P.str); q.text = r2[0]; q.client = r2[1]; q.foe = r2[2]; }
       q.req = Math.max(3, power(f,[a]) - 4 - rnd(0,1));
       S.requests.push(q);
     }
@@ -969,8 +1029,8 @@ function mgCombat(ctx){
     const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}해야 성공. 최대 6턴.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none", spec: weaponSpecOf(f.gear.weapon), armor: armorSpecOf(f.gear.armor)}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
-    const fwt = pick(FOE_WEAPONS);
-    const foe = {name: FOE_NAMES[q.grade!=null?q.grade:9] || "적", wt:fwt, spec: Object.assign(defaultSpec(fwt), {metal:"#b9aca9", v: Math.floor(Math.random()*WEAPON_KINDS[fwt].vars.length)}), parts:{}, cards: CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1), b:c.b-1}))};
+    const fwt = pick(reqTier(q.grade!=null?q.grade:9)===0 ? ["blunt","blade","tool","blunt"] : FOE_WEAPONS);     // 9~8급 상대(쥐·부랑자·양아치)는 몽둥이·칼·공구 정도
+    const foe = {name: q.foe || FOE_NAMES[q.grade!=null?q.grade:9] || "적", wt:fwt, spec: Object.assign(defaultSpec(fwt), {metal:"#b9aca9", v: Math.floor(Math.random()*WEAPON_KINDS[fwt].vars.length)}), parts:{}, cards: CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1), b:c.b-1}))};
     const g0 = q.grade!=null ? q.grade : 9, augChance = 0.12 + (9-g0)*0.09;
     foe.aug = Math.random()<augChance ? pick(AUGMENTS) : null;
     if(foe.aug && (9-g0)>=5 && Math.random()<0.4){ const b = pick(AUGMENTS.filter(x=>x!==foe.aug)); foe.aug = {n:`${foe.aug.n} + ${b.n}`, desc:`${foe.aug.desc}, ${b.desc}`, mul:Object.assign({}, b.mul, foe.aug.mul)}; }
