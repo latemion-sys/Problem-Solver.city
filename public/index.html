@@ -2905,7 +2905,7 @@ function drawFixerSD(c, x, gy, h, o){
   const minus = (Pp, dx, dy)=>{ const Q = new Path2D(); Q.rect(-BIG, -BIG, BIG*2, BIG*2); Q.addPath(Pp, new DOMMatrix().translateSelf(dx, dy)); return Q; };
   const LW = Math.max(1.1, h*0.008);
   const paint = (Pp, base, o2={})=>{ const sh = (o2.sh ?? 0.03)*h, hl = (o2.hl ?? 0.007)*h;
-    c.save(); c.strokeStyle = line; c.lineWidth = LW*2; c.lineJoin = "round"; c.stroke(Pp); c.fillStyle = base; c.fill(Pp); c.clip(Pp);
+    c.save(); c.strokeStyle = line; c.lineWidth = LW*(o2.lw ?? 2); c.lineJoin = "round"; c.stroke(Pp); c.fillStyle = base; c.fill(Pp); c.clip(Pp);
     if(o2.grad!==false){ const b = o2.box || [-0.4,-1,0.4,0]; const g = c.createLinearGradient((b[0]+b[2])/2*h + LX*0.2*h, b[1]*h, (b[0]+b[2])/2*h - LX*0.2*h, b[3]*h);
       g.addColorStop(0, "rgba(255,255,255,0.06)"); g.addColorStop(1, "rgba(0,0,0,0.1)"); c.fillStyle = g; c.fill(Pp); }
     c.fillStyle = `rgba(10,20,25,${o2.shA ?? 0.26})`; c.fill(minus(Pp, LX*sh, LY*sh), "evenodd");                 // 형태 그림자
@@ -2923,7 +2923,7 @@ function drawFixerSD(c, x, gy, h, o){
   { const g = c.createRadialGradient(W[0], 0, 0, W[0], 0, 0.2*h); g.addColorStop(0, "rgba(0,0,0,0.38)"); g.addColorStop(1, "rgba(0,0,0,0)");
     c.save(); c.scale(1, 0.18); c.fillStyle = g; c.beginPath(); c.arc(W[0], 0, 0.2*h, 0, 7); c.fill(); c.restore(); }
   // 어깨·손
-  const S1 = R(0.058, -0.2), S2 = R(-0.062, -0.195);
+  const S1 = R(0.078, -0.2), S2 = R(-0.064, -0.195);      // 3/4 시점: 앞 어깨는 몸통 앞 가장자리에 붙어 가슴 앞을 가리지 않는다
   const hand1T = P(K.near[0] + K.step, K.near[1]), hand2T = P(K.far[0] + K.step*0.6, K.far[1]);
   const L1 = SD.L1*h, L2 = SD.L2*h;
   const a1 = ik2(S1, hand1T, L1, L2, [-0.3,1]), a2 = ik2(S2, hand2T, L1, L2, [-0.3,1]);
@@ -2939,7 +2939,9 @@ function drawFixerSD(c, x, gy, h, o){
     const a = Math.atan2(ik[1][1]-ik[0][1], ik[1][0]-ik[0][0]), cp = [ik[1][0]-Math.cos(a)*0.03*h, ik[1][1]-Math.sin(a)*0.03*h];
     c.save(); c.translate(cp[0], cp[1]); c.rotate(a); const cuff = new Path2D(); cuff.roundRect(-0.02*h, -0.026*h, 0.026*h, 0.052*h, 0.01*h);
     c.setTransform(c.getTransform()); paint(cuff, hexMix(fill, "#000000", 0.14), {sh:0.008, hl:0.003, grad:false});
-    c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(0.006*h, 0, 0.004*h, 0.02*h, 0, 0, 7); c.fill(); c.restore(); };
+    c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(0.006*h, 0, 0.004*h, 0.02*h, 0, 0, 7); c.fill();
+    const sc2 = new Path2D(); sc2.roundRect(0.005*h, -0.019*h, 0.01*h, 0.038*h, 0.004*h); paint(sc2, hexMix(fill, "#ffffff", far ? 0.35 : 0.6), {sh:0.004, hl:0.002, grad:false});   // 소매 밖으로 나온 셔츠 소맷단
+    c.restore(); };
   // 장갑: 둥근 주먹 + 손가락 마디 + 엄지
   const mitten = (p, fill, a)=>{ c.save(); c.translate(p[0], p[1]); c.rotate(a||0);
     const Pp = new Path2D(); Pp.ellipse(0, 0, 0.033*h, 0.03*h, 0, 0, 7); paint(Pp, fill, {sh:0.012, hl:0.005, grad:false});
@@ -2967,7 +2969,8 @@ function drawFixerSD(c, x, gy, h, o){
     c.fillStyle = "rgba(0,0,0,0.18)"; c.save(); c.translate(0, 0.004*h); c.fill(pk); c.restore(); c.fillStyle = hexMix(col, "#ffffff", 0.06); c.fill(pk); c.fillStyle = "rgba(255,255,255,0.12)"; c.fillRect(q[0]-0.022*h, q[1], 0.044*h, 0.003*h); });
   c.restore();
   // ③ 몸통(코트 윗부분) — 3/4 시점이라 앞(진행 방향) 어깨가 조금 넓다
-  const torsoPts = [R(-0.077, 0.0), R(-0.085, -0.11), R(-0.086, -0.19), R(-0.06, -0.225), R(0.05, -0.228), R(0.083, -0.198), R(0.08, -0.1), R(0.072, 0.0)];
+  // 롤랑 LD처럼: 어깨는 살짝 처지고 가슴에서 허리로 좁아진다(V자), 허리는 조여 있다
+  const torsoPts = [R(-0.074, 0.0), R(-0.068, -0.06), R(-0.08, -0.15), R(-0.087, -0.196), R(-0.064, -0.222), R(-0.02, -0.233), R(0.03, -0.235), R(0.07, -0.223), R(0.091, -0.199), R(0.084, -0.13), R(0.066, -0.06), R(0.07, 0.0)];
   const torso = sPath(torsoPts);
   paint(torso, col, {sh:0.035, hl:0.008, box:[-0.1,-0.75,0.1,-0.5]});
   c.save(); c.clip(torso);
@@ -2975,11 +2978,18 @@ function drawFixerSD(c, x, gy, h, o){
   fold(R(0.06,-0.17), R(0.035,-0.06), 0.008*h, -0.004*h, 0.16, 0.06);      // 겨드랑이에서 허리로 당기는 주름
   fold(R(-0.05,-0.15), R(-0.03,-0.04), 0.007*h, 0.003*h, 0.12, 0.05);
   c.restore();
-  // 깃(라펠): 두께가 있는 접힌 천 — 아래로 그림자를 떨군다
-  [[[0.0,-0.225],[0.026,-0.135],[0.01,-0.125],[-0.018,-0.213]], [[0.03,-0.227],[0.06,-0.21],[0.034,-0.135]]].forEach((pp,ii)=>{
+  // 셔츠 V와 넥타이: 깃 사이로 보이는 밝은 셔츠, 가운데 어두운 넥타이(매듭 → 아래로 넓어진다)
+  const shirtC = hexMix(col, "#ffffff", 0.62), tieC = hexMix(col, "#000000", 0.58);
+  paint(sPath([R(-0.02,-0.231), R(0.014,-0.236), R(0.05,-0.233), R(0.024,-0.1)]), shirtC, {sh:0.01, hl:0.002, grad:false, shA:0.2, lw:0.8});
+  paint(sPath([R(0.01,-0.214), R(0.026,-0.214), R(0.031,-0.15), R(0.019,-0.112), R(0.008,-0.15)]), tieC, {sh:0.006, hl:0.003, grad:false, hlA:0.18, lw:0.8});
+  paint(sPath([R(0.01,-0.226), R(0.026,-0.226), R(0.024,-0.212), R(0.012,-0.212)]), tieC, {sh:0.003, hl:0.002, grad:false, lw:0.8});
+  [[[-0.008,-0.228],[0.016,-0.205],[0.015,-0.23]], [[0.015,-0.23],[0.031,-0.206],[0.04,-0.231]]].forEach(pp=> paint(sPath(pp.map(q=>R(q[0],q[1]))), shirtC, {sh:0.004, hl:0.002, grad:false, lw:0.8}));   // 셔츠 깃
+  // 깃(라펠): 위깃과 아래깃 사이가 V로 파인 노치 라펠. 두께가 있어 아래로 그림자를 떨군다
+  [[[-0.022,-0.231],[-0.04,-0.209],[-0.027,-0.2],[-0.035,-0.187],[0.016,-0.104],[-0.008,-0.216]], [[0.05,-0.234],[0.078,-0.219],[0.063,-0.207],[0.073,-0.19],[0.026,-0.104],[0.041,-0.214]]].forEach((pp,ii)=>{
     const pts = pp.map(q=>R(q[0], q[1])), Lp = new Path2D(); pts.forEach((q,i)=> i ? Lp.lineTo(q[0],q[1]) : Lp.moveTo(q[0],q[1])); Lp.closePath();
     c.save(); c.translate(-0.004*h, 0.006*h); c.fillStyle = "rgba(0,0,0,0.25)"; c.fill(Lp); c.restore();
-    paint(Lp, hexMix(col, ii ? "#ffffff" : "#000000", ii ? 0.05 : 0.1), {sh:0.008, hl:0.003, grad:false}); });
+    paint(Lp, hexMix(col, ii ? "#ffffff" : "#000000", ii ? 0.05 : 0.1), {sh:0.008, hl:0.003, grad:false, lw:1.2}); });
+  { const pw = sPath([R(0.044,-0.172), R(0.074,-0.18), R(0.075,-0.171), R(0.045,-0.164)]); paint(pw, hexMix(col, "#000000", 0.12), {sh:0.004, hl:0.002, grad:false}); }   // 가슴 주머니 입구
   // 단추(볼록: 위는 밝고 아래는 어둡게) · 허리띠와 버클
   [-0.1,-0.05].forEach(py=>{ const q = R(0.042, py), r = Math.max(1.2, h*0.008); const bP = new Path2D(); bP.arc(q[0], q[1], r, 0, 7); paint(bP, hexMix(col, "#000000", 0.45), {sh:0.004, hl:0.002, hlA:0.4, grad:false}); });
   { const belt = sPath([R(-0.079,-0.014), R(0.075,-0.014), R(0.073,0.014), R(-0.077,0.014)]); paint(belt, hexMix(col, "#000000", 0.45), {sh:0.008, hl:0.003, grad:false});
@@ -2992,9 +3002,14 @@ function drawFixerSD(c, x, gy, h, o){
   { const cl = new Path2D(); const p1 = R(-0.05,-0.21), p2 = R(-0.05,-0.25), p3 = R(-0.02,-0.262), p4 = R(0.012,-0.222); cl.moveTo(...p1); cl.quadraticCurveTo(p2[0], p2[1], p3[0], p3[1]); cl.lineTo(p4[0], p4[1]); cl.closePath(); paint(cl, hexMix(col, "#000000", 0.08), {sh:0.01, hl:0.003, grad:false}); }
   { const Np = new Path2D(); Np.moveTo(nk[0]-0.02*h, nk[1]+0.01*h); Np.lineTo(hc[0]-0.022*h, hc[1]+0.06*h); Np.lineTo(hc[0]+0.022*h, hc[1]+0.06*h); Np.lineTo(nk[0]+0.024*h, nk[1]+0.01*h); Np.closePath();
     paint(Np, hexMix(col, "#000000", 0.18), {sh:0.01, hl:0.003, grad:false}); }
-  const Hp = new Path2D(); Hp.ellipse(hc[0], hc[1], SD.head[0]*h, SD.head[1]*h, ha, 0, 7);
+  // 머리: 타원이 아니라 정수리가 둥글고 턱이 앞-아래로 좁아지는 형태(3/4 시점). 얼굴 생김새·머리카락은 그리지 않는다
+  const Hp = new Path2D(); { const rx = SD.head[0]*h, ry = SD.head[1]*h, cs = Math.cos(ha), sn = Math.sin(ha), Q = (u,v)=>[hc[0] + (u*rx*cs - v*ry*sn), hc[1] + (u*rx*sn + v*ry*cs)];
+    const pts = [[0.05,-1.0],[0.7,-0.78],[1.0,-0.25],[0.98,0.25],[0.78,0.66],[0.38,0.98],[0.0,0.95],[-0.45,0.72],[-0.88,0.35],[-1.0,-0.15],[-0.75,-0.72]].map(([u,v])=>Q(u,v));
+    const n = pts.length, m = (a,b2)=>[(a[0]+b2[0])/2, (a[1]+b2[1])/2], s0 = m(pts[n-1], pts[0]); Hp.moveTo(s0[0], s0[1]);
+    for(let i=0;i<n;i++){ const q = m(pts[i], pts[(i+1)%n]); Hp.quadraticCurveTo(pts[i][0], pts[i][1], q[0], q[1]); } Hp.closePath(); }
   paint(Hp, col, {sh:0.034, hl:0.009, hlA:0.24, box:[hc[0]/h-0.1, hc[1]/h-0.1, hc[0]/h+0.1, hc[1]/h+0.1]});
   c.save(); c.clip(Hp); const hg = c.createRadialGradient(hc[0]+0.03*h, hc[1]-0.04*h, 0, hc[0]+0.03*h, hc[1]-0.04*h, 0.06*h); hg.addColorStop(0, "rgba(255,255,255,0.16)"); hg.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = hg; c.fill(Hp); c.restore();   // 이마 쪽 부드러운 반사광
+  c.save(); c.clip(Hp); c.fillStyle = "rgba(0,0,0,0.16)"; c.beginPath(); c.ellipse(hc[0] - 0.012*h, hc[1] + 0.07*h, 0.06*h, 0.03*h, ha, 0, 7); c.fill(); c.restore();   // 턱 아래 그늘
   if(o.rim){ c.strokeStyle = o.rim; c.lineWidth = Math.max(1, h*0.008); c.beginPath(); c.ellipse(hc[0], hc[1], SD.head[0]*h, SD.head[1]*h, ha, -2.2, -0.6); c.stroke(); }
   // ⑤ 칼 → 앞팔 → 앞손(칼자루를 감싼다)
   if(ws) weaponAt(a1[1], K.nearA, K.ls);
