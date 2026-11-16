@@ -147,6 +147,8 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .pk-sw{flex:1 1 100%;margin-top:2px}
 .pk-moves.pk-4{grid-template-columns:repeat(4,1fr)}
 @media (max-width:640px){.pk-moves.pk-4{grid-template-columns:1fr 1fr}}
+/* 전투 창: 선택지가 바뀔 때 창 높이가 출렁이지 않도록 아래 칸 높이를 미리 잡아 둔다 */
+.mg-fixed .mg-info{min-height:80px} .mg-fixed .mg-ctrl{min-height:200px;align-content:flex-start}
 .pk-fin{flex:1 1 100%;margin-top:2px;background:#3a2f1c;border-color:#f2d27a;color:#f8e6b0;font-weight:700}
 .pk-moves i{font-style:normal;font-size:10px;padding:0 5px;border-radius:8px;margin-right:4px;color:#111;font-weight:700}
 .pk-moves i.cat-big{background:#ff9a6a}.pk-moves i.cat-gap{background:#f2d27a}.pk-moves i.cat-counter{background:#8fd0ff}.pk-moves i.cat-evade{background:#b9b3a8}
@@ -930,6 +932,9 @@ function mgCombat(ctx){
     const W = 720, H = 380;
     const POS = { foe:{x:528, gy:182, h:116, face:-1, z:0.62}, me:{x:178, gy:352, h:176, face:1, z:0.3} };
     const PLATS = [[530,184,112,19],[190,354,168,30]];
+    m.bg.querySelector(".mg").classList.add("mg-fixed");
+    // 선택지 칸이 더 커진 적이 있으면 그 높이를 유지한다(창이 위아래로 흔들리지 않게)
+    new ResizeObserver(()=>{ const h = m.ctrl.scrollHeight; if(h > (parseFloat(m.ctrl.style.minHeight)||0)) m.ctrl.style.minHeight = h+"px"; }).observe(m.ctrl);
     const stage = m.bg.querySelector(".mg-stage"), glc = document.createElement("canvas");
     const gd = Math.min(1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
