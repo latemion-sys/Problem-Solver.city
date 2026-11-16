@@ -529,6 +529,19 @@ function leadGear(f){
 }
 
 /* ================= 출동 방식 선택 ================= */
+/* 자동 진행: 해결사 등급만으로 단순하게 판정한다.
+   성공률 = 의뢰 등급과 출동한 사람 중 가장 높은 해결사 등급의 차이(같으면 75%, 한 등급 위면 +12%p, 한 등급 아래면 −15%p) + 동료 1명당 +4%p.
+   성공하면 모두 안정(최소 감소). 실패하면 사람마다 자기 등급에 따라 부상 단계를 뽑는다 — 낮은 등급일수록 중상 이상이 잘 나온다. */
+function autoRate(team, q){
+  const best = Math.min(...team.map(f=>f.grade)), qg = q.grade!=null ? q.grade : 9, d = qg - best;
+  return clamp(Math.round(75 + (d>=0 ? 12*d : 15*d) + 4*(team.length-1)), 5, 97);
+}
+function autoWound(f){
+  const g = clamp(f.grade, 1, 9), k = (9-g)/8;                    // 9급 0 → 1급 1
+  const P9 = [0.05,0.25,0.45,0.25], P1 = [0.45,0.47,0.06,0.02];   // 안정·경상·중상·치명상 확률(9급: 중상 이상 70% · 4급: 경상 이하 약 77%)
+  const P = P9.map((v,i)=>v + (P1[i]-v)*Math.pow(k, 0.6)); let r = Math.random()*P.reduce((a,b)=>a+b,0);
+  for(let i=0;i<4;i++){ r -= P[i]; if(r<=0) return i; } return 3;
+}
 const MG_NAME = {str:"합 전투", agi:"갈림길 추적", tec:"단서 찾기", shield:"방벽 막기"};
 const gamesFor = q => q.kind==="호위" ? ["shield"] : q.attrs.filter(a=>a!=="wil");
 function chooseMode(q, team){
@@ -537,7 +550,7 @@ function chooseMode(q, team){
   return modal("출동 방식", `<div class="kv">
       <span>기본 성공률</span><b>${base}%</b>
       <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${esc(team[0].name)}이(가) 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
-      <span>자동 진행</span><b>성공률 ${base}% 그대로 · <span style="color:var(--yellow)">보수 80%</span></b></div>`,
+      <span>자동 진행</span><b>해결사 등급으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
 async function runMinigames(q, team){
@@ -1544,7 +1557,7 @@ async function dispatch(qid, fids){
     if(r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
     else if(r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
     else { pr = clamp(Math.round(base - 25 + 25*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
-  else if(hasGame){ payMul = 0.8; mgLine = `자동 진행 · 성공률 ${pr}% · 보수 80%`; }
+  else { pr = autoRate(team, q); if(hasGame) payMul = 0.8; mgLine = `자동 진행 · 해결사 등급 판정 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
   const pay = Math.round(q.reward*payMul/100)*100;
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
   const success = decisive!=null ? decisive : Math.random()*100 < pr;
@@ -1555,7 +1568,7 @@ async function dispatch(qid, fids){
   // 성공: 부상 단계에 따라 10~25% · 실패: 35~60%. 직접 싸운 사람은 전투 끝의 부상 단계, 아니면 무작위
   const W_NAME = ["안정","경상","중상","치명상"], LOSS = {ok:[10,15,20,25], fail:[35,43,52,60]};
   team.forEach(f=>{
-    const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : rnd(0,3);
+    const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), pct = Math.floor((success ? LOSS.ok : LOSS.fail)[w] * (1 - red*0.5));
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
