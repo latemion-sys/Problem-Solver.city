@@ -191,6 +191,11 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .omen.moon .ol{color:#eceadb;text-shadow:0 0 10px rgba(205,220,255,.5),0 0 28px rgba(160,185,240,.3)}
 .omen.moon .og{color:#d9e2ff}
 #log .omenlog{color:#e7a07c}
+/* 녹아드는 문장 */
+.hv-meltlines{display:flex;flex-direction:column;align-items:center;gap:6px}
+.hv-mrow{display:flex;justify-content:center}.hv-melt{display:block;max-width:92vw;height:auto!important}
+.hv-twist.turning .hv-meltlines{animation:hv-jit .14s steps(2) infinite}
+.hv-shin .hv-meltlines{gap:10px}.hv-ov.hv-shin:not(.hv-gl-on){background:#050302}
 /* 대표 뒤틀림 엔딩 */
 .hv-endlines p.end{margin:10px 0;font-size:clamp(14px,2.2vw,18px);line-height:1.8;color:#e8b0aa;text-shadow:0 0 10px rgba(0,0,0,.95),0 0 3px rgba(0,0,0,.9);animation:hv-line 1.6s ease-out both}
 .hv-endstats{opacity:0;transition:opacity 1s;color:#d8c0bc;min-width:min(90vw,360px)}.hv-endstats.on{opacity:1}
@@ -213,7 +218,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
  color:#ffdfaa;opacity:0;transition:opacity .45s ease-out;text-shadow:0 0 8px rgba(255,199,107,.3)}
 .hv-echo.on{opacity:1}
 .hv-main{left:50%;top:46%;transform:translate(-50%,-50%);font-size:clamp(17px,3vw,25px);z-index:2;text-shadow:0 0 10px rgba(255,199,107,.45),0 0 28px rgba(255,197,117,.18)}
-.hv-echoes.echoing .hv-echo:not(.hv-main).on{opacity:var(--o,.2);text-shadow:none;animation:hv-echo 2.6s ease-in-out var(--d,0s) infinite}
+.hv-echoes.echoing .hv-echo:not(.hv-main).on{opacity:var(--o,.2);text-shadow:none!important}.hv-echoes.echoing .hv-echo.sw.on{animation:hv-echo 2.6s ease-in-out var(--d,0s) infinite;will-change:transform,opacity}
 @keyframes hv-echo{0%,100%{transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(var(--s,1));opacity:var(--o,.2)}50%{transform:translate(-50%,-50%) rotate(var(--r,0deg)) scale(calc(var(--s,1)*1.06));opacity:calc(var(--o,.2)*.45)}}
 .hv-echoes.gone .hv-echo{opacity:0!important;transition:opacity .9s ease-in;animation:none}
 
@@ -961,8 +966,8 @@ function create(canvas,kind,opt){
    vr=g.createVertexArray();g.bindVertexArray(vr);const lr=g.getAttribLocation(rp,'aR');g.enableVertexAttribArray(lr);g.vertexAttribPointer(lr,3,g.FLOAT,false,0,0);g.bindVertexArray(null);
    ru={res:U(rp,'uRes'),t:U(rp,'uT'),a:U(rp,'uA'),b:U(rp,'uB'),c:U(rp,'uC'),d:U(rp,'uD')};}}
  if(!opt.scale)opt.scale=.7;
- function resize(){const dpr=Math.min(2,window.devicePixelRatio||1),w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight,scale=opt.scale;
-  let W=Math.round(w*dpr*scale),Hh=Math.round(h*dpr*scale);const cap=1280/Math.max(W,Hh);if(cap<1){W=Math.round(W*cap);Hh=Math.round(Hh*cap);}
+ function resize(){const dpr=Math.min(1.25,window.devicePixelRatio||1),w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight,scale=opt.scale;
+  let W=Math.round(w*dpr*scale),Hh=Math.round(h*dpr*scale);const cap=900/Math.max(W,Hh);if(cap<1){W=Math.round(W*cap);Hh=Math.round(Hh*cap);}
   if(canvas.width!==W||canvas.height!==Hh){canvas.width=W;canvas.height=Hh;}}
  resize();
  function render(t){
@@ -1050,6 +1055,31 @@ function bindLook(box, L, st){
     redraw(); });
   box.addEventListener("click", e=>{ if(!e.target.dataset.lkrand) return; Object.assign(L, randomLook()); redraw(); });
 }
+/* 개화 E.G.O 이름: "개화 E.G.O:: [이름]" — 성격에서 나온 수식(마음의 결) + 행적(가장 많이 쓴 능력·해낸 의뢰 수)에서 나온 재질·사물.
+   예) 꺼지지 않는 등불, 타오르는 밀랍 방패 */
+const EGO_MOD = {
+  "공격적":["들끓는","타오르는","이를 드러낸"], "신중함":["겹겹이 접힌","돌다리 두드리는","닫힌"], "헌신":["닳지 않는","끝까지 버티는","대신 서는"], "냉소":["식은","비웃는","재가 된"],
+  "충동적":["꺼지지 않는","튀어 오르는","불붙은"], "침착함":["고요한","흔들리지 않는","잔잔한"], "집요함":["놓지 않는","끝까지 쫓는","물고 늘어지는"], "낙천적":["볕 드는","내일을 부르는","웃음 띤"],
+  "비관적":["무너질","금 간","빗물 고인"], "오만함":["하늘을 긋는","굽히지 않는","내려다보는"], "소심함":["웅크린","작게 떨리는","숨죽인"], "정의감":["굽지 않는","기울지 않는","곧게 선"],
+  "탐욕":["모자란","움켜쥔","끝없이 삼키는"], "다정함":["내민","감싸 안는","따스한"], "무심함":["비어 있는","돌아보지 않는","말 없는"], "광기":["웃는","멈추지 않는","뒤집힌"]
+};
+const EGO_MAT = {str:["쇠","무쇠","납"], agi:["깃털","바람","은"], tec:["톱니","유리","구리"], wil:["밀랍","촛농","재"]};
+const EGO_OBJ = {
+  weapon:{str:["도끼","망치","철퇴","대검"], agi:["화살","칼날","낫","단검"], tec:["바늘","렌치","끌","실타래"], wil:["등불","촛대","횃불","종"]},
+  armor:{str:["방패","성벽","갑주"], agi:["외투","날개","망토"], tec:["갑옷","덧판","톱니 장갑"], wil:["장막","우산","등롱"]}
+};
+function egoNameFor(f, type){
+  const mods = EGO_MOD[f.personality] || ["이름 없는"], a = topAttr(f), objs = EGO_OBJ[type][a];
+  // 행적: 많이 해낸 해결사일수록 앞의(무거운) 사물, 재질은 해낸 의뢰가 쌓일수록 붙는다
+  for(let tries=0; tries<20; tries++){
+    const mod = pick(mods), obj = objs[Math.min(objs.length-1, Math.floor(Math.random()*objs.length*(f.done>=12 ? 0.6 : 1)))];
+    const mat = f.done>=5 || Math.random()<0.5 ? pick(EGO_MAT[a]) + " " : "";
+    const n = `${mod} ${mat}${obj}`;
+    if(!S || !S.fixers.some(x=>x!==f && x.ego && x.ego.name===n)) return n;
+  }
+  return `${pick(mods)} ${pick(objs)}`;
+}
+const egoLabel = e => `개화 E.G.O:: [${e.name}]`;
 const SURNAMES = ["김","이","박","최","정","강","조","윤","장","임","한","오","서","신","권","황","안","송","류","홍"];
 const GIVEN = ["민준","서연","도윤","하은","지호","수아","현우","지민","예준","채원","건우","다인","우진","소율","태오","유나","시우","하린","준서","서윤","은호","나연","재원","가온","도현","이안","세아","한결","무진","단비"];
 const FOREIGN = ["올리비에","레오나르","미셸","카를로","이자벨","마르타","에반","루카","오스카","니나","빅토르","엘리안","줄리아","하인츠","아델","로렌츠","세바스티안","클라라","펠릭스","노아","마야","휴고","레나","라울","에디트","테오","실비아","얀","미라","케이"];
@@ -1406,12 +1436,13 @@ function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
   if(f.ego){ p += f.ego.type==="weapon" ? 8 : 3; if(f.ego.bonus) p += attrs.reduce((s,a)=>s+(f.ego.bonus[a]||0),0)/attrs.length; }
+  if(f.shin) p += 4;
   return p;
 }
 // 팀 전력: 가장 강한 1명 + 나머지의 40%
 function teamPower(team, attrs){ const ps = team.map(f=>power(f,attrs)).sort((a,b)=>b-a); return ps[0] + 0.4*ps.slice(1).reduce((s,v)=>s+v,0); }
 function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego&&f.ego.type==="armor") r+=0.35; return Math.min(r,0.7); }
-function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego&&f.ego.type==="armor") r+=0.35; return Math.min(r,0.7); }
+function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego&&f.ego.type==="armor") r+=0.35; if(f.shin) r+=0.15; return Math.min(r,0.75); }
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
 function rate(team, q){ const P = teamPower(team,q.attrs); return clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)), 5, 97); }
 function isMental(q){ return q.attrs.includes("wil") && (q.kind==="환상체"||q.kind==="뒤틀림 토벌"||q.attrs[0]==="wil"); }
@@ -2628,6 +2659,7 @@ async function dispatch(qid, fids){
   addLog(`[${q.kind}] ${names}: ${q.text} → ${success?"성공":"실패"}${success?" (+"+won(pay)+")":""}${mode==="play"?" · 직접 수행":hasGame?" · 자동":""}`);
   await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${lines.join("<br>")}</p>`, [{t:"확인",primary:true}]);
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkCollapse(f); }
+  for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f); }
   if(S && !S.over) team.forEach(f=>{ if(S.fixers.includes(f)) checkOmen(f); });
   if(!S) return;
   delete teamSel[qid];
@@ -2675,14 +2707,14 @@ const HeartFx = (()=>{
   const TWIST_TALK = ["그래. 그럼, 네가 바라는 대로 될 거야.","봐, 하나도 아프지 않지? 이게 있는 그대로의 너야.","애썼어. 이제 그만 내려놔. 나머지는 네 마음이 피워 낼 거야."];
   let ov = null, timers = [], raf = 0, glfx = null;
   const at = (ms, fn) => { timers.push(setTimeout(fn, reduce ? ms*0.6 : ms)); };
-  function clear(){ timers.forEach(clearTimeout); timers = []; if(raf) cancelAnimationFrame(raf); raf = 0; if(glfx){ try{ glfx.destroy(); }catch(e){} glfx = null; } if(ov){ ov.remove(); ov = null; } }
-  function open(kind){ const chained = !!(ov && ov.isConnected); clear(); ov = document.createElement("div"); ov.className = "hv-ov hv-"+kind+(chained?" hv-chain":""); ov.setAttribute("role","dialog"); ov.setAttribute("aria-modal","true"); document.body.appendChild(ov); return ov; }
+  function clear(){ window.__hvBusy = false; timers.forEach(clearTimeout); timers = []; if(raf) cancelAnimationFrame(raf); raf = 0; if(glfx){ try{ glfx.destroy(); }catch(e){} glfx = null; } if(ov){ ov.remove(); ov = null; } }
+  function open(kind){ const chained = !!(ov && ov.isConnected); clear(); ov = document.createElement("div"); ov.className = "hv-ov hv-"+kind+(chained?" hv-chain":""); ov.setAttribute("role","dialog"); ov.setAttribute("aria-modal","true"); document.body.appendChild(ov); window.__hvBusy = true; return ov; }
   function fadeOut(done){ if(!ov) return done(); ov.classList.add("out"); const o = ov; setTimeout(()=>{ if(ov===o) clear(); done(); }, 700); }
   const SHAKES = {"hv-shake":[[0,0],[-7,4],[6,-5],[-5,-3],[4,5],[-3,2],[2,-1],[0,0]], "hv-shake-hard":[[0,0,0],[-14,6,-.6],[12,-9,.5],[-9,-6,0],[8,8,-.3],[-5,3,0],[3,-2,0],[0,0,0]]};
   function shake(o, cls, ms){ if(reduce || !o.animate) return; const k = SHAKES[cls] || SHAKES["hv-shake"]; o.animate(k.map(q=>({transform:`translate(${q[0]}px,${q[1]}px) rotate(${q[2]||0}deg)`})), {duration:ms, easing:"linear"}); }
   // WebGL2 셰이더 층(되면 이것으로). 느린 기기에서는 해상도를 스스로 낮춘다
   function glLayer(o, kind, opt){
-    opt = opt || {}; opt.scale = opt.scale || 0.7;
+    opt = opt || {}; opt.scale = opt.scale || 0.55;
     if(!window.HeartGL || !HeartGL.supported()) return null;
     const c = document.createElement("canvas"); c.className = "hv-gl"; c.setAttribute("aria-hidden","true"); o.insertBefore(c, o.firstChild);
     let fx = null; try{ fx = HeartGL.create(c, kind, opt); }catch(e){ fx = null; }
@@ -2690,7 +2722,7 @@ const HeartFx = (()=>{
     glfx = fx; o.classList.add("hv-gl-on");
     const t0 = performance.now(); fx.now = () => (performance.now()-t0)/1000; let last = t0, acc = 0, n = 0;
     const f = () => { if(!o.isConnected) return; const now = performance.now(); acc += now-last; last = now; n++;
-      if(n>=20){ if(acc/n>45 && opt.scale>0.36){ opt.scale *= 0.8; fx.set("scale", opt.scale); } acc = 0; n = 0; }
+      if(n>=15){ if(acc/n>30 && opt.scale>0.3){ opt.scale *= 0.8; fx.set("scale", opt.scale); } acc = 0; n = 0; }
       fx.render((now-t0)/1000); raf = requestAnimationFrame(f); };
     raf = requestAnimationFrame(f);
     return fx;
@@ -2708,7 +2740,7 @@ const HeartFx = (()=>{
         if(i===0){ html += `<span class="hv-echo hv-main">${ECHO}</span>`; continue; }
         let x, y, tries = 0; do { x = 4 + R(i*3.1)*92; y = 5 + R(i*7.7+1)*90; tries++; } while(Math.abs(x-50)<24 && Math.abs(y-46)<7 && tries<6);
         const sc = (.55 + R(i*5.3)*.7)*(i<16?1.08:i<64?.95:.82), rot = (R(i*9.1)-.5)*7, op = (.1 + R(i*2.9)*.26).toFixed(2), d = (R(i*4.7)*2.4).toFixed(2);
-        html += `<span class="hv-echo" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--s:${sc.toFixed(2)};--r:${rot.toFixed(1)}deg;--o:${op};--d:${d}s">${ECHO}</span>`;
+        html += `<span class="hv-echo${i%4===0?" sw":""}" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--s:${sc.toFixed(2)};--r:${rot.toFixed(1)}deg;--o:${op};--d:${d}s">${ECHO}</span>`;
       }
       echoes.innerHTML = html; const spans = [...echoes.querySelectorAll(".hv-echo")];
       const counts = [1,2,4,8,16,32,64,128], times = [300,1300,2200,3000,3700,4300,4800,5250]; let shown = 0;
@@ -2725,27 +2757,94 @@ const HeartFx = (()=>{
     return new Promise(res=>{
       const o = open("bloom"), sub = "마음이 껍질을 깨고 피어납니다";
       o.innerHTML = `<div class="hv-title"><div class="hv-big">E.G.O</div><div class="hv-sub">${sub}</div></div>`;
-      if(glLayer(o, "bloom", {seed: 7 + (f.id||0)%13, title:"E.G.O", sub})) o.classList.add("hv-gltitle");
+      if(glLayer(o, "bloom", {seed: 7 + (f.id||0)%13, title:"E.G.O", sub, scale:0.45})) o.classList.add("hv-gltitle");
       at(2150, ()=>shake(o, "hv-shake", 600));
       let done = false; const finish = () => { if(done) return; done = true; fadeOut(res); };
       o.addEventListener("click", finish); at(6400, finish);
     });
   }
-  // 뒤틀림: 목소리 한 줄 → 붉게 식으며 형체가 일그러짐 → "뒤틀림 · ○○였던 것" → 버튼
+  /* 녹아드는 문장: 전투에서 사살할 때 몸이 노이즈 문턱으로 재처럼 흩어지던 것을 거꾸로 —
+     문장이 햇살처럼 가장자리부터 따스하게 번지며 스며 나온다(경계는 금빛으로 빛나고, 다 맺히면 빛이 가라앉는다).
+     red()를 부르면 같은 문턱으로 식으며 붉게 바뀐다. */
+  function melt(text, opt){
+    opt = opt || {};
+    const size = opt.size || 21, maxW = Math.min(innerWidth*0.86, 680), cv = document.createElement("canvas"), g = cv.getContext("2d");
+    const font = s2 => `${opt.weight||500} ${s2}px "Noto Serif KR","Nanum Myeongjo","Batang",serif`;
+    const fs = innerWidth < 600 ? Math.max(13, size-3) : size; g.font = font(fs);
+    // 어절 단위로 줄을 나눈다(한 줄이 칸보다 길면 다음 줄로)
+    const rows = []; let cur = ""; text.split(" ").forEach(w=>{ const t2 = cur ? cur + " " + w : w; if(cur && g.measureText(t2).width > maxW - 40){ rows.push(cur); cur = w; } else cur = t2; }); if(cur) rows.push(cur);
+    const lh = fs*1.75, W = Math.ceil(Math.max(...rows.map(r=>g.measureText(r).width)) + 48), H = Math.ceil(lh*rows.length + fs*0.5);
+    cv.width = W; cv.height = H; cv.className = "hv-melt"; cv.style.width = W+"px"; cv.style.height = H+"px";
+    const tc = document.createElement("canvas"); tc.width = W; tc.height = H; const tg = tc.getContext("2d");
+    tg.font = font(fs); tg.textBaseline = "middle"; tg.textAlign = "center"; tg.fillStyle = "#fff"; rows.forEach((r,i)=>tg.fillText(r, W/2, fs*0.25 + lh*(i+0.5)));
+    const A = tg.getImageData(0,0,W,H).data, N = new Float32Array(W*H);
+    // 값 노이즈 두 겹 + 왼쪽에서 오른쪽으로 아주 살짝 기운 결(햇살이 비껴 드는 쪽부터)
+    const vn = (x,y,sc,sd)=>{ const xi = Math.floor(x/sc), yi = Math.floor(y/sc), xf = x/sc-xi, yf = y/sc-yi, h = (a,b)=>{ const v = Math.sin(a*127.1+b*311.7+sd)*43758.5453; return v-Math.floor(v); };
+      const u = xf*xf*(3-2*xf), w = yf*yf*(3-2*yf); return (h(xi,yi)*(1-u)+h(xi+1,yi)*u)*(1-w) + (h(xi,yi+1)*(1-u)+h(xi+1,yi+1)*u)*w; };
+    const sd = Math.random()*100;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++) N[y*W+x] = (vn(x,y,9,sd)*0.62 + vn(x,y,3.2,sd+7)*0.38)*0.78 + (x/W)*0.22;
+    const img = g.createImageData(W,H), D = img.data;
+    let base = opt.color || [255,232,190], edge = opt.edge || [255,176,72], k = -0.1, mode = "in", t0 = performance.now(), dur = opt.dur || 1700, live = true;
+    function paint(){
+      for(let i=0,j=0;i<N.length;i++,j+=4){ const a = A[j+3]; if(!a){ D[j+3] = 0; continue; } const n = N[i];
+        let r, gg, b, al;
+        if(mode==="in"){ if(n > k){ D[j+3] = 0; continue; } const e = Math.max(0, 1 - (k-n)/0.09); r = base[0]+(edge[0]-base[0])*e; gg = base[1]+(edge[1]-base[1])*e; b = base[2]+(edge[2]-base[2])*e; al = a*(0.55+0.45*(1-e*0.3)); }
+        else { const e = Math.max(0, 1 - Math.abs(k-n)/0.08), red = n < k; const c = red ? [196,34,44] : base; r = c[0]+(255-c[0])*e*0.6; gg = c[1]+(90-c[1])*e*0.6; b = c[2]+(70-c[2])*e*0.6; al = a; }
+        D[j] = r; D[j+1] = gg; D[j+2] = b; D[j+3] = al; }
+      g.putImageData(img, 0, 0);
+    }
+    const tick = now=>{ if(!live || !cv.isConnected && now - t0 > 200) return; const u = Math.min(1, (now-t0)/dur), e = 1 - Math.pow(1-u, 2.2); k = -0.1 + e*1.25; paint();
+      cv.style.filter = mode==="in" ? `drop-shadow(0 0 ${(10*(1-u)+3).toFixed(1)}px rgba(255,184,90,${(0.75*(1-u)+0.25).toFixed(2)}))` : `drop-shadow(0 0 6px rgba(200,20,40,.6))`;
+      if(u < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+    return {el: cv, red(d2){ mode = "red"; t0 = performance.now(); dur = d2 || 1600; requestAnimationFrame(tick); }, stop(){ live = false; }};
+  }
+  const ahya = nm => { const ch = nm.charCodeAt(nm.length-1) - 0xAC00; return nm + (ch>=0 && ch<11172 && ch%28 ? "아" : "야"); };
+  // 목소리가 고르는 말(뒤틀림 직전): 이름을 부르고 → 수고를 알아주고 → 내려놓으라 한다. 성격에 따라 한 줄이 달라진다
+  const TWIST_MID = {"공격적":"그렇게 싸우느라 손이 다 갈라졌구나.","신중함":"하나하나 다 맞춰 보느라 얼마나 지쳤니.","헌신":"늘 누군가의 앞에 서 있었지. 네 앞엔 아무도 없었는데.","냉소":"웃어넘긴 것들, 사실은 하나도 안 괜찮았잖아.",
+    "충동적":"생각할 틈도 없이 달려왔지. 이제 멈춰도 돼.","침착함":"한 번도 소리 내 울지 않았구나.","집요함":"쥔 손에 피가 맺혀도 놓지 않았지.","낙천적":"내일은 나아질 거라고, 몇 번이나 스스로를 달랬니.",
+    "비관적":"무너질 걸 알면서도 버텼구나.","오만함":"아무에게도 기대지 않았지. 외로웠잖아.","소심함":"작아지느라 애썼어. 아무도 몰라줬지.","정의감":"이 굽은 도시에서 혼자 곧게 서 있었구나.",
+    "탐욕":"늘 모자랐지. 아무리 채워도.","다정함":"남의 상처만 감싸느라 네 건 못 봤구나.","무심함":"아무것도 안 느끼는 척, 그것도 힘든 일이야.","광기":"다들 이상하다고 했지. 나는 네가 좋아."};
+  // 뒤틀림: 목소리가 햇살처럼 녹아들며 세 줄 → 붉게 식으며 형체가 일그러짐 → "뒤틀림 · ○○였던 것" → 버튼
   function twist(f, role, btnText){
     return new Promise(res=>{
-      const o = open("twist"), B = 2200, line = TWIST_TALK[Math.floor(Math.random()*TWIST_TALK.length)];
-      o.innerHTML = `<div class="hv-red" aria-hidden="true"></div><div class="hv-center"><div class="hv-lines"><p class="warm">“${esc(line)}”</p></div>
+      const o = open("twist"), say = [`${ahya(f.name)}.`, TWIST_MID[f.personality] || "애썼어. 정말로.", pick(TWIST_TALK)], gap = 1700, B = 600 + say.length*gap + 900;
+      o.innerHTML = `<div class="hv-red" aria-hidden="true"></div><div class="hv-center"><div class="hv-lines hv-meltlines"></div>
         <div class="hv-dtitle"><div class="hv-dbig" data-t="뒤틀림">뒤틀림</div><div class="hv-dsub">${esc(role)} ${esc(iyeotdeon(f.name))} 것</div></div>
         <div class="hv-actions"><button type="button" class="danger" data-hvgo="1">${esc(btnText)}</button></div></div>`;
       glLayer(o, "twist", {a:B/1000, b:(B+2700)/1000, seed: 5 + (f.id||0)%11});
-      at(B, ()=>o.classList.add("turning"));
+      const box = o.querySelector(".hv-meltlines"), ms = [];
+      say.forEach((t,i)=>at(600 + i*gap, ()=>{ const m = melt(`“${t}”`, {size: i===0 ? 24 : 20, dur: 1800}); ms.push(m); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); }));
+      at(B, ()=>{ o.classList.add("turning"); ms.forEach((m,i)=>setTimeout(()=>m.red(1500), i*220)); });
       at(B+2700, ()=>{ o.classList.add("named"); shake(o, "hv-shake-hard", 700); });
       at(B+3600, ()=>o.querySelector(".hv-actions").classList.add("on"));
       o.addEventListener("click", e=>{
         if(e.target.closest("[data-hvgo]")){ res(o); return; }
         timers.forEach(clearTimeout); timers = []; o.classList.add("turning","named"); o.querySelector(".hv-actions").classList.add("on");
+        if(!box.children.length) say.forEach((t,i)=>{ const m = melt(`“${t}”`, {size: i===0 ? 24 : 20, dur: 300}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); m.red(400); });
       });
+    });
+  }
+  /* 신(心): 죄를 돌아보는 문장들이 햇살처럼 녹아들고 → 소망이 된 말들이 가슴으로 모여 금빛 기운으로 몸에 감긴다 → 신(心) 발현 */
+  function shin(f, lines, words){
+    return new Promise(res=>{
+      const o = open("shin");
+      o.innerHTML = `<div class="hv-center"><div class="hv-lines hv-meltlines"></div></div><div class="hv-skip">화면을 누르면 건너뜁니다</div>`;
+      const box = o.querySelector(".hv-meltlines"), gap = 2300;
+      lines.forEach((t,i)=>at(500 + i*gap, ()=>{ const m = melt(t, {size:19, dur:2000, color:[246,232,206], edge:[255,196,96]}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); }));
+      let phase2 = false;
+      const go2 = ()=>{ if(phase2) return; phase2 = true; timers.forEach(clearTimeout); timers = [];
+        const o2 = open("shin"), R0 = Math.min(innerWidth, innerHeight)*0.34; let ws = "";
+        words.slice(0,7).forEach((w,i)=>{ const a = -Math.PI/2 + (i-(Math.min(7,words.length)-1)/2)*0.62 + (R(i)-.5)*.2, x = Math.cos(a)*R0*1.25, y = Math.sin(a)*R0*0.85;
+          ws += `<span class="hv-word" style="left:calc(50% + ${x.toFixed(0)}px);top:calc(40% + ${y.toFixed(0)}px);--tx:${(-x).toFixed(0)}px;--ty:${(-y).toFixed(0)}px;--d:${(.35+i*.22).toFixed(2)}s">${esc(w)}</span>`; });
+        o2.innerHTML = `<div class="hv-words" aria-hidden="true">${ws}</div><div class="hv-title shin"><div class="hv-big">${[..."신(心)"].map((ch,i)=>`<span style="--i:${i}">${esc(ch)}</span>`).join("")}</div><div class="hv-rule"></div><div class="hv-sub">${esc(f.name)} · 발현</div></div>`;
+        glLayer(o2, "shin", {a:2.6, b:3.0, seed:7});
+        at(2600, ()=>shake(o2, "hv-shake", 380)); at(3020, ()=>shake(o2, "hv-shake", 380));
+        let done = false; const finish = () => { if(done) return; done = true; fadeOut(res); };
+        o2.addEventListener("click", finish); at(8600, finish);
+      };
+      at(500 + lines.length*gap + 800, go2);
+      o.addEventListener("click", go2);
     });
   }
   // 대표가 뒤틀렸을 때의 엔딩: 같은 화면 위에서 문장이 차례로 내려앉고, 처음으로 돌아간다
@@ -2761,7 +2860,18 @@ const HeartFx = (()=>{
       o.addEventListener("click", e=>{ if(e.target.closest("[data-end]")) fadeOut(res); });
     });
   }
-  return {voice, bloom, twist, ending, clear};
+  // 미리 데우기: 처음 열 때 셰이더 컴파일로 화면이 멈칫하지 않도록, 게임을 연 뒤 한가할 때 작은 캔버스에서 한 번씩 컴파일해 둔다(브라우저가 컴파일 결과를 재사용)
+  function warm(){
+    if(!window.HeartGL || !HeartGL.supported()) return;
+    const kinds = ["voice","bloom","twist","shin"]; let i = 0;
+    const next = () => { if(i >= kinds.length) return; const k = kinds[i++];
+      try{ const c = document.createElement("canvas"); c.width = c.height = 4; c.style.cssText = "position:fixed;left:-9px;top:-9px;width:4px;height:4px"; document.body.appendChild(c);
+        const fx = HeartGL.create(c, k, {scale:0.05, title:"E.G.O", sub:""}); if(fx){ fx.render(0.5); fx.destroy(); } c.remove(); }catch(e){}
+      (window.requestIdleCallback || (cb=>setTimeout(cb, 400)))(next, {timeout:3000}); };
+    setTimeout(()=>(window.requestIdleCallback || (cb=>setTimeout(cb, 400)))(next, {timeout:3000}), 2500);
+  }
+  if(document.readyState === "complete") warm(); else addEventListener("load", warm);
+  return {voice, bloom, twist, ending, shin, melt, clear};
 })();
 
 /* 징조: 뒤틀리기 전, 정신력이 바닥에 가까운 해결사가 하는 말. 상단 연출 칸에 한 줄로 떠오른다 */
@@ -2769,6 +2879,69 @@ const OMEN = {
   vermil:["따스한 목소리가 들려요...","괜찮다고, 이제 다 내려놓아도 된다고 해요.","그 목소리… 나쁜 말은 하나도 안 해요. 이상하죠?","있는 그대로의 저를 보여 달래요.","누가 제 마음을 전부 안다고 해요.","답해 달래요. 계속, 다정하게.","제가 바라는 걸 이뤄 주겠대요. 정말일까요?"],
   moon:["속삭임이 들리는데, 저만 듣나요?","누가 자꾸 제 이름을 불러요.","조용한데… 왜 이렇게 시끄럽죠?","벽 너머에서 누가 웃고 있어요.","제 목소리가 아닌 게 제 입에서 나와요.","잠들면, 누가 대신 깨어 있는 것 같아요.","방금 그 말, 대표님이 하신 거 맞죠?"]
 };
+/* 대표 뒤틀림 엔딩: 대표의 성격에 맞춘 마지막 문장들. {o}=사무소, {n}=대표 */
+const ENDINGS = {
+  "공격적":["그날 밤, {o}의 문짝이 안에서부터 부서져 나갔다.","{n}은(는) 늘 먼저 주먹을 내질렀다. 목소리는 그 주먹을 멈추라고 하지 않았다. 더 멀리, 더 세게 — 그렇게만 말했다.","뒷골목은 한동안 조용했다. 들끓던 것이 다 타 버린 자리처럼."],
+  "신중함":["{n}은(는) 마지막까지 장부를 덮지 않았다.","한 칸, 한 칸 맞춰 보던 손이 멈춘 곳에서 목소리가 말했다. 이제 계산은 끝났다고. 남은 건 너뿐이라고.","{o}의 책상 위에는 끝내 서명하지 않은 서류 한 장이 남아 있었다."],
+  "헌신":["{n}은(는) 늘 누군가의 앞에 섰다.","목소리는 다정하게 물었다. 그럼 너는, 누가 지켜 주니. 대답할 사람이 아무도 없었다.","{o}의 동료들은 대표가 마지막까지 등을 보이고 서 있었다고 했다. 다만 그 등은, 더 이상 사람의 것이 아니었다고."],
+  "냉소":["{n}은(는) 무엇이든 웃어넘겼다. 빚도, 상처도, 동료의 장례도.","목소리만은 웃어넘길 수 없었다. 그건 {n}이(가) 한 번도 소리 내 말하지 않은 것들을 알고 있었으니까.","식은 웃음이 뒷골목에 오래 걸려 있었다. 아무도 그것을 대표의 웃음이라 부르지 않았다."],
+  "충동적":["생각보다 손이 먼저였다. {n}은(는) 늘 그랬다.","목소리가 손을 내밀었을 때도, {n}은(는) 생각하기 전에 그 손을 잡았다.","{o}의 불은 꺼지지 않았다. 다만 그 불을 지피던 사람만 어디에도 없었다."],
+  "침착함":["{n}은(는) 마지막까지 목소리를 높이지 않았다.","고요한 수면 아래로 무언가 가라앉듯, 대표는 아주 천천히 다른 것이 되었다.","{o}의 동료들은 끝내 그날을 기억하지 못했다. 너무 조용해서, 아무 일도 없었던 것 같았다고."],
+  "집요함":["{n}은(는) 한 번 쥔 것을 놓은 적이 없었다. 의뢰도, 빚도, 원한도.","목소리는 처음으로 놓아도 된다고 말했다. {n}은(는) 그 말을 놓지 못했다.","하나 협회는 새 뒤틀림이 무언가를 끝없이 쫓고 있다고 기록했다. 무엇을 쫓는지는 아무도 몰랐다."],
+  "낙천적":["내일은 나아질 거라고, {n}은(는) 매일 아침 말했다.","목소리는 그 말을 그대로 돌려주었다. 내일은 나아질 거야. 오늘의 너만 내려놓으면.","{o}의 창가에는 한동안 볕이 들었다. 그 볕을 쬐던 사람만 돌아오지 않았다."],
+  "비관적":["어차피 무너질 거라고, {n}은(는) 늘 생각했다.","목소리는 반박하지 않았다. 그래, 무너질 거야. 그러니 먼저 무너져도 괜찮아.","{o}의 지붕은 그해 겨울 정말로 내려앉았다. 그 아래에 아무도 남아 있지 않았다."],
+  "오만함":["{n}은(는) 도시의 누구에게도 고개를 숙이지 않았다.","목소리는 고개를 숙이라 하지 않았다. 더 높이 서라고, 아무도 닿지 못하는 곳까지 — 그렇게 속삭였다.","뒷골목 하늘에 한 줄 금이 그어졌다. 사람들은 그것을 올려다보지 않으려 애썼다."],
+  "소심함":["{n}은(는) 언제나 한 걸음 물러서 있었다.","목소리는 처음으로 그 자리를 탓하지 않았다. 작아도 괜찮아. 숨어도 괜찮아. 나만은 너를 찾아낼게.","{o}의 구석 어딘가, 작은 껍데기 하나가 오래 떨고 있었다."],
+  "정의감":["{n}은(는) 굽은 것을 보면 펴야 했다.","목소리가 말했다. 이 도시 전부가 굽어 있잖아. 네가 바로잡을 수 있어. 너만이.","하나 협회는 새 뒤틀림에게 심판이라는 이름을 붙이지 않았다. 붙였다면, 그것이 기뻐했을 테니까."],
+  "탐욕":["{n}은(는) 늘 조금씩 모자랐다. 돈도, 시간도, 사람도.","목소리는 채워 주겠다고 했다. 모자란 만큼 전부. 그 값은 묻지 않았다.","{o}의 빚 장부는 마지막 장까지 빼곡했다. 갚은 칸은 하나도 없었다."],
+  "다정함":["{n}은(는) 손을 내미는 사람이었다.","그날 처음으로, 누군가 {n}에게 손을 내밀었다. 너무 따뜻해서 놓을 수가 없었다.","{o}의 동료들은 대표의 마지막 목소리가 여느 때처럼 다정했다고 했다. 그래서 더 무서웠다고."],
+  "무심함":["{n}은(는) 아무것에도 마음을 두지 않았다. 그게 살아남는 법이었다.","목소리는 그 빈 곳을 알아보았다. 비어 있으니까, 무엇이든 담을 수 있잖아.","{o}의 액자 속 사진에서 대표의 얼굴만 하얗게 바래 있었다."],
+  "광기":["{n}은(는) 원래 조금 이상했다고, 다들 그렇게 말했다.","목소리는 그 웃음을 좋아했다. 그래서 끝까지 웃게 해 주었다.","뒷골목에 톱니 맞물리는 소리가 오래 울렸다. 누군가 웃는 소리 같았다."]
+};
+/* 신(心): 2급 이상의 해결사가 정신력 30% 미만에서 제 죄를 돌아보고, 그것을 하나의 소망으로 엮어 몸에 감으면 깨우친다.
+   sin=돌아보는 죄, img=죄가 쌓인 모습(비유), wish=엮어 낸 소망, words=가슴으로 모여드는 말들 */
+const SHIN = {
+  "공격적":{sin:"너무 많은 것을 부수며 여기까지 왔다", img:"부서진 문짝의 나뭇결", wish:"지킬 것을 위해서만 주먹을 쥐기를", words:["부서진 문","주먹","지킬 것"]},
+  "신중함":{sin:"망설이는 사이 놓친 손이 있었다", img:"끝내 서명하지 못한 서류", wish:"다음에는 늦지 않게 손을 뻗기를", words:["망설임","놓친 손","늦지 않게"]},
+  "헌신":{sin:"남을 지킨다는 핑계로 제 몸을 버려 왔다", img:"대신 맞은 상처의 딱지", wish:"나 또한 지켜야 할 하나로 남기를", words:["대신 선 등","딱지","나 또한"]},
+  "냉소":{sin:"아픈 것을 웃음으로 덮어 왔다", img:"식어 버린 찻잔의 얼룩", wish:"한 번은 웃지 않고 울 수 있기를", words:["식은 웃음","얼룩","울 수 있기를"]},
+  "충동적":{sin:"생각보다 먼저 휘두른 손으로 많은 것을 그르쳤다", img:"성급히 그은 성냥개비", wish:"한 호흡만 늦게, 그러나 끝까지 타오르기를", words:["성냥","한 호흡","끝까지"]},
+  "침착함":{sin:"흔들리지 않으려 아무것도 느끼지 않았다", img:"돌을 던져도 일지 않는 수면", wish:"고요한 채로도 아파할 줄 알기를", words:["수면","돌멩이","아파할 줄"]},
+  "집요함":{sin:"놓아야 할 것까지 붙들고 늘어졌다", img:"손바닥에 패인 밧줄 자국", wish:"쥘 것과 놓을 것을 가려 쥐기를", words:["밧줄 자국","붙든 손","가려 쥐기를"]},
+  "낙천적":{sin:"괜찮다는 말로 누군가의 아픔을 지나쳤다", img:"볕 아래 말라 버린 눈물 자국", wish:"내일을 말하기 전에 오늘을 들어 주기를", words:["괜찮다는 말","눈물 자국","오늘을"]},
+  "비관적":{sin:"무너질 거라 믿으며 먼저 손을 놓았다", img:"버팀목을 뺀 지붕", wish:"무너지더라도 마지막 기둥으로 서 있기를", words:["지붕","버팀목","마지막 기둥"]},
+  "오만함":{sin:"아무도 올려다보지 않으려 모두를 내려다보았다", img:"발밑에 깔린 그림자들", wish:"높이 서되, 내민 손을 거두지 않기를", words:["높은 곳","그림자","내민 손"]},
+  "소심함":{sin:"숨는 동안 누군가 대신 맞았다", img:"문틈으로 본 남의 등", wish:"한 번은 그 등 앞에 서기를", words:["문틈","남의 등","앞에 서기를"]},
+  "정의감":{sin:"옳다는 이름으로 사람을 저울에 달았다", img:"한쪽으로 기운 저울접시", wish:"심판하기보다 먼저 이해하기를", words:["저울","기운 접시","이해하기를"]},
+  "탐욕":{sin:"모자라다는 이유로 너무 많이 가져갔다", img:"밑 빠진 주머니", wish:"채우는 대신 나누어 가벼워지기를", words:["주머니","모자람","나누어"]},
+  "다정함":{sin:"모두를 감싸느라 누구도 끝까지 붙잡지 못했다", img:"닳아 해진 손바닥", wish:"단 한 사람이라도 끝까지 놓지 않기를", words:["손바닥","감싼 것들","끝까지"]},
+  "무심함":{sin:"돌아보지 않음으로써 많은 것을 버려 두었다", img:"빈 액자의 먼지", wish:"단 하나라도 마음에 들여놓기를", words:["빈 액자","먼지","마음에"]},
+  "광기":{sin:"웃음으로 남의 비명을 덮었다", img:"헛돌던 톱니", wish:"미쳐 있더라도 곁의 사람을 알아보기를", words:["톱니","웃음","알아보기를"]}
+};
+function shinLines(f, d){
+  const nm = josa(f.name, "은", "는");
+  return [`${nm} 오래 눌러 두었던 것을 꺼내 들여다보았다. ${d.sin}.`,
+          `죄는 ${d.img}처럼 거기 있었다. 씻어 낼 수도, 두고 갈 수도 없는 것이었다.`,
+          `그래서 ${f.name}은(는) 그것을 한 줄의 바람으로 엮었다 — “${d.wish}”.`.replace(`${f.name}은(는)`, nm),
+          `바람은 붕대처럼 손목에서 어깨로, 어깨에서 가슴으로 감겨 들었다. 그 아래에서 무언가가 다시 뛰기 시작했다.`];
+}
+async function awakenShin(f){
+  const d = SHIN[f.personality] || SHIN["침착함"];
+  f.shin = {sin: d.sin, wish: d.wish, day: S.day};
+  f.mp = Math.max(f.mp, Math.round(f.mpMax*0.6));
+  save();
+  await HeartFx.shin(f, shinLines(f, d), d.words.concat([d.wish]));
+  HeartFx.clear();
+  S.records.push({day:S.day, name:f.name, what:"신(心) 발현", note:`소망: ${d.wish}`}); addLog(`${f.name}: 신(心)을 깨우쳤다 — “${d.wish}”`);
+  save(); render();
+  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 제 죄를 소망으로 엮어 몸에 감았다.<br><b>“${esc(d.wish)}”</b><br><span class="muted">정신력이 60%까지 돌아왔다. 이후 전투력 +4, 받는 정신력 피해 -15%.</span>`, [{t:"확인",primary:true}]);
+}
+// 깨우칠 수 있는 때: 2급 이상 · 정신력 30% 미만(0 초과) · 아직 신이 없음 — 하루 한 번, 60% 확률로 깨우친다
+async function checkShin(f){
+  if(!S || !f || f.shin || f.grade > 2 || f.mp<=0 || f.mp/Math.max(1,f.mpMax) >= 0.3 || f.shinTry===S.day) return false;
+  f.shinTry = S.day; if(Math.random() >= 0.6) return false;
+  await awakenShin(f); return true;
+}
 let omenQ = Promise.resolve();
 function showOmen(name, line, tone){
   omenQ = omenQ.then(()=>new Promise(res=>{
@@ -2810,13 +2983,9 @@ async function twistLeader(f){
   S.over = true; S.records.push({day:S.day, name:f.name, what:"뒤틀림", note:"대표가 목소리를 따라갔다"}); save();
   await HeartFx.voice(f.name);
   const o = await HeartFx.twist(f, "대표", "목소리를 따라간다");
-  const lines = [
-    `그날 밤, ${esc(S.officeName)}의 불은 꺼지지 않았다.`,
-    `동료들은 대표의 목소리를 마지막으로 들었다고 했다. 다정했다고. 너무 다정해서, 대표의 것이 아니었다고.`,
-    `사흘 뒤, 하나 협회는 뒷골목의 새 뒤틀림에 재해 등급을 매겼다.`,
-    `남은 빚은 아무도 갚지 않았다. 사무소의 간판만이 오래 그 자리에 남았다.`
-  ];
-  const stats = `<div class="kv"><span>엔딩</span><b>뒤틀림 — 대표 ${esc(f.name)}${(c=>c>=0&&c<11172&&c%28?"이었던":"였던")(f.name.charCodeAt(f.name.length-1)-0xAC00)} 것</b><span>버틴 날</span><b>${S.day}일</b><span>남은 빚</span><b>${won(S.debt)}</b><span>사무소 등급</span><b>${gName(S.officeGrade)}</b></div>`;
+  const lines = (ENDINGS[f.personality] || ENDINGS["다정함"]).map(t=>esc(t.replace(/\{o\}/g, S.officeName).replace(/\{n\}은\(는\)/g, josa(f.name,"은","는")).replace(/\{n\}이\(가\)/g, josa(f.name,"이","가")).replace(/\{n\}/g, f.name)))
+    .concat([`남은 빚 ${won(S.debt)}은 아무도 갚지 않았다.`]);
+  const stats = `<div class="kv"><span>엔딩</span><b>뒤틀림 · ${esc(f.personality)} — 대표 ${esc(f.name)}${(c=>c>=0&&c<11172&&c%28?"이었던":"였던")(f.name.charCodeAt(f.name.length-1)-0xAC00)} 것</b><span>버틴 날</span><b>${S.day}일</b><span>남은 빚</span><b>${won(S.debt)}</b><span>사무소 등급</span><b>${gName(S.officeGrade)}</b></div>`;
   await HeartFx.ending(o, lines, stats);
   clearSave(); S = null; renderStart();
 }
@@ -2828,11 +2997,12 @@ async function bloomEgo(f){
   if(f.isLeader){
     type = await modal("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 어떤 형태로 드러낼 것인가?`, [{t:"무기",v:"weapon",primary:true},{t:"방어구",v:"armor"}], true);
   } else type = p[1];
-  f.ego = {type, name: f.isLeader ? (await promptBox("E.G.O. 이름", "개화한 E.G.O.의 이름을 정한다.", p[2])) || p[2] : p[2]};
+  const auto = egoNameFor(f, type);
+  f.ego = {type, name: f.isLeader ? ((await promptBox("E.G.O. 이름", "개화한 E.G.O.의 이름을 정한다. (개화 E.G.O:: [이름])", auto)) || auto) : auto};
   f.mp = Math.round(f.mpMax*0.5);
-  playFx("에고", "E.G.O. 개화", `${f.name} — ${f.ego.name}`, true); save(); render();
-  S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${f.ego.name} (${type==="weapon"?"무기":"방어구"})`});
-  const go = await modal("E.G.O. 개화", `${esc(f.name)}이(가) <b>${esc(f.ego.name)}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${type==="weapon"?"특수 공격":"특수 방어"})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
+  playFx("에고", "E.G.O. 개화", `${f.name} — ${egoLabel(f.ego)}`, true); save(); render();
+  S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${type==="weapon"?"무기":"방어구"})`});
+  const go = await modal("E.G.O. 개화", `${esc(f.name)}이(가) <b>${esc(egoLabel(f.ego))}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${type==="weapon"?"특수 공격":"특수 방어"})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
   if(go) await openForge(f, null, "ego");
 }
 function removeFixer(f, what, note){
@@ -3061,11 +3231,12 @@ async function openManage(){
       <span>성격</span><b>${f.personality}</b>
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
+      ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">“${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">— 돌아본 죄: ${esc(f.shin.sin)} · 전투력 +4 · 정신력 피해 -15%</span></b>`:""}
       <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)}${f.grade>=2?" / 다음 승급 "+PROMO[f.grade]:""})</b>
       <span>경험</span><b class="muted">근력 ${f.exp.str}/2 · 민첩 ${f.exp.agi}/2 · 재주 ${f.exp.tec}/2 · 의지 ${f.exp.wil}/2</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
-      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(f.ego.name)} (${f.ego.type==="weapon"?"무기":"방어구"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${f.ego.type==="weapon"?"무기":"방어구"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
         ${f.ego.look ? `<br><span class="muted" style="font-weight:400">${f.ego.type==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${f.ego.type==="weapon"?"특수 공격":"특수 방어"} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
       <span>완료 의뢰</span><b>${f.done}건</b>
@@ -3250,7 +3421,7 @@ async function openForge(f, slot0, mode){
       <button data-slot="armor"><b>방어구</b><small>${prevA?"지금: "+esc(prevA.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button></div>`;
     const back2 = ego ? "" : `<div class="fg-nav"><button data-fgo="1">이전</button></div>`;
     if(st.step===2){
-      const lead = ego ? `<p class="muted">${esc(f.name)}의 E.G.O. <b>${esc(f.ego.name)}</b>이(가) 어떤 ${st.slot==="weapon"?"무기":"옷"}의 모습으로 드러날까?</p>` : "";
+      const lead = ego ? `<p class="muted">${esc(f.name)}의 <b>${esc(egoLabel(f.ego))}</b>이(가) 어떤 ${st.slot==="weapon"?"무기":"옷"}의 모습으로 드러날까?</p>` : "";
       if(st.slot==="weapon") return head + lead + `<p class="muted">무기 종류를 고른다. 종류마다 전투 기술이 다르다.</p>
         <div class="fg-kinds">${Object.entries(WEAPON_KINDS).map(([k,K])=>`<button data-kind="${k}" class="${st.w&&st.w.kind===k?"on":""}"><canvas class="wicon" data-ik="${k}"></canvas><b>${K.n}</b><small>${CAT_NAME[K.cat]}</small></button>`).join("")}</div>${back2}`;
       return head + lead + `<p class="muted">방어구 형태를 고른다.</p>
@@ -3432,7 +3603,7 @@ function render(){
     const st = f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? "오늘 출동함" : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     return `<div class="fx"><div class="n"><b>${esc(f.name)}${f.isLeader?" ★":""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
-      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">E.G.O. ${esc(f.ego.name)}</div>`:""}
+      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${f.shin?`<div class="title">신(心) · ${esc(f.shin.wish)}</div>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
@@ -3822,6 +3993,7 @@ function playFx(kind, title, sub, good){
 }
 function loop(now){
   if(!cx){ return; }
+  if(window.__hvBusy){ requestAnimationFrame(loop); return; }   // 개화·뒤틀림 화면이 떠 있는 동안 뒤 화면은 쉰다
   if(scene && drawScene(now)){ requestAnimationFrame(loop); return; }
   const W=cv.width,H=cv.height; const age=(now-fx.t)/1000;
   const g=cx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0a0a12"); g.addColorStop(1,"#14121a"); cx.fillStyle=g; cx.fillRect(0,0,W,H);
@@ -5648,7 +5820,7 @@ function fxTestPanel(){
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
-   <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 장비 제작</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
+   <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 장비 제작</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>`;
   document.body.appendChild(el);
   el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
@@ -5656,6 +5828,7 @@ function fxTestPanel(){
     else if(k==="forge"){ if(f.grade!==0){ f.grade = 0; f.title = randomColorTitle(); f.unique = {}; } await openForge(f); }
     else if(k==="tw1"){ const t = S.fixers.find(x=>!x.isLeader); if(!t) return toast("동료가 없다"); await twistFixer(t); }
     else if(k==="tw0"){ await twistLeader(f); }
+    else if(k==="shin"){ const t = S.fixers.find(x=>!x.isLeader) || f; t.shin = null; if(t.grade>2) t.grade = 2; t.mp = Math.round(t.mpMax*0.2); await awakenShin(t); }
     else if(k==="omen"){ const t = S.fixers.find(x=>!x.isLeader) || f; const tone = Math.random()<0.5 ? "vermil" : "moon"; showOmen(t.name, pick(OMEN[tone]), tone); }
     else if(k==="ego0" || k==="ego1"){ const t = k==="ego0" ? f : S.fixers.find(x=>!x.isLeader); if(!t) return toast("동료가 없다"); t.ego = null; await bloomEgo(t); save(); render(); }
     else if(k==="shop") await openShop();
