@@ -1456,12 +1456,14 @@ async function dispatch(qid, fids){
   const W_NAME = ["안정","경상","중상","치명상"], LOSS = {ok:[10,15,20,25], fail:[35,43,52,60]};
   team.forEach(f=>{
     const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : rnd(0,3);
-    const pct = (success ? LOSS.ok : LOSS.fail)[w], red = mental ? redMP(f) : redHP(f);
-    const main = Math.round((mental ? f.mpMax : f.hpMax) * pct/100 * (1 - red*0.5)), minor = rnd(0,2);
-    let dH = mental ? minor : main, dM = mental ? main : minor;
-    if(b && b.fought) dM += b.sp < 0 ? Math.round(-b.sp*0.4) : 0;          // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 깎인다
+    // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
+    const red = mental ? redMP(f) : redHP(f), pct = Math.floor((success ? LOSS.ok : LOSS.fail)[w] * (1 - red*0.5));
+    const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
+    const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
+    let dH = mental ? 0 : main, dM = mental ? main : 0;
+    if(spPct) dM += Math.floor(f.mpMax * spPct/100);
     f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax);
-    lines.push(`${esc(f.name)}: ${W_NAME[w]} — 체력 -${dH}, 정신력 -${dM}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
+    lines.push(`${esc(f.name)}: ${W_NAME[w]} — ${mental?"정신력":"체력"} -${pct}%(${main})${spPct?` · 정신력 -${spPct}%`:""} → 체력 -${dH}, 정신력 -${dM}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
   if(success){
