@@ -495,7 +495,7 @@ const REQ_POOL = [
        ["밀린 빚을 갚지 않는 자의 가게를 찾아가 받아 와 달라","급전 대부 사무실","채무자의 경호원"],["무너진 창고 입구를 막고 선 자들을 치우고 재고를 꺼내 달라","고물상 '두 바퀴'","조직 행동대원"]],
   str_kill:[["현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다","합법 경매장 감정사","현상금 걸린 강도"],["배신한 조직원을 찾아 끝내 달라","전당포 '둥근 저울'","배신한 조직원"]],
   agi:[["부품을 들고 달아난 배달원을 붙잡아 물건을 회수해 달라","'김씨 부품상'","person"],["도망친 채무자를 날이 밝기 전에 붙잡아 달라","급전 대부 사무실","person"],
-       ["소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라","배달 조합","person"],["실험실에서 달아난 개조 동물을 붙잡아 달라","둥지 하청 연구소","dog"]],
+       ["소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라","배달 조합","person"],["실험실에서 달아난 개조 동물을 붙잡아 달라","둥지 하청 연구소","beast"]],
   tec:[["가게가 털린 현장을 조사해 누구 짓인지 알아내 달라","골목 사진관","item"],["위조된 감정서를 가려내고 진짜 출처를 알아내 달라","합법 경매장 감정사","item"],
        ["사라진 직원의 마지막 행적을 조사해 달라","의수 정비소 '손끝'","item"],["거래 장부에서 빠져나간 돈의 흐름을 밝혀 달라","중고 기계상","item"]],
   esc:[["둥지 경계까지 화물 차량을 호위해 달라","택배 중개소"],["야간 시장 개장 시간 동안 상인을 지켜 달라","뒷골목 상인회"]],
@@ -506,8 +506,8 @@ const REQ_POOL = [
   str:[["둥지 경계에서 통행세를 뜯는 조직 간부를 끌어내 달라","둥지 하청 연구소","조직 간부"],["사무소 셋을 무너뜨린 해결사 무리를 제압해 달라","협회 지부 연락관","무법 해결사"],
        ["뒷골목 경매장 경비를 뚫고 도난품을 회수해 달라","합법 경매장 감정사","경매장 경비대장"]],
   str_kill:[["뒷골목에서 사람을 사냥하는 자를 처리해 달라","장례식장 야간 관리인","사람 사냥꾼"],["의뢰인을 둘이나 죽인 조직 간부를 끝내 달라","익명의 의뢰인","조직 간부"]],
-  agi:[["둥지 기밀을 들고 달아난 연구원을 붙잡아 달라","둥지 하청 연구소","person"],["밤의 시장에서 사라진 물건을 실은 수레를 쫓아 달라","뒷골목 상인회","person"],
-       ["뒷골목 하수로로 숨어든 개조 짐승을 몰아 붙잡아 달라","폐역 관리 사무소","rat"]],
+  agi:[["둥지 기밀을 들고 달아난 연구원을 붙잡아 달라","둥지 하청 연구소","person"],["밤의 시장에서 사라진 물건을 실은 수레를 쫓아 달라","뒷골목 상인회","cart"],
+       ["뒷골목 하수로로 숨어든 개조 짐승을 몰아 붙잡아 달라","폐역 관리 사무소","beast"]],
   tec:[["실종된 해결사가 마지막으로 맡은 의뢰를 추적해 달라","협회 지부 연락관","item"],["둥지 경계 검문소의 기록이 조작된 흔적을 찾아 달라","둥지 하청 연구소","item"]],
   esc:[["협회 사무실까지 증인을 안전하게 데려다 달라","협회 지부 연락관"],["둥지 안으로 들어가는 의약품 수송을 지켜 달라","골목 약국 약사"]],
   srch:[["뒷골목 깊숙한 곳에 숨은 밀수 창고를 찾아 달라","합법 경매장 감정사"],["사라진 해결사 셋의 행방을 찾아 달라","협회 지부 연락관"]],
@@ -1306,10 +1306,93 @@ function mgCombat(ctx){
    발자국·떨어뜨린 물건은 틀리지 않지만, 목격담·소음은 헛걸음일 수 있다. 민첩이 높을수록 처음부터 살펴본 길이 많다.
    맞는 길: 거리 -1(민첩이 높으면 가끔 -2) · 틀린 길: 거리 +1, 넘어지거나 부딪쳐 다칠 수 있다 · 멈춰서 살피기: 길 하나를 더 밝히지만 표적이 멀어질 수 있다.
    거리 0이면 붙잡는다(의뢰 성공). 거리 6이 되거나 시간이 다 되면 놓친다(의뢰 실패). */
+/* 추적 대상 — 의뢰마다 쫓는 것이 다르다(q.chase). 화면엔 언제나 달아나는 뒷모습만 보인다.
+   person: 사람(코트 뒷모습) · cat/dog: 골목의 고양이·개 · beast: 둥지 실험실·하수로의 개조 짐승 · cart: 짐수레를 밀고 달아나는 자 */
+const CHASE_INFO = {
+  person:{title:"골목 추격", intro:"달아나는 표적을 쫓는다.", foot:"선명한 발자국", drop:"떨어뜨린 물건", noise:"소음", snd:"쾅!", who:"표적이", start:"표적의 뒤를 쫓기 시작했다.", seen:"표적의 등이 보인다!", caught:"붙잡았다!", lost:"표적이 어둠 속으로 사라졌다"},
+  cat:{title:"고양이 찾기", intro:"담장 위, 차 밑, 배관 사이로 고양이가 달아난다.", foot:"젖은 발자국", drop:"걸린 털 뭉치", noise:"울음소리", snd:"냐아—", who:"고양이가", start:"고양이의 꼬리를 쫓기 시작했다.", seen:"꼬리가 보인다!", caught:"품에 안았다!", lost:"고양이가 배관 틈으로 사라졌다"},
+  dog:{title:"개 붙잡기", intro:"줄 풀린 개가 골목을 내달린다.", foot:"발자국", drop:"끊어진 목줄 조각", noise:"짖는 소리", snd:"컹!", who:"개가", start:"개를 쫓기 시작했다.", seen:"꼬리가 보인다!", caught:"목줄을 잡았다!", lost:"개가 골목 너머로 사라졌다"},
+  beast:{title:"개조 짐승 몰이", intro:"둥지 실험실에서 새어 나온 개조 짐승이 뒷골목 아래로 숨어든다.", foot:"긁힌 자국", drop:"떨어진 기계 부품", noise:"금속 긁는 소리", snd:"끼익—", who:"짐승이", start:"개조 짐승의 흔적을 쫓기 시작했다.", seen:"등줄기의 배관이 번쩍인다!", caught:"짐승을 눌러 붙잡았다!", lost:"짐승이 하수로 깊이 사라졌다"},
+  cart:{title:"짐수레 추격", intro:"짐을 실은 수레가 밤의 시장 골목을 덜컹이며 달아난다.", foot:"바퀴 자국", drop:"떨어진 짐", noise:"덜컹이는 소리", snd:"덜컹!", who:"수레가", start:"짐수레를 쫓기 시작했다.", seen:"수레의 뒤꽁무니가 보인다!", caught:"수레를 멈춰 세웠다!", lost:"수레가 시장 인파 속으로 사라졌다"}
+};
+const josa = (w, a, b) => { const ch = w.charCodeAt(w.length-1) - 0xAC00; return w + (ch>=0 && ch<11172 && ch%28 ? a : b); };   // 받침 따라 조사
+const chaseType = q => { const c = q && q.chase; return c==="rat" ? "beast" : CHASE_INFO[c] ? c : "person"; };
+// 달아나는 뒷모습. gy = 발이 닿는 바닥, h = 사람 키 기준 크기(동물은 그보다 작게)
+function drawChase(c, type, x, gy, h, t, o={}){
+  const F = SIDE_COL.foe, run = !!o.run;
+  if(type==="person") return drawFixer(c, x, gy, h, {face:1, col:F.fill, state:o.caught?"hurt":"idle", view:"back", t});
+  if(type==="cart"){                                                     // 사람이 수레를 앞으로 밀며 달아난다: 수레 뒤판이 어깨 너머로, 바퀴가 다리 옆으로 보인다
+    const w = h*0.62, bh = h*0.34, by = gy - h*0.36, sh = run ? Math.sin(t*16)*h*0.012 : 0;
+    c.fillStyle = "#3a2a22"; c.beginPath(); c.roundRect(x - w/2, by - bh + sh, w, bh, 3); c.fill();
+    c.strokeStyle = "rgba(0,0,0,0.35)"; c.lineWidth = Math.max(1, h*0.01); for(let i=1;i<4;i++){ c.beginPath(); c.moveTo(x - w/2 + 3, by - bh + sh + bh*i/4); c.lineTo(x + w/2 - 3, by - bh + sh + bh*i/4); c.stroke(); }
+    c.fillStyle = "#5a4535"; c.fillRect(x - w*0.42, by - bh*1.35 + sh, w*0.3, bh*0.38); c.fillStyle = "#4a3a30"; c.fillRect(x + w*0.05, by - bh*1.25 + sh, w*0.34, bh*0.28);   // 실린 짐
+    [-1,1].forEach(sd=>{ const wx = x + sd*w*0.44, wy = gy - h*0.08, r = h*0.085; c.fillStyle = "#2a2226"; c.beginPath(); c.arc(wx, wy, r, 0, 7); c.fill(); c.strokeStyle = "#7a6458"; c.lineWidth = Math.max(1.5,h*0.014); c.stroke();
+      c.strokeStyle = "rgba(255,200,150,0.45)"; c.lineWidth = Math.max(1,h*0.008); const a = run ? t*14 : 0; c.beginPath(); c.moveTo(wx + Math.cos(a)*r, wy + Math.sin(a)*r); c.lineTo(wx - Math.cos(a)*r, wy - Math.sin(a)*r); c.stroke(); });
+    c.strokeStyle = "#2a201a"; c.lineWidth = Math.max(1.5, h*0.018); c.beginPath(); c.moveTo(x - w*0.4, by + sh); c.lineTo(x - h*0.12, gy - h*0.52); c.moveTo(x + w*0.4, by + sh); c.lineTo(x + h*0.12, gy - h*0.52); c.stroke();   // 손잡이
+    return drawFixer(c, x, gy, h, {face:1, col:F.fill, state:o.caught?"hurt":"idle", view:"back", t});
+  }
+  // 네발짐승의 뒷모습(달아나는 쪽에서 본 모습): 앞에서부터 꼬리 → 엉덩이(양 허벅지 두 덩이) → 뒷다리 → 그 너머로 짧게 줄어든 등과 어깨 → 머리·귀.
+  // 달릴 땐 바운드하듯 들썩이고 뒷다리 하나가 뒤로 차 올라가 발바닥이 보인다
+  const S = {cat:0.4, dog:0.55, beast:0.85}[type] * h, sp = {cat:15, dog:12, beast:8}[type], ph = t*sp, B = type==="beast";
+  const leap = run ? Math.max(0, Math.sin(ph))*S*0.1 : 0, y = gy - leap, dk = "#6e1d1d";
+  const hw = S*(B ? 0.34 : type==="dog" ? 0.27 : 0.25);                           // 엉덩이 반폭
+  const hipY = y - S*(B ? 0.42 : 0.47), shY = y - S*(B ? 0.78 : 0.66);            // 엉덩이·어깨 높이(개조 짐승은 어깨가 솟은 굽은 등)
+  const lg = c.createLinearGradient(x - hw*1.4, 0, x + hw*1.4, 0); lg.addColorStop(0, F.fill); lg.addColorStop(0.5, F.head); lg.addColorStop(1, dk);
+  c.save(); c.lineJoin = "round";
+  c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(x, gy + S*0.01, hw*1.5*(1 - leap/(S*0.25)), S*0.04, 0, 0, 7); c.fill();
+  // 앞다리: 뒷다리 사이로 조금, 어둡게
+  [-1,1].forEach(sd=>{ const k2 = run ? Math.sin(ph + Math.PI + (sd>0 ? 0.5 : 0)) : 0, fx = x + sd*hw*0.32, fl = Math.max(0, k2)*S*0.12;
+    c.strokeStyle = dk; c.lineCap = "round"; c.lineWidth = S*(B ? 0.1 : 0.065); c.beginPath(); c.moveTo(fx, shY + S*0.1); c.lineTo(fx + sd*S*0.02, y - fl - S*0.02); c.stroke(); });
+  // 어깨·등: 엉덩이 너머로 짧게(원근으로 줄어든 몸통)
+  c.fillStyle = dk; c.beginPath(); c.ellipse(x, shY + S*0.06, hw*(B ? 1.05 : 0.8), S*(B ? 0.16 : 0.11), 0, 0, 7); c.fill();
+  // 머리와 귀
+  const hr = S*(type==="cat" ? 0.13 : type==="dog" ? 0.13 : 0.12), hx = x + (run ? Math.sin(ph*0.5)*S*0.02 : 0), hy = shY - S*(B ? 0.0 : 0.1);
+  c.fillStyle = F.head;
+  if(type==="cat"){ [-1,1].forEach(sd=>{ c.beginPath(); c.moveTo(hx + sd*hr*0.2, hy - hr*0.7); c.lineTo(hx + sd*hr*0.95, hy - hr*1.75); c.lineTo(hx + sd*hr*1.05, hy - hr*0.2); c.closePath(); c.fill(); }); }
+  else if(type==="dog"){ [-1,1].forEach(sd=>{ c.beginPath(); c.moveTo(hx + sd*hr*0.3, hy - hr*0.75); c.quadraticCurveTo(hx + sd*hr*1.2, hy - hr*1.2, hx + sd*hr*1.25, hy + hr*0.1); c.lineTo(hx + sd*hr*0.8, hy); c.closePath(); c.fill(); }); }
+  else { [-1,1].forEach(sd=>{ c.beginPath(); c.moveTo(hx + sd*hr*0.4, hy - hr*0.6); c.lineTo(hx + sd*hr*1.0, hy - hr*1.15); c.lineTo(hx + sd*hr*1.05, hy - hr*0.2); c.closePath(); c.fill(); }); }
+  c.beginPath(); c.ellipse(hx, hy, hr, hr*0.92, 0, 0, 7); c.fill();
+  // 등줄기: 엉덩이에서 어깨로 올라가는 능선
+  { const sw = hw*(B ? 1.05 : 0.7), top = shY - S*(B ? 0.04 : 0.0);           // 어깨는 둥글게 솟고 가운데(목덜미)로 모인다
+    c.fillStyle = lg; c.beginPath(); c.moveTo(x - hw*0.9, hipY);
+    c.bezierCurveTo(x - hw*0.95, hipY - (hipY-top)*0.6, x - sw, top + S*0.05, x - sw*0.55, top + S*0.01);
+    c.quadraticCurveTo(x, top - S*0.03, x + sw*0.55, top + S*0.01);
+    c.bezierCurveTo(x + sw, top + S*0.05, x + hw*0.95, hipY - (hipY-top)*0.6, x + hw*0.9, hipY); c.closePath(); c.fill(); }
+  // 뒷다리: 허벅지 아래로 길게. 달릴 땐 한쪽이 뒤로 차 올라가 발바닥이 이쪽을 본다
+  [-1,1].forEach(sd=>{ const k2 = run ? Math.sin(ph + (sd>0 ? 0.6 : 0)) : 0, kick = Math.max(0, k2), lx = x + sd*hw*0.62, lw = S*(B ? 0.12 : 0.085);
+    const footY = y - kick*S*0.22, footX = lx + sd*kick*S*0.03, kneeY = hipY + (y - hipY)*0.45;
+    c.strokeStyle = sd<0 ? F.fill : dk; c.lineCap = "round"; c.lineWidth = lw; c.beginPath(); c.moveTo(lx, hipY); c.lineTo(lx + sd*S*0.015, kneeY); c.lineTo(footX, footY - lw*0.3); c.stroke();
+    c.fillStyle = sd<0 ? F.fill : dk; c.beginPath(); c.ellipse(footX, footY - lw*0.2, lw*0.62, lw*(0.32 + kick*0.25), 0, 0, 7); c.fill();
+    if(kick > 0.35){ c.fillStyle = "rgba(40,16,18,0.9)"; c.beginPath(); c.ellipse(footX, footY - lw*0.2, lw*0.35, lw*0.22, 0, 0, 7); c.fill(); }   // 발바닥
+    if(B){ c.strokeStyle = "#e8d8d0"; c.lineWidth = Math.max(1, S*0.012); for(let j=-1;j<=1;j++){ c.beginPath(); c.moveTo(footX + j*lw*0.25, footY); c.lineTo(footX + j*lw*0.32, footY + lw*0.3); c.stroke(); } }   // 발톱
+  });
+  // 엉덩이: 두 허벅지 덩이
+  { const rh = S*(B ? 0.17 : 0.14);                                       // 엉덩이: 위는 둥글고 아래로 두 허벅지가 갈라진다
+    c.fillStyle = lg; c.beginPath(); c.moveTo(x - hw, hipY + rh*0.2);
+    c.bezierCurveTo(x - hw*1.02, hipY - rh*1.1, x + hw*1.02, hipY - rh*1.1, x + hw, hipY + rh*0.2);
+    c.bezierCurveTo(x + hw*0.98, hipY + rh*1.1, x + hw*0.3, hipY + rh*1.15, x + hw*0.12, hipY + rh*0.75);
+    c.quadraticCurveTo(x, hipY + rh*0.55, x - hw*0.12, hipY + rh*0.75);
+    c.bezierCurveTo(x - hw*0.3, hipY + rh*1.15, x - hw*0.98, hipY + rh*1.1, x - hw, hipY + rh*0.2); c.fill();
+    c.strokeStyle = F.rim; c.globalAlpha = 0.3; c.lineWidth = Math.max(1, S*0.014); c.beginPath(); c.moveTo(x - hw*0.95, hipY); c.bezierCurveTo(x - hw*0.95, hipY - rh*0.9, x - hw*0.3, hipY - rh*0.95, x, hipY - rh*0.85); c.stroke(); c.globalAlpha = 1; }
+  if(B){                                                                   // 등줄기에 박힌 배관과 기계 부품
+    for(let i=0;i<4;i++){ const u = i/3, py = hipY - S*0.06 - u*(hipY - shY - S*0.02), on = 0.5 + 0.5*Math.sin(t*5 + i);
+      c.fillStyle = "#26262c"; c.beginPath(); c.roundRect(x - S*0.045, py - S*0.025, S*0.09, S*0.05, S*0.01); c.fill(); c.fillStyle = `rgba(120,230,255,${0.35 + 0.5*on})`; c.fillRect(x - S*0.018, py - S*0.01, S*0.036, S*0.02); }
+    c.strokeStyle = "#26262c"; c.lineWidth = Math.max(1.5, S*0.022); c.beginPath(); c.moveTo(x + hw*0.3, shY + S*0.06); c.bezierCurveTo(x + hw*1.1, shY + S*0.1, x + hw*1.0, hipY - S*0.1, x + hw*0.85, hipY + S*0.05); c.stroke();
+  }
+  // 꼬리
+  const tw = run ? Math.sin(ph*0.5)*0.4 : Math.sin(t*2)*0.25, tx = x, ty = hipY - S*0.12; c.strokeStyle = B ? "#3a2a2e" : F.head; c.lineCap = "round";
+  c.lineWidth = S*(type==="cat" ? 0.05 : type==="dog" ? 0.06 : 0.05); c.beginPath();
+  if(type==="cat"){ c.moveTo(tx, ty); c.bezierCurveTo(tx + tw*S*0.15, ty - S*0.25, tx + S*0.15 + tw*S*0.15, ty - S*0.3, tx + S*0.1 + tw*S*0.25, ty - S*0.48); }
+  else if(type==="dog"){ c.moveTo(tx, ty); c.quadraticCurveTo(tx + tw*S*0.25, ty - S*0.2, tx + S*0.06 + tw*S*0.3, ty - S*0.32); }
+  else { c.moveTo(tx, ty + S*0.05); c.bezierCurveTo(tx + S*0.15, ty + S*0.12, tx + S*0.25 + tw*S*0.15, ty + S*0.3, tx + S*0.32 + tw*S*0.15, ty + S*0.38); }
+  c.stroke(); c.lineCap = "butt";
+  c.restore();
+}
 function mgTrack(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, lead = ctx.team[0], k = powK(ctx, "agi"), H = 300;
-    const m = mgOpen("추적 · 골목 추격", "달아나는 표적을 쫓는다. 갈림길마다 흔적을 보고 길을 골라라. 발자국과 떨어뜨린 물건은 확실하지만, 목격담과 소음은 헛걸음일 수 있다.", ctx, H);
+    const TI0 = CHASE_INFO[chaseType(q)];
+    const m = mgOpen(`추적 · ${TI0.title}`, `${TI0.intro} 갈림길마다 흔적을 보고 길을 골라라. ${josa(TI0.foot,"과","와")} ${josa(TI0.drop,"은","는")} 확실하지만, 목격담과 ${josa(TI0.noise,"은","는")} 헛걸음일 수 있다.`, ctx, H);
     // 거리 막대: 4급 이상 의뢰는 4칸, 5급 이하는 3칸. 한 칸 비운 채 시작하고, 막대를 넘어 벌어지면 놓친다
     const grade = q.grade!=null ? q.grade : 9, LOST = grade<=4 ? 4 : 3, T = LOST + 4 + (k>=1.3 ? 1 : 0), scout0 = k>=1.25 ? 2 : 1;
     /* 추적 감각(민첩): 다키스트 던전의 정찰 + 디스코 엘리시움의 패시브 판정을 하나로 합쳤다.
@@ -1320,7 +1403,9 @@ function mgTrack(ctx){
        · 실패: 아무 일도 없다(무엇을 놓쳤는지 모른다) */
     const SENSE_P = clamp((k-0.75)/0.7, 0, 1);
     const ROUTES = ["왼쪽 골목","오른쪽 골목","좁은 계단","지하 배수로","시장 통로","옥상 비상계단","공사장 가림막","폐건물 복도","철길 밑 굴다리","주차장 뒤편"];
-    const CLUE = {foot:{n:"선명한 발자국", sure:true, col:"#9fe8b0"}, drop:{n:"떨어뜨린 물건", sure:true, col:"#9fe8b0"}, wit:{n:"목격담", sure:false, col:"#e0d27f"}, noise:{n:"소음", sure:false, col:"#e0d27f"}, none:{n:"흔적 없음", sure:false, col:"#8a8f96"}};
+    // 쫓는 대상: 사람만이 아니다. 도시의 뒷골목에선 고양이·개·개조 짐승·짐수레도 쫓는다 — 대상마다 흔적과 장면이 다르다
+    const TG = chaseType(q), TI = CHASE_INFO[TG];
+    const CLUE = {foot:{n:TI.foot, sure:true, col:"#9fe8b0"}, drop:{n:TI.drop, sure:true, col:"#9fe8b0"}, wit:{n:"목격담", sure:false, col:"#e0d27f"}, noise:{n:TI.noise, sure:false, col:"#e0d27f"}, none:{n:"흔적 없음", sure:false, col:"#8a8f96"}};
     const G = {d:LOST-1, turn:0, wound:0, done:false, trail:[], junc:null, msg:"", flash:0, mishaps:0};
     function newJunction(){
       const n = grade<=5 ? 3 : (Math.random()<0.5 ? 3 : 2), names = [...ROUTES].sort(()=>Math.random()-0.5).slice(0,n), truth = Math.floor(Math.random()*n);
@@ -1408,14 +1493,17 @@ function mgTrack(ctx){
         if(b.ruled){ c.strokeStyle = "rgba(201,176,255,0.75)"; c.lineWidth = 3; c.beginPath(); c.moveTo(o.x-16, 130); c.lineTo(o.x+16, 160); c.moveTo(o.x+16, 130); c.lineTo(o.x-16, 160); c.stroke(); }
         else if(!b.seen){ c.fillStyle = "rgba(140,150,170,0.35)"; c.font = `800 24px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("?", o.x, 150); c.textAlign = "left"; }
         else { c.globalAlpha = rv;
-          if(b.clue==="foot"){ c.fillStyle = "rgba(159,232,176,0.65)"; for(let j=0;j<6;j++){ const u = j/5, fx = VX + (o.x-VX)*u + (j%2?5:-5)*(1-u*0.6), fy = 285 - u*95; c.beginPath(); c.ellipse(fx, fy, 7*(1-u*0.6), 3.5*(1-u*0.6), 0, 0, 7); c.fill(); } }
+          if(b.clue==="foot"){ c.fillStyle = "rgba(159,232,176,0.65)"; c.strokeStyle = "rgba(159,232,176,0.6)";
+            if(TG==="cart"){ c.lineWidth = 2.5; [-1,1].forEach(sd=>{ c.beginPath(); c.moveTo(VX + (o.x-VX)*0 + sd*22, 290); c.lineTo(o.x + sd*6, 192); c.stroke(); }); }
+            else if(TG==="person"){ for(let j=0;j<6;j++){ const u = j/5, fx = VX + (o.x-VX)*u + (j%2?5:-5)*(1-u*0.6), fy = 285 - u*95; c.beginPath(); c.ellipse(fx, fy, 7*(1-u*0.6), 3.5*(1-u*0.6), 0, 0, 7); c.fill(); } }
+            else if(TG==="beast"){ c.lineWidth = 2; for(let j=0;j<5;j++){ const u = j/4, fx = VX + (o.x-VX)*u, fy = 282 - u*92, z = 1-u*0.6; for(let r=-1;r<=1;r++){ c.beginPath(); c.moveTo(fx + r*5*z - 6*z, fy - 4*z); c.lineTo(fx + r*5*z + 6*z, fy + 4*z); c.stroke(); } } }
+            else { const ps = TG==="cat" ? 0.7 : 1; for(let j=0;j<8;j++){ const u = j/7, z = (1-u*0.6)*ps, fx = VX + (o.x-VX)*u + (j%2?4:-4)*z, fy = 286 - u*96;
+              c.beginPath(); c.ellipse(fx, fy, 3.2*z, 2.6*z, 0, 0, 7); c.fill(); for(let q2=-1;q2<=1;q2++){ c.beginPath(); c.arc(fx + q2*3*z, fy - 3.6*z, 1.3*z, 0, 7); c.fill(); } } } }
           if(b.clue==="drop"){ const gx = o.x + 14, gy = 186, sp = 0.6 + 0.4*Math.sin(t*6); c.fillStyle = `rgba(255,236,170,${sp})`; c.beginPath(); c.moveTo(gx, gy-9); c.lineTo(gx+3, gy-2); c.lineTo(gx+10, gy); c.lineTo(gx+3, gy+2); c.lineTo(gx, gy+9); c.lineTo(gx-3, gy+2); c.lineTo(gx-10, gy); c.lineTo(gx-3, gy-2); c.fill(); }
           if(b.clue==="wit"){ drawFixer(c, x0 - 10, 196, 62, {face:1, col:SIDE_COL.friend.fill, state:"idle", rim:SIDE_COL.friend.rim, t}); c.fillStyle = "rgba(195,235,255,0.85)"; c.font = `600 10px "Noto Sans KR",sans-serif`; c.fillText("저쪽으로…", x0 - 34, 122); }
           if(b.clue==="noise"){ c.strokeStyle = "rgba(224,210,127,0.7)"; c.lineWidth = 2; for(let r=0;r<3;r++){ const rr = 10 + ((t*30 + r*12) % 36); c.globalAlpha = rv*(1 - rr/46); c.beginPath(); c.arc(o.x, 128, rr, -2.4, -0.7); c.stroke(); } c.globalAlpha = rv;
-            c.fillStyle = "rgba(224,210,127,0.9)"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("쾅!", o.x, 104); c.textAlign = "left"; }
+            c.fillStyle = "rgba(224,210,127,0.9)"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(TI.snd, o.x, 104); c.textAlign = "left"; }
           c.globalAlpha = 1; }
-        // 표적이 아주 가까우면(거리 1) 맞는 입구 안쪽에서 코트 자락이 잠깐 보인다
-        if(b.ok && G.d<=1 && !G.scene && Math.sin(t*2.3) > 0.6){ c.globalAlpha = 0.55; drawFixer(c, o.x + 6, 194, 70, {face:1, col:SIDE_COL.foe.fill, state:"idle", view:"back", t}); c.globalAlpha = 1; }
         c.fillStyle = b.seen ? CLUE[b.clue].col : "#8a8f96"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(b.nm, o.x, 214); c.textAlign = "left"; });
     }
     function hud(c){
@@ -1432,14 +1520,14 @@ function mgTrack(ctx){
       if(sc && sc.type==="dead"){ const sh = k<0.45 ? 0 : (1-k)*9; c.translate((Math.random()-0.5)*sh, (Math.random()-0.5)*sh); if(sc.data.hurt && k>0.45){ c.translate(W/2, H/2); c.rotate(0.08*Math.sin((k-0.45)*Math.PI)); c.translate(-W/2, -H/2); } }
       if(G.done && G.win){                                                          // 붙잡는 장면: 표적의 등이 화면 가득, 손이 덮친다
         const e = clamp((now-G.endAt)/900, 0, 1); alley(c, t, 2.4*(1-e), 0);
-        drawFixer(c, VX, VY + 150 + e*60, 150 + e*170, {face:1, col:SIDE_COL.foe.fill, state:"hurt", view:"back", t});
-        c.fillStyle = `rgba(255,250,240,${0.6*Math.max(0, 1-Math.abs(e-0.7)*5)})`; c.fillRect(0,0,W,H); caption(c, "붙잡았다!", "#9fe8b0");
-      } else if(G.done){ const e = clamp((now-G.endAt)/900, 0, 1); alley(c, t, 0.3, 0); c.fillStyle = `rgba(0,0,0,${0.5*e})`; c.fillRect(0,0,W,H); caption(c, "표적이 어둠 속으로 사라졌다", "#ff8a7a"); }
+        drawChase(c, TG, VX, VY + 150 + e*60, 150 + e*170, t, {caught:true});
+        c.fillStyle = `rgba(255,250,240,${0.6*Math.max(0, 1-Math.abs(e-0.7)*5)})`; c.fillRect(0,0,W,H); caption(c, TI.caught, "#9fe8b0");
+      } else if(G.done){ const e = clamp((now-G.endAt)/900, 0, 1); alley(c, t, 0.3, 0); c.fillStyle = `rgba(0,0,0,${0.5*e})`; c.fillRect(0,0,W,H); caption(c, TI.lost, "#ff8a7a"); }
       else if(sc && sc.type==="run"){                                              // 맞는 길: 입구로 뛰어들어 달린다. 표적이 앞에서 달아나며 가까워진다
         const zoom = 1 + Math.min(1, k*2)*0.0; alley(c, t, 2.4, 0);
         const d = sc.data.from + (sc.data.to - sc.data.from)*ease(k), h2 = tgtSize(d), bob = Math.abs(Math.sin(t*9))*4, sway = Math.sin(t*3)*30;
-        drawFixer(c, VX + sway, VY + 26 + h2*0.55 - bob, h2, {face:1, col:SIDE_COL.foe.fill, state:"idle", view:"back", t});
-        caption(c, `${sc.data.nm} — 표적의 등이 보인다!`, "#9fe8b0");
+        drawChase(c, TG, VX + sway, VY + 26 + h2*0.55 - (TG==="person"||TG==="cart" ? bob : 0), h2, t, {run:true});
+        caption(c, `${sc.data.nm} — ${TI.seen}`, "#9fe8b0");
       } else if(sc && sc.type==="dead"){                                           // 헛걸음: 막다른 철망
         alley(c, t, k<0.45 ? 2.4 : 0, 0);
         const e = clamp(k/0.45, 0, 1); c.save(); c.globalAlpha = e; c.fillStyle = "#1c1a22"; c.fillRect(200, 70, 320, 150);
@@ -1448,8 +1536,8 @@ function mgTrack(ctx){
         caption(c, k<0.45 ? `${sc.data.nm}…` : `막다른 길 — 헛걸음이었다${sc.data.hurt ? " · 다쳤다" : ""}`, k<0.45 ? "#e6e1d8" : "#ff8a7a");
       } else if(sc && sc.type==="arrive"){                                         // 다음 갈림길로 달려가며 표적이 모퉁이로 사라진다
         alley(c, t, 2.4*(1-k), 0); const h2 = tgtSize(G.d);
-        c.globalAlpha = 1 - k; drawFixer(c, VX + (k*80), VY + 26 + h2*0.55, h2, {face:1, col:SIDE_COL.foe.fill, state:"idle", view:"back", t}); c.globalAlpha = 1;
-        caption(c, "표적이 모퉁이를 돌았다 — 갈림길이다");
+        c.globalAlpha = 1 - k; drawChase(c, TG, VX + (k*80), VY + 26 + h2*0.55, h2, t, {run:true}); c.globalAlpha = 1;
+        caption(c, `${TI.who} 모퉁이를 돌았다 — 갈림길이다`);
       } else {                                                                      // 갈림길에 멈춰 섰다
         alley(c, t, 0, 0); if(G.junc) fork(c, t, G.junc, sc && sc.type==="scout" ? sc.data.idx : null);
         if(sc && sc.type==="scout"){ const o = OPEN(G.junc.length)[sc.data.idx], lx = 160 + (o.x-160)*ease(k);
@@ -1459,7 +1547,7 @@ function mgTrack(ctx){
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    newJunction(); G.msg = `${esc(lead.name)}이(가) 표적의 뒤를 쫓기 시작했다.`; ui(); m.ctrl.innerHTML = ""; scene("arrive", 1300, {}, ui);
+    newJunction(); G.msg = `${esc(lead.name)}이(가) ${TI.start}`; ui(); m.ctrl.innerHTML = ""; scene("arrive", 1300, {}, ui);
   });
 }
 
