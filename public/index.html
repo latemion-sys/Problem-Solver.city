@@ -1252,11 +1252,13 @@ function mgTrack(ctx){
     const m = mgOpen("추적 · 골목 추격", "달아나는 표적을 쫓는다. 갈림길마다 흔적을 보고 길을 골라라. 발자국과 떨어뜨린 물건은 확실하지만, 목격담과 소음은 헛걸음일 수 있다.", ctx, H);
     // 거리 막대: 4급 이상 의뢰는 4칸, 5급 이하는 3칸. 한 칸 비운 채 시작하고, 막대를 넘어 벌어지면 놓친다
     const grade = q.grade!=null ? q.grade : 9, LOST = grade<=4 ? 4 : 3, T = LOST + 4 + (k>=1.3 ? 1 : 0), scout0 = k>=1.25 ? 2 : 1;
-    /* 민첩이 추적을 돕는 세 가지(레퍼런스):
-       ① 정찰(다키스트 던전): 갈림길에 들어설 때마다 정찰 판정 — 성공하면 모든 길의 흔적이 한꺼번에 드러난다. 기본 25%에 민첩 보정
-       ② 감각(디스코 엘리시움의 패시브 판정): 민첩이 그 갈림길의 난도를 넘으면 저절로 "이 길은 아니다"는 감이 온다 — 틀린 길 하나가 지워진다
-       ③ 지름길(패스파인더 2e 추격 규칙): 민첩 판정이 크게 성공하면 더 빠른 길이 보인다 — 성공하면 거리 −2, 실패하면 헛걸음 */
-    const SCOUT_P = clamp(0.25 + (k-1)*0.5, 0.1, 0.6), SHORT_APPEAR = clamp(0.15 + (k-1)*0.4, 0.05, 0.45), SHORT_P = clamp(0.45 + (k-1)*0.5, 0.2, 0.85);
+    /* 추적 감각(민첩): 다키스트 던전의 정찰 + 디스코 엘리시움의 패시브 판정을 하나로 합쳤다.
+       갈림길에 들어설 때마다 굴리지 않는 판정 — 갈림길마다 난도(0.75~1.45)가 정해지고, 민첩 보정이 그 난도를 얼마나 넘느냐로 결과가 갈린다.
+       · 큰 성공(난도 +0.3 이상): 모든 길의 흔적이 드러나고, 틀린 길 하나는 "아니다"는 감으로 지워진다
+       · 성공: 모든 길의 흔적이 드러난다(정찰)
+       · 아슬아슬한 실패(난도 −0.2 이내): 길 하나의 흔적만 더 보인다
+       · 실패: 아무 일도 없다(무엇을 놓쳤는지 모른다) */
+    const SENSE_P = clamp((k-0.75)/0.7, 0, 1);
     const ROUTES = ["왼쪽 골목","오른쪽 골목","좁은 계단","지하 배수로","시장 통로","옥상 비상계단","공사장 가림막","폐건물 복도","철길 밑 굴다리","주차장 뒤편"];
     const CLUE = {foot:{n:"선명한 발자국", sure:true, col:"#9fe8b0"}, drop:{n:"떨어뜨린 물건", sure:true, col:"#9fe8b0"}, wit:{n:"목격담", sure:false, col:"#e0d27f"}, noise:{n:"소음", sure:false, col:"#e0d27f"}, none:{n:"흔적 없음", sure:false, col:"#8a8f96"}};
     const G = {d:LOST-1, turn:0, wound:0, done:false, trail:[], junc:null, msg:"", flash:0, mishaps:0};
@@ -1267,20 +1269,19 @@ function mgTrack(ctx){
         return {nm, ok, clue, seen:false}; });
       const order = [...br.keys()].sort(()=>Math.random()-0.5); for(let i=0;i<Math.min(scout0, n);i++) br[order[i]].seen = true;
       G.junc = br; G.notes = [];
-      if(Math.random() < SCOUT_P){ br.forEach(b=>b.seen = true); G.notes.push(`<span style="color:#9fd8ff">정찰 성공</span> — 모든 길의 흔적이 보인다`); }
-      const diff = 0.75 + Math.random()*0.7, wrong = br.filter(b=>!b.ok);
-      if(k >= diff && wrong.length){ const x = pick(wrong); x.ruled = true; G.notes.push(`<span style="color:#c9b0ff">감각</span> — ${x.nm}은(는) 아니다. 바람이 막혀 있다`); }
-      G.short = Math.random() < SHORT_APPEAR;
-      if(G.short) G.notes.push(`<span style="color:#ffd27f">지름길</span> — 담장을 넘으면 앞질러 갈 수 있을 것 같다`);
+      const diff = 0.75 + Math.random()*0.7, wrong = br.filter(b=>!b.ok), un = br.filter(b=>!b.seen);
+      if(k >= diff){ br.forEach(b=>b.seen = true);
+        if(k >= diff + 0.3 && wrong.length){ const x = pick(wrong); x.ruled = true; G.notes.push(`<span style="color:#c9b0ff">추적 감각 · 큰 성공</span> — 모든 흔적이 보인다. ${x.nm}은(는) 아니다, 바람이 막혀 있다`); }
+        else G.notes.push(`<span style="color:#9fd8ff">추적 감각 · 성공</span> — 모든 길의 흔적이 보인다`); }
+      else if(k >= diff - 0.2 && un.length){ pick(un).seen = true; G.notes.push(`<span style="color:#b8c4d0">추적 감각</span> — 길 하나의 흔적이 더 눈에 들어온다`); }
     }
     function ui(){
       const left = T - G.turn;
       m.info.innerHTML = `<div class="pk-text">거리 <b style="color:${G.d<=1?"#9fe8b0":G.d>=LOST?"#ff8a7a":"#e0d27f"}">${G.d}</b> / ${LOST} · 남은 시간 <b>${left}</b> · ${esc(lead.name)} ${["안정","경상","중상","치명상"][Math.min(3,G.wound)]}
-        <span class="muted">· 민첩: 정찰 ${Math.round(SCOUT_P*100)}% · 지름길 ${Math.round(SHORT_P*100)}%</span>
+        <span class="muted">· 추적 감각(민첩) ${Math.round(SENSE_P*100)}%</span>
         ${G.msg ? `<br><span class="muted">${G.msg}</span>` : ""}${!G.done && G.notes && G.notes.length ? `<br>${G.notes.join(" · ")}` : ""}</div>`;
       if(G.done) return;
       m.ctrl.innerHTML = `<div class="pk-moves">${G.junc.map((b,i)=>`<button data-br="${i}"${b.ruled?' style="opacity:.55"':''}><b>${b.nm}</b><small>${b.ruled ? '<span style="color:#c9b0ff">감각: 이 길은 아니다</span> · ' : ''}${b.seen ? `<span style="color:${CLUE[b.clue].col}">${CLUE[b.clue].n}</span>${CLUE[b.clue].sure?" · 확실함":b.clue!=="none"?" · 헛걸음일 수 있음":""}` : "살펴보지 않음"}</small></button>`).join("")}
-        ${G.short ? `<button data-short="1"><b>지름길로 질러간다</b><small>성공 ${Math.round(SHORT_P*100)}% · 성공하면 거리 −2, 실패하면 헛걸음(거리 +1)</small></button>` : ""}
         ${G.junc.some(b=>!b.seen) ? `<button data-scout="1"><b>멈춰서 살핀다</b><small>길 하나를 더 살핀다 · 시간 1 · 표적이 멀어질 수 있음</small></button>` : ""}</div>`;
     }
     // 장면: 선택하면 짧은 장면(달리기 · 막다른 길 · 살피기)이 끝난 뒤 다음 갈림길이 나온다. 장면 중엔 선택지를 숨긴다
@@ -1313,15 +1314,7 @@ function mgTrack(ctx){
       setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, `${text} — 의뢰 ${win?"성공":"실패"}`).then(()=>resolve(res)); }, 1800);
       return true;
     }
-    function shortcut(){
-      if(G.done || G.scene) return; G.turn++; const ok = Math.random() < SHORT_P, d0 = G.d;
-      if(ok){ G.d = Math.max(0, G.d-2); G.trail.push({nm:"지름길", ok:true}); G.msg = "담장을 넘어 앞질렀다! 거리를 크게 좁혔다.";
-        scene("run", 1500, {from:d0, to:G.d, nm:"지름길"}, ()=>{ check() || (newJunction(), scene("arrive", 900, {}, ui)); }); }
-      else { G.d += 1; const hurt = Math.random() < 0.5; if(hurt){ G.wound++; G.mishaps++; } G.trail.push({nm:"지름길", ok:false}); G.msg = `담장을 넘다 떨어졌다. 표적이 멀어졌다.${hurt ? " 발목을 접질렸다." : ""}`; G.flash = performance.now();
-        scene("dead", 1700, {nm:"지름길", hurt}, ()=>{ G.lastMis = G.mishaps; check() || (newJunction(), scene("arrive", 900, {}, ui)); }); }
-      ui(); m.ctrl.innerHTML = "";
-    }
-    m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout) scout(); else if(b.dataset.short) shortcut(); };
+    m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout) scout(); };
     m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, battle:[{f:lead, fought:true, wound:Math.min(3,G.wound), sp:0}]}); };
     // ---- 그림: 1인칭 골목. 소실점을 향해 벽이 흐르고, 표적의 뒷모습이 거리만큼 작게 보인다 ----
     // 갈림길: 골목 끝 벽에 길 입구들이 열리고, 살펴본 입구엔 흔적이 장면 안에 보인다(발자국·반짝이는 물건·손짓하는 행인·울리는 소리).
