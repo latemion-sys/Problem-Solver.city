@@ -133,7 +133,8 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 @keyframes npIn{from{opacity:0;transform:translate(-50%,-46%)}to{opacity:1;transform:translate(-50%,-50%)}}
 .np-h{padding:14px 18px;border-bottom:1px dashed #34313a;font-weight:800;font-size:17px;display:flex;justify-content:space-between;align-items:baseline}
 .np-h span{font-size:11px;color:#8f8a80;font-weight:400;letter-spacing:.1em}
-.np-body{padding:14px 18px}.np-body .field label{width:90px}
+.np-body{padding:14px 18px;max-height:min(70vh,640px);overflow:auto}.np-sub{margin:12px 0 8px;font-size:13px;color:#c9a86a;font-weight:600}
+.lk .field select{flex:1;min-width:0}.lk-dot{width:16px;height:16px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,.25);display:inline-block}.lk .field label input{margin-right:4px;vertical-align:-2px}.lk-sum{flex:1}.np-body .field label{width:90px}
 .np-f{padding:12px 18px;border-top:1px solid #2a2830;display:flex;justify-content:space-between}
 .warn{color:#e08a8a;font-size:12px;margin:6px 0 0}
 .skip{position:absolute;right:20px;bottom:34px;z-index:6;background:rgba(0,0,0,.5)}
@@ -203,6 +204,41 @@ const PERSONALITIES = [
  ["비관적","armor","무너질 지붕"],["오만함","weapon","하늘을 긋는 선"],["소심함","armor","작은 껍데기"],["정의감","weapon","굽지 않는 저울"],
  ["탐욕","weapon","모자란 주머니"],["다정함","armor","내민 손바닥"],["무심함","armor","빈 액자"],["광기","weapon","웃는 톱니"]
 ];
+/* 외형(글자 기록용) — 실루엣엔 머리카락을 그리지 않으므로 [관리]에 글로만 남긴다.
+   대표는 개업 때 고르고(오드아이 가능), 영입되는 해결사는 무작위로 정해진다. */
+const HAIR_COLORS = [["흑발","#17151a"],["흑갈색","#2e2119"],["갈색","#5b3a24"],["밤색","#6e3b2a"],["적갈색","#7c2f1f"],["붉은 머리","#b3262b"],["주홍빛","#d06a2a"],["금발","#d8b45a"],
+  ["백금발","#e8dcb8"],["은발","#bfc3c8"],["백발","#eeeae4"],["잿빛","#7d7b80"],["청발","#3a6fb8"],["남색","#23305e"],["녹발","#3f7a4d"],["보랏빛","#6a4592"]];
+const EYE_COLORS = [["흑안","#141216"],["흑갈색","#33241a"],["갈색","#6b4428"],["호박색","#c4822a"],["금안","#e0b84a"],["노란 눈","#e8d64a"],["붉은 눈","#c0282d"],["주홍 눈","#e06a3a"],
+  ["분홍 눈","#e07fa6"],["보랏빛","#8a5bc4"],["남색","#2a3a8a"],["푸른 눈","#3f7ed8"],["하늘색","#8cc8f0"],["청록","#2aa39a"],["초록 눈","#3f9a4f"],["회색 눈","#8a8f96"]];
+const HAIR_STYLES = ["짧게 친 머리","스포츠머리","삭발","투블럭","넘긴 머리(올백)","가르마 머리","숏컷","단발","보브컷","풀어 내린 장발","반묶음","포니테일","낮게 묶은 머리","땋은 머리","양갈래","틀어 올린 머리","곱슬머리","헝클어진 머리","한쪽 눈을 가린 앞머리","울프컷"];
+function randomLook(){ const e = pick(EYE_COLORS)[0], odd = Math.random() < 0.06;
+  return {hair: pick(HAIR_COLORS)[0], style: pick(HAIR_STYLES), eyeL: e, eyeR: odd ? pick(EYE_COLORS.filter(x=>x[0]!==e))[0] : e}; }
+const colHex = (arr, n) => (arr.find(x=>x[0]===n) || arr[0])[1];
+function hairText(L){ return `${L.hair} · ${L.style}`; }
+function eyeText(L){ return L.eyeL===L.eyeR ? L.eyeL : `오드아이(왼쪽 ${L.eyeL} · 오른쪽 ${L.eyeR})`; }
+// 외형 고르기(개업 신고서·관리 공용). withPers면 성격도 고른다
+function lookFields(L, pers){
+  const opt = (arr, cur) => arr.map(x=>{ const n = Array.isArray(x) ? x[0] : x; return `<option ${n===cur?"selected":""}>${esc(n)}</option>`; }).join("");
+  const dot = hex => `<i class="lk-dot" style="background:${hex}"></i>`;
+  return `<div class="lk">
+    <div class="field"><label>머리색</label><select data-lk="hair">${opt(HAIR_COLORS, L.hair)}</select>${dot(colHex(HAIR_COLORS, L.hair))}</div>
+    <div class="field"><label>헤어스타일</label><select data-lk="style">${opt(HAIR_STYLES, L.style)}</select></div>
+    <div class="field"><label>눈 색</label><select data-lk="eyeL">${opt(EYE_COLORS, L.eyeL)}</select>${dot(colHex(EYE_COLORS, L.eyeL))}</div>
+    <div class="field"><label><input type="checkbox" data-lk="odd" ${L.eyeL!==L.eyeR?"checked":""}> 오드아이</label><select data-lk="eyeR" ${L.eyeL===L.eyeR?"disabled":""}>${opt(EYE_COLORS, L.eyeR)}</select>${dot(colHex(EYE_COLORS, L.eyeR))}</div>
+    ${pers!==undefined ? `<div class="field"><label>성격</label><select data-lk="pers">${opt(PERSONALITIES.map(x=>x[0]), pers)}</select></div>` : ""}
+    <div class="field"><label></label><button type="button" data-lkrand="1">외형 랜덤</button><span class="muted lk-sum" style="font-size:12px">${esc(hairText(L))} · ${esc(eyeText(L))}</span></div></div>`;
+}
+// 고른 값을 L(과 st.pers)에 반영한다. 다시 그릴 땐 box 안의 .lk 만 바꾼다
+function bindLook(box, L, st){
+  const redraw = () => { const el = box.querySelector(".lk"); el.outerHTML = lookFields(L, st && st.pers!==undefined ? st.pers : undefined); };
+  box.addEventListener("change", e=>{ const k = e.target.dataset.lk; if(!k) return;
+    if(k==="odd"){ if(e.target.checked){ if(L.eyeR===L.eyeL) L.eyeR = pick(EYE_COLORS.filter(x=>x[0]!==L.eyeL))[0]; } else L.eyeR = L.eyeL; }
+    else if(k==="eyeL"){ const wasOdd = L.eyeR!==L.eyeL; L.eyeL = e.target.value; if(!wasOdd) L.eyeR = L.eyeL; }
+    else if(k==="pers"){ if(st) st.pers = e.target.value; }
+    else L[k] = e.target.value;
+    redraw(); });
+  box.addEventListener("click", e=>{ if(!e.target.dataset.lkrand) return; Object.assign(L, randomLook()); redraw(); });
+}
 const SURNAMES = ["김","이","박","최","정","강","조","윤","장","임","한","오","서","신","권","황","안","송","류","홍"];
 const GIVEN = ["민준","서연","도윤","하은","지호","수아","현우","지민","예준","채원","건우","다인","우진","소율","태오","유나","시우","하린","준서","서윤","은호","나연","재원","가온","도현","이안","세아","한결","무진","단비"];
 const FOREIGN = ["올리비에","레오나르","미셸","카를로","이자벨","마르타","에반","루카","오스카","니나","빅토르","엘리안","줄리아","하인츠","아델","로렌츠","세바스티안","클라라","펠릭스","노아","마야","휴고","레나","라울","에디트","테오","실비아","얀","미라","케이"];
@@ -396,7 +432,7 @@ let S = null;
 function newFixer(name, grade, stats, opts={}){
   return Object.assign({
     id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
-    hp:100, hpMax:100, mp:100, mpMax:100, personality: pick(PERSONALITIES)[0],
+    hp:100, hpMax:100, mp:100, mpMax:100, personality: pick(PERSONALITIES)[0], look: randomLook(),
     gear:{weapon:null,armor:null,acc:null}, ego:null, title:null, cap:70,
     lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0
   }, opts);
@@ -421,11 +457,11 @@ function genStats(grade){
   return st;
 }
 
-function newGame(leaderName, officeName, partnerName){
+function newGame(leaderName, officeName, partnerName, lead){
   S = { v:VERSION, day:1, money:20000, debt:START_DEBT, scars:0, officeName, officeGrade:8,
         fixers:[], requests:[], records:[], log:[], reviewSuccess:0, recruitPool:[], nextId:1,
         todayIncome:0, over:false, inventory:[], paidThisWeek:0 };
-  const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, {isLeader:true});
+  const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, Object.assign({isLeader:true}, lead ? {look: Object.assign({}, lead.look), personality: lead.pers || pick(PERSONALITIES)[0]} : {}));
   const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7});
   S.fixers.push(L,P);
   startDay(true);
@@ -2060,7 +2096,7 @@ function genRecruits(){
 }
 async function openRecruit(){
   const draw = () => S.recruitPool.length ? S.recruitPool.map(f=>`<div class="item"><div><b>${esc(f.name)}</b> <span class="badge">${gName(f.grade)}</span> <span class="badge">${f.personality}</span>
-    <div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">고용비 ${won(f.cost)}</div></div>
+    <div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">${esc(hairText(f.look||{}))} · ${esc(eyeText(f.look||{}))}</div><div class="d">고용비 ${won(f.cost)}</div></div>
     <button class="primary" data-hire="${f.id}" ${S.money<f.cost||S.fixers.length>=10?"disabled":""}>고용</button></div>`).join("") : `<p class="muted">오늘은 더 이상 찾아온 해결사가 없다. 명단은 매일 아침 바뀐다.</p>`;
   await modal("영입", `<p class="muted">${gName(S.officeGrade)} 사무소 · 최대 ${gName(Math.max(2,S.officeGrade-1))}까지 찾아온다. 1급과 특색은 영입으로 오지 않는다. 소속 ${S.fixers.length}/10명.</p><div class="list" id="rlist">${draw()}</div>`, [{t:"닫기"}], false, root=>{
     root.addEventListener("click", async e=>{
@@ -2093,6 +2129,8 @@ async function openManage(){
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} <button data-rename="1" style="padding:2px 8px">이름 변경</button></b>
       <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
       <span>성격</span><b>${f.personality}</b>
+      <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
+      <span>눈</span><b>${esc(eyeText(f.look))}</b>
       <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)}${f.grade>=2?" / 다음 승급 "+PROMO[f.grade]:""})</b>
       <span>경험</span><b class="muted">근력 ${f.exp.str}/2 · 민첩 ${f.exp.agi}/2 · 재주 ${f.exp.tec}/2 · 의지 ${f.exp.wil}/2</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
@@ -2130,6 +2168,9 @@ async function openManage(){
         if(isH) f.hp = Math.min(max, f.hp+steps*10); else f.mp = Math.min(max, f.mp+steps*10);
       }
       else if(d.rename && f){ const nm = await promptBox("이름 변경", "새 이름", f.name, true); if(nm) f.name = nm; }
+      else if(d.relook && f){ const L = Object.assign({}, f.look);
+        const ok = await modal("대표 외형 변경", `<div id="rl">${lookFields(L)}</div>`, [{t:"취소",v:false},{t:"바꾸기",v:true,primary:true}], true, r=>bindLook(r.querySelector("#rl"), L));
+        if(ok) f.look = L; }
       else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
       else if(d.fire && f){ if(await confirmBox("해고", `${esc(f.name)}을(를) 내보낸다. 되돌릴 수 없다.`)){ removeFixer(f,"해고","사무소를 떠남"); sel=S.fixers[0]?.id; } }
       else return;
@@ -2321,7 +2362,7 @@ async function openRecords(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over) return d; }catch(_){} return null; }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); }); return d; } }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
@@ -2475,8 +2516,10 @@ async function openAchievements(){
 }
 
 /* ================= 시작 화면 ================= */
+let NEWLEAD = null;
 function renderStart(){
   const app = document.getElementById("app");
+  NEWLEAD = {look: randomLook(), pers: pick(PERSONALITIES)[0]}; NEWLEAD.look.eyeR = NEWLEAD.look.eyeL;
   const hasSave = !!load();
   document.body.classList.add("on-title");
   app.innerHTML = `<div class="title-screen" id="ts">
@@ -2501,6 +2544,7 @@ function renderStart(){
         <div class="field"><label>대표 이름</label><input id="s1" maxlength="16" value="${esc(randomName())}"><button data-r="s1">랜덤</button></div>
         <div class="field"><label>사무소 이름</label><input id="s2" maxlength="20" value="${esc(randomOffice())}"><button data-r="s2">랜덤</button></div>
         <div class="field"><label>동료 이름</label><input id="s3" maxlength="16" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
+        <h4 class="np-sub">대표의 생김새와 성격</h4><div id="lkbox">${lookFields(NEWLEAD.look, NEWLEAD.pers)}</div>
         ${hasSave?`<p class="warn">새로 개업하면 지금 진행 중인 사무소 기록은 사라진다.</p>`:""}
       </div>
       <div class="np-f"><button data-t="back">돌아가기</button><button class="primary" data-t="go">사무소 열기</button></div>
@@ -2509,6 +2553,7 @@ function renderStart(){
   </div>`;
   Title.start(document.getElementById("tcv"));
   const ts = document.getElementById("ts");
+  bindLook(ts.querySelector("#lkbox"), NEWLEAD.look, NEWLEAD);
   ts.onclick = async e=>{
     const t = e.target.dataset.t, r = e.target.dataset.r;
     if(r){ ts.querySelector("#"+r).value = r==="s2"?randomOffice():randomName(); return; }
@@ -2523,7 +2568,7 @@ function renderStart(){
       const skip = ts.querySelector("#skip"); skip.hidden=false;
       clearSave();
       await Title.opening(b, a, c, skip);
-      newGame(a, b, c);
+      newGame(a, b, c, NEWLEAD);
       leaveTitle(); render();
       playFx("아침", "1일차", `${S.officeName}의 첫날. 의뢰 ${S.requests.length}건.`, true);
     }
