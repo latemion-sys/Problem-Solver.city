@@ -983,7 +983,7 @@ function mgCombat(ctx){
         } else if(theirs > mine){
           let dmg = foeCard.def ? (theirs-mine)*2 : Math.round(theirs*1.6*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f)));
           if(c.def) dmg = Math.round(dmg*0.5);
-          me.hp = Math.max(0, me.hp-dmg); st.crit = false; attack("foe", dmg, c);
+          me.hp = Math.max(0, me.hp-dmg); st.crit = false; attack("foe", dmg, foeCard);
           lines.push(`합에서 밀렸다… ${esc(me.name)} -${dmg}${c.def?" (막아서 절반)":""}`);
         } else { st.crit = false; attack("tie", 0, c); lines.push("팽팽하게 맞부딪쳐 서로 튕겨 났다."); }
         S2.log = lines.concat(S2.log).slice(0,4);
@@ -1029,6 +1029,7 @@ function mgCombat(ctx){
     const gd = Math.min(1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
     let G = null; try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; }
+    let SFX = null; try { SFX = SlashFX.make(W, H); } catch(e){ SFX = null; }
     if(!G){ glc.remove(); m.cvs.classList.remove("mg-over"); }
     const FX_COL = { blade:[0.8,0.9,1], great:[0.85,0.9,1], spear:[0.8,0.92,1], blunt:[1,0.72,0.42], drill:[1,0.66,0.3], gun:[1,0.85,0.5], tool:[0.95,0.85,0.7], twin:[0.8,0.92,1], fist:[1,0.78,0.5], none:[1,0.85,0.7] };
     let clock = 0, last = performance.now(); st.ev = []; st.fx = []; st.waves = []; st.pop = [];
@@ -1037,20 +1038,25 @@ function mgCombat(ctx){
     // by: 공격하는 쪽("me" 우리, "foe" 적, "tie" 맞부딪침)
     function attack(by, dmg, card){
       const t0 = clock, imp = 290; st.ev.push({by, t0, crit: st.crit}); const big = st.crit ? 1.6 : 1;
+      if(by==="tie" && SFX){ const x = 360, y = 230; SFX.slash("diag", x, y, 70, {face:1, delay:0.18}); SFX.slash("diag", x, y, 70, {face:-1, col:[1,0.6,0.5], delay:0.18});
+        SFX.hit(x, y, {dir:-Math.PI/2, sparkDir:-Math.PI/2, pow:1.1, R:80, delay:0.29, spread:3.2}); setTimeout(()=>{ st.waves.push({x, y, t0:clock, k:0.6}); st.shake = 6; }, imp); return; }
       if(by==="tie"){ const x = 360, y = 230;
         addFx({kind:"hit", x, y, R:70, col:[1,0.9,0.7]}, 380, imp); addFx({kind:"pt", x, y, n:50, spd:120, dx:0, dy:-1, col:[1,0.8,0.45], seed:Math.random()*99}, 900, imp);
         setTimeout(()=>{ st.waves.push({x, y, t0:clock, k:0.6}); st.shake = 6; }, imp); return; }
       const tgt = by==="me" ? "foe" : "me", wt0 = by==="me" ? party[act].wt : foe.wt, wt = wt0==="fist" ? "blunt" : wt0, col = FX_COL[wt0] || FX_COL.none;
       const [x, y] = chestOf(tgt), sc = tgt==="foe" ? 0.75 : 1.15, dir = by==="me" ? 1 : -1;
-      if(wt==="gun"){ const from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
+      if(SFX){ const spec = by==="me" ? party[act].spec : foe.spec, from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
+        slashAt(SFX, wt0, x, y, (tgt==="foe" ? 76 : 108)*(st.crit?1.15:1), {face:dir, glow: spec && spec.glow, type: SlashFX.typeOfCard(card && card.n), fromX:from[0], fromY:from[1],
+          sparkCol: tgt==="foe" ? [1,0.74,0.42] : [1,0.42,0.36], delay: imp/1000}); }
+      else if(wt==="gun"){ const from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
         [0,90,180].forEach((d,i)=>{ addFx({kind:"hit", x:from[0], y:from[1], R:26, col:[1,0.8,0.4]}, 120, imp-180+d);
           addFx({kind:"line", x0:from[0], y0:from[1], x1:x+(i-1)*6, y1:y+(i-1)*8, w:2.5, col}, 160, imp-180+d); }); }
       else if(wt==="spear" || wt==="drill") addFx({kind:"line", x0:x-dir*110*sc, y0:y+dir*30*sc, x1:x+dir*40*sc, y1:y-dir*10*sc, w:7*sc, col}, 320, imp-60);
       else if(wt!=="blunt"){ const R = (wt==="great"?96:78)*sc, cx = x - dir*R*0.32, cy = y + R*0.62, a0 = dir>0 ? -2.45 : -0.7, a1 = dir>0 ? -0.15 : -3.0+0.01;
         addFx({kind:"arc", x:cx, y:cy, R, a0, a1, w:(wt==="great"?13:9)*sc, col}, 360, imp-90);
         if(card && card.cleave) addFx({kind:"arc", x:cx+dir*8, y:cy-10, R:R*0.86, a0:a0+0.15*dir, a1:a1+0.15*dir, w:4*sc, col}, 320, imp-50); }
-      addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
-      addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
+      if(!SFX) addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
+      if(!SFX) addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
       setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = clock + (st.crit?140:70);
         st.cond = JSON.parse(JSON.stringify(foe.parts)); party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt:`-${dmg}`, col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
     }
@@ -1088,6 +1094,7 @@ function mgCombat(ctx){
     }
     function overlay(now, keep){
       const c = m.c, me = party[act]; if(!keep) c.clearRect(0,0,W,H);
+      if(SFX && SFX.active()){ SFX.render(); c.drawImage(SFX.canvas, 0, 0, W, H); }
       const box = (x, y, w, h, edge)=>{ c.fillStyle = "rgba(10,9,14,0.82)"; c.strokeStyle = edge; c.lineWidth = 1.2; c.beginPath(); c.roundRect(x,y,w,h,8); c.fill(); c.stroke(); };
       // 적 정보(왼쪽 위): 이름, 개조, 몸 상태는 글로만
       const shown = st.cond || foe.max, worst = Math.min(...Object.keys(PARTS).map(k=>Math.max(0,shown[k])/foe.max[k]));
@@ -2750,9 +2757,234 @@ function drawWeaponIcon(cv, spec){
   if(spec.kind==="fist"){ drawGauntlet(c, spec, [W*0.45, H*0.55], -0.5, W*1.2, "#2a2d33"); return; }
   c.save(); c.translate(spec.kind==="spear" ? W*0.5 : W*0.16, H*0.82); c.rotate(-0.62); drawWeaponSpec(c, spec, u, "#3a3f46"); c.restore();
 }
+/* ================= 참격 · 히트 VFX (WebGL2) =================
+   투명한 캔버스에 그린 뒤 2D 화면 위에 겹친다(전투 화면·의뢰 연출 공용).
+   ① 궤적 리본: 베기마다 곡선 경로를 잘게 나눠 가운데가 두꺼운 초승달 띠 메시를 새로 만든다.
+      셰이더 — 머리(칼날 위치)가 가장 밝고 꼬리는 남은 빛, 가운데는 하얗게 달아오른 심, 안쪽에 흐르는 속도결,
+      사라질 때 가장자리부터 fbm 노이즈로 부서져 흩어짐. 반 박자 늦게 따라오는 잔상 리본 한 겹.
+   ② 섬광: 방향이 있는 별빛 줄기 + 열점 + 노이즈로 끊기는 충격 고리
+   ③ 불꽃: 인스턴스 사각형을 속도 방향으로 늘린 빛줄기. 공기 저항·중력은 정점 셰이더에서 계산(상태 없음)
+   ④ 먼지: 노이즈 덩어리 사각형이 퍼지며 옅어진다
+   방향: down 내려베기(위→아래) · up 올려치기(아래→위) · horiz 가로베기(좌→우) · diag 대각선 베기(우하→좌상) · cross 교차 */
+const SlashFX = (function(){
+  const NZ = `
+  float h21(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
+  float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+    return mix(mix(h21(i),h21(i+vec2(1,0)),f.x), mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x), f.y); }
+  float fbm(vec2 p){ float s=0., a=.5; for(int i=0;i<4;i++){ s+=a*vn(p); p=p*2.07+vec2(3.1,1.7); a*=.5; } return s; }`;
+  const VS_MESH = `#version 300 es
+  in vec2 aP; in vec2 aUV; uniform vec2 uRes; out vec2 vUV;
+  void main(){ vUV=aUV; gl_Position=vec4(aP.x/uRes.x*2.-1., 1.-aP.y/uRes.y*2., 0., 1.); }`;
+  const FS_RIBBON = `#version 300 es
+  precision highp float; in vec2 vUV; out vec4 o;
+  uniform float uK, uSeed, uAlpha, uSharp; uniform vec3 uCol, uCore;
+  ${NZ}
+  void main(){
+    float u = vUV.x, v = vUV.y, av = abs(v), k = uK;
+    float head = min(1.05, k*2.3), tail = head - 0.38 - k*0.55;
+    float along = smoothstep(tail, tail+0.28, u) * (1.-smoothstep(head-0.035, head, u));
+    along *= mix(0.4, 1., smoothstep(tail, head, u));                          // 머리 쪽이 밝다
+    float n = fbm(vec2(u*7. - k*5. + uSeed, v*1.7 + uSeed*0.3));
+    float erode = k*1.3 - 0.2;                                                   // 가장자리부터 부서져 흩어짐
+    float wisp = smoothstep(erode, erode+0.22, n + (1.-av)*0.5);
+    float body = smoothstep(1., 0.1, av);
+    float streak = 0.55 + 0.75*pow(vn(vec2(u*60. - k*36., v*3.2 + uSeed)), 2.);   // 속도결
+    float core = exp(-v*v*uSharp) * (1.-smoothstep(0.45, 0.95, k));             // 하얗게 달아오른 심
+    float a = clamp(along*body*wisp*streak, 0., 1.) * uAlpha;
+    vec3 col = mix(uCol, uCore, core) * (1. + core*1.3);
+    col = mix(col, uCol*vec3(0.75,0.85,1.25), smoothstep(0.45, 1., av)*0.6);       // 바깥 가장자리는 짙은 색
+    o = vec4(col*a, a*0.55);
+  }`;
+  const FS_FLASH = `#version 300 es
+  precision highp float; in vec2 vUV; out vec4 o;
+  uniform float uK, uSeed, uDir, uPow; uniform vec3 uCol;
+  ${NZ}
+  void main(){
+    vec2 q = vUV*2.-1.; float r = length(q), ang = atan(q.y, q.x), k = uK, fade = (1.-k)*(1.-k);
+    float rays = 0.;
+    for(int i=0;i<6;i++){ float fi = float(i), a = uSeed*6.28 + fi*1.047 + (h21(vec2(fi,uSeed))-.5)*0.6, L = 0.35 + h21(vec2(uSeed,fi))*0.65;
+      rays += pow(max(0., cos(ang - a)), 90.) * smoothstep(L, 0., r) * (0.6 + 0.4*h21(vec2(fi*3.,uSeed))); }
+    vec2 d = vec2(cos(uDir), sin(uDir)); float along = dot(q, d), across = dot(q, vec2(-d.y, d.x));
+    float slit = exp(-across*across*900.) * smoothstep(1., 0., abs(along)) * 1.6;      // 베기 방향의 날카로운 빛
+    float core = exp(-r*r*40.) * 2.2;
+    float rr = k*0.95, ring = exp(-pow((r-rr)/(0.025+0.06*k), 2.)) * (0.45 + 0.55*vn(vec2(ang*5. + uSeed*9., k*4.)));
+    float a = (rays*1.2 + slit + core)*fade*uPow + ring*(1.-k)*0.8;
+    vec3 col = mix(uCol, vec3(1.,.97,.9), clamp(core*0.5 + slit*0.6, 0., 1.));
+    o = vec4(col*a, min(1., a)*0.5);
+  }`;
+  const VS_SPARK = `#version 300 es
+  in vec2 aQ; in float aI; uniform vec2 uRes, uO, uDir; uniform float uAge, uSeed, uSpd, uSpread, uGrav, uDrag, uLen, uW;
+  out vec2 vQ; out float vA; out float vH;
+  float h(float x){ return fract(sin(x*78.233 + uSeed*13.1)*43758.5453); }
+  void main(){
+    float ang = atan(uDir.y, uDir.x) + (h(aI)-.5)*uSpread, sp = uSpd*(0.3 + h(aI+1.)*1.0), life = 0.3 + h(aI+2.)*0.55;
+    float a = uAge, t = a/life;
+    vec2 v0 = vec2(cos(ang), sin(ang))*sp;
+    vec2 p = uO + v0*(1.-exp(-uDrag*a))/uDrag + vec2(0., uGrav*a*a*0.5);
+    vec2 vel = v0*exp(-uDrag*a) + vec2(0., uGrav*a);
+    vec2 dir = normalize(vel + vec2(1e-4)), nrm = vec2(-dir.y, dir.x);
+    float len = clamp(length(vel)*uLen, 1.5, 40.)*(1.-t*0.6), w = uW*(0.6 + h(aI+4.)*0.8)*(1.-t*0.4);
+    vec2 pos = p + dir*aQ.x*len + nrm*aQ.y*w;
+    if(t >= 1.) pos = vec2(-9999.);
+    vQ = aQ; vA = clamp(1.-t, 0., 1.); vH = h(aI+3.);
+    gl_Position = vec4(pos.x/uRes.x*2.-1., 1.-pos.y/uRes.y*2., 0., 1.);
+  }`;
+  const FS_SPARK = `#version 300 es
+  precision highp float; in vec2 vQ; in float vA; in float vH; uniform vec3 uCol; out vec4 o;
+  void main(){ float d = (1.-abs(vQ.y)) * (1. - smoothstep(0.2, 1., vQ.x*0.5+0.5)*0.6);
+    float a = smoothstep(0., 1., d) * vA;
+    vec3 col = mix(uCol, vec3(1., .96, .82), clamp(vA*0.7 + vH*0.3, 0., 1.));
+    o = vec4(col*a*1.4, a*0.5); }`;
+  const VS_PUFF = `#version 300 es
+  in vec2 aQ; in float aI; uniform vec2 uRes, uO, uDir; uniform float uAge, uSeed, uSize;
+  out vec2 vQ; out float vA; out float vS;
+  float h(float x){ return fract(sin(x*41.7 + uSeed*7.3)*43758.5453); }
+  void main(){ float life = 0.6 + h(aI)*0.5, t = clamp(uAge/life, 0., 1.);
+    float ang = atan(uDir.y, uDir.x) + (h(aI+1.)-.5)*2.6;
+    vec2 p = uO + vec2(cos(ang), sin(ang))*uSize*(0.6 + h(aI+2.))*(1.-exp(-3.*t)) + vec2(0., -12.*t);
+    float R = uSize*(0.35 + h(aI+3.)*0.4)*(0.6 + t*0.9);
+    vQ = aQ; vA = (1.-t)*(1.-t); vS = h(aI+5.)*10.;
+    vec2 pos = p + aQ*R; gl_Position = vec4(pos.x/uRes.x*2.-1., 1.-pos.y/uRes.y*2., 0., 1.); }`;
+  const FS_PUFF = `#version 300 es
+  precision highp float; in vec2 vQ; in float vA; in float vS; uniform vec3 uCol; out vec4 o;
+  ${NZ}
+  void main(){ float r = length(vQ), n = fbm(vQ*2.2 + vS);
+    float m = smoothstep(1., 0.25, r + (n-.5)*0.7) * vA * 0.32;
+    o = vec4(uCol*m, m); }`;
+
+  function make(W, H, scale){
+    const cv = document.createElement("canvas"), d = scale || Math.min(1.5, devicePixelRatio||1);
+    cv.width = Math.round(W*d); cv.height = Math.round(H*d);
+    const gl = cv.getContext("webgl2", {premultipliedAlpha:true, alpha:true, antialias:true});
+    if(!gl) return null;
+    const sh = (t, src)=>{ const s = gl.createShader(t); gl.shaderSource(s, src); gl.compileShader(s); if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+    const prog = (vs, fs)=>{ const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+      [["aP",0],["aUV",1],["aQ",0],["aI",1]].forEach(([n,l])=>gl.bindAttribLocation(p, l, n)); gl.linkProgram(p);
+      if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+      const u = {}; for(let i=0;i<gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);i++){ const nm = gl.getActiveUniform(p,i).name; u[nm] = gl.getUniformLocation(p, nm); } return {p, u}; };
+    let P; try { P = {rib:prog(VS_MESH, FS_RIBBON), fl:prog(VS_MESH, FS_FLASH), sp:prog(VS_SPARK, FS_SPARK), pf:prog(VS_PUFF, FS_PUFF)}; } catch(e){ console.warn("SlashFX", e); return null; }
+    // 메시 버퍼
+    const vaoM = gl.createVertexArray(), bufM = gl.createBuffer(); gl.bindVertexArray(vaoM); gl.bindBuffer(gl.ARRAY_BUFFER, bufM);
+    [[gl.getAttribLocation(P.rib.p,"aP"),0],[gl.getAttribLocation(P.rib.p,"aUV"),8]].forEach(([l,o])=>{ gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l,2,gl.FLOAT,false,16,o); });
+    // 인스턴스 사각형(불꽃·먼지 공용)
+    const mkInst = (pp)=>{ const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+      const q = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, q); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+      const lq = gl.getAttribLocation(pp.p,"aQ"); gl.enableVertexAttribArray(lq); gl.vertexAttribPointer(lq,2,gl.FLOAT,false,0,0);
+      const ib = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, ib); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([...Array(200).keys()]), gl.STATIC_DRAW);
+      const li = gl.getAttribLocation(pp.p,"aI"); gl.enableVertexAttribArray(li); gl.vertexAttribPointer(li,1,gl.FLOAT,false,0,0); gl.vertexAttribDivisor(li,1);
+      gl.bindVertexArray(null); return vao; };
+    const vaoS = mkInst(P.sp), vaoP = mkInst(P.pf);
+    const list = [];
+    const now = ()=>performance.now()/1000;
+    // 곡선(2차 베지어) → 가운데가 두꺼운 띠 메시. u: 0 꼬리 → 1 머리, v: -1~1 폭
+    function ribbonMesh(p0, p1, p2, w, N=44){
+      const v = [], pt = t => [(1-t)*(1-t)*p0[0] + 2*(1-t)*t*p1[0] + t*t*p2[0], (1-t)*(1-t)*p0[1] + 2*(1-t)*t*p1[1] + t*t*p2[1]];
+      for(let i=0;i<=N;i++){ const t = i/N, a = pt(Math.max(0,t-0.01)), b = pt(Math.min(1,t+0.01)), dx = b[0]-a[0], dy = b[1]-a[1], L = Math.hypot(dx,dy)||1;
+        const nx = -dy/L, ny = dx/L, p = pt(t), ww = w*Math.pow(Math.sin(Math.PI*Math.min(1, t*1.08)), 0.65)*(0.55 + 0.45*t) + 0.4;
+        v.push(p[0]+nx*ww, p[1]+ny*ww, t, -1, p[0]-nx*ww, p[1]-ny*ww, t, 1); }
+      return new Float32Array(v);
+    }
+    const path = (type, x, y, R, f)=>{ const P2 = (a,b)=>[x + a*R*f, y + b*R];
+      // 곡선의 가운데가 맞는 곳을 지나가도록 조절점을 잡는다
+      return type==="down" ? [P2(-0.45,-1.1), P2(0.7,0), P2(-0.35,1.1)]
+           : type==="up" ? [P2(-0.35,1.1), P2(0.7,0.05), P2(-0.5,-1.1)]
+           : type==="horiz" ? [P2(-1.3,0.25), P2(0,-0.3), P2(1.3,0.15)]
+           : [P2(1.05,1.0), P2(0.3,-0.3), P2(-1.05,-1.0)]; };          // diag: 우하 → 좌상
+    const add = (o)=>{ o.t0 = now() + (o.delay||0); list.push(o); return o; };
+    const api = {
+      canvas: cv,
+      /* 베기: type down|up|horiz|diag|cross, (x,y) 맞는 곳, R 크기, o.face 바라보는 방향(1 오른쪽), o.col 색, o.w 폭, o.dur 길이 */
+      slash(type, x, y, R, o={}){
+        if(type==="cross"){ api.slash("diag", x, y, R, o); api.slash("down", x, y, R*0.92, Object.assign({}, o, {delay:(o.delay||0)+0.09})); return; }
+        const f = o.face || 1, [p0,p1,p2] = path(type, x, y, R, f), w = o.w || R*0.26, col = o.col || [0.75,0.88,1], dur = o.dur || 0.34, seed = Math.random()*9;
+        add({kind:"rib", mesh:ribbonMesh(p0,p1,p2,w*2.3), dur:dur*1.1, col, core:col, seed:seed+7, alpha:0.28*(o.alpha||1), sharp:2, delay:o.delay});      // 바깥 번짐
+        add({kind:"rib", mesh:ribbonMesh(p0,p1,p2,w), dur, col, core:o.core||[1,1,1], seed, alpha:o.alpha||1, sharp:o.sharp||12, delay:o.delay});
+        // 잔상: 조금 안쪽으로 비켜 반 박자 늦게
+        const sh = [(p1[0]-x)*-0.12, (p1[1]-y)*-0.12];
+        add({kind:"rib", mesh:ribbonMesh([p0[0]+sh[0],p0[1]+sh[1]],[p1[0]+sh[0],p1[1]+sh[1]],[p2[0]+sh[0],p2[1]+sh[1]], w*0.6), dur:dur*1.15, col, core:col, seed:seed+3, alpha:0.4, sharp:6, delay:(o.delay||0)+0.045});
+      },
+      /* 찌르기·탄도: 직선 리본 */
+      thrust(x0, y0, x1, y1, o={}){ const mx = (x0+x1)/2, my = (y0+y1)/2;
+        add({kind:"rib", mesh:ribbonMesh([x0,y0],[mx,my],[x1,y1], o.w||7, 24), dur:o.dur||0.24, col:o.col||[0.8,0.9,1], core:[1,1,1], seed:Math.random()*9, alpha:o.alpha||1, sharp:o.sharp||28, delay:o.delay}); },
+      /* 맞은 자리: 섬광 + 불꽃 두 무리 + 베인 자국 + 먼지. o.dir 베기 방향(라디안), o.pow 세기, o.col 불꽃색 */
+      hit(x, y, o={}){ const pw = o.pow || 1, dir = o.dir!=null ? o.dir : 0, col = o.col || [1,0.72,0.4], dl = o.delay||0;
+        add({kind:"fl", x, y, R:(o.R||70)*pw, dur:0.32, col:o.flashCol||[1,0.85,0.65], dir, pow:pw, seed:Math.random(), delay:dl});
+        add({kind:"sp", x, y, n:Math.round(34*pw), dur:0.9, spd:520*pw, spread:o.spread||2.2, dirv:[Math.cos(o.sparkDir!=null?o.sparkDir:dir), Math.sin(o.sparkDir!=null?o.sparkDir:dir)], grav:900, drag:5, len:0.045, w:1.3, col, seed:Math.random()*99, delay:dl});
+        add({kind:"sp", x, y, n:Math.round(18*pw), dur:1.0, spd:220*pw, spread:3.6, dirv:[0,-1], grav:520, drag:2.2, len:0.03, w:1.6, col:[1,0.45,0.18], seed:Math.random()*99, delay:dl+0.02});
+        if(o.cut!==false){ const L = (o.R||70)*1.1*pw, cx = Math.cos(dir)*L, cy = Math.sin(dir)*L;
+          add({kind:"rib", mesh:ribbonMesh([x-cx,y-cy],[x,y],[x+cx,y+cy], 2.4, 16), dur:0.22, col:[1,0.95,0.9], core:[1,1,1], seed:Math.random()*9, alpha:1, sharp:40, delay:dl}); }
+        add({kind:"pf", x, y, n:o.dust||7, dur:1.1, size:(o.R||70)*0.55*pw, dirv:[-Math.cos(dir)*0.3, -1], col:o.dustCol||[0.42,0.38,0.42], seed:Math.random()*9, delay:dl});
+      },
+      flash(x, y, R, col){ add({kind:"fl", x, y, R, dur:0.14, col:col||[1,0.85,0.5], dir:0, pow:0.9, seed:Math.random()}); },
+      active(){ return list.length > 0; },
+      render(){
+        const t = now();
+        gl.viewport(0,0,cv.width,cv.height); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.enable(gl.BLEND);
+        for(let i=list.length-1;i>=0;i--){ if(t - list[i].t0 > list[i].dur) list.splice(i,1); }
+        // 먼지(덮는 혼합) → 빛(더하는 혼합) 순서
+        list.filter(e=>e.kind==="pf" && t>=e.t0).forEach(e=>{ gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); gl.useProgram(P.pf.p);
+          gl.uniform2f(P.pf.u.uRes, W, H); gl.uniform2f(P.pf.u.uO, e.x, e.y); gl.uniform2f(P.pf.u.uDir, e.dirv[0], e.dirv[1]); gl.uniform1f(P.pf.u.uAge, t-e.t0);
+          gl.uniform1f(P.pf.u.uSeed, e.seed); gl.uniform1f(P.pf.u.uSize, e.size); gl.uniform3fv(P.pf.u.uCol, e.col);
+          gl.bindVertexArray(vaoP); gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, e.n); });
+        gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+        list.forEach(e=>{ if(t < e.t0) return; const k = Math.min(1, (t-e.t0)/e.dur);
+          if(e.kind==="rib"){ gl.useProgram(P.rib.p); gl.uniform2f(P.rib.u.uRes, W, H); gl.uniform1f(P.rib.u.uK, k); gl.uniform1f(P.rib.u.uSeed, e.seed);
+            gl.uniform1f(P.rib.u.uAlpha, e.alpha); gl.uniform1f(P.rib.u.uSharp, e.sharp); gl.uniform3fv(P.rib.u.uCol, e.col); gl.uniform3fv(P.rib.u.uCore, e.core);
+            gl.bindVertexArray(vaoM); gl.bindBuffer(gl.ARRAY_BUFFER, bufM); gl.bufferData(gl.ARRAY_BUFFER, e.mesh, gl.DYNAMIC_DRAW); gl.drawArrays(gl.TRIANGLE_STRIP, 0, e.mesh.length/4); }
+          else if(e.kind==="fl"){ const R = e.R*(0.8 + k*0.5); gl.useProgram(P.fl.p); gl.uniform2f(P.fl.u.uRes, W, H); gl.uniform1f(P.fl.u.uK, k); gl.uniform1f(P.fl.u.uSeed, e.seed);
+            gl.uniform1f(P.fl.u.uDir, e.dir); gl.uniform1f(P.fl.u.uPow, e.pow); gl.uniform3fv(P.fl.u.uCol, e.col);
+            gl.bindVertexArray(vaoM); gl.bindBuffer(gl.ARRAY_BUFFER, bufM); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([e.x-R,e.y-R,0,0, e.x+R,e.y-R,1,0, e.x-R,e.y+R,0,1, e.x+R,e.y+R,1,1]), gl.DYNAMIC_DRAW);
+            gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }
+          else if(e.kind==="sp"){ gl.useProgram(P.sp.p); const u = P.sp.u; gl.uniform2f(u.uRes, W, H); gl.uniform2f(u.uO, e.x, e.y); gl.uniform2f(u.uDir, e.dirv[0], e.dirv[1]);
+            gl.uniform1f(u.uAge, t-e.t0); gl.uniform1f(u.uSeed, e.seed); gl.uniform1f(u.uSpd, e.spd); gl.uniform1f(u.uSpread, e.spread); gl.uniform1f(u.uGrav, e.grav);
+            gl.uniform1f(u.uDrag, e.drag); gl.uniform1f(u.uLen, e.len); gl.uniform1f(u.uW, e.w); gl.uniform3fv(u.uCol, e.col);
+            gl.bindVertexArray(vaoS); gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, Math.min(200, e.n)); }
+        });
+        gl.bindVertexArray(null);
+        return list.length;
+      }
+    };
+    return api;
+  }
+  // 카드 이름 → 베는 방향
+  const typeOfCard = n => !n ? "diag" : /교차|연속/.test(n) ? "cross" : /올려/.test(n) ? "up" : /내려|찍기/.test(n) ? "down" : /후려|가로|휘둘러|흘려|쳐내|막기|받아/.test(n) ? "horiz" : "diag";
+  // 방향별 마지막 진행 각도(히트의 베인 자국 방향)
+  const dirOf = (type, face) => { const a = type==="down" ? 1.75 : type==="up" ? -1.9 : type==="horiz" ? 0.05 : -2.4; return face>0 ? a : Math.PI - a; };
+  return { make, typeOfCard, dirOf };
+})();
+// 의뢰 연출(2D)용: 장면 캔버스 크기마다 하나씩
+const sceneVFX = (()=>{ let inst = null, key = ""; return (W, H)=>{ const k = W+"x"+H; if(key!==k){ inst = SlashFX.make(W, H); key = k; } return inst; }; })();
+const hexRGB = h => [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
+const SLASH_COL = {blade:[0.72,0.86,1], twin:[0.72,0.9,1], great:[1,0.84,0.58], tool:[1,0.8,0.55], none:[1,0.85,0.7], blunt:[1,0.78,0.5], fist:[1,0.8,0.55], spear:[0.75,0.9,1], drill:[1,0.7,0.35], gun:[1,0.85,0.5]};
+/* 무기 종류에 맞춰 참격·히트를 낸다. x,y 맞는 곳, R 크기, face 공격 방향, fromX/Y 총구·창끝 출발점 */
+function slashAt(V, wt, x, y, R, o={}){
+  const face = o.face || 1, col = o.glow ? hexRGB(o.glow) : (SLASH_COL[wt] || SLASH_COL.none), spark = o.sparkCol || [1,0.72,0.4], dl = o.delay || 0;
+  if(wt==="gun"){ const fx = o.fromX!=null ? o.fromX : x - face*R*3, fy = o.fromY!=null ? o.fromY : y;
+    [0,0.09,0.18].forEach((d,i)=>{ V.thrust(fx, fy, x+(i-1)*R*0.08, y+(i-1)*R*0.12, {w:2.2, dur:0.14, col, sharp:40, delay:dl-0.2+d}); setTimeout(()=>V.flash(fx, fy, R*0.45), Math.max(0,(dl-0.2+d)*1000)); });
+    V.hit(x, y, {dir:Math.atan2(y-fy, x-fx), pow:0.8, col:spark, R:R*0.9, delay:dl, dust:4}); return; }
+  if(wt==="spear" || wt==="drill"){ const x0 = x - face*R*1.7, y0 = y + R*0.35, x1 = x + face*R*0.5, y1 = y - R*0.1;
+    V.thrust(x0, y0, x1, y1, {w: wt==="drill" ? R*0.16 : R*0.1, dur:0.26, col, delay:dl-0.08});
+    V.hit(x, y, {dir:Math.atan2(y1-y0, x1-x0), pow: wt==="drill" ? 1.2 : 1, col:spark, R, delay:dl}); return; }
+  const type = o.type || "diag";
+  if(wt==="blunt" || wt==="fist"){ const tp = type==="up" ? "up" : type==="horiz" ? "horiz" : "down";
+    V.slash(tp, x, y, R*0.75, {face, col, w:R*0.42, alpha:0.55, sharp:3, dur:0.24, delay:dl-0.09});
+    V.hit(x, y, {dir:SlashFX.dirOf(tp, face), pow:1.45, col:spark, R:R*1.1, delay:dl, dust:12, cut:false}); return; }
+  const big = wt==="great" ? 1.3 : 1;
+  V.slash(wt==="twin" ? "cross" : type, x, y, R*big, {face, col, w:R*(wt==="great"?0.36:0.26), delay:dl-0.11});
+  V.hit(x, y, {dir:SlashFX.dirOf(type, face), pow:big, col:spark, R:R*big, delay:dl});
+}
 // 타격 순간 무기 종류에 따른 추가 효과(t0부터 약 0.6초)
 function weaponFx(c, st, o, t, t0, fromX, fromY, x, y){
-  const g0 = o.lead; if(!g0 || !g0.wtype || t<t0-0.35 || t>t0+0.7) return;
+  const g0 = o.lead; if(!g0 || !g0.wtype || t<t0-0.35 || t>t0+1.4) return;
+  const tf = c.getTransform(), SW = c.canvas.width/(tf.a||1), SH = c.canvas.height/(tf.d||1), V = sceneVFX(Math.round(SW), Math.round(SH));
+  if(V){ const key = "sfx"+t0;
+    if(t>=t0-0.12 && !st[key]){ st[key] = 1; const R = SH*0.17, sp = g0.spec || {};
+      if(g0.wtype==="blunt" || g0.wtype==="fist") st.shake = (st.shake||0)+6;
+      slashAt(V, g0.wtype, x, y, R, {face: x>=fromX ? 1 : -1, glow: sp.glow, type: ["down","diag","horiz","up"][Math.floor(t0*7)%4], fromX, fromY, delay:0.12}); }
+    if(V.active()){ V.render(); c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(V.canvas, 0, 0, c.canvas.width, c.canvas.height); c.restore(); }
+    return; }
+  if(t>t0+0.7) return;
   const g = Object.assign({}, g0, {wtype: g0.wtype==="twin" ? "blade" : g0.wtype==="fist" ? "blunt" : g0.wtype});
   const k = seg(t, t0, t0+0.6), key = "wfx"+t0;
   c.save(); c.globalCompositeOperation="lighter";
@@ -3222,13 +3454,15 @@ function fxTestPanel(){
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">칼날</option><option value="great">대검</option><option value="blunt">둔기</option><option value="gun">총</option><option value="spear">창</option><option value="drill">드릴</option><option value="tool">공구</option><option value="twin">쌍검</option><option value="fist">건틀릿</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">원 누르기</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
-   <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 장비 제작</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>`;
+   <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 장비 제작</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
+   <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>`;
   document.body.appendChild(el);
   el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
     if(k==="color"){ f.grade = 0; f.title = f.title || randomColorTitle(); f.unique = f.unique || {}; S.officeGrade = 1; render(); toast(`${f.name} → 특색 [${f.title}]`); }
     else if(k==="forge"){ if(f.grade!==0){ f.grade = 0; f.title = randomColorTitle(); f.unique = {}; } await openForge(f); }
     else if(k==="shop") await openShop();
-    else if(k==="rig") await openRigGallery(); });
+    else if(k==="rig") await openRigGallery();
+    else if(k==="slash") await openSlashLab(); });
   el.onclick=e=>{ const v=e.target.dataset.fx; if(!v||scene) return; const [k,a,ok]=v.split("|"); const n=+el.querySelector("#fxn").value;
     const wv=el.querySelector("#fxw").value, f0=S.fixers[0], lead = f0.gear.weapon && f0.gear.weapon.unique ? leadGear(f0) : {wtype:wv||null, spec: wv?defaultSpec(wv):null, weaponName: wv?el.querySelector("#fxw").selectedOptions[0].text:null, armor:el.querySelector("#fxa").checked, acc:el.querySelector("#fxc").checked, accColor:"150,230,255"};
     window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),lead,client:"테스트 의뢰인"}); };
@@ -3238,6 +3472,36 @@ function fxTestPanel(){
     const sc = await runMinigames(q, team); toast(`미니게임 점수 ${Math.round(sc*100)}점`); });
 }
 
+// 테스트: 참격·히트 VFX 시험장
+const SLASH_LAB = [["down","내려베기","blade"],["up","올려치기","blade"],["horiz","가로베기","blade"],["diag","대각선 베기","blade"],["cross","교차 베기","twin"],["down","대검 내려찍기","great"],["down","둔기 내려치기","blunt"],["diag","창 찌르기","spear"],["diag","총 사격","gun"]];
+async function openSlashLab(){
+  let auto = true, idx = 0, glow = null;
+  await modal("참격 · 히트 VFX", `<canvas id="slc" style="width:100%;aspect-ratio:720/360;display:block;border-radius:8px;border:1px solid var(--line)"></canvas>
+    <div class="fg-seg" style="margin-top:8px">${SLASH_LAB.map((s,i)=>`<button data-sl="${i}">${s[1]}</button>`).join("")}<button data-sauto="1" class="on">자동 반복</button></div>
+    <div class="fg-row" style="margin-top:8px"><span>발광색</span><div class="fg-sw">${GLOWS.map(cl=>`<button class="sw ${cl===glow?"on":""}" data-sg="${cl||"none"}" style="background:${cl||"transparent"}">${cl?"":"✕"}</button>`).join("")}</div></div>`, [{t:"닫기"}], false, root=>{
+    root.querySelector(".modal").classList.add("modal-wide");
+    const cv = root.querySelector("#slc"), c = cv.getContext("2d"), W = 720, H = 360, V = SlashFX.make(W, H);
+    let last = 0, cur = null;
+    const fire = i => { idx = i; cur = {i, t0: performance.now()/1000}; const s = SLASH_LAB[i];
+      slashAt(V, s[2], 470, 200, 92, {face:1, type:s[0], glow, fromX:300, fromY:182, delay:0.18}); };
+    const loop = ()=>{ if(!cv.isConnected) return; const d = devicePixelRatio||1; if(cv.width !== W*d){ cv.width = W*d; cv.height = H*d; }
+      c.setTransform(d,0,0,d,0,0); const g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#17141f"); g.addColorStop(1,"#09080c"); c.fillStyle = g; c.fillRect(0,0,W,H);
+      c.fillStyle = "rgba(255,255,255,0.04)"; c.beginPath(); c.ellipse(470, 300, 120, 16, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(210, 300, 120, 16, 0, 0, 7); c.fill();
+      const t = performance.now()/1000, s = cur ? SLASH_LAB[cur.i] : SLASH_LAB[0], k = cur ? t - cur.t0 : 9;
+      const swv = k<0.1 ? -ease(k/0.1) : k<0.2 ? -1+2*ease((k-0.1)/0.1) : k<0.6 ? 1-ease((k-0.2)/0.4) : 0;
+      drawFixer(c, 210 + (k<0.6 ? Math.sin(Math.min(1,k/0.2)*Math.PI/2)*40*(1-Math.max(0,(k-0.2)/0.4)) : 0), 300, 170, {face:1, col:SIDE_COL.ally.fill, state:"combat", weapon: Object.assign(defaultSpec(s[2]), {glow}), sw:swv});
+      const hk = k-0.18, fl = hk>0 && hk<0.2 ? (1-hk/0.2) : 0;
+      drawFixer(c, 470 + (hk>0 && hk<0.4 ? Math.sin(hk/0.4*Math.PI)*12 : 0), 300, 160, {face:-1, col: fl>0 ? hexMix(SIDE_COL.foe.fill, "#fff4e8", fl*0.35) : SIDE_COL.foe.fill, state:"combat", weapon: Object.assign(defaultSpec("blade"),{metal:"#b9aca9"})});
+      if(V){ V.render(); c.drawImage(V.canvas, 0, 0, W, H); } else { c.fillStyle="#f88"; c.fillText("WebGL을 쓸 수 없는 환경", 20, 20); }
+      if(auto && t - last > 1.4){ last = t; fire((idx+1) % SLASH_LAB.length); }
+      requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+    root.addEventListener("click", e=>{ const d = e.target.dataset;
+      if(d.sl!=null){ auto = false; root.querySelector("[data-sauto]").classList.remove("on"); fire(+d.sl); }
+      else if(d.sauto){ auto = !auto; e.target.classList.toggle("on", auto); }
+      else if(d.sg){ glow = d.sg==="none" ? null : d.sg; root.querySelectorAll("[data-sg]").forEach(x=>x.classList.toggle("on", x.dataset.sg===d.sg)); } });
+  });
+}
 // 테스트: 무기 종류 × 상태 실루엣 한눈에 보기
 async function openRigGallery(){
   let view = "idle";
