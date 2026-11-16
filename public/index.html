@@ -2919,18 +2919,43 @@ function drawFixerSD(c, x, gy, h, o){
     const Hh = HURT_SD[ik_] || HURT_SD[kind] || HURT_SD.blade;
     K = {lean:Hh.lean, crouch:Hh.crouch||0, step:0, near:Hh.near, nearA:Hh.a, far:Hh.far || [-0.15,-0.46], farA:Hh.farA, two:Hh.two, tilt:Hh.tilt, hemF:0.11, hemB:-0.1, flare: Hh.lean<0 ? 0.05 : -0.02}; }
   else if(state==="combat"){
-    K = {lean:0.1, crouch:0.015, step:0, near:SD_MAP(G.g), nearA:G.a, far: G.off ? SD_MAP(G.off) : [0.06,-0.55], farA:G.offA, two:G.two, tilt: boxer ? 0.12 : 0.06, hemF:0.13, hemB:-0.13, flare:0};
-    if(o.atk){ const A = atkOf(kind==="tool" && ws.v===1 ? "tool" : kind, o.atk.style), ph = clamp(o.atk.ph, 0, 3), ap = atkPose(G, A, ph);
+    /* 전투 겨눔(아군은 등 뒤에서 본다). 레퍼런스: 뒤에서 본 검 자세 사진·3D 포즈, 츠바이핸더 기본/낮은/높은 자세, 창 자세 모음,
+       어깨 너머로 본 권총 조준, 뒤에서 본 권투 가드.
+       공통: 3/4 뒷모습에서 몸 앞(가슴 앞)에 둔 손은 등에 가려진다 → 손은 몸통 가장자리 바깥(상대 쪽)으로 나와야 보인다.
+       팔꿈치는 아래를 향하고, 손이 몸에서 멀어질수록 어깨가 따라 나간다. */
+    const CSD = {
+      blade: {near:[0.18,-0.5],  a:-0.72, far:[-0.13,-0.49], lean:0.08},                 // 칼 든 손은 허리 옆, 칼끝은 앞-위로. 빈손은 옆에서 균형
+      rapier:{near:[0.31,-0.63], a:-0.1,  far:[0.05,-0.57], lean:-0.03},                 // 칼팔을 상대 쪽으로 곧게 뻗고, 빈손은 힘을 빼 가슴 아래에 둔다(옛 레이피어 검술)
+      long0: {near:[0.17,-0.55], a:-1.0,  two:-0.08, lean:0.08},                          // 가운데 겨눔: 두 손을 모아 허리 앞, 칼끝은 상대 눈높이로
+      long1: {near:[0.18,-0.56], a:-0.62, two:-0.08, lean:0.1},                           // 장도: 칼날을 더 눕혀 앞으로
+      great: {near:[0.17,-0.6],  a:-1.85, two:-0.09, lean:0.1, overBack:true},             // 대검: 손은 가슴 앞, 칼날은 어깨에 걸쳐 등 뒤로(높은 자세) — 뒤에서 보면 칼이 등 위를 가로지른다
+      blunt: {near:[0.18,-0.57], a:-1.55, far:[-0.13,-0.5], lean:0.1},                    // 둔기: 자루를 세워 머리를 위로
+      staff: {near:[0.23,-0.58], a:-0.32, two:-0.3, lean:0.06},                           // 봉: 두 손을 넓게 벌려 비스듬히 몸 앞을 가로지른다
+      spear: {near:[0.25,-0.55], a:-0.16, two:-0.26, lean:0.06},                          // 창: 앞손은 앞으로, 뒷손은 허리, 창끝은 상대 가슴
+      lance: {near:[0.1,-0.57],  a:-0.04, two:0.13,  lean:0.14},                          // 랜스: 뒷손은 겨드랑이 아래 허리에서 쥐고, 앞손이 자루를 받친다
+      twin:  {near:[0.25,-0.6],  a:-0.55, far:[0.15,-0.52], farA:-0.95, lean:0.14},        // 쌍검: 앞손 단검은 상대 쪽으로, 뒷손 단검은 허리 앞에서 받친다
+      fist:  {near:[0.16,-0.69],  a:0,    far:[0.075,-0.7], lean:0.12, box:true},          // 권투: 위팔은 옆구리를 따라 아래로, 아래팔을 세워 주먹은 턱 앞(앞손이 한 뼘 앞)
+      none:  {near:[0.16,-0.69],  a:0,    far:[0.075,-0.7], lean:0.12, box:true},
+      gun0:  {near:[0.37,-0.72], a:0,     two:0, lean:0.03},                               // 권총: 두 팔을 상대 쪽으로 곧게 뻗어 조준
+      gun1:  {near:[0.13,-0.69], a:-0.03, two:0.17, lean:0.06},                            // 산탄총·장총: 개머리판을 어깨에, 앞손은 총열 아래
+      gun2:  {near:[0.13,-0.69], a:-0.03, two:0.18, lean:0.06},
+      tool0: {near:[0.2,-0.56],  a:-0.95, far:[-0.13,-0.5], lean:0.1},                     // 렌치: 머리를 앞으로 기울여 허리 앞에 든다
+      tool1: {near:[0.16,-0.52], a:-0.15, two:-0.07, lean:0.1}};                           // 전기톱: 양손으로 허리 높이에서 앞으로
+    const C = CSD[ik_] || CSD[kind] || CSD.blade;
+    // 공격 동작은 이 겨눔에서 출발해 이 겨눔으로 돌아온다
+    const Gs = Object.assign({}, G, {g:[C.near[0]/0.85, C.near[1]/0.94], a:C.a});
+    K = {lean:C.lean, crouch:0.015, step:0, near:C.near, nearA:C.a, far:C.far || [-0.13,-0.5], farA:C.farA, two:C.two, tilt: C.box ? 0.12 : 0.05, hemF:0.13, hemB:-0.13, flare:0, overBack: back && C.overBack && !o.atk, wBehind: !back && C.overBack && !o.atk};
+    if(o.atk){ const A = atkOf(kind==="tool" && ws.v===1 ? "tool" : kind, o.atk.style), ph = clamp(o.atk.ph, 0, 3), ap = atkPose(Gs, A, ph);
       const sk = ph<=1 ? 0 : ph<=2 ? ease(ph-1) : 1-ease(Math.min(1,ph-2));
-      K.near = SD_MAP(ap.p); K.nearA = ap.ang; K.ls = ap.ls; K.lean = 0.1 + ap.lean*0.9; K.step = (A.step||0.05)*sk*0.8; K.flare = -sk*0.05;
-      if(kind==="twin"){ const b = atkPose(G, atkOf("twin", o.atk.style==="down" ? "horiz" : "down"), clamp(ph-0.45, 0, 3)); K.far = SD_MAP([b.p[0]-0.1, b.p[1]+0.06]); K.farA = b.ang; K.ls2 = b.ls; }   // 두 번째 칼이 반 박자 늦게 따라 벤다
+      K.near = SD_MAP(ap.p); K.nearA = ap.ang; K.ls = ap.ls; K.lean = C.lean + ap.lean*0.9; K.step = (A.step||0.05)*sk*0.8; K.flare = -sk*0.05;
+      if(kind==="twin"){ const b = atkPose(Gs, atkOf("twin", o.atk.style==="down" ? "horiz" : "down"), clamp(ph-0.45, 0, 3)); K.far = SD_MAP([b.p[0]-0.1, b.p[1]+0.06]); K.farA = b.ang; K.ls2 = b.ls; }   // 두 번째 칼이 반 박자 늦게 따라 벤다
       else if(boxer) K.far = [K.far[0] + K.step*0.5, K.far[1]];                                                     // 권투: 뒷손은 턱을 지킨다
       else if(K.two==null) K.far = ph<1 ? [0.09,-0.58] : [-0.18 - sk*0.05, -0.56 - sk*0.04]; }                    // 휘두를 때 빈손은 뒤로 빠져 균형을 잡는다
     else { K.near = [K.near[0], K.near[1] + br*0.004]; }
   } else { const I = IDLE_SD[ik_] || IDLE_SD.none;
     K = {lean:0.0, crouch:0, step:0, near:I.near || [0.1,-0.6], nearA:I.a, far:I.far || [-0.15,-0.44], farA:I.farA, two:I.two, wBehind:!!I.behind, shoulder:!!I.shoulder, sling:I.sling, tilt:0.0, hemF:0.1, hemB:-0.11, flare:0}; }
   const twoH = !!ws && K.two!=null;
-  if(back && !twoH && kind!=="twin" && !boxer && (!o.atk || o.atk.ph<1)) K.far = state==="hurt" ? (K.lean>0 ? [-0.085,-0.4] : K.far) : (kind==="rapier" && state==="idle" ? K.far : state==="idle" ? [-0.1, -0.4] : [-0.13, -0.5]);   // 부상: 숙이면 팔이 힘없이 늘어지고, 젖혀지면 균형을 잡으려 벌어진다      // 뒷모습: 빈손을 몸 앞으로 두면 등에 가려지므로 옆으로 살짝 벌려 균형을 잡는다
+  if(back && !twoH && kind!=="twin" && !boxer && state!=="combat" && (!o.atk || o.atk.ph<1)) K.far = state==="hurt" ? (K.lean>0 ? [-0.085,-0.4] : K.far) : (kind==="rapier" && state==="idle" ? K.far : state==="idle" ? [-0.1, -0.4] : [-0.13, -0.5]);   // 부상: 숙이면 팔이 힘없이 늘어지고, 젖혀지면 균형을 잡으려 벌어진다      // 뒷모습: 빈손을 몸 앞으로 두면 등에 가려지므로 옆으로 살짝 벌려 균형을 잡는다
   const wsh = state==="idle" ? Math.sin(t*0.55 + seed) : 0;
   const W = [(K.step + wsh*0.004)*h, (-0.5 + K.crouch)*h - br*0.003*h];
   const lean = K.lean + (state==="idle" ? Math.sin(t*0.55+seed-0.9)*0.01 : 0);
@@ -2972,7 +2997,10 @@ function drawFixerSD(c, x, gy, h, o){
   const roll = Math.max(0, lean)*0.08;
   const S1 = R(0.078 + roll, -0.2 + roll*0.3), S2 = R(-0.064 + roll, -0.195 + roll*0.3);
   let hand1T = P(K.near[0] + K.step, K.near[1]);
-  if(K.sling) hand1T = R(K.sling[0], K.sling[1]);      // 등에 멘 칼: 손잡이는 어깨 위 뒤쪽, 손이 어깨 너머로 뻗어 쥔다
+  if(K.sling) hand1T = R(K.sling[0], K.sling[1]);
+  // 뒷모습에서 칼을 머리 위·뒤로 치켜들면 손이 머리에 가려 팔이 사라진 것처럼 보인다.
+  // 실제로 등 뒤에서 보면 치켜든 오른팔은 머리 오른쪽 옆으로 올라가 보이므로, 손을 머리 옆 바깥으로 낸다
+  if(back && state==="combat" && kind!=="fist" && ws){ const hx = R(0.02, -0.33)[0] + 0.12*h; if(hand1T[1] < W[1] - 0.12*h && hand1T[0] < hx) hand1T = [hx, hand1T[1]]; }      // 등에 멘 칼: 손잡이는 어깨 위 뒤쪽, 손이 어깨 너머로 뻗어 쥔다
   // 어깨에 멘 무기: 손은 가슴 앞(팔꿈치는 아래로, 아래팔은 어깨 쪽으로 세운다), 자루·칼등은 어깨 위에 얹혀 머리 뒤로 비스듬히 넘어간다
   if(K.shoulder){ const st = R(0.05, -0.245); K.nearA = Math.atan2(st[1] - hand1T[1], st[0] - hand1T[0]); }
   let hand2T = P(K.far[0] + K.step*0.6, K.far[1]);
@@ -3029,7 +3057,7 @@ function drawFixerSD(c, x, gy, h, o){
     paint(sPath(Q([[0.0,-0.016],[0.018,-0.024],[0.032,-0.024],[0.036,-0.019],[0.022,-0.014],[0.006,-0.011]])), hexMix(fill, "#ffffff", 0.04), {sh:0.005, hl:0.002, grad:false, lw:0.9, shA:0.26});   // 엄지
     c.restore(); };
   const handAt = (ik, fill, gA, grip, far)=>{ if(kind==="fist" && ws) drawGauntlet(c, ws, ik[1], Math.atan2(ik[1][1]-ik[0][1], ik[1][0]-ik[0][0]), h*0.82, wDark, far);
-    else if(!grip && !boxer && state!=="combat") relaxed(ik, fill); else hand(ik, fill, gA, grip); };   // 싸우는 중의 빈손은 가볍게 주먹을 쥔다
+    else if(!grip && !boxer && (state!=="combat" || kind==="rapier")) relaxed(ik, fill); else hand(ik, fill, gA, grip); };   // 싸우는 중의 빈손은 가볍게 주먹을 쥔다
   const w1 = ()=>{ if(ws && kind!=="fist") weaponAt(a1[1], K.nearA, K.ls); }, w2 = ()=>{ if(ws && kind==="twin" && K.farA!=null) weaponAt(a2[1], K.farA, K.ls2); };
   const mainGrip = !!ws && kind!=="fist";
   // ① 먼 팔(어둡게)
@@ -3041,7 +3069,7 @@ function drawFixerSD(c, x, gy, h, o){
   if(farFront){ w2(); arm(a2, S2, hexMix(dark, "#000000", 0.05), true); handAt(a2, gDim, farGripA, farGrip, true); }
   if(!back && K.sling) w1();      // 앞모습: 등에 멘 칼은 몸 뒤(손잡이 쪽 팔은 머리 뒤로 넘어가므로 머리보다 먼저 그린다)
   if(back && K.sling){}
-  else if(back){ if(!K.wBehind) w1(); arm(a1, S1, dark, true); handAt(a1, gDim, K.nearA, mainGrip, true); if(twoH){ arm(a2, S2, hexMix(dark, "#000000", 0.1), true); handAt(a2, gDim, farGripA, true, true); } }
+  else if(back){ if(!K.wBehind && !K.overBack) w1(); arm(a1, S1, dark, true); handAt(a1, gDim, K.nearA, mainGrip, true); if(twoH){ arm(a2, S2, hexMix(dark, "#000000", 0.1), true); handAt(a2, gDim, farGripA, true, true); } }
   else if(!twoH){ w2(); arm(a2, S2, dark, true); handAt(a2, gDim, farGripA, farGrip, true); }
   // ② 코트 자락: 허리에서 바닥까지 A자, 밑단은 물결처럼 흔들린다. 밑단에는 천의 두께(안감)가 보인다
   const wav = (state==="idle" ? 0.004 : 0.007)*h + (o.atk ? 0.006*h : 0);
@@ -3126,7 +3154,7 @@ function drawFixerSD(c, x, gy, h, o){
   c.save(); c.clip(Hp); c.fillStyle = "rgba(0,0,0,0.16)"; c.beginPath(); c.ellipse(hc[0] - 0.012*h, hc[1] + 0.07*h, 0.06*h, 0.03*h, ha, 0, 7); c.fill(); c.restore();   // 턱 아래 그늘
   if(o.rim){ c.strokeStyle = o.rim; c.lineWidth = Math.max(1, h*0.008); c.beginPath(); c.ellipse(hc[0], hc[1], SD.head[0]*h, SD.head[1]*h, ha, -2.2, -0.6); c.stroke(); }
   // ⑤ 칼 → 앞팔 → 앞손(칼자루를 감싼다)
-  if(back){ if(K.wBehind) w1();      // 뒷모습: 어깨에 멘 무기는 어깨 위로 이쪽(등 쪽)으로 넘어와 보인다
+  if(back){ if(K.wBehind || K.overBack) w1();      // 뒷모습: 어깨에 멘·걸친 무기는 어깨 위로 이쪽(등 쪽)으로 넘어와 보인다
     if(!twoH && !farFront){ w2(); arm(a2, S2, col, false); handAt(a2, glove, farGripA, farGrip, false); }
     if(K.sling){ arm(a1, S1, col, false); w1(); handAt(a1, glove, K.nearA, true, false); } }      // 뒷모습: 등에 멘 칼은 두 팔보다 앞(이쪽)에 있다. 손잡이를 쥔 손만 칼 위에
   else { if(!K.wBehind && !K.sling) w1(); if(twoH){ const d2 = hexMix(col, "#000000", 0.16); arm(a2, S2, d2, true); handAt(a2, hexMix(glove, "#000000", 0.15), farGripA, true, true); }
