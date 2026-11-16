@@ -1249,7 +1249,7 @@ function mgCombat(ctx){
 function mgTrack(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, lead = ctx.team[0], k = powK(ctx, "agi"), H = 300;
-    const m = mgOpen("추적 · 갈림길", "달아나는 표적을 쫓는다. 갈림길마다 흔적을 보고 길을 골라라. 발자국과 떨어뜨린 물건은 확실하지만, 목격담과 소음은 헛걸음일 수 있다.", ctx, H);
+    const m = mgOpen("추적 · 골목 추격", "달아나는 표적을 쫓는다. 갈림길마다 흔적을 보고 길을 골라라. 발자국과 떨어뜨린 물건은 확실하지만, 목격담과 소음은 헛걸음일 수 있다.", ctx, H);
     const T = 9 + (k>=1.3 ? 1 : 0), LOST = 6, scout0 = k>=1.25 ? 2 : 1, grade = q.grade!=null ? q.grade : 9;
     const ROUTES = ["왼쪽 골목","오른쪽 골목","좁은 계단","지하 배수로","시장 통로","옥상 비상계단","공사장 가림막","폐건물 복도","철길 밑 굴다리","주차장 뒤편"];
     const CLUE = {foot:{n:"선명한 발자국", sure:true, col:"#9fe8b0"}, drop:{n:"떨어뜨린 물건", sure:true, col:"#9fe8b0"}, wit:{n:"목격담", sure:false, col:"#e0d27f"}, noise:{n:"소음", sure:false, col:"#e0d27f"}, none:{n:"흔적 없음", sure:false, col:"#8a8f96"}};
@@ -1270,17 +1270,22 @@ function mgTrack(ctx){
       m.ctrl.innerHTML = `<div class="pk-moves">${G.junc.map((b,i)=>`<button data-br="${i}"><b>${b.nm}</b><small>${b.seen ? `<span style="color:${CLUE[b.clue].col}">${CLUE[b.clue].n}</span>${CLUE[b.clue].sure?" · 확실함":b.clue!=="none"?" · 헛걸음일 수 있음":""}` : "살펴보지 않음"}</small></button>`).join("")}
         ${G.junc.some(b=>!b.seen) ? `<button data-scout="1"><b>멈춰서 살핀다</b><small>길 하나를 더 살핀다 · 시간 1 · 표적이 멀어질 수 있음</small></button>` : ""}</div>`;
     }
+    // 장면: 선택하면 짧은 장면(달리기 · 막다른 길 · 살피기)이 끝난 뒤 다음 갈림길이 나온다. 장면 중엔 선택지를 숨긴다
+    function scene(type, dur, data, after){ G.scene = {type, t0: performance.now(), dur, data:data||{}}; m.ctrl.innerHTML = ""; setTimeout(()=>{ G.scene = null; after(); }, dur); }
     function step(i){
-      if(G.done) return; const b = G.junc[i]; G.turn++; G.trail.push({nm:b.nm, ok:b.ok});
+      if(G.done || G.scene) return; const b = G.junc[i]; G.turn++; G.trail.push({nm:b.nm, ok:b.ok}); G.pickIdx = i;
       if(b.ok){ const dash = k>=1.3 && Math.random()<0.3; G.d -= dash ? 2 : 1; G.msg = dash ? `${b.nm} — 맞았다. 전력으로 달려 거리를 크게 좁혔다.` : `${b.nm} — 맞았다. 거리를 좁혔다.`; }
       else { G.d += 1; const hurt = Math.random() < (0.3 + Math.max(0, 1-k)*0.4); if(hurt){ G.wound++; G.mishaps++; }
         G.msg = `${b.nm} — 헛걸음이었다. 되돌아오는 사이 표적이 멀어졌다.${hurt ? ` 서두르다 ${pick(["넘어졌다","철조망에 걸렸다","쓰레기 더미에 부딪쳤다","계단에서 미끄러졌다"])}.` : ""}`; G.flash = performance.now(); }
-      G.d = Math.max(0, G.d); check() || (newJunction(), ui());
+      G.d = Math.max(0, G.d); const d0 = G.d + (b.ok ? 1 : -1);
+      if(b.ok) scene("run", 1500, {from:d0, to:G.d, nm:b.nm, idx:i, n:G.junc.length}, ()=>{ check() || (newJunction(), scene("arrive", 900, {}, ui)); });
+      else scene("dead", 1700, {nm:b.nm, idx:i, n:G.junc.length, hurt: G.mishaps>(G.lastMis||0)}, ()=>{ G.lastMis = G.mishaps; check() || (newJunction(), scene("arrive", 900, {}, ui)); });
+      ui(); m.ctrl.innerHTML = "";
     }
     function scout(){
-      if(G.done) return; const un = G.junc.filter(b=>!b.seen); if(!un.length) return; G.turn++; pick(un).seen = true;
+      if(G.done || G.scene) return; const un = G.junc.filter(b=>!b.seen); if(!un.length) return; G.turn++; const pb = pick(un); pb.seen = true; pb.reveal = performance.now();
       const away = Math.random() < 0.5; if(away) G.d += 1; G.msg = away ? "흔적을 살피는 사이 표적이 한 걸음 더 멀어졌다." : "흔적을 살폈다. 표적은 아직 멀지 않다.";
-      check() || ui();
+      ui(); m.ctrl.innerHTML = ""; scene("scout", 1100, {idx: G.junc.indexOf(pb)}, ()=>{ check() || ui(); });
     }
     function check(){
       if(G.d<=0) return end(true, "표적을 붙잡았다");
@@ -1289,50 +1294,97 @@ function mgTrack(ctx){
       return false;
     }
     function end(win, text){
-      G.done = true; G.win = win; ui(); m.ctrl.innerHTML = "";
+      G.done = true; G.win = win; G.endAt = performance.now(); ui(); m.ctrl.innerHTML = "";
       const score = win ? 0.6 + 0.4*(1 - G.turn/T) : 0.3*(1 - G.d/LOST);
       const res = {win, score: clamp(score,0,1), battle: [{f:lead, fought:true, wound: Math.min(3, G.wound), sp:0}]};
-      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, `${text} — 의뢰 ${win?"성공":"실패"}`).then(()=>resolve(res)); }, 900);
+      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, `${text} — 의뢰 ${win?"성공":"실패"}`).then(()=>resolve(res)); }, 1800);
       return true;
     }
     m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout) scout(); };
     m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, battle:[{f:lead, fought:true, wound:Math.min(3,G.wound), sp:0}]}); };
-    // ---- 그림: 위에서 내려다본 젖은 골목 지도. 왼쪽은 지나온 길, 가운데는 지금 갈림길, 오른쪽 위에 거리 막대 ----
-    const t0 = performance.now(); let raf;
+    // ---- 그림: 1인칭 골목. 소실점을 향해 벽이 흐르고, 표적의 뒷모습이 거리만큼 작게 보인다 ----
+    // 갈림길: 골목 끝 벽에 길 입구들이 열리고, 살펴본 입구엔 흔적이 장면 안에 보인다(발자국·반짝이는 물건·손짓하는 행인·울리는 소리).
+    // 장면: 맞는 길(달려 나가며 표적이 가까워짐) · 헛걸음(막다른 철망, 화면이 흔들리고 다치면 기울어짐) · 살피기(손전등 빛이 입구를 훑음)
+    const t0 = performance.now(); let raf; const VX = 360, VY = 128, W = 720;
+    const tgtSize = d => 120/(1 + d*0.9);
+    function alley(c, t, speed, tilt){
+      let g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#07070c"); g.addColorStop(0.45,"#1a1420"); g.addColorStop(1,"#0c0b0f"); c.fillStyle = g; c.fillRect(-20,-20,W+40,H+40);
+      const hz = c.createRadialGradient(VX,VY,0,VX,VY,260); hz.addColorStop(0,"rgba(200,110,70,0.22)"); hz.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = hz; c.fillRect(0,0,W,H);
+      c.fillStyle = "#0f0d12"; c.beginPath(); c.moveTo(VX, VY+4); c.lineTo(W+40, H+20); c.lineTo(-40, H+20); c.fill();
+      const run = t*speed;
+      for(let i=0;i<12;i++){ const z = 1 - ((i/12 + run*0.18) % 1), sc = 1/(0.15+z*3), yy = VY + 4 + (H-VY)*Math.min(1, sc*0.33);
+        c.strokeStyle = `rgba(255,255,255,${0.03+0.06*(1-z)})`; c.beginPath(); c.moveTo(VX-(yy-VY)*2.2, yy); c.lineTo(VX+(yy-VY)*2.2, yy); c.stroke(); }
+      for(let i=0;i<10;i++){ const z = 1 - ((i/10 + run*0.15) % 1), sc = 1/(0.12+z*2.6);
+        [-1,1].forEach(side=>{ const x0 = VX + side*sc*95, x1 = VX + side*sc*95*1.35, top = VY - sc*80, bot = VY + sc*52, sh = Math.round(14+14*(1-z));
+          c.fillStyle = `rgb(${sh},${sh-2},${sh+4})`; c.beginPath(); c.moveTo(x0, top); c.lineTo(x1, top-sc*20); c.lineTo(x1, bot+sc*14); c.lineTo(x0, bot); c.fill();
+          if(i%2===0){ c.fillStyle = `rgba(255,196,120,${0.22*(1-z)})`; c.fillRect(Math.min(x0,x1)+Math.abs(x1-x0)*0.3, top+sc*20, Math.max(2,Math.abs(x1-x0)*0.2), sc*10); } }); }
+      // 빗줄기
+      c.strokeStyle = "rgba(170,190,230,0.12)"; c.lineWidth = 1; c.beginPath();
+      for(let i=0;i<40;i++){ const x = (i*97 + t*60) % W, y = (i*53 + t*900) % H; c.moveTo(x, y); c.lineTo(x-3, y+12); } c.stroke();
+    }
+    const OPEN = n => [...Array(n).keys()].map(i=>({x: VX + (i-(n-1)/2)*(n===3?112:150), w: n===3?74:92}));
+    function fork(c, t, J, hl){
+      // 골목 끝 벽과 입구들
+      c.fillStyle = "#16131b"; c.fillRect(170, 62, 380, 132); c.fillStyle = "rgba(255,255,255,0.03)"; for(let y=70;y<190;y+=12) c.fillRect(170, y, 380, 1);
+      OPEN(J.length).forEach((o,i)=>{ const b = J[i], x0 = o.x - o.w/2, top = 88, bot = 194;
+        const lit = b.seen ? 1 : 0.35, rv = b.reveal ? clamp((performance.now()-b.reveal)/600, 0, 1) : 1;
+        c.fillStyle = "#050407"; c.beginPath(); c.moveTo(x0, bot); c.lineTo(x0, top+14); c.quadraticCurveTo(o.x, top-10, x0+o.w, top+14); c.lineTo(x0+o.w, bot); c.fill();
+        const ig = c.createLinearGradient(0, top, 0, bot); ig.addColorStop(0, `rgba(120,110,160,${0.18*lit})`); ig.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = ig; c.fill();
+        if(hl===i){ c.strokeStyle = "rgba(255,240,200,0.7)"; c.lineWidth = 2; c.stroke(); }
+        if(!b.seen){ c.fillStyle = "rgba(140,150,170,0.35)"; c.font = `800 24px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("?", o.x, 150); c.textAlign = "left"; }
+        else { c.globalAlpha = rv;
+          if(b.clue==="foot"){ c.fillStyle = "rgba(159,232,176,0.65)"; for(let j=0;j<6;j++){ const u = j/5, fx = VX + (o.x-VX)*u + (j%2?5:-5)*(1-u*0.6), fy = 285 - u*95; c.beginPath(); c.ellipse(fx, fy, 7*(1-u*0.6), 3.5*(1-u*0.6), 0, 0, 7); c.fill(); } }
+          if(b.clue==="drop"){ const gx = o.x + 14, gy = 186, sp = 0.6 + 0.4*Math.sin(t*6); c.fillStyle = `rgba(255,236,170,${sp})`; c.beginPath(); c.moveTo(gx, gy-9); c.lineTo(gx+3, gy-2); c.lineTo(gx+10, gy); c.lineTo(gx+3, gy+2); c.lineTo(gx, gy+9); c.lineTo(gx-3, gy+2); c.lineTo(gx-10, gy); c.lineTo(gx-3, gy-2); c.fill(); }
+          if(b.clue==="wit"){ drawFixer(c, x0 - 10, 196, 62, {face:1, col:SIDE_COL.friend.fill, state:"idle", rim:SIDE_COL.friend.rim, t}); c.fillStyle = "rgba(195,235,255,0.85)"; c.font = `600 10px "Noto Sans KR",sans-serif`; c.fillText("저쪽으로…", x0 - 34, 122); }
+          if(b.clue==="noise"){ c.strokeStyle = "rgba(224,210,127,0.7)"; c.lineWidth = 2; for(let r=0;r<3;r++){ const rr = 10 + ((t*30 + r*12) % 36); c.globalAlpha = rv*(1 - rr/46); c.beginPath(); c.arc(o.x, 128, rr, -2.4, -0.7); c.stroke(); } c.globalAlpha = rv;
+            c.fillStyle = "rgba(224,210,127,0.9)"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("쾅!", o.x, 104); c.textAlign = "left"; }
+          c.globalAlpha = 1; }
+        // 표적이 아주 가까우면(거리 1) 맞는 입구 안쪽에서 코트 자락이 잠깐 보인다
+        if(b.ok && G.d<=1 && Math.sin(t*2.3) > 0.6){ c.globalAlpha = 0.55; drawFixer(c, o.x + 6, 194, 70, {face:1, col:SIDE_COL.foe.fill, state:"idle", view:"back", t}); c.globalAlpha = 1; }
+        c.fillStyle = b.seen ? CLUE[b.clue].col : "#8a8f96"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(b.nm, o.x, 214); c.textAlign = "left"; });
+    }
+    function hud(c){
+      c.fillStyle = "rgba(10,9,14,0.85)"; c.beginPath(); c.roundRect(424, 12, 282, 34, 8); c.fill();
+      c.fillStyle = "#9fb8a6"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.fillText("나", 436, 33);
+      for(let i=0;i<LOST;i++){ const x = 462 + i*34; c.fillStyle = i < G.d ? "rgba(255,138,122,0.85)" : "rgba(255,255,255,0.12)"; c.beginPath(); c.roundRect(x, 22, 28, 14, 4); c.fill(); }
+      c.fillStyle = "#ff8a7a"; c.fillText("거리", 670, 33);
+      const tr = G.trail.slice(-8); tr.forEach((s,i)=>{ c.fillStyle = s.ok ? "#4f8a62" : "#8a4f4f"; c.beginPath(); c.arc(24 + i*16, 26, 5, 0, 7); c.fill(); });
+    }
+    function caption(c, txt, col){ c.fillStyle = "rgba(8,7,11,0.75)"; c.fillRect(0, H-38, W, 38); c.fillStyle = col || "#e6e1d8"; c.font = `700 14px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(txt, W/2, H-14); c.textAlign = "left"; }
     function draw(){
-      const c = m.c, W = 720, now = performance.now(), t = (now-t0)/1000;
-      c.fillStyle = "#0b0a10"; c.fillRect(0,0,W,H);
-      c.save(); c.strokeStyle = "rgba(120,130,160,0.07)"; c.lineWidth = 18;           // 거리 격자(블록 사이 골목)
-      for(let x=-40;x<W+40;x+=92){ c.beginPath(); c.moveTo(x + Math.sin(x)*8, 0); c.lineTo(x - 30 + Math.sin(x)*8, H); c.stroke(); }
-      for(let y=20;y<H;y+=74){ c.beginPath(); c.moveTo(0, y); c.lineTo(W, y + 18); c.stroke(); } c.restore();
-      c.fillStyle = "rgba(255,200,120,0.05)"; for(let i=0;i<30;i++){ const x = (i*137)%W, y = (i*71)%H; c.fillRect(x, y, 3, 2); }   // 창문 불빛 점
-      // 지나온 길
-      const tr = G.trail.slice(-5), x0 = 40, cy = 160;
-      tr.forEach((s,i)=>{ const x = x0 + i*26; c.fillStyle = s.ok ? "#4f8a62" : "#8a4f4f"; c.beginPath(); c.arc(x, cy, 5, 0, 7); c.fill();
-        if(i){ c.strokeStyle = "rgba(160,170,190,0.35)"; c.lineWidth = 2; c.beginPath(); c.moveTo(x-21, cy); c.lineTo(x-5, cy); c.stroke(); } });
-      // 지금 갈림길
-      const px = Math.min(200, x0 + tr.length*26 + 20), J = G.junc || [];
-      J.forEach((b,i)=>{ const ty = cy + (i - (J.length-1)/2)*92, tx = 560;
-        c.strokeStyle = b.seen ? "rgba(200,210,230,0.55)" : "rgba(200,210,230,0.18)"; c.lineWidth = 10; c.lineCap = "round";
-        c.beginPath(); c.moveTo(px, cy); c.bezierCurveTo(px+140, cy, tx-170, ty, tx, ty); c.stroke();
-        c.fillStyle = "rgba(10,9,14,0.85)"; c.strokeStyle = b.seen ? CLUE[b.clue].col : "#555"; c.lineWidth = 1.4; c.beginPath(); c.roundRect(tx+8, ty-20, 140, 40, 8); c.fill(); c.stroke();
-        c.fillStyle = "#e6e1d8"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.fillText(b.nm, tx+18, ty-3);
-        c.fillStyle = b.seen ? CLUE[b.clue].col : "#777"; c.font = `500 11px "Noto Sans KR",sans-serif`; c.fillText(b.seen ? CLUE[b.clue].n : "? 살펴보지 않음", tx+18, ty+13);
-        if(b.seen && b.clue==="foot"){ c.fillStyle = "rgba(159,232,176,0.5)"; for(let j=0;j<5;j++){ const u = 0.2 + j*0.15, bx = px + (tx-px)*u, by = cy + (ty-cy)*u*u*(3-2*u); c.beginPath(); c.ellipse(bx + (j%2?4:-4), by, 4, 2.4, 0, 0, 7); c.fill(); } } });
-      // 나(초록 점)
-      c.fillStyle = "#7fe0a8"; c.shadowColor = "#7fe0a8"; c.shadowBlur = 12; c.beginPath(); c.arc(px, cy, 8 + Math.sin(t*4)*1.2, 0, 7); c.fill(); c.shadowBlur = 0;
-      // 거리 막대: 나 ● ● ● 표적
-      c.fillStyle = "rgba(10,9,14,0.85)"; c.beginPath(); c.roundRect(424, 14, 282, 34, 8); c.fill();
-      c.fillStyle = "#9fb8a6"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.fillText("나", 436, 35);
-      for(let i=0;i<LOST;i++){ const x = 462 + i*34; c.fillStyle = i < G.d ? "rgba(255,138,122,0.85)" : "rgba(255,255,255,0.12)"; c.beginPath(); c.roundRect(x, 24, 28, 14, 4); c.fill(); }
-      c.fillStyle = "#ff8a7a"; c.fillText("거리", 670, 35);
-      // 표적 그림자: 가까울수록 또렷하게
-      const vis = clamp(1 - G.d/4, 0.08, 1); c.globalAlpha = vis; fig(c, 396, 104, 40, {coat:true, rim:"rgba(255,90,90,0.6)"}); c.globalAlpha = 1;
-      if(now - G.flash < 260){ c.fillStyle = `rgba(255,80,70,${0.25*(1-(now-G.flash)/260)})`; c.fillRect(0,0,W,H); }
+      const c = m.c, now = performance.now(), t = (now-t0)/1000, sc = G.scene, k = sc ? clamp((now-sc.t0)/sc.dur, 0, 1) : 0;
+      c.save();
+      if(sc && sc.type==="dead"){ const sh = k<0.45 ? 0 : (1-k)*9; c.translate((Math.random()-0.5)*sh, (Math.random()-0.5)*sh); if(sc.data.hurt && k>0.45){ c.translate(W/2, H/2); c.rotate(0.08*Math.sin((k-0.45)*Math.PI)); c.translate(-W/2, -H/2); } }
+      if(G.done && G.win){                                                          // 붙잡는 장면: 표적의 등이 화면 가득, 손이 덮친다
+        const e = clamp((now-G.endAt)/900, 0, 1); alley(c, t, 2.4*(1-e), 0);
+        drawFixer(c, VX, VY + 150 + e*60, 150 + e*170, {face:1, col:SIDE_COL.foe.fill, state:"hurt", view:"back", t});
+        c.fillStyle = `rgba(255,250,240,${0.6*Math.max(0, 1-Math.abs(e-0.7)*5)})`; c.fillRect(0,0,W,H); caption(c, "붙잡았다!", "#9fe8b0");
+      } else if(G.done){ const e = clamp((now-G.endAt)/900, 0, 1); alley(c, t, 0.3, 0); c.fillStyle = `rgba(0,0,0,${0.5*e})`; c.fillRect(0,0,W,H); caption(c, "표적이 어둠 속으로 사라졌다", "#ff8a7a"); }
+      else if(sc && sc.type==="run"){                                              // 맞는 길: 입구로 뛰어들어 달린다. 표적이 앞에서 달아나며 가까워진다
+        const zoom = 1 + Math.min(1, k*2)*0.0; alley(c, t, 2.4, 0);
+        const d = sc.data.from + (sc.data.to - sc.data.from)*ease(k), h2 = tgtSize(d), bob = Math.abs(Math.sin(t*9))*4, sway = Math.sin(t*3)*30;
+        drawFixer(c, VX + sway, VY + 26 + h2*0.55 - bob, h2, {face:1, col:SIDE_COL.foe.fill, state:"idle", view:"back", t});
+        caption(c, `${sc.data.nm} — 표적의 등이 보인다!`, "#9fe8b0");
+      } else if(sc && sc.type==="dead"){                                           // 헛걸음: 막다른 철망
+        alley(c, t, k<0.45 ? 2.4 : 0, 0);
+        const e = clamp(k/0.45, 0, 1); c.save(); c.globalAlpha = e; c.fillStyle = "#1c1a22"; c.fillRect(200, 70, 320, 150);
+        c.strokeStyle = "rgba(170,180,200,0.45)"; c.lineWidth = 1.5; c.beginPath(); for(let x=200;x<=520;x+=16){ c.moveTo(x, 70); c.lineTo(x+40, 220); c.moveTo(x+40, 70); c.lineTo(x, 220); } c.stroke(); c.restore();
+        if(k>0.45){ c.fillStyle = `rgba(255,70,60,${0.25*(1-k)})`; c.fillRect(0,0,W,H); }
+        caption(c, k<0.45 ? `${sc.data.nm}…` : `막다른 길 — 헛걸음이었다${sc.data.hurt ? " · 다쳤다" : ""}`, k<0.45 ? "#e6e1d8" : "#ff8a7a");
+      } else if(sc && sc.type==="arrive"){                                         // 다음 갈림길로 달려가며 표적이 모퉁이로 사라진다
+        alley(c, t, 2.4*(1-k), 0); const h2 = tgtSize(G.d);
+        c.globalAlpha = 1 - k; drawFixer(c, VX + (k*80), VY + 26 + h2*0.55, h2, {face:1, col:SIDE_COL.foe.fill, state:"idle", view:"back", t}); c.globalAlpha = 1;
+        caption(c, "표적이 모퉁이를 돌았다 — 갈림길이다");
+      } else {                                                                      // 갈림길에 멈춰 섰다
+        alley(c, t, 0, 0); if(G.junc) fork(c, t, G.junc, sc && sc.type==="scout" ? sc.data.idx : null);
+        if(sc && sc.type==="scout"){ const o = OPEN(G.junc.length)[sc.data.idx], lx = 160 + (o.x-160)*ease(k);
+          const lg = c.createRadialGradient(lx, 150, 0, lx, 150, 90); lg.addColorStop(0, "rgba(255,240,200,0.28)"); lg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = lg; c.fillRect(0,0,W,H); caption(c, "멈춰서 흔적을 살핀다…"); }
+      }
+      hud(c); c.restore();
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    newJunction(); G.msg = `${esc(lead.name)}이(가) 표적의 뒤를 쫓기 시작했다.`; ui();
+    newJunction(); G.msg = `${esc(lead.name)}이(가) 표적의 뒤를 쫓기 시작했다.`; ui(); m.ctrl.innerHTML = ""; scene("arrive", 1300, {}, ui);
   });
 }
 
