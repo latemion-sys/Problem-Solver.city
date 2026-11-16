@@ -2945,16 +2945,33 @@ function drawFixerSD(c, x, gy, h, o){
     c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(0.006*h, 0, 0.004*h, 0.02*h, 0, 0, 7); c.fill();
     const sc2 = new Path2D(); sc2.roundRect(0.005*h, -0.019*h, 0.01*h, 0.038*h, 0.004*h); paint(sc2, hexMix(fill, "#ffffff", far ? 0.35 : 0.6), {sh:0.004, hl:0.002, grad:false});   // 소매 밖으로 나온 셔츠 소맷단
     c.restore(); };
-  // 장갑: 둥근 주먹 + 손가락 마디 + 엄지
-  const mitten = (p, fill, a)=>{ c.save(); c.translate(p[0], p[1]); c.rotate(a||0);
-    const Pp = new Path2D(); Pp.ellipse(0, 0, 0.033*h, 0.03*h, 0, 0, 7); paint(Pp, fill, {sh:0.012, hl:0.005, grad:false});
-    c.fillStyle = "rgba(0,0,0,0.2)"; [-0.012,0,0.012].forEach(v=>{ c.beginPath(); c.ellipse(0.022*h, v*h, 0.006*h, 0.005*h, 0, 0, 7); c.fill(); });
-    const th = new Path2D(); th.ellipse(-0.006*h, 0.022*h, 0.014*h, 0.009*h, 0.5, 0, 7); paint(th, fill, {sh:0.006, hl:0.003, grad:false}); c.restore(); };
+  // 장갑 낀 손: 손등 → 칼자루를 감아쥔 네 손가락(마디마다 한 덩어리) → 그 위를 누르는 엄지.
+  // 선으로 긋지 않고 덩어리마다 칠(그림자·빛 테)로 나눈다. 칼을 안 쥔 손은 같은 형태로 가볍게 말아 쥔다.
+  const hand = (ik, fill, hiltA, grip)=>{ const p = ik[1], fA = Math.atan2(p[1]-ik[0][1], p[0]-ik[0][0]);
+    const hA = grip ? hiltA : fA + Math.PI/2;                          // 손가락이 감는 축: 쥔 손은 칼자루, 빈손은 아래팔에 수직
+    const cs = Math.cos(-hA), sn = Math.sin(-hA), wx = -Math.cos(fA), wy = -Math.sin(fA);
+    let wl = [wx*cs - wy*sn, wx*sn + wy*cs];                           // 손 좌표에서 손목 쪽 방향
+    c.save(); c.translate(p[0], p[1]); c.rotate(hA); if(wl[1] < 0){ c.scale(1,-1); wl = [wl[0], -wl[1]]; }
+    const Q = arr => arr.map(([u,v])=>[u*h, v*h]), dk = hexMix(fill, "#000000", 0.18);
+    const pw = [-wl[1], wl[0]], wc = [wl[0]*0.036, wl[1]*0.036 + 0.006];
+    // 손등: 마디 줄에서 손목으로 좁아지는 판
+    paint(sPath(Q([[-0.024,-0.008],[0.0,-0.013],[0.024,-0.008],[wc[0]+pw[0]*0.017, wc[1]+pw[1]*0.017],[wc[0], wc[1]+0.004],[wc[0]-pw[0]*0.017, wc[1]-pw[1]*0.017]])), fill, {sh:0.012, hl:0.004, grad:false, lw:1.1, shA:0.24});
+    // 네 손가락: 마디에서 칼자루를 넘어 감기는 덩어리(가운데 손가락이 조금 길다)
+    [[-0.0175,0.9],[-0.006,1.0],[0.0058,1.0],[0.0172,0.86]].forEach(([fx,k],i)=>{
+      const top = -0.019*k, bot = 0.016*k, w = 0.0062 - (i===3 ? 0.0008 : 0);
+      paint(sPath(Q([[fx-w, top+0.002],[fx, top-0.002],[fx+w, top+0.002],[fx+w*1.05, (top+bot)/2],[fx+w*0.85, bot],[fx, bot+0.003],[fx-w*0.85, bot],[fx-w*1.05, (top+bot)/2]])), i%2 ? fill : hexMix(fill, "#000000", 0.05),
+        {sh:0.005, hl:0.0025, grad:false, lw:0.9, shA:0.3}); });
+    // 손가락 끝마디가 손바닥 쪽으로 말려 들어가는 그늘
+    c.fillStyle = "rgba(0,0,0,0.22)"; c.beginPath(); c.ellipse(0, 0.014*h, 0.024*h, 0.005*h, 0, 0, 7); c.fill();
+    // 엄지: 손목 쪽에서 나와 집게손가락 위를 비스듬히 누른다
+    paint(sPath(Q([[-0.03, 0.022],[-0.022, 0.012],[-0.006, 0.006],[0.008, 0.007],[0.012, 0.012],[0.004, 0.017],[-0.014, 0.022],[-0.026, 0.03]])), dk === fill ? fill : hexMix(fill, "#ffffff", 0.04), {sh:0.006, hl:0.003, grad:false, lw:1.0, shA:0.28});
+    c.restore(); };
+  const mitten = (p, fill, a, ik, grip)=> hand(ik, fill, a, grip);
   const weaponAt = (p, a, ls)=>{ c.save(); c.translate(p[0], p[1]); c.rotate(a); if(ls && ls!==1) c.scale(ls, 1); drawWeaponSpec(c, ws, SD.wu*h, wDark, null); c.restore(); };
   // ① 먼 팔(어둡게)
   // 뒷모습이면 칼 든 팔(진행 방향 쪽)이 몸 너머에 있어 먼저(어둡게), 빈팔이 몸 앞에 온다
-  if(back){ if(ws) weaponAt(a1[1], K.nearA, K.ls); arm(a1, S1, dark, true); mitten(a1[1], hexMix(glove, "#000000", 0.3), K.nearA); }
-  else { arm(a2, S2, dark, true); mitten(a2[1], hexMix(glove, "#000000", 0.3), Math.atan2(a2[1][1]-a2[0][1], a2[1][0]-a2[0][0])); }
+  if(back){ if(ws) weaponAt(a1[1], K.nearA, K.ls); arm(a1, S1, dark, true); mitten(a1[1], hexMix(glove, "#000000", 0.3), K.nearA, a1, !!ws); }
+  else { arm(a2, S2, dark, true); mitten(a2[1], hexMix(glove, "#000000", 0.3), 0, a2, false); }
   // ② 코트 자락: 허리에서 바닥까지 A자, 밑단은 물결처럼 흔들린다. 밑단에는 천의 두께(안감)가 보인다
   const wav = (state==="idle" ? 0.004 : 0.007)*h + (o.atk ? 0.006*h : 0);
   const hf = (K.hemF + K.step*0.9 + K.flare)*h, hb = (K.hemB + K.step*0.5 + K.flare*0.6 - (o.atk ? 0.02 : 0))*h;
@@ -3035,8 +3052,8 @@ function drawFixerSD(c, x, gy, h, o){
   c.save(); c.clip(Hp); c.fillStyle = "rgba(0,0,0,0.16)"; c.beginPath(); c.ellipse(hc[0] - 0.012*h, hc[1] + 0.07*h, 0.06*h, 0.03*h, ha, 0, 7); c.fill(); c.restore();   // 턱 아래 그늘
   if(o.rim){ c.strokeStyle = o.rim; c.lineWidth = Math.max(1, h*0.008); c.beginPath(); c.ellipse(hc[0], hc[1], SD.head[0]*h, SD.head[1]*h, ha, -2.2, -0.6); c.stroke(); }
   // ⑤ 칼 → 앞팔 → 앞손(칼자루를 감싼다)
-  if(back){ arm(a2, S2, col, false); mitten(a2[1], glove, Math.atan2(a2[1][1]-a2[0][1], a2[1][0]-a2[0][0])); }
-  else { if(ws) weaponAt(a1[1], K.nearA, K.ls); arm(a1, S1, col, false); mitten(a1[1], glove, K.nearA); }
+  if(back){ arm(a2, S2, col, false); mitten(a2[1], glove, 0, a2, false); }
+  else { if(ws) weaponAt(a1[1], K.nearA, K.ls); arm(a1, S1, col, false); mitten(a1[1], glove, K.nearA, a1, !!ws); }
   if(o.acc){ c.fillStyle = `rgb(${o.acc})`; c.beginPath(); c.arc(...R(-0.04,-0.15), 0.011*h, 0, 7); c.fill(); }
   c.restore();
   return {hand: a1[1]};
