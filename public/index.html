@@ -951,7 +951,7 @@ const roll = (a,b) => a + Math.floor(Math.random()*(b-a+1));
 function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
-    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}해야 성공. 최대 5턴.`, ctx, 380);
+    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}해야 성공. 최대 6턴.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none", spec: weaponSpecOf(f.gear.weapon), armor: armorSpecOf(f.gear.armor)}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     const fwt = pick(FOE_WEAPONS);
@@ -969,8 +969,11 @@ function mgCombat(ctx){
       const cp = Math.max(1, Math.round((c.b - c.a) / coins)); return {n:c.n, base:c.a, coins, cp, def:!!c.def, cleave:!!c.cleave}; };
     foe.skills = CARDS[fwt].map(c=>Object.assign(skillOf(c), {base: Math.max(1, c.a - 1)}));
     const fg = q.grade!=null ? q.grade : 9, augMul = foe.aug ? Object.values(foe.aug.mul).reduce((a,b)=>a+b,0)/Object.values(foe.aug.mul).length : 1;
-    foe.max = Math.round((32 + (9-fg)*8) * (foe.aug ? 0.6 + 0.4*augMul : 1)); foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = 0;
+    foe.max = Math.round((10 + (9-fg)*1.6) * (foe.aug ? 0.7 + 0.3*augMul : 1)); foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = 0;   // 한 번 이길 때 남은 코인 위력만큼만 깎이므로 2~4번 이기면 쓰러지게
     const bonus = me => clamp(Math.round((power(me.f,["str"])/Math.max(1,q.req) - 1)*4), -2, 4);
+    // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
+    const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
+    const woundOf = hp => hp>75 ? 0 : hp>45 ? 1 : hp>18 ? 2 : 3;
     party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); });
     const support = ()=> party.filter((p,i)=>i!==act && p.hp>0);
     const supBase = ()=> Math.min(3, support().length), supCp = ()=> support().length>=2 ? 1 : 0;
@@ -986,13 +989,13 @@ function mgCombat(ctx){
     }
     function odds(a, spA, b, spB){ let w = 0; for(let i=0;i<300;i++) if(simClash(a, spA, b, spB).win==="me") w++; return w/300; }
     const oddLabel = p => p>=0.8 ? ["압도", "#7fe0a8"] : p>=0.6 ? ["우세", "#a8e07f"] : p>=0.4 ? ["호각", "#e0d27f"] : p>=0.2 ? ["열세", "#e0a37f"] : ["절망", "#e07f7f"];
-    let act = 0, turn = 1; const MAXT = 5, st = {}; let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
+    let act = 0, turn = 1; const MAXT = 6, st = {}; let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
     const S2 = {log:[]};
     function pickFoeSkill(){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def); foeSkill = Math.random()<0.22 && df.length ? pick(df) : pick(at); }
     const coinStr = sk => "●".repeat(sk.coins);
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
-      m.info.innerHTML = `<div class="pk-text"><b>${turn}/${MAXT}턴</b> · ${esc(me.name)} — 체력 ${me.hp} · 정신력 ${me.sp>=0?"+":""}${me.sp}
+      m.info.innerHTML = `<div class="pk-text"><b>${turn}/${MAXT}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp)]}">${WOUND[woundOf(me.hp)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
         <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""})을 내려 한다.</span>
         ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}</div>`;
       m.ctrl.innerHTML = `<div class="pk-moves">${CARDS[me.wt].map((c,i)=>{ const sk = mySkill(skillOf(c)), p = odds(sk, me.sp, foeSkill, foe.sp), [lb, lc] = oddLabel(p);
@@ -1018,18 +1021,17 @@ function mgCombat(ctx){
       else { me.sp = clamp(me.sp - 5, -45, 45); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
       lines.push(won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${foe.name}이(가) 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
+      // 피해: 이긴 쪽이 남은 코인을 한 번 더 던져 나온 최종 위력만큼 한 번에 준다
+      const heads = flip(R.left, won ? me.sp : foe.sp), P = Math.round(powOf(wSk, heads)*bonusK);
+      if(clash){ (won ? clash.mine : clash.foe).heads = heads; (won ? clash.mine : clash.foe).p = P; clash.flipAt = performance.now(); clash.res = won ? "foe" : "me"; }
       let total = 0;
-      for(let k=0;k<R.left;k++){
-        const heads = flip(R.left, won ? me.sp : foe.sp), P = powOf(wSk, heads);
-        if(won){ let dmg = Math.round(P*1.4*bonusK*(wSk.def ? 0.6 : 1)); if(fk.def && !wSk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
-          foe.hp = Math.max(0, foe.hp - dmg); total += dmg; st.crit = k===R.left-1 && foe.hp<=0; attack("me", dmg, c); }
-        else { let dmg = Math.round(P*1.5*bonusK*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
-          me.hp = Math.max(0, me.hp - dmg); total += dmg; st.crit = false; attack("foe", dmg, fk); }
-        await wait(760);
-        if(foe.hp<=0 || me.hp<=0) break;
-      }
+      if(won){ let dmg = Math.round(P*(wSk.def ? 0.6 : 1)); if(fk.def && !wSk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+        foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0; attack("me", dmg, c); }
+      else { let dmg = Math.round(P*3*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+        const w0 = woundOf(me.hp); me.hp = Math.max(0, me.hp - dmg); total = dmg; me.woundUp = woundOf(me.hp) > w0 || me.hp<=0; st.crit = false; attack("foe", dmg, fk); }
+      await wait(900);
       clash = null;
-      lines.push(won ? `${foe.name}에게 ${total}의 피해.` : `${esc(me.name)} 체력 -${total}${sk.def?" (막아서 절반)":""}`);
+      lines.push(won ? `남은 코인 위력 ${P} — ${foe.name}에게 ${total}의 피해.` : `${esc(me.name)}이(가) 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}`);
       S2.log = lines.concat(S2.log).slice(0,4);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       await wait(900);
@@ -1060,13 +1062,13 @@ function mgCombat(ctx){
       else if(outcome){ score = 0.3; text = goal==="제압" ? "과잉 진압 — 죽여 버렸다. 의뢰 실패" : "제압만 했다 — 사살 의뢰였다. 의뢰 실패"; }
       else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다 — 의뢰 실패"; }
       else { score = 0.4*prog; text = "시간이 다 됐다 — 놓쳤다. 의뢰 실패"; }
-      const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought: p.fought}))};
+      const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought: p.fought, wound: p.hp<=0 ? 3 : woundOf(p.hp)}))};
       setTimeout(()=>{ mgResult(m, res.score, text).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
       if(b.dataset.sk!==undefined && phase==="skill"){ party[act].fought = true; resolveClash(+b.dataset.sk); }
       else if(b.dataset.fin && phase==="finish"){ outcome = b.dataset.fin; m.ctrl.innerHTML = ""; finish(); } };
-    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, outcome:null, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought:p.fought}))}); };
+    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, outcome:null, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought:p.fought, wound: p.hp<=0 ? 3 : woundOf(p.hp)}))}); };
     /* ---- 연출: 포켓몬식 구도(적은 오른쪽 위 먼 발판, 우리는 왼쪽 아래 가까운 발판) ---- */
     const W = 720, H = 380;
     const POS = { foe:{x:528, gy:182, h:116, face:-1, z:0.62}, me:{x:178, gy:352, h:176, face:1, z:0.3} };
@@ -1109,7 +1111,7 @@ function mgCombat(ctx){
       if(!SFX) addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
       if(!SFX) addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
       setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = clock + (st.crit?140:70);
-        foe.shownHp = foe.hp; party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt:`-${dmg}`, col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
+        foe.shownHp = foe.hp; party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt: tgt==="foe" ? `-${dmg}` : (party[act].hp<=0 ? "쓰러짐" : WOUND[woundOf(party[act].hp)]), col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
     }
     // 한 사람의 움직임: 대기(숨쉬기) · 돌진 · 무기 휘두르기/찌르기 · 피격 반동
     // arm: 위팔 각도(아래 방향 0 → 앞쪽 +), elb: 팔꿈치 굽힘, tilt: 손목에서 무기가 더 젖혀지는 각도
@@ -1162,10 +1164,10 @@ function mgCombat(ctx){
       box(452, 286, 252, 72, "rgba(110,210,140,0.55)");
       c.fillStyle = "#e6f0e8"; c.font = `700 14px "Noto Sans KR",sans-serif`; c.fillText(me.name, 466, 308);
       c.fillStyle = "#9fb8a6"; c.font = `500 11px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`${party.filter(p=>p.hp>0).length}/${party.length}명`, 692, 308); c.textAlign = "left";
-      c.fillStyle = "#1b1f1c"; c.beginPath(); c.roundRect(466, 318, 224, 8, 4); c.fill();
-      const hp = me.shownHp==null ? me.hp : me.shownHp; me.barHp = me.barHp==null ? hp : me.barHp + (hp-me.barHp)*0.15;
-      c.fillStyle = hp>50 ? "#7fd08a" : hp>20 ? "#e0bd55" : "#d65a4f"; c.beginPath(); c.roundRect(466, 318, Math.max(0.01, 224*me.barHp/100), 8, 4); c.fill();
-      c.fillStyle = "#cfd8d0"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`체력 ${hp} / 100`, 690, 345); c.textAlign = "left";
+      const hp = me.shownHp==null ? me.hp : me.shownHp, wl = hp<=0 ? -1 : woundOf(hp);
+      WOUND.forEach((w,i)=>{ const x = 466 + i*57; c.fillStyle = i===wl ? WOUND_COL[i] : "#1b1f1c"; c.beginPath(); c.roundRect(x, 316, 53, 12, 4); c.fill();
+        c.fillStyle = i===wl ? "#101210" : "#5f6a62"; c.font = `700 9px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(w, x+26.5, 325); c.textAlign = "left"; });
+      c.fillStyle = "#cfd8d0"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(hp<=0 ? "쓰러짐" : `부상: ${WOUND[wl]}`, 690, 345); c.textAlign = "left";
       c.fillStyle = "#9fb8a6"; c.fillText(`${turn>MAXT?MAXT:turn} / ${MAXT}턴`, 466, 345);
       c.fillStyle = me.sp>=0 ? "#9fd8ff" : "#ff9a8a"; c.fillText(`정신력 ${me.sp>=0?"+":""}${me.sp}`, 540, 345);
       c.fillStyle = goal==="사살" ? "#ff8a7a" : "#9fe8b0"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`목표: ${goal}`, 704, 28); c.textAlign = "left";
@@ -1449,17 +1451,17 @@ async function dispatch(qid, fids){
   const k = dmgFactor(team,q)*shareMul(team.length);
   const names = team.map(f=>f.name).join(", ");
   let lines = [ ...(mgLine?[mgLine]:[]), combat ? `${team.length}명 출동 → <b>${success?"성공":"실패"}</b>` : `${team.length}명 출동 · 성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`];
+  // 의뢰가 끝나면 체력(정신 의뢰는 정신력)이 최대치의 일정 비율만큼 깎인다.
+  // 성공: 부상 단계에 따라 10~25% · 실패: 35~60%. 직접 싸운 사람은 전투 끝의 부상 단계, 아니면 무작위
+  const W_NAME = ["안정","경상","중상","치명상"], LOSS = {ok:[10,15,20,25], fail:[35,43,52,60]};
   team.forEach(f=>{
-    let dH, dM; const b = combat && combat.battle.find(x=>x.f===f);
-    if(b && b.fought){
-      // 직접 싸운 사람: 전투에서 잃은 체력이 그대로 남고, 정신력은 전투 끝의 정신력(SP)만큼 움직인다
-      dH = Math.round((100 - b.hp) * f.hpMax/100 * 0.45);     // 방어구 감소는 전투 중 받은 피해에 이미 들어가 있다
-      dM = b.sp < 0 ? Math.round(-b.sp*0.5*(1-redMP(f))) : -Math.round(b.sp*0.15);
-    } else if(combat){ dH = rnd(0,3); dM = rnd(0,2); }          // 뒤에서 거든 사람: 가벼운 소모만
-    else { const main = (success ? rnd(4,9) : rnd(14,26))*k, minor = rnd(0,2);
-      if(mental){ dM = Math.round(main*(1-redMP(f))); dH = minor; } else { dH = Math.round(main*(1-redHP(f))); dM = minor; } }
+    const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : rnd(0,3);
+    const pct = (success ? LOSS.ok : LOSS.fail)[w], red = mental ? redMP(f) : redHP(f);
+    const main = Math.round((mental ? f.mpMax : f.hpMax) * pct/100 * (1 - red*0.5)), minor = rnd(0,2);
+    let dH = mental ? minor : main, dM = mental ? main : minor;
+    if(b && b.fought) dM += b.sp < 0 ? Math.round(-b.sp*0.4) : 0;          // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 깎인다
     f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax);
-    lines.push(`${esc(f.name)}: 체력 -${dH}, 정신력 ${dM>=0?"-"+dM:"+"+(-dM)}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
+    lines.push(`${esc(f.name)}: ${W_NAME[w]} — 체력 -${dH}, 정신력 -${dM}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
   if(success){
