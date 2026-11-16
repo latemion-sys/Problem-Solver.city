@@ -533,20 +533,21 @@ const MG_NAME = {str:"주사위 합 전투", agi:"1인칭 추격", tec:"단서 �
 const gamesFor = q => q.kind==="호위" ? ["shield"] : q.attrs.filter(a=>a!=="wil");
 function chooseMode(q, team){
   const base = rate(team, q), games = gamesFor(q);
-  const lo = clamp(base-25,3,97);
+  const lo = clamp(base-25,3,97), fight = games.includes("str");
   return modal("출동 방식", `<div class="kv">
       <span>기본 성공률</span><b>${base}%</b>
-      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다</span></b>
+      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `합 전투에서 이기면 성공, 지면 실패. ${team.length>1 ? `대표 ${esc(team[0].name)}이(가) 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
       <span>자동 진행</span><b>성공률 ${base}% 그대로 · <span style="color:var(--yellow)">보수 80%</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
 async function runMinigames(q, team){
-  const games = gamesFor(q); let sum = 0;
+  const games = gamesFor(q); let sum = 0, combat = null;
   for(let i=0;i<games.length;i++){
     const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
-    sum += a==="shield" ? await mgShield(ctx) : a==="str" ? await mgCombat(ctx) : a==="agi" ? await mgCircles(ctx) : await mgClues(ctx);
+    if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; }
+    else sum += a==="shield" ? await mgShield(ctx) : a==="agi" ? await mgCircles(ctx) : await mgClues(ctx);
   }
-  return games.length ? sum/games.length : 0;
+  return {score: games.length ? sum/games.length : 0, combat};
 }
 
 /* ================= 미니게임 공통 창 ================= */
@@ -950,7 +951,7 @@ const roll = (a,b) => a + Math.floor(Math.random()*(b-a+1));
 function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
-    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal==="사살"?"머리·목을 무너뜨리거나 몸통을 세로로 갈라 사살":"양팔이나 양다리를 못 쓰게 하거나 몸통을 무너뜨려 제압"}</b>. 노릴 부위를 고르고 카드를 내 주사위 합을 겨룬다. 최대 5턴.`, ctx, 380);
+    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}해야 성공. 최대 5턴.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none", spec: weaponSpecOf(f.gear.weapon), armor: armorSpecOf(f.gear.armor)}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     const fwt = pick(FOE_WEAPONS);
@@ -958,54 +959,90 @@ function mgCombat(ctx){
     const g0 = q.grade!=null ? q.grade : 9, augChance = 0.12 + (9-g0)*0.09;
     foe.aug = Math.random()<augChance ? pick(AUGMENTS) : null;
     if(foe.aug && (9-g0)>=5 && Math.random()<0.4){ const b = pick(AUGMENTS.filter(x=>x!==foe.aug)); foe.aug = {n:`${foe.aug.n} + ${b.n}`, desc:`${foe.aug.desc}, ${b.desc}`, mul:Object.assign({}, b.mul, foe.aug.mul)}; }
-    foe.max = {}; Object.keys(PARTS).forEach(k=>{ foe.max[k] = Math.round(PARTS[k].hp * ((foe.aug && foe.aug.mul[k]) || 1)); foe.parts[k] = foe.max[k]; });
-    const bonus = me => clamp(Math.round((power(me.f,["str"])/Math.max(1,q.req) - 1)*4), -2, 6);
-    let act = 0, turn = 1; const MAXT = 5, st = {}; let phase = "part", part = null, done = false, outcome = null, foeCard = null, clash = null, anim = [];
+    /* ---- 림버스식 합 ----
+       스킬 = 기본 위력 + 코인 n개(앞면이면 코인 위력만큼 더한다). 정신력(SP)이 높을수록 앞면이 잘 나온다(앞면 확률 50+SP%).
+       합: 양쪽이 코인을 던져 최종 위력이 낮은 쪽 코인이 하나 깨지고 다시 던진다. 한쪽 코인이 다 깨질 때까지.
+       이긴 쪽은 남은 코인 수만큼 연달아 친다(코인마다 그때 던진 위력만큼 피해). 합이 길어질수록 피해가 조금 커진다.
+       방어 스킬: 이기면 남은 코인으로 반격, 지면 받는 피해가 절반.
+       대표 1명이 싸우고, 함께 출동한 나머지는 뒤에서 거든다(기본 위력·코인 위력 보정). 대표가 쓰러지면 다음 사람이 나선다. */
+    const skillOf = c => { const multi = /연속|삼연|연타/.test(c.n), coins = c.def ? 1 : multi ? 3 : (c.b - c.a >= 6 ? 2 : 2);
+      const cp = Math.max(1, Math.round((c.b - c.a) / coins)); return {n:c.n, base:c.a, coins, cp, def:!!c.def, cleave:!!c.cleave}; };
+    foe.skills = CARDS[fwt].map(c=>Object.assign(skillOf(c), {base: Math.max(1, c.a - 1)}));
+    const fg = q.grade!=null ? q.grade : 9, augMul = foe.aug ? Object.values(foe.aug.mul).reduce((a,b)=>a+b,0)/Object.values(foe.aug.mul).length : 1;
+    foe.max = Math.round((32 + (9-fg)*8) * (foe.aug ? 0.6 + 0.4*augMul : 1)); foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = 0;
+    const bonus = me => clamp(Math.round((power(me.f,["str"])/Math.max(1,q.req) - 1)*4), -2, 4);
+    party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); });
+    const support = ()=> party.filter((p,i)=>i!==act && p.hp>0);
+    const supBase = ()=> Math.min(3, support().length), supCp = ()=> support().length>=2 ? 1 : 0;
+    const mySkill = sk => { const me = party[act]; return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase()), cp: sk.cp + supCp()}); };
+    const headP = sp => clamp(50 + sp, 5, 95)/100;
+    const flip = (n, sp)=>{ const r = []; for(let i=0;i<n;i++) r.push(Math.random() < headP(sp)); return r; };
+    const powOf = (sk, heads)=> sk.base + heads.filter(Boolean).length*sk.cp;
+    function simClash(a, spA, b, spB){
+      let ca = a.coins, cb = b.coins, n = 0; const ex = [];
+      while(ca>0 && cb>0 && n<24){ const ha = flip(ca, spA), hb = flip(cb, spB), pa = powOf(a, ha), pb = powOf(b, hb);
+        ex.push({ha, hb, pa, pb, loser: pa>pb ? "foe" : pb>pa ? "me" : null}); if(pa>pb) cb--; else if(pb>pa) ca--; n++; }
+      return {ex, win: ca>0 ? "me" : "foe", left: ca>0 ? ca : cb, count: ex.filter(e=>e.loser).length};
+    }
+    function odds(a, spA, b, spB){ let w = 0; for(let i=0;i<300;i++) if(simClash(a, spA, b, spB).win==="me") w++; return w/300; }
+    const oddLabel = p => p>=0.8 ? ["압도", "#7fe0a8"] : p>=0.6 ? ["우세", "#a8e07f"] : p>=0.4 ? ["호각", "#e0d27f"] : p>=0.2 ? ["열세", "#e0a37f"] : ["절망", "#e07f7f"];
+    let act = 0, turn = 1; const MAXT = 5, st = {}; let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
     const S2 = {log:[]};
-    function pickFoeCard(){ const df = foe.cards.filter(c=>c.def), at = foe.cards.filter(c=>!c.def); foeCard = Math.random()<0.25 && df.length ? pick(df) : pick(at); }
-    function partMenu(){
-      phase = "part"; const me = party[act];
-      m.info.innerHTML = `<div class="pk-text"><b>${turn}/${MAXT}턴</b> · ${esc(me.name)}(체력 ${me.hp}) — 어디를 노릴까? <span class="muted">적은 이번에 <b style="color:#ffb0a0">${foeCard.n} (${foeCard.a}~${foeCard.b})</b>를 내려 한다.</span></div>`;
-      m.ctrl.innerHTML = `<div class="pk-moves pk-4">${Object.entries(PARTS).map(([k,p])=>`<button data-part="${k}" ${foe.parts[k]<=0?"disabled":""}><b>${p.n}</b><small>남은 체력 ${Math.max(0,foe.parts[k])}/${foe.max[k]}${foe.max[k]>p.hp?" · 개조":""}${p.pen?` · 주사위 -${p.pen}`:""}${k==="head"?" · 무너뜨리면 사살, 급소 · 높은 주사위면 즉사할 수 있음":k==="body"?" · 무너지면 전투불능(세로 베기면 사살)":" · 못 쓰게 하면 제압"}</small></button>`).join("")}</div>`;
+    function pickFoeSkill(){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def); foeSkill = Math.random()<0.22 && df.length ? pick(df) : pick(at); }
+    const coinStr = sk => "●".repeat(sk.coins);
+    function skillMenu(){
+      phase = "skill"; const me = party[act], sup = support();
+      m.info.innerHTML = `<div class="pk-text"><b>${turn}/${MAXT}턴</b> · ${esc(me.name)} — 체력 ${me.hp} · 정신력 ${me.sp>=0?"+":""}${me.sp}
+        <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""})을 내려 한다.</span>
+        ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}</div>`;
+      m.ctrl.innerHTML = `<div class="pk-moves">${CARDS[me.wt].map((c,i)=>{ const sk = mySkill(skillOf(c)), p = odds(sk, me.sp, foeSkill, foe.sp), [lb, lc] = oddLabel(p);
+        return `<button data-sk="${i}"><b>${c.n}</b><small>${sk.def?"방어 · ":""}기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 위력 ${sk.base}~${sk.base+sk.coins*sk.cp}<br><span style="color:${lc}">합 ${lb} ${Math.round(p*100)}%</span>${sk.def?" · 이기면 반격, 지면 피해 절반":""}</small></button>`; }).join("")}</div>`;
     }
-    function cardMenu(){
-      phase = "card"; const me = party[act], bn = bonus(me), pen = PARTS[part].pen;
-      m.info.innerHTML = `<div class="pk-text">${PARTS[part].n}을(를) 노린다. 어떤 수를 쓸까? <span class="muted">근력 보정 ${bn>=0?"+":""}${bn}${pen?` · 부위 -${pen}`:""} · 적 카드: ${foeCard.n} ${foeCard.a}~${foeCard.b}${foeCard.def?" (방어)":""}</span></div>`;
-      m.ctrl.innerHTML = `<div class="pk-moves">${CARDS[me.wt].map((c,i)=>`<button data-card="${i}"><b>${c.n}</b><small>${c.def?"방어 · ":"공격 · "}${c.cleave?"세로 베기 · ":""}주사위 ${Math.max(1,c.a+bn-pen)}~${Math.max(1,c.b+bn-pen)}${c.def?" · 이기면 반격, 지면 피해 절반":""}</small></button>`).join("")}</div><button class="pk-sw" data-back="1">부위 다시 고르기</button>`;
-    }
-    function resolveClash(ci){
+    const wait = ms => new Promise(r=>setTimeout(r, ms));
+    async function resolveClash(si){
       phase = "anim"; m.ctrl.innerHTML = "";
-      const me = party[act], c = CARDS[me.wt][ci], bn = bonus(me), pen = PARTS[part].pen;
-      const mine = Math.max(1, roll(c.a+bn-pen, c.b+bn-pen)), theirs = roll(foeCard.a, foeCard.b);
-      clash = {mine, theirs, t: performance.now(), card:c, fcard:foeCard};
-      setTimeout(()=>{
-        const lines = [`${esc(me.name)}의 ${c.n} <b>${mine}</b> vs ${foe.name}의 ${foeCard.n} <b>${theirs}</b>`];
-        if(mine > theirs){
-          let dmg = c.def ? (mine-theirs)*3 : Math.round(mine*2.6);
-          if(foeCard.def) dmg = Math.round(dmg*0.5);
-          dmg = Math.max(1, Math.round(dmg*PART_DMG_MUL*(part==="head"?1.4:1)));
-          const crit = part==="head" && !c.def && mine >= Math.max(1, c.b+bonus(me)-PARTS.head.pen-1) && Math.random()<0.5;
-          foe.parts[part] -= dmg; st.crit = crit; attack("me", dmg, c);
-          lines.push(`합을 이겼다! ${foe.name}의 ${PARTS[part].n}에 ${dmg}의 피해.`);
-          if(crit){ foe.parts.head = 0; outcome = "사살"; lines.push(`최대치! 일격이 뇌까지 닿았다. ${foe.name}은(는) 즉사했다.`); }
-          else if(foe.parts[part]<=0){
-            if(part==="head"){ outcome = "사살"; lines.push(`${foe.name}의 머리·목을 무너뜨렸다. 숨이 끊어졌다.`); }
-            else if(part==="body"){ if(c.cleave){ outcome = "사살"; lines.push(`${c.n}이(가) 몸통을 세로로 갈랐다. ${foe.name}은(는) 즉사했다.`); } else { outcome = "제압"; lines.push(`${foe.name}은(는) 몸통이 무너져 전투불능이 됐다.`); } }
-            else { outcome = "제압"; lines.push(`${foe.name}의 ${PARTS[part].n}을(를) 못 쓰게 만들었다. 더는 싸우지 못한다.`); }
-          }
-        } else if(theirs > mine){
-          let dmg = foeCard.def ? (theirs-mine)*2 : Math.round(theirs*1.6*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f)));
-          if(c.def) dmg = Math.round(dmg*0.5);
-          me.hp = Math.max(0, me.hp-dmg); st.crit = false; attack("foe", dmg, foeCard);
-          lines.push(`합에서 밀렸다… ${esc(me.name)} -${dmg}${c.def?" (막아서 절반)":""}`);
-        } else { st.crit = false; attack("tie", 0, c); lines.push("팽팽하게 맞부딪쳐 서로 튕겨 났다."); }
-        S2.log = lines.concat(S2.log).slice(0,4);
-        m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
-        setTimeout(next, 1500);
-      }, 1100);
+      const me = party[act], c = CARDS[me.wt][si], sk = mySkill(skillOf(c)), fk = foeSkill;
+      const R = simClash(sk, me.sp, fk, foe.sp);
+      const lines = [`${esc(me.name)}의 ${c.n} vs ${foe.name}의 ${fk.n}`];
+      clash = {mine:{sk, coins:sk.coins, broken:0, heads:[], p:sk.base}, foe:{sk:fk, coins:fk.coins, broken:0, heads:[], p:fk.base}, t: performance.now(), res:null};
+      m.info.innerHTML = `<div class="pk-text">${lines[0]} — 합!</div>`;
+      for(const e of R.ex){
+        clash.mine.heads = e.ha; clash.mine.p = e.pa; clash.foe.heads = e.hb; clash.foe.p = e.pb; clash.flipAt = performance.now(); clash.res = null;
+        st.crit = false; attack("tie", 0, c); await wait(560);
+        clash.res = e.loser; if(e.loser==="foe") clash.foe.broken++; else if(e.loser==="me") clash.mine.broken++;
+        await wait(e.loser ? 380 : 300);
+      }
+      const won = R.win==="me", wSk = won ? sk : fk, bonusK = 1 + 0.04*Math.max(0, R.count-1);
+      // 합 결과로 정신력이 움직인다
+      if(won){ me.sp = clamp(me.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); foe.sp = clamp(foe.sp - 4, -45, 45); }
+      else { me.sp = clamp(me.sp - 5, -45, 45); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
+      lines.push(won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${foe.name}이(가) 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
+      m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
+      let total = 0;
+      for(let k=0;k<R.left;k++){
+        const heads = flip(R.left, won ? me.sp : foe.sp), P = powOf(wSk, heads);
+        if(won){ let dmg = Math.round(P*1.4*bonusK*(wSk.def ? 0.6 : 1)); if(fk.def && !wSk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+          foe.hp = Math.max(0, foe.hp - dmg); total += dmg; st.crit = k===R.left-1 && foe.hp<=0; attack("me", dmg, c); }
+        else { let dmg = Math.round(P*1.5*bonusK*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+          me.hp = Math.max(0, me.hp - dmg); total += dmg; st.crit = false; attack("foe", dmg, fk); }
+        await wait(760);
+        if(foe.hp<=0 || me.hp<=0) break;
+      }
+      clash = null;
+      lines.push(won ? `${foe.name}에게 ${total}의 피해.` : `${esc(me.name)} 체력 -${total}${sk.def?" (막아서 절반)":""}`);
+      S2.log = lines.concat(S2.log).slice(0,4);
+      m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
+      await wait(900);
+      next();
+    }
+    // 쓰러뜨린 뒤 마무리: 제압할지, 숨통을 끊을지 고른다(의뢰 목표와 다르면 의뢰 실패)
+    function finishMenu(){
+      phase = "finish"; downed = true;
+      m.info.innerHTML = `<div class="pk-text">${foe.name}이(가) 쓰러졌다. 의뢰 목표는 <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>이다. 어떻게 마무리할까?</div>`;
+      m.ctrl.innerHTML = `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>숨은 붙여 두고 묶는다</small></button><button data-fin="사살"><b>사살</b><small>숨통을 끊는다</small></button></div>`;
     }
     function next(){
-      if(outcome) return finish();
+      if(foe.hp<=0) return finishMenu();
       if(party[act].hp<=0){
         const alive = party.findIndex(p=>p.hp>0);
         if(alive<0) return finish("lost");
@@ -1014,23 +1051,22 @@ function mgCombat(ctx){
       }
       turnEnd();
     }
-    function turnEnd(){ turn++; if(turn>MAXT) return finish("time"); pickFoeCard(); partMenu(); }
+    function turnEnd(){ turn++; if(turn>MAXT) return finish("time"); pickFoeSkill(); skillMenu(); }
     function finish(why){
       if(done) return; done = true;
-      const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0);
-      const prog = Math.max(...Object.keys(PARTS).filter(k=> goal==="사살" ? k==="head" : k!=="head").map(k=>1-Math.max(0,foe.parts[k])/foe.max[k]));
-      let score, text;
-      if(outcome===goal){ score = 0.6 + 0.4*rest; text = goal==="사살" ? "목표를 사살했다" : "목표를 제압했다"; }
-      else if(outcome){ score = 0.35; text = goal==="제압" ? "과잉 진압 — 죽여 버렸다" : "제압만 했다 — 사살 의뢰였다"; }
-      else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다"; }
-      else { score = 0.5*prog; text = "시간이 다 됐다 — 놓쳤다"; }
-      setTimeout(()=>{ mgResult(m, clamp(score,0,1), text).then(resolve); }, outcome ? 1500 : 600);
+      const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0), prog = 1 - foe.hp/foe.max;
+      let win = false, score, text;
+      if(outcome===goal){ win = true; score = 0.6 + 0.4*rest; text = goal==="사살" ? "목표를 사살했다 — 의뢰 성공" : "목표를 제압했다 — 의뢰 성공"; }
+      else if(outcome){ score = 0.3; text = goal==="제압" ? "과잉 진압 — 죽여 버렸다. 의뢰 실패" : "제압만 했다 — 사살 의뢰였다. 의뢰 실패"; }
+      else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다 — 의뢰 실패"; }
+      else { score = 0.4*prog; text = "시간이 다 됐다 — 놓쳤다. 의뢰 실패"; }
+      const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought: p.fought}))};
+      setTimeout(()=>{ mgResult(m, res.score, text).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
-      if(b.dataset.part && phase==="part"){ part = b.dataset.part; cardMenu(); }
-      else if(b.dataset.back && phase==="card") partMenu();
-      else if(b.dataset.card!==undefined && phase==="card") resolveClash(+b.dataset.card); };
-    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve(0); };
+      if(b.dataset.sk!==undefined && phase==="skill"){ party[act].fought = true; resolveClash(+b.dataset.sk); }
+      else if(b.dataset.fin && phase==="finish"){ outcome = b.dataset.fin; m.ctrl.innerHTML = ""; finish(); } };
+    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, outcome:null, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought:p.fought}))}); };
     /* ---- 연출: 포켓몬식 구도(적은 오른쪽 위 먼 발판, 우리는 왼쪽 아래 가까운 발판) ---- */
     const W = 720, H = 380;
     const POS = { foe:{x:528, gy:182, h:116, face:-1, z:0.62}, me:{x:178, gy:352, h:176, face:1, z:0.3} };
@@ -1051,7 +1087,7 @@ function mgCombat(ctx){
     // by: 공격하는 쪽("me" 우리, "foe" 적, "tie" 맞부딪침)
     function attack(by, dmg, card){
       const t0 = clock, big = st.crit ? 1.6 : 1, tmA = by==="tie" ? [200,90,90,360] : timingOf(by==="me" ? party[act].wt : foe.wt), imp = tmA[0]+tmA[1];
-      const myS = atkStyle(party[act].wt, by==="foe" ? null : card), foS = atkStyle(foe.wt, by==="tie" ? foeCard : card);
+      const myS = atkStyle(party[act].wt, by==="foe" ? null : card), foS = atkStyle(foe.wt, by==="tie" ? foeSkill : card);
       st.ev.push({by, t0, crit: st.crit, style: by==="me" ? myS : foS, styleMe: myS, styleFoe: foS, multi: card && /삼연|연속 찌르기/.test(card.n) ? 3 : 1});
       if(by==="tie" && SFX){ const x = 360, y = 230; SFX.slash(VFX_TYPE[myS]||"diag", x, y, 70, {face:1, delay:0.18}); SFX.slash(VFX_TYPE[foS]||"diag", x, y, 70, {face:-1, col:[1,0.6,0.5], delay:0.18});
         SFX.hit(x, y, {dir:-Math.PI/2, sparkDir:-Math.PI/2, pow:1.1, R:80, delay:0.29, spread:3.2}); setTimeout(()=>{ st.waves.push({x, y, t0:clock, k:0.6}); st.shake = 6; }, imp); return; }
@@ -1073,7 +1109,7 @@ function mgCombat(ctx){
       if(!SFX) addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
       if(!SFX) addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
       setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = clock + (st.crit?140:70);
-        st.cond = JSON.parse(JSON.stringify(foe.parts)); party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt:`-${dmg}`, col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
+        foe.shownHp = foe.hp; party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt:`-${dmg}`, col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
     }
     // 한 사람의 움직임: 대기(숨쉬기) · 돌진 · 무기 휘두르기/찌르기 · 피격 반동
     // arm: 위팔 각도(아래 방향 0 → 앞쪽 +), elb: 팔꿈치 굽힘, tilt: 손목에서 무기가 더 젖혀지는 각도
@@ -1102,7 +1138,7 @@ function mgCombat(ctx){
       if(outcome && st.koAt!=null){ const k = ease(clamp((clock-st.koAt)/600,0,1));
         if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; fp.sw = -0.2; } else { frot = 1.3*k; fdim = 0.25*k; } }
       const fcol = hexMix(hexMix(SIDE_COL.foe.fill, "#000000", fdim), "#fff4e8", fp.flash);
-      const fworst = st.cond ? Math.min(...Object.keys(PARTS).map(k=>Math.max(0,st.cond[k])/foe.max[k])) : 1;
+      const fworst = foe.shownHp/foe.max;
       drawFixer(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, state: outcome==="제압" ? "hurt" : "combat", weapon: outcome ? null : foe.spec, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot, hurt: 1-fworst});
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
@@ -1116,7 +1152,7 @@ function mgCombat(ctx){
       if(SFX && SFX.active()){ SFX.render(); c.drawImage(SFX.canvas, 0, 0, W, H); }
       const box = (x, y, w, h, edge)=>{ c.fillStyle = "rgba(10,9,14,0.82)"; c.strokeStyle = edge; c.lineWidth = 1.2; c.beginPath(); c.roundRect(x,y,w,h,8); c.fill(); c.stroke(); };
       // 적 정보(왼쪽 위): 이름, 개조, 몸 상태는 글로만
-      const shown = st.cond || foe.max, worst = Math.min(...Object.keys(PARTS).map(k=>Math.max(0,shown[k])/foe.max[k]));
+      const worst = foe.shownHp/foe.max;
       const cond = outcome==="사살" && st.koAt!=null && clock>st.koAt ? "숨이 끊어졌다" : outcome==="제압" && st.koAt!=null && clock>st.koAt ? "더는 싸우지 못한다" : worst>0.85 ? "멀쩡하다" : worst>0.5 ? "상처를 입었다" : worst>0.2 ? "비틀거린다" : "한계에 가깝다";
       box(16, 14, 262, foe.aug ? 66 : 50, "rgba(230,110,100,0.55)");
       c.fillStyle = "#f0e6e0"; c.font = `700 14px "Noto Sans KR",sans-serif`; c.fillText(foe.name, 28, 36);
@@ -1131,18 +1167,24 @@ function mgCombat(ctx){
       c.fillStyle = hp>50 ? "#7fd08a" : hp>20 ? "#e0bd55" : "#d65a4f"; c.beginPath(); c.roundRect(466, 318, Math.max(0.01, 224*me.barHp/100), 8, 4); c.fill();
       c.fillStyle = "#cfd8d0"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`체력 ${hp} / 100`, 690, 345); c.textAlign = "left";
       c.fillStyle = "#9fb8a6"; c.fillText(`${turn>MAXT?MAXT:turn} / ${MAXT}턴`, 466, 345);
+      c.fillStyle = me.sp>=0 ? "#9fd8ff" : "#ff9a8a"; c.fillText(`정신력 ${me.sp>=0?"+":""}${me.sp}`, 540, 345);
       c.fillStyle = goal==="사살" ? "#ff8a7a" : "#9fe8b0"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`목표: ${goal}`, 704, 28); c.textAlign = "left";
-      // 주사위
-      if(clash && now-clash.t < 2400){ const k = now-clash.t, rolling = k<1100, bn = bonus(me), pen = PARTS[part].pen;
-        const show = (x, v, a, b, col, label, won)=>{ const val = rolling ? a+Math.floor(Math.random()*(b-a+1)) : v, pop = rolling ? 1 : 1 + 0.18*Math.max(0, 1-(k-1100)/220);
-          c.save(); c.translate(x, 84); c.rotate(rolling ? Math.sin(k/45)*0.35 : 0); c.scale(pop, pop);
-          if(!rolling && won){ c.shadowColor = col; c.shadowBlur = 18; }
-          c.fillStyle = "rgba(12,11,15,0.9)"; c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.roundRect(-25,-25,50,50,9); c.fill(); c.stroke(); c.shadowBlur = 0;
-          c.fillStyle = col; c.font = `800 25px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(Math.max(1,val), 0, 1); c.restore();
-          c.fillStyle = "#e0d9cc"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(label, x, 126); c.textAlign = "left"; };
-        show(318, clash.mine, Math.max(1,clash.card.a+bn-pen), Math.max(1,clash.card.b+bn-pen), "#7fe0a8", clash.card.n, clash.mine>clash.theirs);
-        show(414, clash.theirs, clash.fcard.a, clash.fcard.b, "#ff9a8a", clash.fcard.n, clash.theirs>clash.mine);
-        c.fillStyle = "#e6e1d8"; c.font = `800 15px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("합", 366, 90); c.textAlign = "left"; }
+      // 합: 위력 숫자와 코인(금빛 앞면 · 회색 뒷면 · 깨진 코인은 금이 간 채 흐리게)
+      if(clash){ const k = now - (clash.flipAt||clash.t), rolling = clash.flipAt && k < 260;
+        const show = (x, sd, col, label, win)=>{ const val = rolling ? sd.sk.base + Math.floor(Math.random()*(sd.sk.coins+1))*sd.sk.cp : sd.p, pop = clash.res!=null && win ? 1.18 : 1;
+          c.save(); c.translate(x, 80); c.scale(pop, pop); if(clash.res!=null && win){ c.shadowColor = col; c.shadowBlur = 18; }
+          c.fillStyle = "rgba(12,11,15,0.9)"; c.strokeStyle = col; c.lineWidth = 2; c.beginPath(); c.roundRect(-27,-24,54,48,9); c.fill(); c.stroke(); c.shadowBlur = 0;
+          c.fillStyle = col; c.font = `800 25px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(val, 0, 1); c.restore();
+          const n = sd.coins, gap = 15, x0 = x - (n-1)*gap/2;
+          for(let i=0;i<n;i++){ const cx = x0 + i*gap, cy = 116, broken = i >= n - sd.broken, h = sd.heads[i];
+            c.save(); c.globalAlpha = broken ? 0.3 : 1; c.beginPath(); c.arc(cx, cy, 6, 0, 7);
+            c.fillStyle = broken ? "#555" : h===true ? "#f2c75c" : h===false ? "#8d8a86" : "#c9b98a"; c.fill(); c.strokeStyle = "rgba(0,0,0,0.6)"; c.lineWidth = 1; c.stroke();
+            if(broken){ c.strokeStyle = "#ddd"; c.beginPath(); c.moveTo(cx-4, cy-4); c.lineTo(cx+1, cy); c.lineTo(cx-2, cy+4); c.stroke(); }
+            c.restore(); }
+          c.fillStyle = "#e0d9cc"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(label, x, 138); c.textAlign = "left"; };
+        show(306, clash.mine, "#7fe0a8", clash.mine.sk.n, clash.res==="foe");
+        show(426, clash.foe, "#ff9a8a", clash.foe.sk.n, clash.res==="me");
+        c.fillStyle = "#e6e1d8"; c.font = `800 15px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("합", 366, 86); c.textAlign = "left"; }
       // 피해 숫자
       st.pop = st.pop.filter(p=>clock-p.t0 < 900);
       st.pop.forEach(p=>{ const k = (clock-p.t0)/900; c.globalAlpha = 1-k*k; c.fillStyle = p.col; c.font = `800 ${18+6*(1-k)}px "Noto Sans KR",sans-serif`; c.fillText(p.txt, p.x, p.y - 26*ease(k)); c.globalAlpha = 1; });
@@ -1175,9 +1217,9 @@ function mgCombat(ctx){
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    pickFoeCard();
+    pickFoeSkill();
     m.info.innerHTML = `<div class="pk-text">${foe.name}이(가) 앞을 막아섰다. ${foe.aug ? `<b style="color:#ffb35a">${foe.aug.n}</b> — ${foe.aug.desc}.` : "개조하지 않은 맨몸이다."}</div>`;
-    setTimeout(partMenu, 1400);
+    setTimeout(skillMenu, 1400);
   });
 }
 
@@ -1396,20 +1438,28 @@ async function dispatch(qid, fids){
   let mode = "auto";
   if(hasGame){ mode = await chooseMode(q, team); if(!mode) return; }
   team.forEach(f=>f.lastDispatch = S.day);
-  const base = rate(team,q); let pr = base, payMul = 1, mgLine = "";
-  if(mode==="play"){ const sc = await runMinigames(q, team); pr = clamp(Math.round(base - 25 + 25*sc), 3, 97); mgLine = `미니게임 ${Math.round(sc*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; }
+  const base = rate(team,q); let pr = base, payMul = 1, mgLine = "", combat = null;
+  if(mode==="play"){ const r = await runMinigames(q, team); combat = r.combat;
+    if(combat){ mgLine = `합 전투 ${combat.win ? "승리" : "패배"}`; }
+    else { pr = clamp(Math.round(base - 25 + 25*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
   else if(hasGame){ payMul = 0.8; mgLine = `자동 진행 · 성공률 ${pr}% · 보수 80%`; }
   const pay = Math.round(q.reward*payMul/100)*100;
-  const success = Math.random()*100 < pr;
+  // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
+  const success = combat ? combat.win : Math.random()*100 < pr;
   const k = dmgFactor(team,q)*shareMul(team.length);
   const names = team.map(f=>f.name).join(", ");
-  let lines = [ ...(mgLine?[mgLine]:[]), `${team.length}명 출동 · 성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`];
+  let lines = [ ...(mgLine?[mgLine]:[]), combat ? `${team.length}명 출동 → <b>${success?"성공":"실패"}</b>` : `${team.length}명 출동 · 성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`];
   team.forEach(f=>{
-    const main = (success ? rnd(4,9) : rnd(14,26))*k, minor = rnd(0,2);
-    let dH, dM;
-    if(mental){ dM = Math.round(main*(1-redMP(f))); dH = minor; } else { dH = Math.round(main*(1-redHP(f))); dM = minor; }
-    f.hp = Math.max(0, f.hp-dH); f.mp = Math.max(0, f.mp-dM);
-    lines.push(`${esc(f.name)}: 체력 -${dH}, 정신력 -${dM}`);
+    let dH, dM; const b = combat && combat.battle.find(x=>x.f===f);
+    if(b && b.fought){
+      // 직접 싸운 사람: 전투에서 잃은 체력이 그대로 남고, 정신력은 전투 끝의 정신력(SP)만큼 움직인다
+      dH = Math.round((100 - b.hp) * f.hpMax/100 * 0.45);     // 방어구 감소는 전투 중 받은 피해에 이미 들어가 있다
+      dM = b.sp < 0 ? Math.round(-b.sp*0.5*(1-redMP(f))) : -Math.round(b.sp*0.15);
+    } else if(combat){ dH = rnd(0,3); dM = rnd(0,2); }          // 뒤에서 거든 사람: 가벼운 소모만
+    else { const main = (success ? rnd(4,9) : rnd(14,26))*k, minor = rnd(0,2);
+      if(mental){ dM = Math.round(main*(1-redMP(f))); dH = minor; } else { dH = Math.round(main*(1-redHP(f))); dM = minor; } }
+    f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax);
+    lines.push(`${esc(f.name)}: 체력 -${dH}, 정신력 ${dM>=0?"-"+dM:"+"+(-dM)}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
   if(success){
@@ -4239,7 +4289,7 @@ function fxTestPanel(){
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
     const team=S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean); const at = g==="shield"?["str","agi"]:[g];
     const q={kind: g==="shield"?"호위":"일반", goal: el.querySelector("#fxgoal").value, grade:+el.querySelector("#fxgr").value, attrs:at, req: Math.max(1, teamPower(team,at)/kk), client:"테스트 의뢰인"};
-    const sc = await runMinigames(q, team); toast(`미니게임 점수 ${Math.round(sc*100)}점`); });
+    const r = await runMinigames(q, team); toast(r.combat ? `합 전투 ${r.combat.win?"승리 — 의뢰 성공":"패배 — 의뢰 실패"}` : `미니게임 점수 ${Math.round(r.score*100)}점`); });
 }
 
 // 테스트: 참격·히트 VFX 시험장
