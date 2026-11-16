@@ -98,6 +98,8 @@ footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);lin
 .fg-body{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
 .fg-prev .fg-cv{width:100%;aspect-ratio:4/3.4;display:block;border-radius:8px;border:1px solid var(--line)} .fg-view{margin-top:6px}
 .fg-row{display:flex;align-items:center;gap:10px;margin-bottom:9px} .fg-row>span{width:62px;flex:none;font-size:12px;color:var(--muted)} .fg-row input[type=range]{flex:1} .fg-row input#fgname{flex:1}
+.fg-pts{display:flex;gap:4px;align-items:center}.fg-pts b{min-width:38px;text-align:center}.fg-pts button{padding:3px 9px;font-size:12px}
+.fg-spec{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin-bottom:6px}.fg-spec button{text-align:left;padding:8px 10px;display:flex;flex-direction:column;gap:3px}.fg-spec button.on{border-color:var(--accent)}.fg-spec small{color:var(--muted);font-size:11px;line-height:1.4}
 .fg-seg{display:flex;gap:4px;flex-wrap:wrap} .fg-seg button{padding:4px 9px;font-size:12px} .fg-seg button.on{border-color:var(--accent);color:var(--accent)}
 .fg-sw{display:flex;gap:5px;flex-wrap:wrap} .fg-sw .sw{width:24px;height:24px;padding:0;border-radius:50%;font-size:11px;color:var(--muted)} .fg-sw .sw.on{outline:2px solid var(--accent);outline-offset:2px}
 .fg-nav{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
@@ -594,7 +596,7 @@ function gearList(f){ return [f.gear.weapon,f.gear.armor,f.gear.acc].filter(Bool
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
-  if(f.ego) p += f.ego.type==="weapon" ? 8 : 3;
+  if(f.ego){ p += f.ego.type==="weapon" ? 8 : 3; if(f.ego.bonus) p += attrs.reduce((s,a)=>s+(f.ego.bonus[a]||0),0)/attrs.length; }
   return p;
 }
 // 팀 전력: 가장 강한 1명 + 나머지의 40%
@@ -618,9 +620,12 @@ function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30
 
 /* ================= 장비 정보(연출용) ================= */
 function weaponTypeOf(g){ if(!g) return null; if(g.wtype) return g.wtype==="drill" ? "lance" : g.wtype; const s = SHOP.find(i=>i.name===g.name); return s ? s.wtype : "blade"; }
+// E.G.O.가 형상을 갖추면 그 무기·방어구 모습으로 나선다(가진 장비 대신)
+function wGear(f){ return f.ego && f.ego.type==="weapon" && f.ego.look ? {name:f.ego.name, wtype:f.ego.look.kind, look:f.ego.look, ego:true} : f.gear.weapon; }
+function aGear(f){ return f.ego && f.ego.type==="armor" && f.ego.look ? {name:f.ego.name, look:f.ego.look, ego:true} : f.gear.armor; }
 function leadGear(f){
-  if(!f) return null; const w = f.gear.weapon, acc = f.gear.acc;
-  return { wtype: weaponTypeOf(w), weaponName: w ? w.name : null, spec: weaponSpecOf(w), armorSpec: armorSpecOf(f.gear.armor), armor: !!f.gear.armor, acc: !!acc,
+  if(!f) return null; const w = wGear(f), acc = f.gear.acc, ar = aGear(f);
+  return { wtype: weaponTypeOf(w), weaponName: w ? w.name : null, spec: weaponSpecOf(w), armorSpec: armorSpecOf(ar), armor: !!ar, acc: !!acc,
            accColor: acc && acc.mpRed ? "180,150,255" : "150,230,255", ego: !!f.ego };
 }
 
@@ -1063,7 +1068,7 @@ function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
     const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}해야 성공. 최대 6턴.`, ctx, 380);
-    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(f.gear.weapon) || "none", spec: weaponSpecOf(f.gear.weapon), armor: armorSpecOf(f.gear.armor)}));
+    const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(wGear(f)) || "none", spec: weaponSpecOf(wGear(f)), armor: armorSpecOf(aGear(f)), sp2: f.ego && f.ego.special || null, charge:0, shield:0, endured:false}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     const fwt = pick(reqTier(q.grade!=null?q.grade:9)===0 ? ["blunt","blade","tool","blunt"] : FOE_WEAPONS);     // 9~8급 상대(쥐·부랑자·양아치)는 몽둥이·칼·공구 정도
     const foe = {name: q.foe || FOE_NAMES[q.grade!=null?q.grade:9] || "적", wt:fwt, spec: Object.assign(defaultSpec(fwt), {metal:"#b9aca9", v: Math.floor(Math.random()*WEAPON_KINDS[fwt].vars.length)}), parts:{}, cards: CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1), b:c.b-1}))};
@@ -1085,10 +1090,12 @@ function mgCombat(ctx){
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
     const woundOf = hp => hp>75 ? 0 : hp>45 ? 1 : hp>18 ? 2 : 3;
-    party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); });
+    party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); if(p.sp2==="mind") p.sp = Math.max(0, p.sp); if(p.sp2==="shield") p.shield = 10; });
+    foe.burn = 0; foe.bleed = 0; foe.rupture = 0; let tick = "";   // E.G.O. 특수 공격이 새기는 상태(화상·출혈·파열)
+    const SPN = id => { const x = EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor).find(e=>e.id===id); return x ? x.n : id; };
     const support = ()=> party.filter((p,i)=>i!==act && p.hp>0);
     const supBase = ()=> Math.min(3, support().length), supCp = ()=> support().length>=2 ? 1 : 0;
-    const mySkill = sk => { const me = party[act]; return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase()), cp: sk.cp + supCp()}); };
+    const mySkill = sk => { const me = party[act]; return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + (me.charge||0)), cp: sk.cp + supCp()}); };
     const headP = sp => clamp(50 + sp, 5, 95)/100;
     const flip = (n, sp)=>{ const r = []; for(let i=0;i<n;i++) r.push(Math.random() < headP(sp)); return r; };
     const powOf = (sk, heads)=> sk.base + heads.filter(Boolean).length*sk.cp;
@@ -1104,11 +1111,16 @@ function mgCombat(ctx){
     const S2 = {log:[]};
     function pickFoeSkill(){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def); foeSkill = Math.random()<0.22 && df.length ? pick(df) : pick(at); }
     const coinStr = sk => "●".repeat(sk.coins);
+    function statusLine(){ const me = party[act], a = [], b = [];
+      if(foe.burn) a.push(`화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`);
+      if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge) b.push(`충전 +${me.charge}`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
+      return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
       m.info.innerHTML = `<div class="pk-text"><b>${turn}/${MAXT}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp)]}">${WOUND[woundOf(me.hp)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
         <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""})을 내려 한다.</span>
-        ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}</div>`;
+        ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}
+        ${statusLine()}${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
       m.ctrl.innerHTML = `<div class="pk-moves">${CARDS[me.wt].map((c,i)=>{ const sk = mySkill(skillOf(c)), p = odds(sk, me.sp, foeSkill, foe.sp), [lb, lc] = oddLabel(p);
         return `<button data-sk="${i}"><b>${c.n}</b><small>${sk.def?"방어 · ":""}기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 위력 ${sk.base}~${sk.base+sk.coins*sk.cp}<br><span style="color:${lc}">합 ${lb} ${Math.round(p*100)}%</span>${sk.def?" · 이기면 반격, 지면 피해 절반":""}</small></button>`; }).join("")}</div>`;
     }
@@ -1126,23 +1138,39 @@ function mgCombat(ctx){
         clash.res = e.loser; if(e.loser==="foe") clash.foe.broken++; else if(e.loser==="me") clash.mine.broken++;
         await wait(e.loser ? 380 : 300);
       }
+      if(foe.bleed > 0){ const bd = foe.bleed; foe.hp = Math.max(0, foe.hp - bd); foe.bleed = Math.floor(foe.bleed*2/3); lines.push(`<span style="color:#ff8a7a">출혈</span> — 합을 겨루느라 ${foe.name}이(가) ${bd}의 피해를 입었다.`);
+        if(foe.hp<=0){ clash = null; m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`; await wait(1100); S2.log = lines.concat(S2.log).slice(0,4); return next(); } }
       const won = R.win==="me", wSk = won ? sk : fk, bonusK = 1 + 0.04*Math.max(0, R.count-1);
       // 합 결과로 정신력이 움직인다
       if(won){ me.sp = clamp(me.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); foe.sp = clamp(foe.sp - 4, -45, 45); }
-      else { me.sp = clamp(me.sp - 5, -45, 45); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
+      else { if(me.sp2!=="mind") me.sp = clamp(me.sp - 5, -45, 45); else me.sp = Math.max(0, me.sp); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
+      if(won && me.sp2==="charge" && me.charge < 4){ me.charge++; }
       lines.push(won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${foe.name}이(가) 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       // 피해: 이긴 쪽이 남은 코인을 한 번 더 던져 나온 최종 위력만큼 한 번에 준다
-      const heads = flip(R.left, won ? me.sp : foe.sp), P = Math.round(powOf(wSk, heads)*bonusK);
+      const heads = flip(R.left, won ? me.sp : foe.sp); let P = Math.round(powOf(wSk, heads)*bonusK), crit = 0;
+      if(won && me.sp2==="poise"){ crit = heads.filter(h=>h && Math.random()<0.35).length; P += crit*wSk.cp; }
       if(clash){ (won ? clash.mine : clash.foe).heads = heads; (won ? clash.mine : clash.foe).p = P; clash.flipAt = performance.now(); clash.res = won ? "foe" : "me"; }
       let total = 0;
+      const egoNote = [];
       if(won){ let dmg = Math.round(P*(wSk.def ? 0.6 : 1)); if(fk.def && !wSk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
-        foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0; attack("me", dmg, c); }
+        if(crit) egoNote.push(`호흡 — 치명타 ${crit}개`);
+        if(me.sp2==="rupture"){ if(foe.rupture) egoNote.push(`파열 +${foe.rupture}`); dmg += foe.rupture; foe.rupture += 2; }
+        if(me.sp2==="burn"){ foe.burn = Math.min(9, foe.burn + 3); egoNote.push(`화상 ${foe.burn}`); }
+        if(me.sp2==="bleed"){ foe.bleed = Math.min(9, foe.bleed + 3); egoNote.push(`출혈 ${foe.bleed}`); }
+        if(me.sp2==="sink"){ foe.sp = clamp(foe.sp - 10, -45, 45); egoNote.push(`침잠 — 적 정신력 ${foe.sp}`); }
+        if(me.sp2==="charge") egoNote.push(`충전 +${me.charge}`);
+        foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c); }
       else { let dmg = Math.round(P*3*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
-        const w0 = woundOf(me.hp); me.hp = Math.max(0, me.hp - dmg); total = dmg; me.woundUp = woundOf(me.hp) > w0 || me.hp<=0; st.crit = false; attack("foe", dmg, fk); }
+        if(me.sp2==="evade" && Math.random()<0.25){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
+        if(dmg && me.shield){ const ab = Math.min(me.shield, dmg); dmg -= ab; me.shield -= ab; egoNote.push(`보호막이 ${ab}을(를) 막았다`); }
+        if(me.sp2==="endure" && !me.endured && dmg >= me.hp){ dmg = Math.max(0, me.hp - 1); me.endured = true; egoNote.push("인내 — 쓰러질 공격을 버텼다"); }
+        if(me.sp2==="thorns" && dmg>0){ const th = Math.max(1, Math.round(dmg*0.2)); foe.hp = Math.max(0, foe.hp - th); egoNote.push(`가시 — ${foe.name}에게 ${th} 되돌려 줌`); }
+        const w0 = woundOf(me.hp); me.hp = Math.max(0, me.hp - dmg); total = dmg; me.woundUp = woundOf(me.hp) > w0 || me.hp<=0; st.crit = false; attack("foe", Math.max(1,dmg), fk); }
       await wait(900);
       clash = null;
-      lines.push(won ? `남은 코인 위력 ${P} — ${foe.name}에게 ${total}의 피해.` : `${esc(me.name)}이(가) 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}`);
+      lines.push(won ? `남은 코인 위력 ${P} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${esc(me.name)}은(는) 상처 없이 버텼다.` : `${esc(me.name)}이(가) 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}`);
+      if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       S2.log = lines.concat(S2.log).slice(0,4);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       await wait(900);
@@ -1151,7 +1179,7 @@ function mgCombat(ctx){
     // 쓰러뜨린 뒤 마무리: 제압할지, 숨통을 끊을지 고른다(의뢰 목표와 다르면 의뢰 실패)
     function finishMenu(){
       phase = "finish"; downed = true;
-      m.info.innerHTML = `<div class="pk-text">${foe.name}이(가) 쓰러졌다. 의뢰 목표는 <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>이다. 어떻게 마무리할까?</div>`;
+      m.info.innerHTML = `<div class="pk-text">${tick ? `<span style="color:#ffb35a">${tick}</span><br>` : ""}${foe.name}이(가) 쓰러졌다. 의뢰 목표는 <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>이다. 어떻게 마무리할까?</div>`;
       m.ctrl.innerHTML = `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>숨은 붙여 두고 묶는다</small></button><button data-fin="사살"><b>사살</b><small>숨통을 끊는다</small></button></div>`;
     }
     function next(){
@@ -1164,7 +1192,14 @@ function mgCombat(ctx){
       }
       turnEnd();
     }
-    function turnEnd(){ turn++; if(turn>MAXT) return finish("time"); pickFoeSkill(); skillMenu(); }
+    function turnEnd(){
+      // 턴이 끝날 때: 화상이 타오르고, 재생이 상처를 메우고, 보호막이 다시 선다
+      const tk = [];
+      if(foe.burn > 0){ foe.hp = Math.max(0, foe.hp - foe.burn); tk.push(`화상 — ${foe.name}이(가) ${foe.burn}의 피해`); foe.burn--; }
+      party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } if(p.sp2==="shield") p.shield = 10; });
+      tick = tk.join(" · ");
+      if(foe.hp<=0) return finishMenu();
+      turn++; if(turn>MAXT) return finish("time"); pickFoeSkill(); skillMenu(); }
     function finish(why){
       if(done) return; done = true;
       const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0), prog = 1 - foe.hp/foe.max;
@@ -1904,7 +1939,8 @@ async function bloomEgo(f){
   f.mp = Math.round(f.mpMax*0.5);
   playFx("에고", "E.G.O. 개화", `${f.name} — ${f.ego.name}`, true);
   S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${f.ego.name} (${type==="weapon"?"무기":"방어구"})`});
-  await modal("E.G.O. 개화", `${esc(f.name)}이(가) <b>${esc(f.ego.name)}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.`, [{t:"확인",primary:true}]);
+  const go = await modal("E.G.O. 개화", `${esc(f.name)}이(가) <b>${esc(f.ego.name)}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${type==="weapon"?"특수 공격":"특수 방어"})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
+  if(go) await openForge(f, null, "ego");
 }
 function removeFixer(f, what, note){
   S.fixers = S.fixers.filter(x=>x.id!==f.id);
@@ -2135,7 +2171,8 @@ async function openManage(){
       <span>경험</span><b class="muted">근력 ${f.exp.str}/2 · 민첩 ${f.exp.agi}/2 · 재주 ${f.exp.tec}/2 · 의지 ${f.exp.wil}/2</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
-      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(f.ego.name)} (${f.ego.type==="weapon"?"무기":"방어구"})</b>`:""}
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(f.ego.name)} (${f.ego.type==="weapon"?"무기":"방어구"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
+        ${f.ego.look ? `<br><span class="muted" style="font-weight:400">${f.ego.type==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${f.ego.type==="weapon"?"특수 공격":"특수 방어"} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
@@ -2157,6 +2194,7 @@ async function openManage(){
       const d = e.target.dataset; const f = S.fixers.find(x=>x.id===sel);
       if(d.mview){ mview = d.mview; box.querySelectorAll("[data-mview]").forEach(x=>x.classList.toggle("on", x.dataset.mview===mview)); return; }
       if(d.forgego && f){ await openForge(f); }
+      else if(d.egoforge && f){ await openForge(f, null, "ego"); }
       else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.heal && f){
         const hc = healCost(f), isH = d.heal.startsWith("hp"), all = d.heal.endsWith("all");
@@ -2256,33 +2294,73 @@ async function openShop(startTab){
 }
 
 /* ---- 고유 장비 제작(특색 전용): ① 무기/방어구 → ② 종류 → ③ 생김새 → ④ 확정 ---- */
-async function openForge(f, slot0){
-  const prevW = f.unique && f.unique.weapon && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null;
-  const prevA = f.unique && f.unique.armor && f.gear.armor && f.gear.armor.unique ? f.gear.armor : null;
-  const st = {step: slot0 ? 2 : 1, slot: slot0 || null, view:"combat",
-    w: prevW ? Object.assign({}, prevW.look) : null, a: prevA ? Object.assign({}, prevA.look) : null,
-    name: ""};
+/* 고유 장비·E.G.O. 장비 제작: 종류 → 생김새 → 능력 → 확정.
+   능력은 4개 능력치(근력·민첩·재주·의지)에 점수를 나눠 준다. E.G.O.는 거기에 특수 능력 하나 —
+   무기는 특수 공격(림버스의 화상·출혈·파열·침잠·호흡·충전), 방어구는 특수 방어를 고른다. */
+const EGO_PTS = 10, UNIQUE_ARMOR_PTS = 6, STAT_CAP = 24;
+const EGO_SPECIAL = {
+  weapon:[
+    {id:"burn",    n:"화상", d:"맞힐 때마다 화상 3을 새긴다. 적은 턴이 끝날 때 화상만큼 피해를 입고, 화상은 1씩 줄어든다."},
+    {id:"bleed",   n:"출혈", d:"맞힐 때마다 출혈 3을 새긴다. 적은 합을 겨룰 때마다 출혈만큼 피해를 입고, 출혈은 3분의 1씩 줄어든다."},
+    {id:"rupture", n:"파열", d:"맞힐 때마다 파열이 2씩 쌓이고, 쌓인 파열만큼 피해가 더 들어간다."},
+    {id:"sink",    n:"침잠", d:"맞힐 때마다 적의 정신력을 10 깎는다 — 적 코인의 앞면이 잘 안 나온다."},
+    {id:"poise",   n:"호흡", d:"남은 코인으로 칠 때 앞면 코인마다 35% 확률로 치명타(그 코인 위력 2배)."},
+    {id:"charge",  n:"충전", d:"합을 이길 때마다 이번 전투 동안 기본 위력이 1씩 오른다(최대 +4)."}],
+  armor:[
+    {id:"shield",  n:"보호막", d:"매 턴 시작에 받는 피해 10을 막아 주는 보호막이 생긴다."},
+    {id:"thorns",  n:"가시",   d:"맞으면 받은 피해의 20%(최소 1)를 상대에게 되돌려 준다."},
+    {id:"evade",   n:"회피",   d:"합에서 졌을 때 25% 확률로 공격을 완전히 피한다."},
+    {id:"endure",  n:"인내",   d:"쓰러질 공격을 전투마다 한 번 버티고 숨이 붙은 채 남는다."},
+    {id:"mind",    n:"정신 방벽", d:"합에서 져도 정신력이 줄지 않고, 정신력이 0 아래로 내려가지 않는다."},
+    {id:"regen",   n:"재생",   d:"턴이 끝날 때마다 상처를 6씩 회복한다."}]
+};
+const egoSpecial = e => e && e.special ? (EGO_SPECIAL[e.type]||[]).find(x=>x.id===e.special) : null;
+const sumPts = o => ATTRS.reduce((t,a)=>t+(o[a]||0),0);
+const ptsText = o => ATTRS.filter(a=>o[a]>0).map(a=>`${ATTR_NAME[a]}+${o[a]}`).join(" · ") || "없음";
+function forgeBudget(mode, slot, kind){ return mode==="ego" ? EGO_PTS : slot==="weapon" ? sumPts(profBonus(kind, UNIQUE_POWER)) : UNIQUE_ARMOR_PTS; }
+function forgeDefault(mode, slot, kind){
+  const B = forgeBudget(mode, slot, kind), o = {str:0,agi:0,tec:0,wil:0};
+  if(slot==="weapon"){ Object.entries(WEAPON_KINDS[kind].prof).forEach(([k,v])=>o[k] = Math.round(B*v)); const d = B - sumPts(o), top = ATTRS.reduce((x,y)=>o[y]>o[x]?y:x, "str"); o[top] += d; }
+  else o.wil = B;
+  return o;
+}
+async function openForge(f, slot0, mode){
+  const ego = mode==="ego";
+  const prevW = ego ? null : (f.unique && f.unique.weapon && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null);
+  const prevA = ego ? null : (f.unique && f.unique.armor && f.gear.armor && f.gear.armor.unique ? f.gear.armor : null);
+  const eL = ego && f.ego.look ? Object.assign({}, f.ego.look) : null;
+  const st = {step: ego || slot0 ? 2 : 1, slot: ego ? f.ego.type : (slot0 || null), view:"combat",
+    w: ego ? (f.ego.type==="weapon" ? eL : null) : prevW ? Object.assign({}, prevW.look) : null,
+    a: ego ? (f.ego.type==="armor" ? eL : null) : prevA ? Object.assign({}, prevA.look) : null,
+    name: ego ? f.ego.name : "", alloc: null, special: ego ? f.ego.special || null : null};
   const kindName = () => st.slot==="weapon" ? WEAPON_KINDS[st.w.kind].n : ARMOR_TYPES[st.a.type];
-  const defName = () => `${f.title||f.name}의 ${kindName()}`;
+  const defName = () => ego ? f.ego.name : `${f.title||f.name}의 ${kindName()}`;
+  const budget = () => forgeBudget(mode, st.slot, st.w && st.w.kind);
+  // 능력 배분: 처음엔 지금 장비(또는 종류의 기본값), 종류가 바뀌어 총점이 달라지면 기본값으로 다시 맞춘다
+  const syncAlloc = () => { const B = budget(), key = st.slot + (st.slot==="weapon" && st.w ? st.w.kind : "");
+    if(!st.alloc){ const cur = ego ? f.ego.bonus : st.slot==="weapon" ? (prevW && prevW.wtype===(st.w&&st.w.kind) ? prevW.bonus : null) : (prevA ? prevA.bonus : null);
+      st.alloc = Object.assign({str:0,agi:0,tec:0,wil:0}, cur || {}); if(sumPts(st.alloc) !== B) st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind); st.allocKey = key; }
+    else if(st.allocKey !== key || sumPts(st.alloc) > B){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind); st.allocKey = key; } };
   let doneRes = null;
   const look = () => { const base = fixerLook(f); if(st.slot==="weapon" && st.w) base.weapon = st.w; if(st.slot==="armor" && st.a) base.armor = st.a; return base; };
   const sw = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-sw">${arr.map(cl=>`<button class="sw ${cur===cl?"on":""}" data-${key}="${cl||"none"}" style="background:${cl||"transparent"}">${cl?"":"✕"}</button>`).join("")}</div></div>`;
   const seg = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-seg">${arr.map((n,i)=>`<button class="${cur===i?"on":""}" data-${key}="${i}">${n}</button>`).join("")}</div></div>`;
-  const statLine = () => st.slot==="weapon" ? Object.entries(profBonus(st.w.kind, UNIQUE_POWER)).map(([k,v])=>`${ATTR_NAME[k]}+${v}`).join(" · ")
-    : `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}% · 의지+${UNIQUE_ARMOR.bonus.wil}`;
-  const steps = ["무기/방어구","종류","생김새","확정"];
+  const statLine = () => { const sp = ego && st.special ? (EGO_SPECIAL[st.slot].find(x=>x.id===st.special)||{}).n : null;
+    const base = ego ? (st.slot==="weapon" ? "E.G.O. 무기(전투력 +8)" : "E.G.O. 방어구(받는 피해 -35%)") : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
+    return [base, ptsText(st.alloc||{}), sp ? `${st.slot==="weapon"?"특수 공격":"특수 방어"} [${sp}]` : ""].filter(Boolean).join(" · "); };
+  const steps = ["무기/방어구","종류","생김새","능력","확정"];
   const draw = () => {
-    const head = `<div class="fg-steps">${steps.map((n,i)=>`<span class="${st.step===i+1?"on":st.step>i+1?"done":""}">${i+1}. ${n}</span>`).join("")}</div>`;
+    const head = `<div class="fg-steps">${steps.map((n,i)=> ego && i===0 ? "" : `<span class="${st.step===i+1?"on":st.step>i+1?"done":""}">${ego?i:i+1}. ${n}</span>`).join("")}</div>`;
     if(st.step===1) return head + `<p class="muted">${esc(f.name)} [${esc(f.title||"")}]의 고유 장비. 무엇을 만들까?</p>
       <div class="fg-pick"><button data-slot="weapon"><b>무기</b><small>${prevW?"지금: "+esc(prevW.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button>
       <button data-slot="armor"><b>방어구</b><small>${prevA?"지금: "+esc(prevA.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button></div>`;
+    const back2 = ego ? "" : `<div class="fg-nav"><button data-fgo="1">이전</button></div>`;
     if(st.step===2){
-      if(st.slot==="weapon") return head + `<p class="muted">무기 종류를 고른다. 종류에 따라 오르는 능력치가 다르다(위력 ${UNIQUE_POWER}).</p>
-        <div class="fg-kinds">${Object.entries(WEAPON_KINDS).map(([k,K])=>`<button data-kind="${k}" class="${st.w&&st.w.kind===k?"on":""}"><canvas class="wicon" data-ik="${k}"></canvas><b>${K.n}</b><small>${Object.entries(profBonus(k, UNIQUE_POWER)).map(([a,v])=>`${ATTR_NAME[a]}+${v}`).join(" ")}</small></button>`).join("")}</div>
-        <div class="fg-nav"><button data-fgo="1">이전</button></div>`;
-      return head + `<p class="muted">방어구 형태를 고른다. 능력은 형태와 상관없이 같다(${statLine()}).</p>
-        <div class="fg-kinds">${ARMOR_TYPES.map((n,i)=>`<button data-atype="${i}" class="${st.a&&st.a.type===i?"on":""}"><b>${n}</b><small>${["몸에 붙는 짧은 상의","무릎 위까지 오는 코트","발목까지 내려오는 코트","가슴판과 넓은 어깨"][i]}</small></button>`).join("")}</div>
-        <div class="fg-nav"><button data-fgo="1">이전</button></div>`;
+      const lead = ego ? `<p class="muted">${esc(f.name)}의 E.G.O. <b>${esc(f.ego.name)}</b>이(가) 어떤 ${st.slot==="weapon"?"무기":"옷"}의 모습으로 드러날까?</p>` : "";
+      if(st.slot==="weapon") return head + lead + `<p class="muted">무기 종류를 고른다. 종류마다 전투 기술이 다르다.</p>
+        <div class="fg-kinds">${Object.entries(WEAPON_KINDS).map(([k,K])=>`<button data-kind="${k}" class="${st.w&&st.w.kind===k?"on":""}"><canvas class="wicon" data-ik="${k}"></canvas><b>${K.n}</b><small>${CAT_NAME[K.cat]}</small></button>`).join("")}</div>${back2}`;
+      return head + lead + `<p class="muted">방어구 형태를 고른다.</p>
+        <div class="fg-kinds">${ARMOR_TYPES.map((n,i)=>`<button data-atype="${i}" class="${st.a&&st.a.type===i?"on":""}"><b>${n}</b><small>${["몸에 붙는 짧은 상의","무릎 위까지 오는 코트","발목까지 내려오는 코트","가슴판과 넓은 어깨"][i]}</small></button>`).join("")}</div>${back2}`;
     }
     const prev = `<div class="fg-prev"><canvas class="fg-cv"></canvas><div class="fg-seg fg-view">${STATE_TABS.map(([k,n])=>`<button class="${st.view===k?"on":""}" data-view="${k}">${n}</button>`).join("")}</div></div>`;
     if(st.step===3){
@@ -2297,13 +2375,26 @@ async function openForge(f, slot0){
         <div class="fg-row"><span>이름</span><input id="fgname" maxlength="30" value="${esc(st.name || defName())}"></div>
         <div class="fg-nav"><button data-fgo="2">이전</button><button class="primary" data-fgo="4">다음</button></div></div></div>`;
     }
+    if(st.step===4){
+      syncAlloc(); const B = budget(), left = B - sumPts(st.alloc), cap = Math.min(STAT_CAP, B);
+      const rows = ATTRS.map(a=>`<div class="fg-row"><span>${ATTR_NAME[a]}</span><div class="fg-pts"><button data-ad="${a}" data-dv="-5" ${st.alloc[a]<=0?"disabled":""}>−5</button><button data-ad="${a}" data-dv="-1" ${st.alloc[a]<=0?"disabled":""}>−</button>
+        <b>+${st.alloc[a]}</b><button data-ad="${a}" data-dv="1" ${left<=0||st.alloc[a]>=cap?"disabled":""}>+</button><button data-ad="${a}" data-dv="5" ${left<=0||st.alloc[a]>=cap?"disabled":""}>+5</button></div></div>`).join("");
+      const spx = ego ? `<h4 style="margin:12px 0 6px">${st.slot==="weapon"?"특수 공격":"특수 방어"} <span class="muted" style="font-weight:400;font-size:12px">하나를 고른다 · 합 전투에서 발동</span></h4>
+        <div class="fg-spec">${EGO_SPECIAL[st.slot].map(x=>`<button data-spec="${x.id}" class="${st.special===x.id?"on":""}"><b>${x.n}</b><small>${x.d}</small></button>`).join("")}</div>` : "";
+      return head + `<p class="muted">능력치 점수 <b>${B}</b>점을 나눠 준다. 한 능력치엔 최대 ${cap}점. 남은 점수 <b style="color:${left?"#e0d27f":"#9fe8b0"}">${left}</b>
+        ${ego ? "" : st.slot==="weapon" ? "· 기본값은 무기 종류에 맞춘 배분" : `· 피해 감소(체력 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%)는 그대로`}
+        <button data-reset="1" style="padding:2px 8px;margin-left:6px">기본값</button></p>
+        ${rows}${spx}
+        <div class="fg-nav"><button data-fgo="3">이전</button><button class="primary" data-fgo="5" ${left || (ego && !st.special) ? "disabled" : ""}>다음</button></div>
+        ${left ? `<p class="muted" style="font-size:12px">점수를 모두 나눠야 다음으로 넘어간다.</p>` : ego && !st.special ? `<p class="muted" style="font-size:12px">특수 능력을 하나 골라야 다음으로 넘어간다.</p>` : ""}`;
+    }
     return head + `<div class="fg-body">${prev}<div class="fg-ctl">
       <h4 style="margin:0 0 6px">${esc(st.name || defName())}</h4>
-      <div class="kv"><span>주인</span><b>${esc(f.name)} [${esc(f.title||"")}]</b><span>종류</span><b>${st.slot==="weapon" ? kindName()+" · "+WEAPON_KINDS[st.w.kind].vars[st.w.v||0] : "방어구 · "+kindName()}</b><span>능력</span><b>${statLine()}</b></div>
-      <p class="muted" style="font-size:12px">확정하면 바로 장착한다. ${st.slot==="weapon"?(prevW?"기존 고유 무기는 이 무기로 대체된다.":"지금 끼고 있는 무기는 보관함으로 옮겨진다."):(prevA?"기존 고유 방어구는 대체된다.":"지금 입고 있는 방어구는 보관함으로 옮겨진다.")}</p>
-      <div class="fg-nav"><button data-fgo="3">이전</button><button class="primary" data-confirm="1">확정</button></div></div></div>`;
+      <div class="kv"><span>주인</span><b>${esc(f.name)}${f.title?` [${esc(f.title)}]`:""}</b><span>종류</span><b>${ego?"E.G.O. ":""}${st.slot==="weapon" ? kindName()+" · "+WEAPON_KINDS[st.w.kind].vars[st.w.v||0] : "방어구 · "+kindName()}</b><span>능력</span><b>${statLine()}</b></div>
+      <p class="muted" style="font-size:12px">${ego ? "확정하면 E.G.O.가 이 모습과 능력으로 드러난다. 관리에서 언제든 다시 정할 수 있다." : "확정하면 바로 장착한다. " + (st.slot==="weapon"?(prevW?"기존 고유 무기는 이 무기로 대체된다.":"지금 끼고 있는 무기는 보관함으로 옮겨진다."):(prevA?"기존 고유 방어구는 대체된다.":"지금 입고 있는 방어구는 보관함으로 옮겨진다."))}</p>
+      <div class="fg-nav"><button data-fgo="4">이전</button><button class="primary" data-confirm="1">확정</button></div></div></div>`;
   };
-  await modal("고유 장비 제작", `<div id="fg"></div>`, [{t:"닫기"}], false, root=>{
+  await modal(ego ? "E.G.O. 형상" : "고유 장비 제작", `<div id="fg"></div>`, [{t:"닫기"}], false, root=>{
     const box = root.querySelector("#fg"); root.querySelector(".modal").classList.add("modal-wide");
     const paint = () => { box.innerHTML = draw();
       box.querySelectorAll("canvas[data-ik]").forEach(cv=>drawWeaponIcon(cv, defaultSpec(cv.dataset.ik)));
@@ -2312,8 +2403,8 @@ async function openForge(f, slot0){
     box.addEventListener("input", e=>{ const d = e.target.dataset;
       if(d.wlen){ st.w.len = +e.target.value; } else if(d.wwid){ st.w.wid = +e.target.value; } else if(e.target.id==="fgname"){ st.name = e.target.value.trim(); } });
     box.addEventListener("click", e=>{
-      const b = e.target.closest("button"); if(!b) return; const d = b.dataset;
-      if(d.slot){ st.slot = d.slot; st.step = 2; st.name = ""; }
+      const b = e.target.closest("button"); if(!b || b.disabled) return; const d = b.dataset;
+      if(d.slot){ st.slot = d.slot; st.step = 2; st.name = ""; st.alloc = null; }
       else if(d.kind){ st.w = Object.assign(defaultSpec(d.kind), st.w && st.w.kind===d.kind ? st.w : {}); st.step = 3; }
       else if(d.atype!==undefined){ st.a = Object.assign({type:1, pad:1, collar:0, trim:null}, st.a||{}, {type:+d.atype}); if(st.step===2) st.step = 3; }
       else if(d.wv!==undefined){ st.w.v = +d.wv; }
@@ -2323,13 +2414,24 @@ async function openForge(f, slot0){
       else if(d.pad!==undefined){ st.a.pad = +d.pad; }
       else if(d.collar!==undefined){ st.a.collar = +d.collar; }
       else if(d.trim){ st.a.trim = d.trim==="none" ? null : d.trim; }
+      else if(d.ad){ const B = budget(), cap = Math.min(STAT_CAP, B), left = B - sumPts(st.alloc), dv = +d.dv;
+        st.alloc[d.ad] = dv>0 ? Math.min(cap, st.alloc[d.ad] + Math.min(dv, left)) : Math.max(0, st.alloc[d.ad] + dv); }
+      else if(d.reset){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind); }
+      else if(d.spec){ st.special = d.spec; }
       else if(d.view){ st.view = d.view; box.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on", x.dataset.view===st.view)); return; }
-      else if(d.fgo){ const n = +d.fgo; if(n===4){ const i = box.querySelector("#fgname"); if(i) st.name = i.value.trim(); } st.step = n; if(n===1) st.slot = null; }
+      else if(d.fgo){ const n = +d.fgo; if(n===4 && st.step===3){ const i = box.querySelector("#fgname"); if(i) st.name = i.value.trim(); } st.step = n; if(n===1){ st.slot = null; st.alloc = null; } }
       else if(d.confirm){
-        const name = st.name || defName(); f.unique = f.unique || {};
+        const name = st.name || defName(), bonus = {}; ATTRS.forEach(a=>{ if(st.alloc[a]>0) bonus[a] = st.alloc[a]; });
+        if(ego){
+          Object.assign(f.ego, {name, look: Object.assign({}, st.slot==="weapon" ? st.w : st.a), bonus, special: st.special});
+          S.records.push({day:S.day, name:f.name, what:"E.G.O. 형상", note:`${name} — ${statLine()}`});
+          addLog(`${f.name}: E.G.O. [${name}]의 형상을 정했다`); save(); render(); doneRes = {name, ego:true};
+          root.querySelector(".mf button").click(); return;
+        }
+        f.unique = f.unique || {};
         let g;
-        if(st.slot==="weapon") g = {slot:"weapon", unique:true, name, wtype:st.w.kind, look:Object.assign({}, st.w), bonus:profBonus(st.w.kind, UNIQUE_POWER)};
-        else g = Object.assign({slot:"armor", unique:true, name, look:Object.assign({}, st.a)}, JSON.parse(JSON.stringify(UNIQUE_ARMOR)));
+        if(st.slot==="weapon") g = {slot:"weapon", unique:true, name, wtype:st.w.kind, look:Object.assign({}, st.w), bonus};
+        else g = {slot:"armor", unique:true, name, look:Object.assign({}, st.a), hpRed:UNIQUE_ARMOR.hpRed, mpRed:UNIQUE_ARMOR.mpRed, bonus};
         const old = f.gear[st.slot]; f.gear[st.slot] = g; if(old && !old.unique){ S.inventory = S.inventory||[]; S.inventory.push(old); }
         f.unique[st.slot] = true;
         S.records.push({day:S.day, name:f.name, what:"고유 장비 제작", note:`${name} (${st.slot==="weapon"?"무기":"방어구"})`});
@@ -2340,7 +2442,8 @@ async function openForge(f, slot0){
       paint();
     });
   });
-  if(doneRes) await alertBox("고유 장비 완성", `<b>${esc(doneRes.name)}</b>이(가) 완성되어 ${esc(f.name)}에게 장착되었다.<br><span class="muted">이제 의뢰 연출에서도 이 장비를 들고 나온다.</span>`);
+  if(doneRes && doneRes.ego) await alertBox("E.G.O. 형상", `<b>${esc(doneRes.name)}</b> — ${esc(f.name)}의 E.G.O.가 모습을 갖췄다.<br><span class="muted">이제 의뢰 연출과 합 전투에서 이 모습과 능력으로 싸운다.</span>`);
+  else if(doneRes) await alertBox("고유 장비 완성", `<b>${esc(doneRes.name)}</b>이(가) 완성되어 ${esc(f.name)}에게 장착되었다.<br><span class="muted">이제 의뢰 연출에서도 이 장비를 들고 나온다.</span>`);
 }
 
 /* ================= 기록 / 저장 ================= */
