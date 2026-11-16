@@ -529,25 +529,27 @@ function leadGear(f){
 }
 
 /* ================= 출동 방식 선택 ================= */
-const MG_NAME = {str:"주사위 합 전투", agi:"1인칭 추격", tec:"단서 찾기", shield:"방벽 막기"};
+const MG_NAME = {str:"합 전투", agi:"갈림길 추적", tec:"단서 찾기", shield:"방벽 막기"};
 const gamesFor = q => q.kind==="호위" ? ["shield"] : q.attrs.filter(a=>a!=="wil");
 function chooseMode(q, team){
   const base = rate(team, q), games = gamesFor(q);
-  const lo = clamp(base-25,3,97), fight = games.includes("str");
+  const lo = clamp(base-25,3,97), fight = games.includes("str") || (games.length===1 && games[0]==="agi");
   return modal("출동 방식", `<div class="kv">
       <span>기본 성공률</span><b>${base}%</b>
-      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `합 전투에서 이기면 성공, 지면 실패. ${team.length>1 ? `대표 ${esc(team[0].name)}이(가) 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
+      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${esc(team[0].name)}이(가) 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
       <span>자동 진행</span><b>성공률 ${base}% 그대로 · <span style="color:var(--yellow)">보수 80%</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
 async function runMinigames(q, team){
-  const games = gamesFor(q); let sum = 0, combat = null;
+  const games = gamesFor(q); let sum = 0, combat = null; const dec = [];
   for(let i=0;i<games.length;i++){
     const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
-    if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; }
-    else sum += a==="shield" ? await mgShield(ctx) : a==="agi" ? await mgCircles(ctx) : await mgClues(ctx);
+    if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; dec.push(combat); }
+    else if(a==="agi"){ const tr = await mgTrack(ctx); sum += tr.score; dec.push(tr); if(!combat) combat = tr; }
+    else sum += a==="shield" ? await mgShield(ctx) : await mgClues(ctx);
   }
-  return {score: games.length ? sum/games.length : 0, combat};
+  // 승패가 나는 게임(합 전투·추적)만으로 이뤄진 의뢰는 그 승패가 곧 의뢰 성패
+  return {score: games.length ? sum/games.length : 0, combat, decisive: dec.length===games.length ? dec.every(d=>d.win) : null, lostDecisive: dec.some(d=>!d.win)};
 }
 
 /* ================= 미니게임 공통 창 ================= */
@@ -1225,6 +1227,102 @@ function mgCombat(ctx){
   });
 }
 
+/* ---- 추적 의뢰: 갈림길 추적 ----
+   레퍼런스: 다키스트 던전 2 — 출발할 때 정찰로 지도 표시 몇 개를 미리 밝혀 경로를 정한다.
+   달아나는 표적을 골목 갈림길에서 쫓는다. 갈림길마다 살펴본 길에만 흔적(발자국·떨어뜨린 물건·목격담·소음)이 보인다.
+   발자국·떨어뜨린 물건은 틀리지 않지만, 목격담·소음은 헛걸음일 수 있다. 민첩이 높을수록 처음부터 살펴본 길이 많다.
+   맞는 길: 거리 -1(민첩이 높으면 가끔 -2) · 틀린 길: 거리 +1, 넘어지거나 부딪쳐 다칠 수 있다 · 멈춰서 살피기: 길 하나를 더 밝히지만 표적이 멀어질 수 있다.
+   거리 0이면 붙잡는다(의뢰 성공). 거리 6이 되거나 시간이 다 되면 놓친다(의뢰 실패). */
+function mgTrack(ctx){
+  return new Promise(resolve=>{
+    const q = ctx.q, lead = ctx.team[0], k = powK(ctx, "agi"), H = 300;
+    const m = mgOpen("추적 · 갈림길", "달아나는 표적을 쫓는다. 갈림길마다 흔적을 보고 길을 골라라. 발자국과 떨어뜨린 물건은 확실하지만, 목격담과 소음은 헛걸음일 수 있다.", ctx, H);
+    const T = 9 + (k>=1.3 ? 1 : 0), LOST = 6, scout0 = k>=1.25 ? 2 : 1, grade = q.grade!=null ? q.grade : 9;
+    const ROUTES = ["왼쪽 골목","오른쪽 골목","좁은 계단","지하 배수로","시장 통로","옥상 비상계단","공사장 가림막","폐건물 복도","철길 밑 굴다리","주차장 뒤편"];
+    const CLUE = {foot:{n:"선명한 발자국", sure:true, col:"#9fe8b0"}, drop:{n:"떨어뜨린 물건", sure:true, col:"#9fe8b0"}, wit:{n:"목격담", sure:false, col:"#e0d27f"}, noise:{n:"소음", sure:false, col:"#e0d27f"}, none:{n:"흔적 없음", sure:false, col:"#8a8f96"}};
+    const G = {d:3, turn:0, wound:0, done:false, trail:[], junc:null, msg:"", flash:0, mishaps:0};
+    function newJunction(){
+      const n = grade<=5 ? 3 : (Math.random()<0.5 ? 3 : 2), names = [...ROUTES].sort(()=>Math.random()-0.5).slice(0,n), truth = Math.floor(Math.random()*n);
+      const br = names.map((nm,i)=>{ const ok = i===truth;
+        const clue = ok ? (Math.random()<0.7 ? (Math.random()<0.6 ? "foot" : "drop") : (Math.random()<0.6 ? "wit" : "noise")) : (Math.random()<0.6 ? "none" : (Math.random()<0.6 ? "wit" : "noise"));
+        return {nm, ok, clue, seen:false}; });
+      const order = [...br.keys()].sort(()=>Math.random()-0.5); for(let i=0;i<Math.min(scout0, n);i++) br[order[i]].seen = true;
+      G.junc = br;
+    }
+    function ui(){
+      const left = T - G.turn;
+      m.info.innerHTML = `<div class="pk-text">거리 <b style="color:${G.d<=1?"#9fe8b0":G.d>=4?"#ff8a7a":"#e0d27f"}">${G.d}</b> / ${LOST} · 남은 시간 <b>${left}</b> · ${esc(lead.name)} ${["안정","경상","중상","치명상"][Math.min(3,G.wound)]}
+        ${G.msg ? `<br><span class="muted">${G.msg}</span>` : ""}</div>`;
+      if(G.done) return;
+      m.ctrl.innerHTML = `<div class="pk-moves">${G.junc.map((b,i)=>`<button data-br="${i}"><b>${b.nm}</b><small>${b.seen ? `<span style="color:${CLUE[b.clue].col}">${CLUE[b.clue].n}</span>${CLUE[b.clue].sure?" · 확실함":b.clue!=="none"?" · 헛걸음일 수 있음":""}` : "살펴보지 않음"}</small></button>`).join("")}
+        ${G.junc.some(b=>!b.seen) ? `<button data-scout="1"><b>멈춰서 살핀다</b><small>길 하나를 더 살핀다 · 시간 1 · 표적이 멀어질 수 있음</small></button>` : ""}</div>`;
+    }
+    function step(i){
+      if(G.done) return; const b = G.junc[i]; G.turn++; G.trail.push({nm:b.nm, ok:b.ok});
+      if(b.ok){ const dash = k>=1.3 && Math.random()<0.3; G.d -= dash ? 2 : 1; G.msg = dash ? `${b.nm} — 맞았다. 전력으로 달려 거리를 크게 좁혔다.` : `${b.nm} — 맞았다. 거리를 좁혔다.`; }
+      else { G.d += 1; const hurt = Math.random() < (0.3 + Math.max(0, 1-k)*0.4); if(hurt){ G.wound++; G.mishaps++; }
+        G.msg = `${b.nm} — 헛걸음이었다. 되돌아오는 사이 표적이 멀어졌다.${hurt ? ` 서두르다 ${pick(["넘어졌다","철조망에 걸렸다","쓰레기 더미에 부딪쳤다","계단에서 미끄러졌다"])}.` : ""}`; G.flash = performance.now(); }
+      G.d = Math.max(0, G.d); check() || (newJunction(), ui());
+    }
+    function scout(){
+      if(G.done) return; const un = G.junc.filter(b=>!b.seen); if(!un.length) return; G.turn++; pick(un).seen = true;
+      const away = Math.random() < 0.5; if(away) G.d += 1; G.msg = away ? "흔적을 살피는 사이 표적이 한 걸음 더 멀어졌다." : "흔적을 살폈다. 표적은 아직 멀지 않다.";
+      check() || ui();
+    }
+    function check(){
+      if(G.d<=0) return end(true, "표적을 붙잡았다");
+      if(G.d>=LOST) return end(false, "표적을 놓쳤다 — 너무 멀어졌다");
+      if(G.turn>=T) return end(false, "시간이 다 됐다 — 표적이 사라졌다");
+      return false;
+    }
+    function end(win, text){
+      G.done = true; G.win = win; ui(); m.ctrl.innerHTML = "";
+      const score = win ? 0.6 + 0.4*(1 - G.turn/T) : 0.3*(1 - G.d/LOST);
+      const res = {win, score: clamp(score,0,1), battle: [{f:lead, fought:true, wound: Math.min(3, G.wound), sp:0}]};
+      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, `${text} — 의뢰 ${win?"성공":"실패"}`).then(()=>resolve(res)); }, 900);
+      return true;
+    }
+    m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout) scout(); };
+    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, battle:[{f:lead, fought:true, wound:Math.min(3,G.wound), sp:0}]}); };
+    // ---- 그림: 위에서 내려다본 젖은 골목 지도. 왼쪽은 지나온 길, 가운데는 지금 갈림길, 오른쪽 위에 거리 막대 ----
+    const t0 = performance.now(); let raf;
+    function draw(){
+      const c = m.c, W = 720, now = performance.now(), t = (now-t0)/1000;
+      c.fillStyle = "#0b0a10"; c.fillRect(0,0,W,H);
+      c.save(); c.strokeStyle = "rgba(120,130,160,0.07)"; c.lineWidth = 18;           // 거리 격자(블록 사이 골목)
+      for(let x=-40;x<W+40;x+=92){ c.beginPath(); c.moveTo(x + Math.sin(x)*8, 0); c.lineTo(x - 30 + Math.sin(x)*8, H); c.stroke(); }
+      for(let y=20;y<H;y+=74){ c.beginPath(); c.moveTo(0, y); c.lineTo(W, y + 18); c.stroke(); } c.restore();
+      c.fillStyle = "rgba(255,200,120,0.05)"; for(let i=0;i<30;i++){ const x = (i*137)%W, y = (i*71)%H; c.fillRect(x, y, 3, 2); }   // 창문 불빛 점
+      // 지나온 길
+      const tr = G.trail.slice(-5), x0 = 40, cy = 160;
+      tr.forEach((s,i)=>{ const x = x0 + i*26; c.fillStyle = s.ok ? "#4f8a62" : "#8a4f4f"; c.beginPath(); c.arc(x, cy, 5, 0, 7); c.fill();
+        if(i){ c.strokeStyle = "rgba(160,170,190,0.35)"; c.lineWidth = 2; c.beginPath(); c.moveTo(x-21, cy); c.lineTo(x-5, cy); c.stroke(); } });
+      // 지금 갈림길
+      const px = Math.min(200, x0 + tr.length*26 + 20), J = G.junc || [];
+      J.forEach((b,i)=>{ const ty = cy + (i - (J.length-1)/2)*92, tx = 560;
+        c.strokeStyle = b.seen ? "rgba(200,210,230,0.55)" : "rgba(200,210,230,0.18)"; c.lineWidth = 10; c.lineCap = "round";
+        c.beginPath(); c.moveTo(px, cy); c.bezierCurveTo(px+140, cy, tx-170, ty, tx, ty); c.stroke();
+        c.fillStyle = "rgba(10,9,14,0.85)"; c.strokeStyle = b.seen ? CLUE[b.clue].col : "#555"; c.lineWidth = 1.4; c.beginPath(); c.roundRect(tx+8, ty-20, 140, 40, 8); c.fill(); c.stroke();
+        c.fillStyle = "#e6e1d8"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.fillText(b.nm, tx+18, ty-3);
+        c.fillStyle = b.seen ? CLUE[b.clue].col : "#777"; c.font = `500 11px "Noto Sans KR",sans-serif`; c.fillText(b.seen ? CLUE[b.clue].n : "? 살펴보지 않음", tx+18, ty+13);
+        if(b.seen && b.clue==="foot"){ c.fillStyle = "rgba(159,232,176,0.5)"; for(let j=0;j<5;j++){ const u = 0.2 + j*0.15, bx = px + (tx-px)*u, by = cy + (ty-cy)*u*u*(3-2*u); c.beginPath(); c.ellipse(bx + (j%2?4:-4), by, 4, 2.4, 0, 0, 7); c.fill(); } } });
+      // 나(초록 점)
+      c.fillStyle = "#7fe0a8"; c.shadowColor = "#7fe0a8"; c.shadowBlur = 12; c.beginPath(); c.arc(px, cy, 8 + Math.sin(t*4)*1.2, 0, 7); c.fill(); c.shadowBlur = 0;
+      // 거리 막대: 나 ● ● ● 표적
+      c.fillStyle = "rgba(10,9,14,0.85)"; c.beginPath(); c.roundRect(424, 14, 282, 34, 8); c.fill();
+      c.fillStyle = "#9fb8a6"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.fillText("나", 436, 35);
+      for(let i=0;i<LOST;i++){ const x = 462 + i*34; c.fillStyle = i < G.d ? "rgba(255,138,122,0.85)" : "rgba(255,255,255,0.12)"; c.beginPath(); c.roundRect(x, 24, 28, 14, 4); c.fill(); }
+      c.fillStyle = "#ff8a7a"; c.fillText("거리", 670, 35);
+      // 표적 그림자: 가까울수록 또렷하게
+      const vis = clamp(1 - G.d/4, 0.08, 1); c.globalAlpha = vis; fig(c, 396, 104, 40, {coat:true, rim:"rgba(255,90,90,0.6)"}); c.globalAlpha = 1;
+      if(now - G.flash < 260){ c.fillStyle = `rgba(255,80,70,${0.25*(1-(now-G.flash)/260)})`; c.fillRect(0,0,W,H); }
+      raf = requestAnimationFrame(draw);
+    }
+    raf = requestAnimationFrame(draw);
+    newJunction(); G.msg = `${esc(lead.name)}이(가) 표적의 뒤를 쫓기 시작했다.`; ui();
+  });
+}
+
 /* ---- 속도: 1인칭 추격 ----
    달아나는 표적을 뒤쫓는 시점. 표적이 던지는 방해물에 원이 생기고, 날아와 부딪히기 전에 누르면 쳐낸다.
    민첩이 높을수록 원이 크고 오래 버틴다. 빈 곳을 누르면 감점. */
@@ -1441,16 +1539,18 @@ async function dispatch(qid, fids){
   if(hasGame){ mode = await chooseMode(q, team); if(!mode) return; }
   team.forEach(f=>f.lastDispatch = S.day);
   const base = rate(team,q); let pr = base, payMul = 1, mgLine = "", combat = null;
+  let decisive = null;
   if(mode==="play"){ const r = await runMinigames(q, team); combat = r.combat;
-    if(combat){ mgLine = `합 전투 ${combat.win ? "승리" : "패배"}`; }
+    if(r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
+    else if(r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
     else { pr = clamp(Math.round(base - 25 + 25*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
   else if(hasGame){ payMul = 0.8; mgLine = `자동 진행 · 성공률 ${pr}% · 보수 80%`; }
   const pay = Math.round(q.reward*payMul/100)*100;
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
-  const success = combat ? combat.win : Math.random()*100 < pr;
+  const success = decisive!=null ? decisive : Math.random()*100 < pr;
   const k = dmgFactor(team,q)*shareMul(team.length);
   const names = team.map(f=>f.name).join(", ");
-  let lines = [ ...(mgLine?[mgLine]:[]), combat ? `${team.length}명 출동 → <b>${success?"성공":"실패"}</b>` : `${team.length}명 출동 · 성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`];
+  let lines = [ ...(mgLine?[mgLine]:[]), decisive!=null ? `${team.length}명 출동 → <b>${success?"성공":"실패"}</b>` : `${team.length}명 출동 · 성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`];
   // 의뢰가 끝나면 체력(정신 의뢰는 정신력)이 최대치의 일정 비율만큼 깎인다.
   // 성공: 부상 단계에 따라 10~25% · 실패: 35~60%. 직접 싸운 사람은 전투 끝의 부상 단계, 아니면 무작위
   const W_NAME = ["안정","경상","중상","치명상"], LOSS = {ok:[10,15,20,25], fail:[35,43,52,60]};
@@ -4293,7 +4393,7 @@ function fxTestPanel(){
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
     const team=S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean); const at = g==="shield"?["str","agi"]:[g];
     const q={kind: g==="shield"?"호위":"일반", goal: el.querySelector("#fxgoal").value, grade:+el.querySelector("#fxgr").value, attrs:at, req: Math.max(1, teamPower(team,at)/kk), client:"테스트 의뢰인"};
-    const r = await runMinigames(q, team); toast(r.combat ? `합 전투 ${r.combat.win?"승리 — 의뢰 성공":"패배 — 의뢰 실패"}` : `미니게임 점수 ${Math.round(r.score*100)}점`); });
+    const r = await runMinigames(q, team); toast(r.decisive!=null ? `직접 수행 ${r.decisive?"성공":"실패"}` : `미니게임 점수 ${Math.round(r.score*100)}점`); });
 }
 
 // 테스트: 참격·히트 VFX 시험장
