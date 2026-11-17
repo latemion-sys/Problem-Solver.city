@@ -1081,37 +1081,33 @@ function bindLook(box, L, st){
     redraw(); });
   box.addEventListener("click", e=>{ if(!e.target.dataset.lkrand) return; Object.assign(L, randomLook()); redraw(); });
 }
-/* 개화 E.G.O 이름: "개화 E.G.O:: [이름]" — 성격에서 나온 수식 + (재질) + 사물. 예) 꺼지지 않는 등불, 타오르는 밀랍 방패
-   재질과 사물은 누구나 아는 평범한 것만 쓴다. 사물은 가장 많이 쓴 능력치에서, 재질은 해낸 의뢰가 쌓이면 붙는다 */
-const EGO_MOD = {
-  "공격적":["들끓는","타오르는","이를 드러낸"], "신중함":["겹겹이 접힌","돌다리 두드리는","닫힌"], "헌신":["닳지 않는","끝까지 버티는","대신 서는"], "냉소":["식은","비웃는","재가 된"],
-  "충동적":["꺼지지 않는","튀어 오르는","불붙은"], "침착함":["고요한","흔들리지 않는","잔잔한"], "집요함":["놓지 않는","끝까지 쫓는","물고 늘어지는"], "낙천적":["볕 드는","내일을 부르는","웃음 띤"],
-  "비관적":["무너질","금 간","빗물 고인"], "오만함":["하늘을 긋는","굽히지 않는","내려다보는"], "소심함":["웅크린","작게 떨리는","숨죽인"], "정의감":["굽지 않는","기울지 않는","곧게 선"],
-  "탐욕":["모자란","움켜쥔","끝없이 삼키는"], "다정함":["내민","감싸 안는","따스한"], "무심함":["비어 있는","돌아보지 않는","말 없는"], "광기":["웃는","멈추지 않는","뒤집힌"]
-};
-// 재질 24: 무기는 단단한 12종에서, 방어구는 24종 전부에서 고른다
-const EGO_MAT_HARD = ["쇠","무쇠","강철","구리","놋쇠","납","돌","나무","대나무","뼈","유리","얼음"];
-const EGO_MAT_SOFT = ["밀랍","가죽","삼베","무명","짚","종이","흙","숯","소금","모래","밧줄","솜"];
-const EGO_MAT = {weapon: EGO_MAT_HARD, armor: EGO_MAT_HARD.concat(EGO_MAT_SOFT)};
-// 사물 24: 무기 12 · 방어구 12
-const EGO_OBJ = {
-  weapon:{str:["망치","도끼","몽둥이"], agi:["칼","낫","창"], tec:["못","송곳","갈고리"], wil:["등불","횃불","종"]},
-  armor:{str:["방패","갑옷","투구"], agi:["외투","장화","장갑"], tec:["앞치마","작업복","가면"], wil:["우산","담요","모자"]}
+/* 개화 E.G.O 이름: "개화 E.G.O::이름" — 림버스 컴퍼니의 개화 E.G.O처럼(동백 · 마름 · 가스하푼 · 대행) 실제로 쓰이는 낱말 하나.
+   외국어도 쓰되 표기는 한글로. 성격에 맞는 낱말 가운데서 고른다 */
+const EGO_WORDS = {
+  "공격적":["발파","도화선","투견","벌목","격발","슈투름"],
+  "신중함":["검산","퇴고","측량","봉인","저울질","포어지히트"],
+  "헌신":["대속","파수","보증","간병","순장","디아코니아"],
+  "냉소":["방부","검시","조소","폐업","고드름","사르카슴"],
+  "충동적":["점화","탈선","월담","격류","불쏘시개","임풀스"],
+  "침착함":["정박","동면","응고","관조","수평","슈틸레"],
+  "집요함":["추심","압류","미행","거머리","뿌리","페어폴겐"],
+  "낙천적":["해장","소풍","개업","덧칠","볕","마냐나"],
+  "비관적":["폐광","침수","낙과","썰물","부고","벨트슈메르츠"],
+  "오만함":["대관","첨탑","군림","사열","금박","휴브리스"],
+  "소심함":["은신","뒷걸음","귓속말","골방","움","카무플라주"],
+  "정의감":["판결","단죄","영장","집행","직선","유스티치아"],
+  "탐욕":["독식","사재기","고리대","압착","금고","아바리티아"],
+  "다정함":["포옹","군불","보온","자장가","덧대기","베르쇠즈"],
+  "무심함":["방치","여백","공실","백지","정전","아파테이아"],
+  "광기":["광대","폭소","난장","탈춤","카니발","폴리"]
 };
 function egoMake(f, type){
-  const mods = EGO_MOD[f.personality] || ["이름 없는"], objs = EGO_OBJ[type][topAttr(f)];
-  let name = "", mat = "", obj = "";
-  for(let tries=0; tries<24; tries++){
-    obj = pick(objs); mat = f.done>=5 || Math.random()<0.5 ? pick(EGO_MAT[type]) : "";
-    name = `${pick(mods)} ${mat ? mat + " " : ""}${obj}`;
-    if(!S || !S.fixers.some(x=>x!==f && x.ego && x.ego.name===name)) break;
-  }
-  const jc = mat ? (mat.charCodeAt(mat.length-1)-0xAC00)%28 : 0;
-  const desc = mat ? `${mat}${jc && jc!==8 ? "으로" : "로"} 된 ${obj}. ${f.name}의 손때와 지난 의뢰의 흠집이 그대로 남아 있다.` : `${f.name}의 손에 익은 ${obj}. 지난 의뢰의 흠집이 그대로 남아 있다.`;
-  return {name, desc};
+  const ws = EGO_WORDS[f.personality] || EGO_WORDS["침착함"], used = n => S && S.fixers.some(x=>x!==f && x.ego && x.ego.name===n);
+  const free = ws.filter(n=>!used(n));
+  return {name: pick(free.length ? free : Object.values(EGO_WORDS).flat().filter(n=>!used(n))), desc: ""};
 }
 function egoNameFor(f, type){ return egoMake(f, type).name; }
-const egoLabel = e => `개화 E.G.O:: [${e.name}]`;
+const egoLabel = e => `개화 E.G.O::${e.name}`;
 /* 마음속에 간직한 것: 뒤틀림은 정신력이 0인 채로 소중한 것을 잃었을 때만 일어난다.
    해결사는 사람(인간관계) · 동료(사무소의 누군가) · 물건 · 목표 중 하나를, 대표는 개업 때 직접 정한다(정하지 않으면 "소중한 것") */
 const PRECIOUS_POOL = {
@@ -3156,7 +3152,7 @@ async function bloomEgo(f){
     type = await modal("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 어떤 형태로 드러낼 것인가?`, [{t:"무기",v:"weapon",primary:true},{t:"방어구",v:"armor"}], true);
   } else type = p[1];
   const mk = egoMake(f, type);
-  f.ego = {type, name: f.isLeader ? ((await promptBox("E.G.O. 이름", "개화한 E.G.O.의 이름을 정한다. (개화 E.G.O:: [이름])", mk.name)) || mk.name) : mk.name, desc: mk.desc};
+  f.ego = {type, name: f.isLeader ? ((await promptBox("E.G.O. 이름", "개화한 E.G.O.의 이름을 정한다. (개화 E.G.O::이름)", mk.name)) || mk.name) : mk.name, desc: mk.desc};
   f.mp = Math.round(f.mpMax*0.5);
   playFx("에고", "E.G.O. 개화", `${f.name} — ${egoLabel(f.ego)}`, true); save(); render();
   S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${type==="weapon"?"무기":"방어구"})`});
