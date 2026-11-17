@@ -216,6 +216,9 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .hv-meltlines{display:flex;flex-direction:column;align-items:center;gap:6px}
 .hv-ov .hv-center.hv-drop-top{position:absolute;top:7vh;left:50%;transform:translateX(-50%)}
 .hv-stage{position:absolute;inset:0;z-index:3;pointer-events:none}
+.hv-after{margin-top:14px;min-height:30px;opacity:.85}
+.hv-carmen .hv-mrow{transition:opacity 1.2s ease,filter 1.2s ease,transform 1.2s ease}
+.hv-carmen .hv-mrow.past{opacity:.28;filter:blur(1.2px);transform:scale(.92)}
 .hv-drop.refuse .hv-meltlines{opacity:0;filter:blur(8px);transition:opacity 1.3s ease .35s,filter 1.3s ease .35s}
 .hv-ov.hv-drop:not(.hv-gl-on){background:radial-gradient(ellipse at 50% 55%,#1c150b 0%,#050403 70%)}
 .hv-title.moon{animation:none;opacity:0;transform:translateY(8px);transition:opacity 1.4s ease,transform 1.4s ease;bottom:11%}
@@ -658,6 +661,7 @@ vec3 scene(vec2 p,float t){
  if(s<0.){
   float vis=smoothstep(4.,5.1,t);
   float wave=0.,ring=0.;
+  if(vis>0.){
   for(int i=0;i<3;i++){float pk=TH+(i==0?0.:i==1?1.3:2.4);float d=t-pk;if(d>0.){
    for(int j=0;j<3;j++){float rr=d*(.2-.045*float(j));float amp=exp(-d*1.1)*(1.-.3*float(j));
     float b=exp(-pow((r-rr)*24.,2.));wave+=sin((r-rr)*120.)*b*amp;ring+=b*amp;}}}
@@ -684,6 +688,7 @@ vec3 scene(vec2 p,float t){
   vec3 cc=mix(vec3(1.,.86,.55),vec3(1.,.95,.8),smoothstep(TH+2.,TB,t));
   cc=mix(cc,vec3(1.,.42,.16),uA*step(.62,v.z)*(.6+.4*sin(t*6.+v.z*20.)));   // 불안정: 주홍빛이 섞인 금
   c+=cc*crack*(1.3+2.2*smoothstep(TH+1.8,TB,t))*pulse;
+  }
   float core=exp(-r*r/(.0004+.0035*smoothstep(TH,TB,t)))*smoothstep(TH,TH+.3,t);
   c+=vec3(1.,.95,.82)*core*(.9+.6*smoothstep(TH,TB,t));
   float dy=dropY(t),drR=dropR(t);
@@ -1171,7 +1176,7 @@ function create(canvas,kind,opt){
    ru={res:U(rp,'uRes'),t:U(rp,'uT'),a:U(rp,'uA'),b:U(rp,'uB'),c:U(rp,'uC'),d:U(rp,'uD')};}}
  if(!opt.scale)opt.scale=.7;
  function resize(){const dpr=Math.min(1.25,window.devicePixelRatio||1),w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight,scale=opt.scale;
-  let W=Math.round(w*dpr*scale),Hh=Math.round(h*dpr*scale);const cap=900/Math.max(W,Hh);if(cap<1){W=Math.round(W*cap);Hh=Math.round(Hh*cap);}
+  let W=Math.round(w*dpr*scale),Hh=Math.round(h*dpr*scale);const cap=(opt.cap||900)/Math.max(W,Hh);if(cap<1){W=Math.round(W*cap);Hh=Math.round(Hh*cap);}
   if(canvas.width!==W||canvas.height!==Hh){canvas.width=W;canvas.height=Hh;}}
  resize();
  function render(t){
@@ -3368,28 +3373,39 @@ const HeartFx = (()=>{
     return fx;
   }
   const iyeotdeon = nm => { const ch = nm.charCodeAt(nm.length-1) - 0xAC00; return nm + (ch>=0 && ch<11172 && ch%28 ? "이었던" : "였던"); };
-  // 따스한 목소리: 메아리가 불어났다 사라지고, 한 문장이 남는다
-  function voice(name){
+  /* 카르멘의 목소리(뒤틀림·개화 공통, 연출 앞).
+     레퍼런스(라이브러리 오브 루이나 · 림버스 컴퍼니 4·6·10장): 가장 낮은 곳에 있는 사람의 머릿속에 따스하고 매력적인 목소리로 자리 잡는다.
+     상대에 대해 이미 다 알고 있고, 그 사람의 가장 깊은 감정을 짚어 알아봐 준다. "지금 무엇을 느끼니?" "너는 너를 어떻게 생각하니?" 같은 물음으로
+     감정을 끝까지 몰아가고, 도시가 눌러 씌운 가치에서 벗어나 스스로 그리는 모습대로 살라는 '자유'를 내민다.
+     ① 이름을 부르는 메아리가 불어났다 사라진다 → ② 카르멘이 한 줄씩 말을 건넨다(누르면 다음 줄). 다 듣고 나서야 끝난다 */
+  function voice(f){
+    const name = typeof f === "string" ? f : f.name, lines = typeof f === "string" ? [`“이제야 내 말을 귀담아 들어주는구나, ${name}.”`] : carmenLines(f);
     return new Promise(res=>{
-      const o = open("intro");
-      o.innerHTML = '<div class="hv-glow" aria-hidden="true"></div><div class="hv-echoes" aria-hidden="true"></div><div class="hv-center"><div class="hv-lines"></div></div><div class="hv-skip">화면을 누르면 건너뜁니다</div>';
-      const fx = glLayer(o, "voice", {c:.2}), echoes = o.querySelector(".hv-echoes"), lines = o.querySelector(".hv-lines");
+      const o = open("intro"), echo = `${ahya(givenName(name))}. 내 목소리, 들리지?`;
+      o.innerHTML = '<div class="hv-glow" aria-hidden="true"></div><div class="hv-echoes" aria-hidden="true"></div><div class="hv-center"><div class="hv-lines hv-meltlines hv-carmen"></div></div><div class="hv-skip">화면을 누르면 다음 말로</div>';
+      const fx = glLayer(o, "voice", {c:.2}), echoes = o.querySelector(".hv-echoes"), box = o.querySelector(".hv-lines");
       const swell = (c, ring) => { if(!fx) return; fx.set("c", c); if(ring && fx.now) fx.set("d", fx.now()); };
       let html = "";
-      for(let i=0;i<128;i++){
-        if(i===0){ html += `<span class="hv-echo hv-main">${ECHO}</span>`; continue; }
+      for(let i=0;i<96;i++){
+        if(i===0){ html += `<span class="hv-echo hv-main">${esc(echo)}</span>`; continue; }
         let x, y, tries = 0; do { x = 4 + R(i*3.1)*92; y = 5 + R(i*7.7+1)*90; tries++; } while(Math.abs(x-50)<24 && Math.abs(y-46)<7 && tries<6);
-        const sc = (.55 + R(i*5.3)*.7)*(i<16?1.08:i<64?.95:.82), rot = (R(i*9.1)-.5)*7, op = (.1 + R(i*2.9)*.26).toFixed(2), d = (R(i*4.7)*2.4).toFixed(2);
-        html += `<span class="hv-echo${i%4===0?" sw":""}" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--s:${sc.toFixed(2)};--r:${rot.toFixed(1)}deg;--o:${op};--d:${d}s">${ECHO}</span>`;
+        const sc = (.55 + R(i*5.3)*.7)*(i<16?1.08:i<48?.95:.82), rot = (R(i*9.1)-.5)*7, op = (.1 + R(i*2.9)*.26).toFixed(2), d = (R(i*4.7)*2.4).toFixed(2);
+        html += `<span class="hv-echo${i%4===0?" sw":""}" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--s:${sc.toFixed(2)};--r:${rot.toFixed(1)}deg;--o:${op};--d:${d}s">${esc(echo)}</span>`;
       }
       echoes.innerHTML = html; const spans = [...echoes.querySelectorAll(".hv-echo")];
-      const counts = [1,2,4,8,16,32,64,128], times = [300,1300,2200,3000,3700,4300,4800,5250]; let shown = 0;
+      const counts = [1,2,4,8,16,32,64,96], times = [300,1200,2000,2700,3300,3800,4200,4550]; let shown = 0;
       counts.forEach((n,si)=>at(times[si], ()=>{ for(let i=shown;i<n;i++) spans[i].classList.add("on"); shown = n; if(n>=16) echoes.classList.add("echoing"); o.style.setProperty("--swell", (si/7).toFixed(2)); swell(.18 + .6*si/7, si>0); }));
-      at(6900, ()=>{ echoes.classList.add("gone"); swell(.3, false); });
-      at(7900, ()=>{ swell(.7, true); lines.innerHTML = `<p class="sweep">“이제야 내 말을 귀담아 들어주는구나, <em class="hv-em">${esc(name)}</em>.”</p>`; });
-      let done = false; const finish = () => { if(done) return; done = true; res(); };
-      at(10600, finish);
-      o.addEventListener("click", finish);
+      // 말: 한 줄씩. 앞의 말은 위로 밀려 흐려지고, 지금 말만 또렷하다
+      let idx = -1, phase = "echo", tmr = 0, done = false;
+      const show = ()=>{ idx++; if(idx >= lines.length){ phase = "end"; tmr = setTimeout(finish, 900); return; }
+        [...box.children].forEach((d,i,arr)=>{ d.classList.add("past"); if(arr.length - i > 2) d.remove(); });
+        const m = melt(lines[idx], {size: idx===0 ? 22 : 20, dur:1300}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d);
+        swell(.55 + .3*Math.sin(idx), true);
+        const read = 1500 + [...lines[idx]].length*85; clearTimeout(tmr); tmr = setTimeout(show, read); };
+      at(5900, ()=>{ echoes.classList.add("gone"); swell(.3, false); });
+      at(6700, ()=>{ phase = "talk"; show(); });
+      const finish = ()=>{ if(done) return; done = true; clearTimeout(tmr); res(); };
+      o.addEventListener("click", ()=>{ if(phase==="echo"){ timers.forEach(clearTimeout); timers = []; echoes.classList.add("gone"); phase = "talk"; show(); } else if(phase==="talk"){ clearTimeout(tmr); show(); } else finish(); });
     });
   }
   /* E.G.O 개화 — 달빛 한 방울: 뒤틀리기 직전, 목소리의 말이 붉게 식어 가다 그대로 멎는다 →
@@ -3400,11 +3416,11 @@ const HeartFx = (()=>{
       const o = open("drop"), title = unstable ? "불안정 개화" : "개화";
       const sub = unstable ? "금이 간 채로 피어났다 — 껍질 틈으로 주홍빛이 샌다" : "달빛 한 방울이 마음에 떨어져, 껍질을 깨고 피어났다";
       o.innerHTML = `<div class="hv-stage"><div class="hv-center hv-drop-top"><div class="hv-lines hv-meltlines"></div></div></div>
-        <div class="hv-title moon${unstable ? " unstable" : ""}"><div class="hv-big">${title} <span>E.G.O</span></div><div class="hv-sub">${sub}</div></div><div class="hv-skip">화면을 누르면 넘어간다</div>`;
-      glLayer(o, "drop", {a: unstable ? 1 : 0, seed: 7 + (f.id||0)%13, scale:0.42});
-      const box = o.querySelector(".hv-meltlines"), say = [`“${ahya(f.name)}.”`, `“${TWIST_MID[f.personality] || "애썼어. 정말로."}”`, `“${pick(TWIST_TALK)}”`];
-      // ① 목소리의 말을 끝까지 듣는다(따스한 빛 그대로 — 붉게 물들이지 않는다)
-      say.forEach((t,i)=>at(250 + i*900, ()=>{ const m = melt(t, {size: i===0 ? 22 : 19, dur:1400}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); }));
+        <div class="hv-title moon${unstable ? " unstable" : ""}"><div class="hv-big">${title} <span>E.G.O</span></div><div class="hv-sub">${sub}</div><div class="hv-after"></div></div><div class="hv-skip">화면을 누르면 넘어간다</div>`;
+      glLayer(o, "drop", {a: unstable ? 1 : 0, seed: 7 + (f.id||0)%13, scale:0.6, cap:1280});
+      const box = o.querySelector(".hv-meltlines");
+      // ① 목소리의 말을 끝까지 들은 뒤, 1인칭의 대답 한 마디(목소리가 아닌 내 말이라 차분한 흰빛)
+      at(300, ()=>{ const m = melt(refusalLine(f), {size:21, dur:1500, color:[236,232,224], edge:[255,230,190], glow:"255,240,220"}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); });
       // ② 1인칭으로 고개를 젓는다: 시야가 좌우로 흔들리며 번지고, 말이 시야 밖으로 밀려난다
       at(3000, ()=>{ const st = o.querySelector(".hv-stage"), gl = o.querySelector(".hv-gl");
         const k = [{transform:"translateX(0) rotate(0)", filter:"blur(0)"},{transform:"translateX(-7vw) rotate(-1.2deg)", filter:"blur(3px)", offset:.22},{transform:"translateX(6vw) rotate(1deg)", filter:"blur(4px)", offset:.5},
@@ -3412,13 +3428,15 @@ const HeartFx = (()=>{
         if(st && st.animate) st.animate(k, {duration:1150, easing:"ease-in-out"});
         if(gl && gl.animate) gl.animate(k.map(x=>Object.assign({}, x, {filter:"none", transform: x.transform + " scale(1.16)"})), {duration:1150, easing:"ease-in-out"});   // 가장자리가 비지 않게 살짝 키운 채로 흔든다
         o.classList.add("refuse"); });
+      // ④ 다 피어난 뒤, 카르멘이 마지막으로 — E.G.O는 "아쉽다"(10장). 그래도 고른 것은 존중한다
+      at(12600, ()=>{ const cb = o.querySelector(".hv-after"); if(!cb) return; const m = melt(unstable ? "“…금이 갔구나. 괜찮아, 언제든 다시 불러 주렴.”" : "“…아쉽네. 그래도, 그게 네가 고른 모양이라면.”", {size:17, dur:1600}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); cb.appendChild(d); });
       // ③ 멎은 어둠에 달빛(금빛) 한 방울 → 파문 세 번 → 껍질이 깨진다
       at(6500, ()=>shake(o, "hv-shake", 420));
       at(7800, ()=>shake(o, "hv-shake", 380)); at(8900, ()=>shake(o, "hv-shake", 460));
       at(10100, ()=>shake(o, "hv-shake-hard", 700));
       at(11000, ()=>o.classList.add("named"));
       let done = false; const finish = () => { if(done) return; done = true; fadeOut(res); };
-      at(15300, finish);
+      at(17200, finish);
       o.addEventListener("click", ()=>{ if(o.classList.contains("named")) finish(); else { timers.forEach(clearTimeout); timers = []; o.classList.add("refuse","named"); at(2600, finish); } });
     });
   }
@@ -3579,7 +3597,7 @@ const HeartFx = (()=>{
     setTimeout(()=>(window.requestIdleCallback || (cb=>setTimeout(cb, 400)))(next, {timeout:3000}), 2500);
   }
   if(document.readyState === "complete") warm(); else addEventListener("load", warm);
-  return {voice, bloom, twist, ending, shin, melt, clear};
+  return {voice, bloom, twist, ending, shin, melt, clear, ahya};
 })();
 
 /* 징조: 뒤틀리기 전, 정신력이 바닥에 가까운 해결사가 하는 말. 상단 연출 칸에 한 줄로 떠오른다 */
@@ -3587,6 +3605,54 @@ const OMEN = {
   vermil:["따스한 목소리가 들려요...","괜찮다고, 이제 다 내려놓아도 된다고 해요.","그 목소리… 나쁜 말은 하나도 안 해요. 이상하죠?","있는 그대로의 저를 보여 달래요.","누가 제 마음을 전부 안다고 해요.","답해 달래요. 계속, 다정하게.","제가 바라는 걸 이뤄 주겠대요. 정말일까요?"],
   moon:["속삭임이 들리는데, 저만 듣나요?","누가 자꾸 제 이름을 불러요.","조용한데… 왜 이렇게 시끄럽죠?","벽 너머에서 누가 웃고 있어요.","제 목소리가 아닌 게 제 입에서 나와요.","잠들면, 누가 대신 깨어 있는 것 같아요.","방금 그 말, 대표님이 하신 거 맞죠?"]
 };
+/* 카르멘이 거는 말 — 그녀는 말을 거는 사람에 대해 이미 모든 것을 안다.
+   ① 이름을 부르며 대답하지 않아도 된다고 한다 → ② 그 사람만 아는 것을 짚는다(잃은 것 · 행적 · 일지 · 빚) → ③ 성격에 맞춰 수고를 알아준다 →
+   ④ "지금 무엇을 느끼니?" "너는 너를 어떻게 생각하니?"로 감정을 끝까지 몰아간다 → ⑤ 그 모양은 도시가 입힌 것이라며, 네가 그리는 너로 살라는 자유를 내민다 */
+const CARMEN_LOST = {
+  "사람": t=>`${t}. 이젠 없지. 그 자리에 아무도 없다는 걸, 너는 매일 아침 다시 확인하잖아.`,
+  "물건": t=>`${t}. 손이 아직도 그게 있던 자리를 더듬어. 나는 봤어.`,
+  "목표": t=>`${t}. 이제 그 말을 소리 내서 하지 못하지. 입 밖에 내면 정말 끝날 것 같아서.`,
+  "동료": t=>`${t}. 마지막으로 나눈 말이 뭐였는지, 아직도 되짚고 있지.`,
+  "마음": ()=>`소중하다고 붙들던 것들이 하나씩 손에서 빠져나갔지. 너는 그때마다 아무렇지 않은 척했고.`
+};
+const CARMEN_FEEL = {"공격적":"화가 나니? 아니면, 화밖에 낼 줄 모르게 된 게 슬프니?","신중함":"계산이 맞지 않아서 두렵니? 아니면, 처음부터 맞출 수 없었다는 걸 알아 버려서?",
+  "헌신":"늘 누군가를 지켰지. 그런데 지금, 너를 지켜 주는 사람은 어디 있니?","냉소":"웃고 있니? 거울을 보렴. 웃는 얼굴이 아니야.",
+  "충동적":"멈추면 무너질 것 같아서 계속 달렸지. 지금도 숨이 차니?","침착함":"한 번도 소리 내 울지 않았지. 그 울음은 다 어디에 쌓였을까?",
+  "집요함":"쥔 손을 펴 본 적 있니? 손바닥에 무엇이 남았는지 보렴.","낙천적":"내일은 나아질 거라고, 몇 번이나 스스로를 달랬니? 그 내일은 왔니?",
+  "비관적":"무너질 걸 알면서 버텼지. 그게 얼마나 외로운 일인지, 아무도 몰랐고.","오만함":"아무에게도 기대지 않았지. 그래서 아무도 너를 붙잡지 않았어.",
+  "소심함":"작아지느라 애썼지. 그런데 작아진 너를, 누가 알아봐 줬니?","정의감":"이 굽은 도시에서 혼자 곧게 서 있었지. 허리가 아프지 않니?",
+  "탐욕":"늘 모자랐지. 채워도, 채워도. 정말 모자란 건 무엇이었을까?","다정함":"남의 상처만 감쌌지. 네 상처는 누가 감싸 주었니?",
+  "무심함":"아무것도 느끼지 않는 척. 그것도 힘든 일이야. 나는 알아.","광기":"다들 이상하다고 했지. 나는 네가 웃는 게 좋은데."};
+function carmenLines(f){
+  const L = f.life || {}, nm = f.name, out = [];
+  out.push(`“${HeartFx.ahya(givenName(nm))}. 대답하지 않아도 돼. 네가 무슨 생각을 하는지, 나는 다 알고 있으니까.”`);
+  // 그 사람만 아는 것: 잃은 것이 가장 먼저, 그다음 행적 하나
+  const pr = f.precious; if(pr && pr.lost && CARMEN_LOST[pr.kind]) out.push(`“${CARMEN_LOST[pr.kind](pr.text)}”`);
+  const deeds = [];
+  if(L.kill>=2) deeds.push(`숨통을 끊은 게 ${L.kill}번. 그때마다 손끝이 조금씩 차가워졌잖아.`);
+  if(L.grief>=1) deeds.push(`떠나보낸 동료가 ${L.grief}명. 장례는 늘 짧았고, 다음 날이면 의뢰가 또 들어왔지.`);
+  if(L.heavy>=2) deeds.push(`${L.heavy}번이나 피투성이로 돌아왔어. 아무도 그만두라고 하지 않았지.`);
+  if(L.fail>=3) deeds.push(`실패한 의뢰가 ${L.fail}건. 그 숫자를 너는 하나도 잊지 않았어.`);
+  if(f.isLeader && S && S.debt>0) deeds.push(`갚아도 갚아도 줄지 않는 ${won(S.debt)}. 장부를 덮어도 그 숫자가 눈꺼풀 안쪽에 남아 있지.`);
+  if(L.solo>=3) deeds.push(`혼자 나간 의뢰가 ${L.solo}번. 같이 가자는 말을, 너는 끝내 하지 못했지.`);
+  if(L.spare>=3 && !L.kill) deeds.push(`${L.spare}번이나 숨을 붙여 두었지. 그게 옳다고 믿으려고 얼마나 애썼니.`);
+  if(deeds.length) out.push(`“${pick(deeds)}”`);
+  out.push(`“${CARMEN_FEEL[f.personality] || "지금, 무엇을 느끼니?"}”`);
+  out.push(`“…그럼 너는, 너를 어떻게 생각하니?”`);
+  out.push(`“그건 네가 고른 모양이 아니야. 도시가, 협회가, ${f.isLeader ? "사무소의 빚이" : "사무소가"} 너에게 입혀 준 모양이지.”`);
+  out.push(`“벗어도 돼. 네가 그리는 너로 살아도 돼. …손을 내밀어 주렴. 그거면 돼.”`);
+  return out;
+}
+// 개화: 목소리를 끝까지 들은 뒤, 자기 말로 한 번 거절한다(동백·동랑이 카르멘을 거절하고 E.G.O를 피웠듯)
+function refusalLine(f){
+  const pr = f.precious;
+  if(pr && pr.lost){
+    if(pr.kind==="마음") return "“…아니. 빠져나간 것까지, 다 내 것이었어.”";
+    if(pr.kind==="물건") return "“…아니. 잃었어도, 그걸 쥐던 손은 아직 내 거야.”";
+    if(pr.kind==="목표") return `“…아니. ${josa(pr.text,"은","는")} 아직, 끝까지 말하지 않았어.”`;
+    return `“…아니. ${josa(pr.text,"을","를")} 기억하는 한, 끝난 게 아니야.”`; }
+  return pick(["“…아니. 이 모양도, 내가 고른 거야.”","“…아니. 아직, 내 길은 끝나지 않았어.”","“…고마워. 그래도 아니야.”"]);
+}
 /* 대표 뒤틀림 엔딩: 대표의 성격에 맞춘 마지막 문장들. {o}=사무소, {n}=대표 */
 const ENDINGS = {
   "공격적":["그날 밤, {o}의 문짝이 안에서부터 부서져 나갔다.","{n}은(는) 늘 먼저 주먹을 내질렀다. 목소리는 그 주먹을 멈추라고 하지 않았다. 더 멀리, 더 세게 — 그렇게만 말했다.","뒷골목은 한동안 조용했다. 들끓던 것이 다 타 버린 자리처럼."],
@@ -3697,7 +3763,7 @@ function checkOmen(f){
 // 해결사가 뒤틀린다: 목소리 → 뒤틀림 연출 → 토벌 의뢰 강제 배정
 async function twistFixer(f){
   playFx("뒤틀림", "뒤틀림", f.name, false);
-  await HeartFx.voice(f.name);
+  await HeartFx.voice(f);
   await HeartFx.twist(f, "해결사", "돌이킬 수 없다");
   HeartFx.clear();
   const g = f.grade, threatGrade = g>=8?6:g>=6?4:g>=3?2:0;
@@ -3712,7 +3778,7 @@ async function twistFixer(f){
 async function twistLeader(f){
   playFx("뒤틀림", "뒤틀림", f.name, false);
   S.over = true; S.records.push({day:S.day, name:f.name, what:"뒤틀림", note:"대표가 목소리를 따라갔다"}); save();
-  await HeartFx.voice(f.name);
+  await HeartFx.voice(f);
   const o = await HeartFx.twist(f, "대표", "목소리를 따라간다");
   const lines = (ENDINGS[f.personality] || ENDINGS["다정함"]).map(t=>esc(t.replace(/\{o\}/g, S.officeName).replace(/\{n\}은\(는\)/g, josa(f.name,"은","는")).replace(/\{n\}이\(가\)/g, josa(f.name,"이","가")).replace(/\{n\}/g, f.name)))
     .concat([`남은 빚 ${won(S.debt)}은 아무도 갚지 않았다.`]);
@@ -3722,7 +3788,7 @@ async function twistLeader(f){
 }
 async function bloomEgo(f){
   const unstable = Math.random() < (window.__forceUnst!=null ? window.__forceUnst : 0.55);     // 55% 불안정 개화 · 45% 개화
-  await HeartFx.voice(f.name);
+  await HeartFx.voice(f);
   await HeartFx.bloom(f, unstable);
   const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
   const nm = await promptBox("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 이 E.G.O.에 이름을 지어 준다.<br><span class="muted">이름은 지금만 지을 수 있다. 비워 두면 "${unstable ? "불안정 " : ""}개화 E.G.O::"로만 남고, 나중에 지을 수 없다.</span>`, "");
