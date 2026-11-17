@@ -98,6 +98,10 @@ footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);lin
 .fg-body{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:14px;align-items:start}
 .fg-prev .fg-cv{width:100%;aspect-ratio:4/3.4;display:block;border-radius:8px;border:1px solid var(--line)} .fg-view{margin-top:6px}
 .fg-row{display:flex;align-items:center;gap:10px;margin-bottom:9px} .fg-row>span{width:62px;flex:none;font-size:12px;color:var(--muted)} .fg-row input[type=range]{flex:1} .fg-row input#fgname{flex:1}
+.sr-wrap{width:100%;flex:1 1 100%}.sr-top{margin-bottom:6px}.sr-notes{font-size:12.5px;line-height:1.7;max-height:120px;overflow:auto;background:rgba(0,0,0,.25);border-radius:8px;padding:6px 10px}
+.sr-book{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}.sr-book label{display:flex;flex-direction:column;gap:3px;font-size:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:6px 8px}
+.sr-book label.lock{border-color:rgba(120,255,200,.6);background:rgba(120,255,200,.06)}.sr-book label.lock b{color:#9fe8c8}.sr-act{margin-top:8px;text-align:right}
+.es-card p{margin:0 0 8px}
 .fg-pts{display:flex;gap:4px;align-items:center}.fg-pts b{min-width:38px;text-align:center}.fg-pts button{padding:3px 9px;font-size:12px}
 .fg-spec{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px;margin-bottom:6px}.fg-spec button{text-align:left;padding:8px 10px;display:flex;flex-direction:column;gap:3px}.fg-spec button.on{border-color:var(--accent)}.fg-spec small{color:var(--muted);font-size:11px;line-height:1.4}
 .fg-seg{display:flex;gap:4px;flex-wrap:wrap} .fg-seg button{padding:4px 9px;font-size:12px} .fg-seg button.on{border-color:var(--accent);color:var(--accent)}
@@ -1539,14 +1543,14 @@ function autoWound(f){
   const P = P9.map((v,i)=>v + (P1[i]-v)*Math.pow(k, 0.6)); let r = Math.random()*P.reduce((a,b)=>a+b,0);
   for(let i=0;i<4;i++){ r -= P[i]; if(r<=0) return i; } return 3;
 }
-const MG_NAME = {str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기"};
-const gamesFor = q => q.kind==="호위" ? ["shield"] : q.attrs.filter(a=>a!=="wil");
+const MG_NAME = {str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
+const gamesFor = q => q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : q.attrs.filter(a=>a!=="wil");
 function chooseMode(q, team){
   const base = rate(team, q), games = gamesFor(q);
-  const lo = clamp(base-25,3,97), fight = games.includes("str") || (games.length===1 && games[0]==="agi");
+  const lo = clamp(base-25,3,97), fight = games.includes("str") || (games.length===1 && ["agi","escort","search"].includes(games[0]));
   return modal("출동 방식", `<div class="kv">
       <span>기본 성공률</span><b>${base}%</b>
-      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${esc(team[0].name)}이(가) 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
+      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : games[0]==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복은 합 전투." : games[0]==="search" ? "찾는 것의 자리를 확정하면 성공, 시간이 다하면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${esc(team[0].name)}이(가) 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
       <span>자동 진행</span><b>해결사 등급으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
@@ -1556,6 +1560,8 @@ async function runMinigames(q, team){
     const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
     if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; dec.push(combat); }
     else if(a==="agi"){ const tr = await mgTrack(ctx); sum += tr.score; dec.push(tr); if(!combat) combat = tr; }
+    else if(a==="escort"){ const r = await mgEscort(ctx); sum += r.score; dec.push(r); if(r.combat) combat = r.combat; }
+    else if(a==="search"){ const r = await mgSearch(ctx); sum += r.score; dec.push(r); }
     else sum += a==="shield" ? await mgShield(ctx) : await mgClues(ctx);
   }
   // 승패가 나는 게임(합 전투·추적)만으로 이뤄진 의뢰는 그 승패가 곧 의뢰 성패
@@ -2643,6 +2649,253 @@ function mgClues(ctx){
       raf = requestAnimationFrame(draw);
     }
     ui(); raf = requestAnimationFrame(draw);
+  });
+}
+
+/* ================= 수색: 현장 장부(오브라 딘 방식) =================
+   현장의 몇 군데에 무언가가 하나씩 있다. 찾는 것도 그중 하나. 자리를 살피면 그 자리에서 알아낸 것이 장부에 적힌다.
+   장부의 칸마다 "여기엔 무엇이 있었는가"를 적고 [맞춰 보기]를 누른다. 맞은 칸이 셋 모이면 그 셋이 확정된다(어느 것이 틀렸는지는 알려 주지 않는다).
+   찾는 것의 칸이 확정되면 성공. 살피기와 헛맞춤은 시간을 쓴다. 재주가 높을수록 시간이 넉넉하고, 처음부터 아는 것이 많다. */
+const SR_SPOTS = [
+  {n:"지붕 위",        a:["high","dry","open"]},
+  {n:"하수구 입구",     a:["low","wet","dark"]},
+  {n:"쓰레기 더미",     a:["low","dry","smell"]},
+  {n:"창고 안",        a:["inside","dark","dry"]},
+  {n:"빨랫줄 아래",     a:["wet","open"]},
+  {n:"계단 밑",        a:["low","dark","dry"]},
+  {n:"버려진 차 안",    a:["inside","dry"]},
+  {n:"물탱크 옆",      a:["high","wet"]}
+];
+const SR_THINGS = [
+  {n:"깡통 더미", a:["metal"]}, {n:"젖은 신문 뭉치", a:["paper"]}, {n:"찢어진 우산", a:["cloth","metal"]}, {n:"녹슨 의수 한 짝", a:["metal","part"]},
+  {n:"빈 술병", a:["glass"]}, {n:"이불 뭉치", a:["cloth","big"]}, {n:"납작해진 상자", a:["paper","big"]}, {n:"들쥐 둥지", a:["alive","fur"]},
+  {n:"부서진 라디오", a:["metal","part"]}, {n:"헌 외투", a:["cloth"]}
+];
+const SR_ATTR_SPOT = {high:"높은 곳", low:"낮은 곳", wet:"젖은 곳", dry:"마른 곳", dark:"어두운 곳", open:"트인 곳", inside:"지붕 덮인 곳", smell:"냄새나는 곳"};
+const SR_ATTR_THING = {metal:"쇠붙이", paper:"종이로 된 것", cloth:"천으로 된 것", glass:"유리로 된 것", big:"덩치가 큰 것", alive:"살아 있는 것", fur:"털 달린 것", part:"기계 부품"};
+function srTarget(q){
+  const t = q.text || "";
+  const T = [["고양이",{n:"고양이", a:["alive","fur"], like:["high","dry","dark"]}],["인형",{n:"아이의 인형", a:["cloth"], like:["low","open"]}],["장부",{n:"숨겨진 장부", a:["paper"], like:["inside","dark","dry"]}],
+    ["열쇠",{n:"떨어진 열쇠", a:["metal"], like:["low","wet"]}],["수리공",{n:"쓰러진 수리공", a:["alive","big"], like:["inside","dark"]}],["창고",{n:"밀수 물품", a:["big","metal"], like:["inside","dark"]}],
+    ["해결사",{n:"해결사의 흔적", a:["metal","cloth"], like:["dark","low"]}],["생존자",{n:"숨어 있는 생존자", a:["alive","big"], like:["inside","dark"]}]];
+  for(const [k,v] of T) if(t.includes(k)) return v;
+  return {n:"찾는 물건", a:["small"], like:["dark"]};
+}
+function srMake(q, k){
+  const tier = reqTier(q.grade!=null ? q.grade : 9), N = [4,5,6,6][tier];
+  for(let tries=0; tries<60; tries++){
+    const spots = SR_SPOTS.slice().sort(()=>Math.random()-0.5).slice(0,N);
+    const target = srTarget(q), things = [target].concat(SR_THINGS.slice().sort(()=>Math.random()-0.5).slice(0,N-1));
+    // 찾는 것은 그것이 있을 법한 자리에 둔다
+    let sol = things.map((_,i)=>i).sort(()=>Math.random()-0.5);
+    const good = spots.map((s,i)=>[i, target.like.filter(a=>s.a.includes(a)).length]).sort((a,b)=>b[1]-a[1])[0][0];
+    const ti = sol.indexOf(0); [sol[ti], sol[good]] = [sol[good], sol[ti]];   // sol[spot] = thing
+    const hasS = (si,a)=>spots[si].a.includes(a), hasT = (ti2,a)=>a==="small" ? false : things[ti2].a.includes(a);
+    // 참인 진술 후보
+    const pool = [];
+    spots.forEach((s,si)=>{ things.forEach((t,tj)=>{ if(sol[si]===tj) pool.push({t:"is", s:si, x:tj, w:5}); else pool.push({t:"not", s:si, x:tj, w:1}); }); });
+    Object.keys(SR_ATTR_THING).forEach(ta=>Object.keys(SR_ATTR_SPOT).forEach(sa=>{
+      const holders = spots.map((_,si)=>si).filter(si=>hasT(sol[si],ta)); if(!holders.length) return;
+      if(holders.every(si=>!hasS(si,sa))) pool.push({t:"tnot", ta, sa, w:2});
+      if(holders.every(si=>hasS(si,sa))) pool.push({t:"tall", ta, sa, w:3});
+    }));
+    Object.keys(SR_ATTR_SPOT).forEach(sa=>{ const sp = spots.map((_,si)=>si).filter(si=>hasS(si,sa)); if(!sp.length) return;
+      Object.keys(SR_ATTR_THING).forEach(ta=>{ if(sp.every(si=>!hasT(sol[si],ta))) pool.push({t:"snot", sa, ta, w:2}); }); });
+    const ok = (perm, c) => c.t==="is" ? perm[c.s]===c.x : c.t==="not" ? perm[c.s]!==c.x
+      : c.t==="tnot" ? spots.every((_,si)=>!hasT(perm[si],c.ta) || !hasS(si,c.sa)) : c.t==="tall" ? spots.every((_,si)=>!hasT(perm[si],c.ta) || hasS(si,c.sa))
+      : spots.every((_,si)=>!hasS(si,c.sa) || !hasT(perm[si],c.ta));
+    const perms = []; (function go(a, used){ if(a.length===N){ perms.push(a.slice()); return; } for(let j=0;j<N;j++) if(!used[j]){ used[j]=1; a.push(j); go(a,used); a.pop(); used[j]=0; } })([], []);
+    // 정답 하나만 남을 때까지 진술을 고른다(직접 알려 주는 진술은 되도록 아낀다)
+    const chosen = []; let alive = perms;
+    const cand = pool.filter(c=>c.t!=="is").sort(()=>Math.random()-0.5);
+    for(const c of cand){ if(alive.length<=1) break; const nx = alive.filter(p=>ok(p,c)); if(nx.length < alive.length){ chosen.push(c); alive = nx; } if(chosen.length > N*3) break; }
+    if(alive.length>1){ const direct = pool.filter(c=>c.t==="is" && c.x!==0).sort(()=>Math.random()-0.5); for(const c of direct){ if(alive.length<=1) break; const nx = alive.filter(p=>ok(p,c)); if(nx.length<alive.length){ chosen.push(c); alive = nx; } } }
+    if(alive.length!==1) continue;
+    // 군더더기 진술 덜어 내기
+    for(let i=chosen.length-1;i>=0;i--){ const rest = chosen.filter((_,j)=>j!==i); if(perms.filter(p=>rest.every(c=>ok(p,c))).length===1) chosen.splice(i,1); }
+    // 진술을 자리에 나눠 둔다: 의뢰인이 처음 알려 주는 것 1~2개, 나머지는 자리를 살펴야 나온다
+    chosen.sort(()=>Math.random()-0.5);
+    const head = k>=1.25 ? 2 : 1, intro = chosen.slice(0, head), rest = chosen.slice(head), at = spots.map(()=>[]);
+    rest.filter(c=>c.s!=null).forEach(c=>at[c.s].push(c));
+    rest.filter(c=>c.s==null).forEach(c=>{ const si = at.map((x,i)=>[i,x.length+Math.random()*0.5]).sort((a,b)=>a[1]-b[1])[0][0]; at[si].push(c); });
+    return {spots, things, sol, intro, at, N};
+  }
+  return null;
+}
+function srText(P, c){
+  const S2 = i=>P.spots[i].n, T = i=>P.things[i].n;
+  return c.t==="is" ? `${S2(c.s)}에는 ${josa(T(c.x),"이","가")} 있었다.` : c.t==="not" ? `${S2(c.s)}에 ${josa(T(c.x),"은","는")} 없었다.`
+    : c.t==="tnot" ? `${josa(SR_ATTR_THING[c.ta],"은","는")} ${SR_ATTR_SPOT[c.sa]}에 있지 않았다.` : c.t==="tall" ? `${josa(SR_ATTR_THING[c.ta],"은","는")} 모두 ${SR_ATTR_SPOT[c.sa]}에 있었다.`
+    : `${SR_ATTR_SPOT[c.sa]}에는 ${josa(SR_ATTR_THING[c.ta],"이","가")} 없었다.`;
+}
+// 자리마다의 모습(가운데가 0,0, 대략 반지름 30 안)
+function srSpotArt(c, n, t){
+  c.save(); c.lineJoin = "round"; c.lineCap = "round";
+  const dark = "#2a2631", mid = "#3a3542", lite = "#5a5262", rust = "#6a4632";
+  if(n==="지붕 위"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-32,10); c.lineTo(-22,-12); c.lineTo(26,-12); c.lineTo(34,10); c.closePath(); c.fill();
+    c.strokeStyle = lite; c.lineWidth = 1; for(let i=-24;i<=28;i+=7){ c.beginPath(); c.moveTo(i,-12); c.lineTo(i*1.2,10); c.stroke(); }
+    c.fillStyle = mid; c.fillRect(14,-26,8,14); c.fillStyle = "rgba(200,200,210,0.12)"; c.beginPath(); c.arc(18,-30-Math.sin(t)*2,5,0,7); c.fill(); }
+  else if(n==="하수구 입구"){ c.fillStyle = "#15131a"; c.beginPath(); c.ellipse(0,8,28,10,0,0,7); c.fill(); c.strokeStyle = lite; c.lineWidth = 2; c.beginPath(); c.ellipse(0,8,28,10,0,0,7); c.stroke();
+    c.lineWidth = 1.5; for(let i=-20;i<=20;i+=6){ c.beginPath(); c.moveTo(i,1); c.lineTo(i,15); c.stroke(); } c.fillStyle = "rgba(120,170,200,0.14)"; c.beginPath(); c.ellipse(-6,20,20,4,0,0,7); c.fill(); }
+  else if(n==="쓰레기 더미"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-30,16); c.quadraticCurveTo(-18,-14,0,-8); c.quadraticCurveTo(16,-20,30,16); c.closePath(); c.fill();
+    c.fillStyle = mid; c.fillRect(-20,-2,12,10); c.fillStyle = lite; c.beginPath(); c.arc(8,2,6,0,7); c.fill(); c.fillStyle = "#1c1a20"; c.fillRect(12,6,14,9); }
+  else if(n==="창고 안"){ c.fillStyle = dark; c.fillRect(-30,-24,60,40); c.fillStyle = "#16141b"; c.fillRect(-14,-10,28,26); c.strokeStyle = lite; c.lineWidth = 1;
+    for(let y=-8;y<16;y+=4){ c.beginPath(); c.moveTo(-14,y); c.lineTo(14,y); c.stroke(); } c.fillStyle = "rgba(255,200,120,0.18)"; c.fillRect(-26,-20,8,6); }
+  else if(n==="빨랫줄 아래"){ c.strokeStyle = lite; c.lineWidth = 1; c.beginPath(); c.moveTo(-32,-18); c.quadraticCurveTo(0,-8,32,-18); c.stroke();
+    [-18,0,16].forEach((x,k)=>{ const sw = Math.sin(t*2+k)*2; c.fillStyle = ["#4a4456","#3e4a52","#52463e"][k]; c.beginPath(); c.moveTo(x-7,-13); c.lineTo(x+7,-13); c.lineTo(x+6+sw,8); c.lineTo(x-6+sw,8); c.closePath(); c.fill(); });
+    c.fillStyle = "rgba(120,170,200,0.14)"; c.beginPath(); c.ellipse(0,20,22,4,0,0,7); c.fill(); }
+  else if(n==="계단 밑"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-30,16); for(let k=0;k<5;k++){ c.lineTo(-30+k*12,16-k*8); c.lineTo(-18+k*12,16-k*8); } c.lineTo(30,-24); c.lineTo(30,16); c.closePath(); c.fill();
+    c.fillStyle = "#121016"; c.beginPath(); c.moveTo(-18,16); c.lineTo(20,-12); c.lineTo(20,16); c.closePath(); c.fill(); }
+  else if(n==="버려진 차 안"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-32,10); c.lineTo(-26,-4); c.lineTo(-14,-16); c.lineTo(14,-16); c.lineTo(24,-4); c.lineTo(32,0); c.lineTo(32,10); c.closePath(); c.fill();
+    c.fillStyle = "#16141b"; c.fillRect(-12,-13,11,9); c.fillRect(2,-13,11,9); c.fillStyle = rust; c.globalAlpha = 0.5; c.fillRect(-28,2,16,6); c.globalAlpha = 1;
+    c.fillStyle = "#121016"; [-18,18].forEach(x=>{ c.beginPath(); c.arc(x,12,7,0,7); c.fill(); }); }
+  else if(n==="물탱크 옆"){ c.fillStyle = mid; c.beginPath(); c.ellipse(0,-20,20,6,0,0,7); c.fill(); c.fillStyle = dark; c.fillRect(-20,-20,40,30); c.beginPath(); c.ellipse(0,10,20,6,0,0,7); c.fill();
+    c.strokeStyle = lite; c.lineWidth = 1; [-8,2].forEach(y=>{ c.beginPath(); c.moveTo(-20,y); c.lineTo(20,y); c.stroke(); }); c.fillStyle = "rgba(120,170,200,0.25)"; c.fillRect(14,10+((t*30)%10),2,3); }
+  c.restore();
+}
+function mgSearch(ctx){
+  return new Promise(resolve=>{
+    const q = ctx.q, k = powK(ctx, "tec"), P = srMake(q, k);
+    if(!P){ resolve({win:true, score:0.6}); return; }
+    const m = mgOpen("수색 · 현장 장부", `${esc(q.text)}<br>자리를 눌러 살피면 알아낸 것이 장부에 적힌다. 칸마다 무엇이 있었는지 적고 <b>맞춰 보기</b>. 맞은 칸이 <b>셋</b> 모이면 확정된다 — 어느 칸이 틀렸는지는 알려 주지 않는다. <b>${esc(P.things[0].n)}</b>의 자리가 확정되면 성공.`, ctx, 260);
+    const T0 = P.N + 2 + Math.round((k-1)*4), G = {left: clamp(T0, P.N+1, P.N+5), seen:new Set(), notes:P.intro.map(c=>srText(P,c)), guess:Array(P.N).fill(-1), lock:Array(P.N).fill(false), done:false, flash:{}, msg:""};
+    if(FXTEST) window.__sr = {P, G};
+    const pos = P.spots.map((s,i)=>({x: 90 + i*(540/Math.max(1,P.N-1)), y: s.a.includes("high") ? 88 : s.a.includes("low") ? 190 : 140}));
+    let raf;
+    const ui = () => {
+      m.info.innerHTML = `<div class="sr-top">남은 시간 <b>${G.left}</b> · 확정 <b>${G.lock.filter(Boolean).length}</b> / ${P.N}${G.msg ? ` · <span style="color:var(--yellow)">${G.msg}</span>` : ""}</div>
+        <div class="sr-notes">${G.notes.map(t=>`<div>· ${esc(t)}</div>`).join("") || `<div class="muted">아직 아는 것이 없다.</div>`}</div>`;
+      m.ctrl.innerHTML = `<div class="sr-wrap"><div class="muted" style="font-size:12px;margin-bottom:6px">이 현장에 있던 것: ${P.things.map(t=>esc(t.n)).join(" · ")}</div><div class="sr-book">${P.spots.map((s,i)=>`<label class="${G.lock[i]?"lock":""}"><span>${esc(s.n)}</span>${G.lock[i] ? `<b>${esc(P.things[P.sol[i]].n)}</b>` :
+        `<select data-sr="${i}"><option value="-1">—</option>${P.things.map((t,j)=>`<option value="${j}" ${G.guess[i]===j?"selected":""}>${esc(t.n)}</option>`).join("")}</select>`}</label>`).join("")}</div>
+        <div class="sr-act"><button class="primary" data-srchk="1" ${G.done?"disabled":""}>맞춰 보기</button></div></div>`;
+    };
+    const end = win => { if(G.done) return; G.done = true; ui(); const sc = G.lock.filter(Boolean).length / P.N;
+      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, win ? Math.max(0.6, sc) : sc*0.5, win ? "찾아냈다" : "끝내 찾지 못했다").then(()=>resolve({win, score: win ? Math.max(0.6, sc) : sc*0.5})); }, 900); };
+    const spend = () => { G.left--; if(G.left<=0 && !G.lock[P.sol.indexOf(0)]) end(false); };
+    m.cvs.addEventListener("pointerdown", e=>{ if(G.done) return; const p = m.pos(e), i = pos.findIndex(o=>Math.hypot(o.x-p.x, o.y-p.y) < 34); if(i<0) return;
+      if(G.seen.has(i)){ G.msg = `${josa(P.spots[i].n,"은","는")} 이미 살폈다`; ui(); return; }
+      G.seen.add(i); G.flash[i] = performance.now(); const found = P.at[i].map(c=>srText(P,c));
+      G.notes = G.notes.concat(found.length ? found : [`${P.spots[i].n}에서는 별다른 것을 알아내지 못했다.`]); G.msg = ""; spend(); ui(); });
+    m.ctrl.addEventListener("change", e=>{ const i = e.target.dataset.sr; if(i==null) return; G.guess[+i] = +e.target.value; });
+    m.ctrl.addEventListener("click", e=>{ if(!e.target.dataset.srchk || G.done) return;
+      const right = P.spots.map((_,i)=>i).filter(i=>!G.lock[i] && G.guess[i]===P.sol[i]);
+      const openN = G.lock.filter(x=>!x).length, n = right.length===openN ? right.length : Math.floor(right.length/3)*3;
+      if(n>0){ right.slice(0,n).forEach(i=>{ G.lock[i] = true; G.flash[i] = performance.now(); }); G.msg = `${n}칸이 확정됐다`; }
+      else { G.msg = right.length ? "아직 셋이 맞지 않는다" : "맞는 칸이 셋이 되지 않는다"; spend(); }
+      ui(); if(G.lock[P.sol.indexOf(0)]) end(true); });
+    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0}); };
+    const t0 = performance.now();
+    function draw(){
+      const c = m.c, now = performance.now(), t = (now-t0)/1000, W = 720, H = 260;
+      let g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#16141c"); g.addColorStop(1,"#0c0b10"); c.fillStyle = g; c.fillRect(0,0,W,H);
+      // 뒷골목: 건물 벽 · 배관 · 바닥
+      c.fillStyle = "#1d1a24"; for(let i=0;i<9;i++){ const x = i*84 - 10, h = 120 + (i*37%60); c.fillRect(x, 0, 80, h); c.fillStyle = "rgba(255,210,140,0.05)"; for(let j=0;j<3;j++) c.fillRect(x+12+j*22, 20+(i*13%30), 10, 14); c.fillStyle = "#1d1a24"; }
+      c.strokeStyle = "rgba(140,130,150,0.18)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0,64); c.lineTo(W,58); c.stroke();
+      c.fillStyle = "#121016"; c.fillRect(0, 214, W, H-214); c.strokeStyle = "rgba(255,255,255,0.04)"; for(let i=0;i<24;i++){ c.beginPath(); c.moveTo(i*32, 214); c.lineTo(i*32-30, H); c.stroke(); }
+      pos.forEach((o,i)=>{ const s = P.spots[i], seen = G.seen.has(i), lk = G.lock[i], f = G.flash[i] ? Math.max(0, 1-(now-G.flash[i])/700) : 0;
+        c.save(); c.translate(o.x, o.y); srSpotArt(c, s.n, t + i);
+        const r = 32;
+        c.strokeStyle = lk ? "rgba(120,255,200,0.9)" : seen ? "rgba(230,210,160,0.6)" : "rgba(200,190,170,0.35)"; c.lineWidth = lk ? 2 : 1.2; c.setLineDash(seen||lk ? [] : [4,5]); c.beginPath(); c.arc(0,0,r,0,7); c.stroke(); c.setLineDash([]);
+        if(f){ c.strokeStyle = `rgba(255,240,200,${f})`; c.lineWidth = 2; c.beginPath(); c.arc(0,0,r+10*(1-f),0,7); c.stroke(); }
+        c.fillStyle = lk ? "#c8ffe8" : "#d8cfbd"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(s.n, 0, r+15);
+        if(lk){ c.fillStyle = "rgba(10,20,16,0.75)"; c.fillRect(-46, -r-20, 92, 15); c.fillStyle = "#9fe8c8"; c.font = `500 10px "Noto Sans KR",sans-serif`; c.fillText(P.things[P.sol[i]].n, 0, -r-9); }
+        else if(seen){ c.fillStyle = "rgba(230,210,160,0.85)"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.fillText("살핌", 0, -r-6); }
+        c.restore(); });
+      vignette(c, W, H, "rgba(0,0,0,0.5)");
+      raf = requestAnimationFrame(draw);
+    }
+    ui(); raf = requestAnimationFrame(draw);
+  });
+}
+
+/* ================= 호위: 길 위의 경계 =================
+   목적지까지 몇 구간을 지난다. 구간마다 일이 생기고, 고르는 것마다 경계(집중력)와 의뢰인의 안전이 오간다.
+   경계가 낮을수록 매복을 당하기 쉽다. 매복은 합 전투 — 지면 의뢰인을 빼앗긴다. 의뢰인이 무사히 목적지에 닿으면 성공. */
+const ESC_EVENTS = [
+  {t:"골목 그림자에서 인기척이 난다.", o:[["멈춰서 살핀다", {al:-8, amb:-0.25}], ["그대로 지나간다", {amb:+0.15}], ["다른 길로 돌아간다", {al:-14, amb:-0.1}]]},
+  {t:"엎어진 손수레가 길을 막고 있다.", o:[["치우고 지나간다", {al:-10}], ["넘어서 간다", {safe:-12, al:-3}], ["돌아간다", {al:-15, amb:-0.05}]]},
+  {t:"의뢰인이 불안해하며 걸음을 멈춘다.", o:[["달래며 같이 쉰다", {al:+6, amb:+0.1}], ["재촉한다", {safe:-8}], ["앞을 맡고 뒤를 동료에게 맡긴다", {al:-6, safe:+4, crew:true}]]},
+  {t:"낯선 자가 길을 묻는 척 다가온다.", o:[["막아선다", {fight:0.5, al:-4}], ["피해서 비켜 간다", {al:-10}], ["의뢰인을 등 뒤로 숨긴다", {safe:+6, amb:+0.1}]]},
+  {t:"문 닫은 가게 처마 밑, 잠깐 쉴 만한 자리가 있다.", o:[["쉬어 간다", {al:+18, amb:+0.12}], ["그냥 지나친다", {}]]},
+  {t:"멀리서 누군가 같은 걸음으로 따라온다.", o:[["골목을 꺾어 떼어 낸다", {al:-12, amb:-0.2}], ["돌아서서 기다린다", {fight:0.7}], ["모른 척 간다", {amb:+0.2}]]},
+  {t:"가로등이 꺼진 긴 길이다.", o:[["불을 밝히고 간다", {al:-6, amb:+0.05}], ["어둠에 섞여 빠르게 간다", {al:-12, amb:-0.1}], ["밝은 큰길로 돌아간다", {al:-16, amb:-0.2}]]},
+  {t:"의뢰인의 짐에서 무언가 떨어졌다.", o:[["주우러 돌아간다", {al:-8, safe:+5}], ["버리고 간다", {safe:-6}]]}
+];
+function escFoe(q){ const P = REQ_POOL[reqTier(q.grade!=null ? q.grade : 9)], rows = (P.str||[]).filter(r=>r[2]); return rows.length ? pick(rows)[2] : (FOE_NAMES[q.grade] || "괴한"); }
+function mgEscort(ctx){
+  return new Promise(resolve=>{
+    const q = ctx.q, tier = reqTier(q.grade!=null ? q.grade : 9), k = clamp(teamPower(ctx.team, ["str","agi"]) / Math.max(1, q.req), 0.55, 1.7);
+    const SEG = [3,4,5,6][tier], baseAmb = [0.08,0.16,0.24,0.32][tier];
+    const m = mgOpen("호위 · 길 위의 경계", `${esc(q.text)}<br>구간마다 생기는 일에 대처하며 목적지까지 간다. <b>경계</b>가 낮을수록 매복을 당하기 쉽고, 매복은 합 전투가 된다. 의뢰인의 <b>안전</b>이 바닥나거나 전투에서 지면 실패.`, ctx, 220);
+    const G = {seg:0, al: clamp(Math.round(60 + (k-1)*40), 40, 90), safe:100, amb:0, done:false, log:[], fights:[], ev:null, walk:0}; if(FXTEST) window.__es = G;
+    const deck = ESC_EVENTS.slice().sort(()=>Math.random()-0.5);
+    let raf;
+    const ui = () => {
+      m.info.innerHTML = `구간 <b>${Math.min(G.seg+1, SEG)}</b> / ${SEG} · 경계 <b style="color:${G.al>=50?"var(--green)":G.al>=25?"var(--yellow)":"var(--red)"}">${G.al}</b> · 의뢰인 안전 <b>${G.safe}</b>
+        <div class="muted" style="font-size:12px;margin-top:4px">${G.log.slice(-3).map(esc).join("<br>")}</div>`;
+      m.ctrl.innerHTML = G.ev && !G.done ? `<div class="es-card"><p>${esc(G.ev.t)}</p><div class="pk-moves">${G.ev.o.map((o,i)=>`<button data-es="${i}"><b>${esc(o[0])}</b></button>`).join("")}</div></div>` : "";
+    };
+    const finish = win => { if(G.done) return; G.done = true; ui();
+      const sc = win ? clamp(0.5 + G.safe/200, 0, 1) : 0.15;
+      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, sc, win ? (G.safe>=70 ? "무사히 데려다주었다" : "다치게 했지만 데려다주었다") : "의뢰인을 지키지 못했다").then(()=>{
+        const last = G.fights[G.fights.length-1];
+        if(last){ G.fights.forEach(fr=>fr.battle.forEach(b=>{ const o = last.battle.find(x=>x.f===b.f); if(o && b.wound > o.wound) o.wound = b.wound; if(o && b.fought) o.fought = true; })); }
+        resolve({win, score: sc, combat: last || null}); }); }, 700); };
+    async function ambush(why){
+      G.log.push(why); ui();
+      m.bg.style.visibility = "hidden";
+      const fq = {kind:"일반", goal:"제압", grade:q.grade, attrs:["str"], req:q.req, client:q.client, foe: escFoe(q), text:`매복 — ${q.text}`};
+      const r = await mgCombat({q:fq, team:ctx.team, idx:ctx.idx, total:ctx.total});
+      m.bg.style.visibility = "";
+      G.fights.push(r);
+      if(!r.win){ G.log.push("매복에 밀렸다. 의뢰인을 빼앗겼다."); finish(false); return false; }
+      G.al = clamp(G.al + 10, 0, 100); G.safe = clamp(G.safe - 6, 0, 100); G.log.push("매복을 물리쳤다."); ui(); return true;
+    }
+    async function next(){
+      if(G.done) return;
+      if(G.seg >= SEG){ G.log.push("목적지에 닿았다."); finish(G.safe > 0); return; }
+      G.walk = performance.now();
+      setTimeout(async ()=>{
+        if(G.done) return;
+        G.al = clamp(G.al - 6, 0, 100);
+        const p = clamp(baseAmb + G.amb + (50 - G.al)/120, 0.02, 0.85); G.amb = 0;
+        if(Math.random() < p && !(await ambush(`${G.seg+1}구간 — 매복이다!`))) return;
+        G.ev = deck[G.seg % deck.length]; ui();
+      }, 900);
+    }
+    m.ctrl.addEventListener("click", async e=>{ const b = e.target.closest("[data-es]"); if(!b || G.done || !G.ev) return;
+      const [lab, ef] = G.ev.o[+b.dataset.es]; G.ev = null; G.log.push(`${G.seg+1}구간 — ${lab}`);
+      G.al = clamp(G.al + (ef.al||0), 0, 100); G.safe = clamp(G.safe + (ef.safe||0), 0, 100); G.amb += ef.amb||0;
+      if(ef.crew && ctx.team.length<2){ G.safe = clamp(G.safe - 8, 0, 100); G.log.push("맡길 동료가 없었다."); }
+      ui();
+      if(ef.fight && Math.random() < ef.fight && !(await ambush("상대가 칼을 뽑았다!"))) return;
+      if(G.safe <= 0){ G.log.push("의뢰인이 크게 다쳤다."); finish(false); return; }
+      G.seg++; next(); });
+    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0}); };
+    const t0 = performance.now();
+    function draw(){
+      const c = m.c, now = performance.now(), t = (now-t0)/1000, W = 720, H = 220;
+      let g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#14131b"); g.addColorStop(1,"#0b0a0e"); c.fillStyle = g; c.fillRect(0,0,W,H);
+      const x0 = 70, x1 = 650, y = 150, sx = i => x0 + (x1-x0)*i/SEG;
+      // 뒷골목 건물과 가로등
+      for(let i=0;i<10;i++){ const bx = i*76 - 8, bh = 70 + (i*41%55); c.fillStyle = i%2 ? "#1b1922" : "#1f1c27"; c.fillRect(bx, y-30-bh, 74, bh);
+        c.fillStyle = "rgba(255,210,140,0.06)"; for(let j=0;j<3;j++) if((i+j)%3) c.fillRect(bx+10+j*20, y-20-bh+12, 9, 12); }
+      c.fillStyle = "#111016"; c.fillRect(0, y-30, W, H-y+30); c.strokeStyle = "rgba(255,255,255,0.05)"; c.beginPath(); c.moveTo(0,y+12); c.lineTo(W,y+12); c.stroke();
+      for(let i=0;i<=SEG;i++){ const lx = sx(i) + 18, lit = i <= G.seg + 1; c.strokeStyle = "#2e2a36"; c.lineWidth = 2; c.beginPath(); c.moveTo(lx, y-2); c.lineTo(lx, y-62); c.lineTo(lx-8, y-66); c.stroke();
+        if(lit){ c.save(); c.globalCompositeOperation = "lighter"; const lg = c.createRadialGradient(lx-8, y-62, 0, lx-8, y-62, 46); lg.addColorStop(0, `rgba(255,200,120,${0.22 + 0.04*Math.sin(t*3+i)})`); lg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = lg; c.fillRect(lx-60, y-110, 100, 110); c.restore(); } }
+      c.strokeStyle = "rgba(200,190,170,0.25)"; c.lineWidth = 3; c.setLineDash([8,8]); c.beginPath(); c.moveTo(x0,y); c.lineTo(x1,y); c.stroke(); c.setLineDash([]);
+      for(let i=0;i<=SEG;i++){ const done = i <= G.seg; c.fillStyle = i===SEG ? "#e8d39a" : done ? "#9fe8b0" : "#3a3644"; c.beginPath(); c.arc(sx(i), y, i===SEG ? 9 : 6, 0, 7); c.fill(); }
+      c.fillStyle = "#cfc8bb"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("출발", x0, y+28); c.fillText("목적지", x1, y+28);
+      const wk = G.walk ? clamp((now-G.walk)/900, 0, 1) : 1, px = G.seg===0 ? x0 : sx(G.seg - 1 + wk), bob = wk<1 ? Math.abs(Math.sin(t*10))*2 : 0;
+      fig(c, px - 10, y - 4 - bob, 40, {side:"ally", face:1});
+      fig(c, px + 10, y - 4 - bob, 36, {side:"friend", face:1});
+      // 경계: 일행을 감싸는 빛의 고리
+      c.save(); c.globalCompositeOperation = "lighter"; const ar = 26 + G.al*0.35; const rg = c.createRadialGradient(px, y-24, ar*0.3, px, y-24, ar);
+      rg.addColorStop(0, "rgba(0,0,0,0)"); rg.addColorStop(0.85, `rgba(120,200,255,${0.05 + G.al/700})`); rg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = rg; c.beginPath(); c.arc(px, y-24, ar, 0, 7); c.fill(); c.restore();
+      vignette(c, W, H, "rgba(0,0,0,0.5)");
+      raf = requestAnimationFrame(draw);
+    }
+    ui(); raf = requestAnimationFrame(draw); next();
   });
 }
 
@@ -5970,7 +6223,7 @@ function fxTestPanel(){
   el.innerHTML=`<h4>연출 테스트</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>일반 의뢰</b><div class="g">${[["str","물리"],["agi","속도"],["tec","정밀"]].map(([a,l])=>`<button data-fx="일반|${a}|1">${l} 성공</button><button data-fx="일반|${a}|0">${l} 실패</button>`).join("")}</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
-   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
+   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 장비 제작</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>`;
@@ -5990,8 +6243,8 @@ function fxTestPanel(){
     const wv=el.querySelector("#fxw").value, f0=S.fixers[0], lead = f0.gear.weapon && f0.gear.weapon.unique ? leadGear(f0) : {wtype:wv||null, spec: wv?defaultSpec(wv):null, weaponName: wv?el.querySelector("#fxw").selectedOptions[0].text:null, armor:el.querySelector("#fxa").checked, acc:el.querySelector("#fxc").checked, accColor:"150,230,255"};
     window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),lead,client:"테스트 의뢰인"}); };
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
-    const team=S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean); const at = g==="shield"?["str","agi"]:[g];
-    const q={kind: g==="shield"?"호위":"일반", goal: el.querySelector("#fxgoal").value, grade:+el.querySelector("#fxgr").value, attrs:at, req: Math.max(1, teamPower(team,at)/kk), client:"테스트 의뢰인"};
+    const team=S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean); const at = g==="shield"||g==="escort"?["str","agi"]:g==="search"?["agi","tec"]:[g];
+    const q={kind: g==="shield"||g==="escort"?"호위":g==="search"?"수색":"일반", text: g==="search" ? pick(REQ_POOL[reqTier(+el.querySelector("#fxgr").value)].srch)[0] : g==="escort" ? pick(REQ_POOL[reqTier(+el.querySelector("#fxgr").value)].esc)[0] : "", goal: el.querySelector("#fxgoal").value, grade:+el.querySelector("#fxgr").value, attrs:at, req: Math.max(1, teamPower(team,at)/kk), client:"테스트 의뢰인"};
     const r = await runMinigames(q, team); toast(r.decisive!=null ? `직접 수행 ${r.decisive?"성공":"실패"}` : `미니게임 점수 ${Math.round(r.score*100)}점`); });
 }
 
