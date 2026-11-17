@@ -179,12 +179,26 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-20px);opacity:0;background:#241d14;border:1px solid var(--accent);color:#f3e3c0;padding:10px 18px;border-radius:6px;z-index:80;transition:all .35s}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
+/* 고유 무기 연출 */
+.fgx{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 58%,#1a1210 0%,#070606 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .6s ease;cursor:pointer}
+.fgx.on{opacity:1}
+.fgx-cv{width:min(92vw,760px);height:min(42vh,320px)}
+.fgx-lines{min-height:110px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;margin-top:6px}
+.fgx-title{text-align:center;opacity:0;transform:translateY(6px);transition:opacity 1.2s ease,transform 1.2s ease;margin-top:4px}
+.fgx.named .fgx-title{opacity:1;transform:none}
+.fgx-big{font-family:"Noto Serif KR","Nanum Myeongjo",serif;font-size:clamp(26px,4vw,38px);letter-spacing:.32em;color:#f3e2c4;text-shadow:0 0 18px rgba(255,160,80,.45)}
+.fgx-sub{margin-top:6px;color:#b8a990;font-size:14px;letter-spacing:.12em}
+.fgx-act{margin-top:16px;opacity:0;pointer-events:none;transition:opacity .6s ease}
+.fgx.done .fgx-act{opacity:1;pointer-events:auto}
+.fgx .hv-skip{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:#6d655c}
+.fgx.done .hv-skip{display:none}
+.fg-add button{min-width:0}
 /* 징조(상단 연출 칸): 주홍빛 = 따스한 목소리, 달빛 = 속삭임 */
 .omen{position:absolute;inset:0;z-index:4;pointer-events:none;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .8s ease;
  background:radial-gradient(ellipse at 50% 50%,rgba(4,3,6,.55) 0%,rgba(2,2,4,.88) 75%)}
 .omen.on{opacity:1}
 .omen .ol{position:relative;z-index:2;font-family:"Noto Serif KR","Nanum Myeongjo",serif;font-size:clamp(16px,2.4vw,21px);letter-spacing:.06em;padding:0 16px;text-align:center}
-.omen .ol span{display:inline-block;opacity:0;filter:blur(5px);transform:translateY(4px);animation:om-ch .8s ease-out forwards;animation-delay:calc(var(--i)*55ms)}
+.omen .ol canvas{display:block;max-width:100%;height:auto!important}
 @keyframes om-ch{to{opacity:1;filter:none;transform:none}}
 .omen .who{position:relative;z-index:2;margin-top:8px;font-size:12px;color:#9c9285;opacity:0;animation:om-who .8s ease-out 1.2s forwards}
 @keyframes om-who{to{opacity:.9}}
@@ -1167,33 +1181,34 @@ const ESCORT = ["둥지 경계까지 화물 차량을 호위해 달라","협회 
 const SEARCH = ["폐공장에 숨겨진 장부를 찾아 달라","사흘째 연락이 없는 수리공을 찾아 달라","뒷골목 하수로 어딘가에 떨어진 열쇠를 찾아 달라"];
 
 /* ================= 장비 · 공방 =================
-   양산 제작: 이름 없는 공방의 흔한 물건. 7급 의뢰까지 쓸 만하다.
-   고급 제작: 원작 세계관의 공방. 4급 의뢰까지 쓸 만하다(6급 사무소부터 거래).
-   특수 제작: 원작 세계관의 고급 공방·인더스트리·아틀리에. 1급 의뢰까지 쓸 만하다(3급 사무소부터 거래).
-   고유 장비: 특색이 된 해결사만 한 벌씩 주문 제작한다(무기·방어구 각각).
+   양산 공방: 이름 없는 공방의 흔한 물건. 7급 의뢰까지 쓸 만하다. 무기 내구도 3~6.
+   정식 공방: 원작 세계관의 공방. 4급 의뢰까지 쓸 만하다(6급 사무소부터 거래). 무기 내구도 7~12.
+   상급 공방: 원작 세계관의 상급 공방·인더스트리·아틀리에. 1급 의뢰까지 쓸 만하다(3급 사무소부터 거래). 무기 내구도 13~20.
+   고유 무기: 정식 공방 이상의 무기를 최대 내구도만큼 쓴 4급 이상 해결사에게, 드물게(10%) 공방이 그 사람만의 무기로 다시 벼려 준다.
+   고유 방어구: 특색이 된 해결사만 주문 제작한다.
    무기 보너스 = 위력 예산 × 종류별 능력치 비율. 공방 이름과 특징만 원작에서 따왔고 물건·수치는 이 게임용이다. */
 // cat: slash 참격 / impact 타격 / pierce 관통 — 맞힐 때의 VFX와 공격 동작이 이 분류를 따른다
 const WEAPON_KINDS = {
-  blade: {n:"한손검",   cat:"slash",  vars:["양날검","외날검","톱날검","단검"], prof:{str:.4,agi:.4,tec:.2},   carry:"hip",      two:false},
+  blade: {n:"한손검",   cat:"slash",  vars:["양날검","외날검","톱날검","단검","환도"], prof:{str:.4,agi:.4,tec:.2},   carry:"hip",      two:false},
   long:  {n:"양손검",   cat:"slash",  vars:["장검","장도"],                   prof:{str:.5,agi:.3,tec:.2},   carry:"back",     two:true},
   twin:  {n:"쌍검",     cat:"slash",  vars:["팔시온","단검"],                 prof:{agi:.6,str:.2,tec:.2},   carry:"back",     two:false},
   great: {n:"대검",     cat:"impact", vars:["처형검","양날 대검","외날 대검"],  prof:{str:.75,agi:.1,tec:.15}, carry:"back",     two:true},
-  blunt: {n:"둔기",     cat:"impact", vars:["망치","메이스","몽둥이","도끼"],    prof:{str:.7,agi:.15,tec:.15}, carry:"shoulder", two:false},
+  blunt: {n:"둔기",     cat:"impact", vars:["해머","메이스","몽둥이","도끼","모닝스타","워해머","양날 도끼","쇠파이프"],    prof:{str:.7,agi:.15,tec:.15}, carry:"shoulder", two:false},
   staff: {n:"봉",       cat:"impact", vars:["쇠봉","곤"],                    prof:{str:.45,agi:.4,tec:.15}, carry:"back",     two:true},
   fist:  {n:"건틀릿",   cat:"impact", vars:["건틀릿","갈퀴 장갑"],            prof:{str:.5,agi:.5},          carry:"worn",     two:false},
   tool:  {n:"공구",     cat:"impact", vars:["렌치","전기톱"],                 prof:{tec:.6,str:.25,agi:.15}, carry:"hip",      two:false},
-  spear: {n:"창",       cat:"pierce", vars:["잎날창","갈고리창"],             prof:{agi:.5,str:.3,tec:.2},   carry:"upright",  two:true},
+  spear: {n:"창",       cat:"pierce", vars:["잎날창","갈고리창","날개창","할버드","글레이브"],             prof:{agi:.5,str:.3,tec:.2},   carry:"upright",  two:true},
   lance: {n:"랜스",     cat:"pierce", vars:["원뿔 랜스","나선 랜스"],          prof:{str:.5,agi:.3,tec:.2},   carry:"upright",  two:true},
   rapier:{n:"레이피어", cat:"pierce", vars:["레이피어","에스터크"],           prof:{agi:.55,tec:.35,str:.1}, carry:"hip",      two:false},
-  gun:   {n:"총",       cat:"pierce", vars:["권총","산탄총","장총"],          prof:{tec:.6,agi:.3,str:.1},   carry:"holster",  two:false}
+  gun:   {n:"총",       cat:"pierce", vars:["리볼버","산탄총","장총","자동 권총"],          prof:{tec:.6,agi:.3,str:.1},   carry:"holster",  two:false}
 };
 const CAT_NAME = {slash:"참격", impact:"타격", pierce:"관통"};
 const ARMOR_TYPES = ["경량 재킷","해결사 코트","롱코트","중장갑"];
-const METALS = ["#aab5b1","#c8ccd2","#8e959e","#c9a86a","#b07a5a","#5f6670"];
-const GLOWS  = [null,"#7fe0ff","#ff8a3a","#ff4f6a","#b48cff","#f2d27a","#7fffb0"];
-const defaultSpec = kind => ({kind, v:0, len:1, wid:1, metal:METALS[0], glow:null, deco:0});
+const METALS = ["#aab5b1","#c8ccd2","#e4e7ea","#8e959e","#5f6670","#3d4248","#7f97a8","#6f8f86","#c9a86a","#d8b45a","#b07a5a","#9a5a3c","#7b6a8c","#5a4a3a"];
+const GLOWS  = [null,"#f4f4ff","#7fe0ff","#4f7cff","#3fe0c8","#7fffb0","#c6ff5a","#f2d27a","#ff8a3a","#ff4f6a","#d8203a","#ff8ad8","#b48cff","#8a5cff"];
+const defaultSpec = kind => ({kind, v:0, len:1, wid:1, metal:METALS[0], glow:null, add:[]});
 function profBonus(kind, b){ const out = {}; Object.entries(WEAPON_KINDS[kind].prof).forEach(([k,v])=>{ const n = Math.round(b*v); if(n>0) out[k] = n; }); return out; }
-const TIER_NAME = ["양산 제작","고급 제작","특수 제작","고유 장비"];
+const TIER_NAME = ["양산 공방","정식 공방","상급 공방","고유 장비"];
 const MAKERS = {
   "이름 없는 공방":"골목 어딘가에서 찍어 내는 양산품. 싸고 흔하다.",
   "묵 공방":"환도 같은 한국식 무기를 만든다.",
@@ -1208,8 +1223,8 @@ const MAKERS = {
   "리플렛 공방":"실험적인 증기 동력 무기.",
   "유니온 공방":"기성품 생체 무기·장비와 의체 시술.",
   "파나르 공방":"압박 붕대.",
-  "스티그마 공방":"[고급 공방] 달군 칼날로 오래 남는 낙인을 새긴다. 비싸다.",
-  "메즈틸 공방":"[고급 공방] 빠르지만 다루기 어렵고 위험한 검.",
+  "스티그마 공방":"[상급 공방] 달군 칼날로 오래 남는 낙인을 새긴다. 비싸다.",
+  "메즈틸 공방":"[상급 공방] 빠르지만 다루기 어렵고 위험한 검.",
   "휠스 인더스트리":"[인더스트리] 처형인의 대검.",
   "슈바르츠 인더스트리":"[인더스트리] 의체 전문.",
   "아틀리에 로직":"[아틀리에] 총기와 부품.",
@@ -1222,12 +1237,14 @@ const C_ = (id, tier, maker, name, price, extra) => Object.assign({id, tier, slo
 const SHOP = [
   // 양산 제작 — 이름 없는 공방 (위력 2~6)
   W_("n1",0,"이름 없는 공방","보급형 단검","blade",{v:3},2,1500),
-  W_("n4",0,"이름 없는 공방","쇠파이프","blunt",{v:0,len:0.9,wid:0.45},2,1500),
+  W_("n4",0,"이름 없는 공방","쇠파이프","blunt",{v:7,len:0.95},2,1500),
   W_("n6",0,"이름 없는 공방","정비 공구","tool",{v:0},2,1500),
   W_("n11",0,"이름 없는 공방","강철 너클","fist",{v:0,wid:0.85},3,3000),
   W_("n2",0,"이름 없는 공방","양산 마체테","blade",{v:0,len:0.85,wid:1.25},4,5000),
   W_("n7",0,"이름 없는 공방","구형 리볼버","gun",{v:0},4,5000),
   W_("n9",0,"이름 없는 공방","철근 창","spear",{v:0,metal:"#8e959e"},4,6000),
+  W_("n16",0,"이름 없는 공방","양산 손도끼","blunt",{v:3,len:0.85,wid:0.85,metal:"#8e959e"},3,4000),
+  W_("n17",0,"이름 없는 공방","경비용 글레이브","spear",{v:4,metal:"#8e959e"},5,9000),
   W_("n5",0,"이름 없는 공방","공사용 해머","blunt",{v:0,wid:1.1},5,9000),
   W_("n12",0,"이름 없는 공방","양산 장창","lance",{v:0,len:0.85,metal:"#8e959e"},5,11000),
   W_("n13",0,"이름 없는 공방","보급형 레이피어","rapier",{v:0},4,6000),
@@ -1244,14 +1261,15 @@ const SHOP = [
   C_("nc3",0,"이름 없는 공방","보급형 경보 팔찌",9000,{mpRed:0.15,bonus:{wil:1}}),
   // 고급 제작 — 원작 공방 (위력 8~13)
   W_("m2",1,"랑가 공방","랑가 공방 단검","blade",{v:3,metal:"#c8ccd2"},8,70000),
-  W_("m8",1,"네스터 공방","네스터 공방 진동 망치","blunt",{v:0,len:0.75,wid:0.9},8,70000),
+  W_("m8",1,"네스터 공방","네스터 공방 진동 망치","blunt",{v:5,len:0.75,glow:"#c6ff5a"},8,70000),
   W_("m4",1,"젤코바 공방","젤코바 공방 메이스","blunt",{v:1},9,90000),
-  W_("m5",1,"젤코바 공방","젤코바 공방 도끼","blunt",{v:2},9,90000),
+  W_("m5",1,"젤코바 공방","젤코바 공방 도끼","blunt",{v:3},9,90000),
   W_("m3",1,"랑가 공방","랑가 공방 갈퀴 장갑","fist",{v:1,metal:"#c8ccd2"},10,120000),
   W_("m9",1,"로즈스패너 공방","로즈스패너 공방 렌치","tool",{v:0,len:1.25,wid:1.3,metal:"#b07a5a"},10,120000),
   W_("m12",1,"클라우드 공방","클라우드 공방 직검","blade",{v:0,len:1.1,metal:"#c8ccd2"},10,120000),
-  W_("m1",1,"묵 공방","묵 공방 환도","blade",{v:1,len:1.1,deco:1},11,160000),
-  W_("m6",1,"올드 보이즈 공방","올드 보이즈 공방 망치","blunt",{v:0,wid:1.25,deco:1},12,200000),
+  W_("m1",1,"묵 공방","묵 공방 환도","blade",{v:4,len:1.1},11,160000),
+  W_("m6",1,"올드 보이즈 공방","올드 보이즈 공방 망치","blunt",{v:0,wid:1.25},12,200000),
+  W_("m16",1,"젤코바 공방","젤코바 공방 모닝스타","blunt",{v:4},11,160000),
   W_("m7",1,"알라스 공방","알라스 공방 랜스","lance",{v:0,metal:"#c8ccd2"},12,200000),
   W_("m14",1,"리플렛 공방","리플렛 공방 증기 봉","staff",{v:1,glow:"#ff8a3a"},11,160000),
   W_("m15",1,"클라우드 공방","클라우드 공방 장도","long",{v:1,metal:"#c8ccd2"},12,200000),
@@ -1263,16 +1281,40 @@ const SHOP = [
   C_("mc1",1,"파나르 공방","파나르 공방 압박 붕대",80000,{hpRed:0.08,mpRed:0.1}),
   C_("mc2",1,"유니온 공방","유니온 공방 신경 안정 칩",150000,{mpRed:0.25,bonus:{wil:2}}),
   // 특수 제작 — 고급 공방·인더스트리·아틀리에 (위력 16~24)
-  W_("s3",2,"아틀리에 로직","아틀리에 로직 권총","gun",{v:0,metal:"#5f6670",deco:2},16,650000),
+  W_("s3",2,"아틀리에 로직","아틀리에 로직 권총","gun",{v:3,metal:"#5f6670"},16,650000),
   W_("s7",2,"메즈틸 공방","메즈틸 공방 세검","rapier",{v:0,len:1.1,metal:"#c8ccd2"},19,1100000),
-  W_("s4",2,"아틀리에 로직","아틀리에 로직 산탄총","gun",{v:1,metal:"#5f6670",deco:2},20,1300000),
+  W_("s4",2,"아틀리에 로직","아틀리에 로직 산탄총","gun",{v:1,metal:"#5f6670"},20,1300000),
   W_("s5",2,"스크류 아틀리에","스크류 아틀리에 랜스","lance",{v:1,glow:"#7fe0ff"},20,1300000),
   W_("s2",2,"크리스탈 아틀리에","크리스탈 아틀리에 팔시온","twin",{v:0,metal:"#c8ccd2",glow:"#7fe0ff"},21,1700000),
-  W_("s6",2,"스티그마 공방","스티그마 공방 장검","long",{v:0,len:1.05,glow:"#ff8a3a",deco:2},22,1900000),
+  W_("s6",2,"스티그마 공방","스티그마 공방 장검","long",{v:0,len:1.05,glow:"#ff8a3a"},22,1900000),
   W_("s1",2,"휠스 인더스트리","휠스 인더스트리 처형검","great",{v:0,len:1.05,wid:1.2},24,2400000),
+  W_("s8",2,"스티그마 공방","스티그마 공방 할버드","spear",{v:3,glow:"#ff8a3a",metal:"#5f6670"},21,1700000),
   A_("sa1",2,"슈바르츠 인더스트리","슈바르츠 인더스트리 의체 장갑",{type:3,pad:2,collar:1},1400000,{hpRed:0.38}),
   C_("sc1",2,"슈바르츠 인더스트리","슈바르츠 인더스트리 신경 의체",1200000,{mpRed:0.35,bonus:{wil:4}})
 ];
+/* 내구도: 무기(E.G.O. 제외)는 출동마다 1씩 닳는다. 절반 이하가 되면 고쳐야 쓸 수 있고, 고칠 때마다 최대 내구도가 1 준다.
+   최대 내구도가 다 닳으면 부서진다. 고유 무기는 공방이 맡아 손보므로 닳지 않는다 */
+const DUR_RANGE = [[3,6],[7,12],[13,20]];
+const isWornable = g => !!(g && g.slot==="weapon" && !g.unique);
+function rollDur(g){ const [a,b] = DUR_RANGE[g.tier||0] || DUR_RANGE[0];
+  const pw = SHOP.filter(i=>i.slot==="weapon" && i.tier===(g.tier||0)).map(i=>i.power), lo = Math.min(...pw), hi = Math.max(...pw);
+  const r = hi>lo ? clamp(((g.power||lo)-lo)/(hi-lo), 0, 1) : 0.5;            // 같은 공방 등급 안에서는 비쌀수록 튼튼하다(조금은 운)
+  return clamp(Math.round(a + (b-a)*(0.55*r + 0.45*Math.random())), a, b); }
+function initDur(g){ if(!isWornable(g) || g.durMax) return g; const m = rollDur(g); g.durMax = m; g.dur = m; g.dur0 = m; g.uses = g.uses||0; return g; }
+const needsRepair = g => !!(isWornable(g) && g.durMax && g.dur <= Math.floor(g.durMax/2));
+const repairCost = g => Math.max(500, Math.round((g.price||5000)*0.12/100)*100);
+const durText = g => isWornable(g) && g.durMax ? `내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? " · 수리 필요" : ""}` : "";
+// 고친다: 최대 내구도 -1 후 가득. 최대 내구도가 1뿐이면 더 고칠 수 없어 부서진다(돈은 받지 않는다)
+function repairWeapon(g, f){
+  if(!needsRepair(g)) return null;
+  const drop = ()=>{ if(f && f.gear.weapon===g) f.gear.weapon = null; else S.inventory = (S.inventory||[]).filter(x=>x!==g); };
+  if(g.durMax <= 1){ drop(); addLog(`${f ? f.name+": " : ""}${g.name} — 더는 고칠 수 없어 부서졌다`); return "broken"; }
+  const cost = repairCost(g); if(S.money < cost) return null;
+  S.money -= cost; g.durMax -= 1; g.dur = g.durMax;
+  addLog(`${f ? f.name+": " : ""}${g.name} 수리 (−${won(cost)}) · 최대 내구도 ${g.durMax}`); return "ok";
+}
+const repairBtn = (g, attr) => !needsRepair(g) ? "" : g.durMax <= 1 ? `<button class="danger" ${attr} style="padding:2px 8px">부서짐 — 버리기</button>`
+  : `<button ${attr} style="padding:2px 8px" ${S.money < repairCost(g) ? "disabled" : ""}>수리 ${won(repairCost(g))} (최대 ${g.durMax}→${g.durMax-1})</button>`;
 // 고유 장비(특색 전용): 무기 위력 30, 방어구 피해 감소 크게
 const UNIQUE_POWER = 30;
 const UNIQUE_ARMOR = {hpRed:0.45, mpRed:0.3, bonus:{wil:3}};
@@ -1491,7 +1533,7 @@ function genRequests(){
 const PARTY = {9:[1,2],8:[1,2],7:[2,3],6:[2,3],5:[2,4],4:[3,4],3:[3,5],2:[3,5],1:[4,5],0:[4,5]};
 const partyRec = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][0];
 const partyMax = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][1];
-function gearList(f){ return [f.gear.weapon,f.gear.armor,f.gear.acc].filter(Boolean); }
+function gearList(f){ return [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.gear.armor, f.gear.acc].filter(Boolean); }
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
@@ -1521,7 +1563,7 @@ function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30
 /* ================= 장비 정보(연출용) ================= */
 function weaponTypeOf(g){ if(!g) return null; if(g.wtype) return g.wtype==="drill" ? "lance" : g.wtype; const s = SHOP.find(i=>i.name===g.name); return s ? s.wtype : "blade"; }
 // E.G.O.가 형상을 갖추면 그 무기·방어구 모습으로 나선다(가진 장비 대신)
-function wGear(f){ return f.ego && f.ego.type!=="armor" && f.ego.look ? {name:f.ego.name, wtype:f.ego.look.kind, look:f.ego.look, ego:true} : f.gear.weapon; }
+function wGear(f){ return f.ego && f.ego.type!=="armor" && f.ego.look ? {name:f.ego.name, wtype:f.ego.look.kind, look:f.ego.look, ego:true} : needsRepair(f.gear.weapon) ? null : f.gear.weapon; }
 function aGear(f){ return f.ego && f.ego.type==="armor" && f.ego.look ? {name:f.ego.name, look:f.ego.look, ego:true} : f.ego && f.ego.type==="both" && f.ego.look ? {name:f.ego.name, look:Object.assign({type:2, pad:1, collar:1, trim:f.ego.look.glow||null}, f.ego.look2||{}), ego:true} : f.gear.armor; }
 function leadGear(f){
   if(!f) return null; const w = wGear(f), acc = f.gear.acc, ar = aGear(f);
@@ -2942,6 +2984,10 @@ async function dispatch(qid, fids){
     f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax); f._w = w;
     lines.push(`${esc(f.name)}: ${W_NAME[w]} — ${mental?"정신력":"체력"} -${pct}%(${main})${spPct?` · 정신력 -${spPct}%`:""} → 체력 -${dH}, 정신력 -${dM}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
+  // 무기 내구도: 실제로 들고 나간 무기만 1씩 닳는다(E.G.O.·고유 무기·수리가 필요한 무기는 빼고)
+  team.forEach(f=>{ const g = f.gear.weapon; if(!isWornable(g) || !g.durMax || needsRepair(g) || wGear(f)!==g) return;
+    g.dur = Math.max(0, g.dur-1); g.uses = (g.uses||0) + 1;
+    lines.push(`${esc(f.name)}의 ${esc(g.name)}: 내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? (g.durMax<=1 ? " — <b>더는 고칠 수 없다</b>" : " — <b>수리가 필요하다</b>(관리)") : ""}`); });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
   if(success){
     S.money += pay; S.todayIncome += pay;
@@ -2974,6 +3020,7 @@ async function dispatch(qid, fids){
     if(oc==="사살") inc("kill"); else if(oc==="제압") inc("spare");
     f.diary = (f.diary||[]).concat([`${S.day}일차 [${q.kind}] ${q.text} — ${success ? "성공" : "실패"}${oc ? `(${oc})` : ""}${team.length>1 ? `, ${team.length}명이 함께` : ", 혼자"}${(f._w||0)>=2 ? `, ${["안정","경상","중상","치명상"][f._w]}으로 돌아옴` : ""}`]).slice(-20);
     if(!success) inc("fail"); if((f._w||0) >= 2) inc("heavy"); if(team.length===1) inc("solo"); else if(team.length>=3) inc("crew"); });
+  for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkUpgrade(f); }
   team.forEach(f=>{ if(S.fixers.includes(f)) lossFromRequest(f, f._w||0, success); });
   await flushLoss();
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkCollapse(f); }
@@ -3119,7 +3166,7 @@ const HeartFx = (()=>{
       g.putImageData(img, 0, 0);
     }
     const tick = now=>{ if(!live || !cv.isConnected && now - t0 > 200) return; const u = Math.min(1, (now-t0)/dur), e = 1 - Math.pow(1-u, 2.2); k = -0.1 + e*1.25; paint();
-      cv.style.filter = mode==="in" ? `drop-shadow(0 0 ${(10*(1-u)+3).toFixed(1)}px rgba(255,184,90,${(0.75*(1-u)+0.25).toFixed(2)}))` : `drop-shadow(0 0 6px rgba(200,20,40,.6))`;
+      cv.style.filter = mode==="in" ? `drop-shadow(0 0 ${(10*(1-u)+3).toFixed(1)}px rgba(${opt.glow||"255,184,90"},${(0.75*(1-u)+0.25).toFixed(2)}))` : `drop-shadow(0 0 6px rgba(200,20,40,.6))`;
       if(u < 1) requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
     return {el: cv, red(d2){ mode = "red"; t0 = performance.now(); dur = d2 || 1600; requestAnimationFrame(tick); }, stop(){ live = false; }};
@@ -3341,11 +3388,13 @@ function showOmen(name, line, tone){
   omenQ = omenQ.then(()=>new Promise(res=>{
     const st = document.querySelector(".stage"); if(!st){ res(); return; }
     const el = document.createElement("div"); el.className = "omen " + tone;
-    const chars = [...line].map((ch,i)=>`<span style="--i:${i}">${ch===" " ? "&nbsp;" : esc(ch)}</span>`).join("");
+    // 뒤틀림의 목소리와 같은 방식: 문장이 햇살이 비껴 들듯 한쪽부터 녹아들며 맺힌다
     let ghosts = ""; for(let i=0;i<6;i++) ghosts += `<div class="og" style="left:${(12+((i*37)%76))}%;top:${(18+((i*53)%64))}%;--d:${(0.6+i*0.35).toFixed(2)}s;--s:${(0.62+((i*7)%5)*0.06).toFixed(2)}">${esc(line)}</div>`;
-    el.innerHTML = `${ghosts}<div class="ol">“${chars}”</div><div class="who">— ${esc(name)}</div>`;
+    el.innerHTML = `${ghosts}<div class="ol"></div><div class="who">— ${esc(name)}</div>`;
+    const V = tone==="vermil" ? {color:[255,156,112], edge:[255,92,40], glow:"255,96,40"} : {color:[238,236,222], edge:[170,196,255], glow:"170,195,255"};
+    const m = HeartFx.melt(`“${line}”`, Object.assign({size:20, dur:1900}, V)); el.querySelector(".ol").appendChild(m.el);
     st.appendChild(el); requestAnimationFrame(()=>el.classList.add("on"));
-    const dur = 2600 + [...line].length*55;
+    const dur = 3000 + [...line].length*55;
     setTimeout(()=>{ el.classList.remove("on"); setTimeout(()=>{ el.remove(); res(); }, 900); }, dur);
   }));
   return omenQ;
@@ -3411,8 +3460,8 @@ async function passColor(f){
   f.unique = f.unique || {};
   S.records.push({day:S.day, name:f.name, what:"특색 지정", note:title});
   playFx("특색 심사", title, f.name, true); save();
-  const go = await modal("특색 지정", `${esc(f.name)}이(가) 특색 <b>[${esc(title)}]</b>(으)로 지정되었다.<br>능력치 최대치가 80으로 오르고, <b>고유 장비 제작</b> 칸이 열렸다.<br><span class="muted">공방 → 고유 장비에서 무기·방어구를 한 벌씩 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
-  if(go) await openForge(f);
+  const go = await modal("특색 지정", `${esc(f.name)}이(가) 특색 <b>[${esc(title)}]</b>(으)로 지정되었다.<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
+  if(go) await openForge(f, "armor");
 }
 function randomColorTitle(){
   let t; do { t = pick(COLOR_WORDS)+" "+pick(COLOR_NOUNS); } while(COLOR_BANNED.includes(t) || S.fixers.some(f=>f.title===t));
@@ -3618,11 +3667,11 @@ async function openManage(){
     const f = S.fixers.find(x=>x.id===sel) || S.fixers[0]; if(!f) return "";
     sel = f.id; if(!mview) mview = f.hp < f.hpMax*0.4 ? "hurt" : "idle";
     const inv = (S.inventory||[]);
-    const gearRow = (slot,label) => { const g=f.gear[slot]; return `<span>${label}</span><b>${g?esc(g.name)+" <span class='muted'>"+gearDesc(g)+"</span>":"<span class='muted'>없음</span>"}</b>`; };
+    const gearRow = (slot,label) => { const g=f.gear[slot]; return `<span>${label}</span><b>${g?esc(g.name)+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
     const hc = healCost(f);
     return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}">${esc(x.name)}</button>`).join("")}</div>
     <div class="mg-prev"><canvas class="mgp"></canvas><div><div class="fg-seg">${STATE_TABS.map(([k,n])=>`<button class="${mview===k?"on":""}" data-mview="${k}">${n}</button>`).join("")}</div>
-      ${f.grade===0?`<button style="margin-top:8px" data-forgego="1">고유 장비 제작</button>`:""}</div></div>
+      ${f.grade===0?`<button style="margin-top:8px" data-forgego="1">고유 방어구 제작</button>`:""}</div></div>
     <div class="kv">
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} <button data-rename="1" style="padding:2px 8px">이름 변경</button></b>
       <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
@@ -3647,7 +3696,7 @@ async function openManage(){
       <button data-heal="mp" ${f.mp>=f.mpMax||S.money<hc?"disabled":""}>정신력 상담 +10</button>
       <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
     </div>
-    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품</h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><button data-equipinv="${i}">${esc(f.name)}에게 장착</button></div>`).join("")}</div>`:""}
+    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품</h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${repairBtn(g, `data-repinv="${i}"`)}<button data-equipinv="${i}">${esc(f.name)}에게 장착</button></div></div>`).join("")}</div>`:""}
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
   };
   await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
@@ -3655,9 +3704,12 @@ async function openManage(){
     const prev = ()=>{ const cv = box.querySelector(".mgp"), f = S.fixers.find(x=>x.id===sel); if(cv && f) animPreview(cv, ()=>Object.assign(fixerLook(f), stateOpts(mview))); };
     prev();
     root.addEventListener("click", async e=>{
-      const d = e.target.dataset; const f = S.fixers.find(x=>x.id===sel);
+      const d = (e.target.closest("button")||e.target).dataset; const f = S.fixers.find(x=>x.id===sel);
       if(d.mview){ mview = d.mview; box.querySelectorAll("[data-mview]").forEach(x=>x.classList.toggle("on", x.dataset.mview===mview)); return; }
-      if(d.forgego && f){ await openForge(f); }
+      if(d.forgego && f){ await openForge(f, "armor"); }
+      else if(d.repair && f){ if(!repairWeapon(f.gear.weapon, f)) return; }
+      else if(d.repinv!==undefined){ if(!repairWeapon((S.inventory||[])[+d.repinv], null)) return; }
+      else if(d.retouch && f){ await openForge(f, "weapon", "retouch"); }
       else if(d.egoforge && f){ await openForge(f, null, "ego"); }
       else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.heal && f){
@@ -3683,6 +3735,7 @@ async function openManage(){
 function gearDesc(g){
   const p=[]; if(g.bonus) Object.entries(g.bonus).forEach(([k,v])=>p.push(`${ATTR_NAME[k]}+${v}`));
   if(g.hpRed) p.push(`체력 피해 -${Math.round(g.hpRed*100)}%`); if(g.mpRed) p.push(`정신력 피해 -${Math.round(g.mpRed*100)}%`);
+  if(g.slot==="weapon" && g.unique) p.push("고유 무기 · 닳지 않음"); else if(durText(g)) p.push(durText(g));
   return p.join(" · ");
 }
 
@@ -3715,29 +3768,30 @@ async function openShop(startTab){
   const tierMax = S.officeGrade<=3?2 : S.officeGrade<=6?1 : 0;
   const colors = () => S.fixers.filter(x=>x.grade===0);
   let who = S.fixers[0]?.id, tab = startTab!=null ? startTab : 0;
-  const lockMsg = t => t===1 ? (tierMax<1 ? "6급 사무소부터 거래할 수 있다." : "") : t===2 ? (tierMax<2 ? "3급 사무소부터 거래할 수 있다." : "") : t===3 ? (colors().length ? "" : "특색이 된 해결사가 생기면 열린다.") : "";
+  const uniqs = () => S.fixers.filter(x=>x.grade===0 || (x.gear.weapon && x.gear.weapon.unique));
+  const lockMsg = t => t===1 ? (tierMax<1 ? "6급 사무소부터 거래할 수 있다." : "") : t===2 ? (tierMax<2 ? "3급 사무소부터 거래할 수 있다." : "") : t===3 ? (uniqs().length ? "" : "고유 무기를 받거나 특색이 된 해결사가 생기면 열린다.") : "";
   const draw = () => {
     const f = S.fixers.find(x=>x.id===who);
     const tabs = `<div class="tabs">${TIER_NAME.map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${lockMsg(i)?" 🔒":""}</button>`).join("")}</div>`;
     if(tab===3){
-      const cs = colors();
-      return tabs + `<p class="muted" style="font-size:12px">특색이 되면 그 사람만의 고유 장비를 무기·방어구 한 벌씩 주문 제작할 수 있다. 무기/방어구 → 종류 → 생김새 → 확정 순서로 만든다. 만든 장비는 의뢰 연출에도 그대로 나온다.</p>
-        ${cs.length ? `<div class="list">${cs.map(x=>{ const u = x.unique||{}, w = x.gear.weapon, a = x.gear.armor;
-          return `<div class="item"><div><b>${esc(x.name)}</b> <span class="badge">특색 · ${esc(x.title||"")}</span>
-            <div class="d">무기: ${u.weapon && w ? esc(w.name) : "<span style='color:var(--accent)'>제작 가능</span>"} · 방어구: ${u.armor && a ? esc(a.name) : "<span style='color:var(--accent)'>제작 가능</span>"}</div></div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="primary" data-forge="${x.id}" data-slot="weapon">${u.weapon?"무기 다시 만들기":"무기 제작"}</button><button class="primary" data-forge="${x.id}" data-slot="armor">${u.armor?"방어구 다시 만들기":"방어구 제작"}</button></div></div>`; }).join("")}</div>`
+      const cs = uniqs();
+      return tabs + `<p class="muted" style="font-size:12px"><b>고유 무기</b>는 살 수 없다. 정식 공방 이상의 무기를 최대 내구도만큼 쓴 4급 이상 해결사에게, 드물게 공방이 그 사람만의 무기로 다시 벼려 준다. 받은 뒤에는 생김새와 능력을 손질할 수 있다(이름은 받을 때만 짓는다).<br><b>고유 방어구</b>는 특색이 된 해결사만 주문 제작한다.</p>
+        ${cs.length ? `<div class="list">${cs.map(x=>{ const w = x.gear.weapon, a = x.gear.armor, u = x.unique||{};
+          return `<div class="item"><div><b>${esc(x.name)}</b> <span class="badge">${gName(x.grade)}${x.title ? " · "+esc(x.title) : ""}</span>
+            <div class="d">고유 무기: ${w && w.unique ? esc(w.name) : "<span class='muted'>없음</span>"}${x.grade===0 ? ` · 고유 방어구: ${u.armor && a && a.unique ? esc(a.name) : "<span style='color:var(--accent)'>제작 가능</span>"}` : ""}</div></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">${w && w.unique ? `<button data-forge="${x.id}" data-slot="weapon" data-mode="retouch">무기 손질</button>` : ""}${x.grade===0 ? `<button class="primary" data-forge="${x.id}" data-slot="armor">${u.armor?"방어구 다시 만들기":"방어구 제작"}</button>` : ""}</div></div>`; }).join("")}</div>`
           : `<p class="muted">${lockMsg(3)}</p>`}`;
     }
     const items = SHOP.filter(i=>i.tier===tab), locked = !!lockMsg(tab), makers = [...new Set(items.map(i=>i.maker))];
     return `<div class="field"><label>장착할 사람</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>
     ${tabs}
-    <p class="muted" style="font-size:12px">${["보통 7급 의뢰까지 쓸 만한 양산품.","원작 세계관의 공방 제품. 보통 4급 의뢰까지 쓸 만하다.","원작 세계관의 고급 공방·인더스트리·아틀리에 제품. 1급 의뢰까지 쓸 만하다."][tab]}</p>
+    <p class="muted" style="font-size:12px">${["보통 7급 의뢰까지 쓸 만한 양산품. 무기 내구도 3~6.","원작 세계관의 공방 제품. 보통 4급 의뢰까지 쓸 만하다. 무기 내구도 7~12 — 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다.","원작 세계관의 상급 공방·인더스트리·아틀리에 제품. 1급 의뢰까지 쓸 만하다. 무기 내구도 13~20 — 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다."][tab]}<br>무기는 출동할 때마다 내구도가 1씩 닳고, 절반 이하가 되면 고쳐야 쓸 수 있다. 고칠 때마다 최대 내구도가 1 줄고, 다 닳으면 부서진다.</p>
     ${locked?`<p class="muted">${lockMsg(tab)}</p>`:""}
     ${makers.map(mk=>`<h4 class="sh-mk">${esc(mk)} <span class="muted">${esc(MAKERS[mk]||"")}</span></h4>
       <div class="list">${items.filter(i=>i.maker===mk).map(i=>{ const cur=f&&f.gear[i.slot];
         return `<div class="item sh-item">${i.slot==="weapon"?`<canvas class="wicon" data-icon="${i.id}"></canvas>`:`<div class="wicon sh-slot">${{armor:"방어구",acc:"장신구"}[i.slot]}</div>`}
         <div style="flex:1"><b>${esc(i.name)}</b> <span class="badge">${i.slot==="weapon" ? WEAPON_KINDS[i.wtype].n+" · "+WEAPON_KINDS[i.wtype].vars[i.look.v||0] : {armor:"방어구",acc:"장신구"}[i.slot]}</span>
-          <div class="d">${gearDesc(i)}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
+          <div class="d">${gearDesc(i)}${i.slot==="weapon" ? ` · 내구도 ${DUR_RANGE[i.tier].join("~")}` : ""}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
         <button class="primary" data-buy="${i.id}" ${locked||!f||S.money<i.price||(cur&&cur.unique)?"disabled":""}>${cur&&cur.unique?"고유 장비 착용 중":"구매·장착"}</button></div>`;}).join("")}</div>`).join("")}
     <p class="muted" style="font-size:12px">원래 끼고 있던 장비는 보관함으로 옮겨진다. 공방 이름과 특징만 원작에서 따왔고, 물건과 수치는 이 게임을 위해 만든 것이다.</p>`;
   };
@@ -3749,10 +3803,91 @@ async function openShop(startTab){
       const d = e.target.closest("button")?.dataset || {};
       if(d.tab!==undefined){ tab=+d.tab; }
       else if(d.buy){ const it=SHOP.find(i=>i.id===d.buy), f=S.fixers.find(x=>x.id===who); if(!it||!f||S.money<it.price) return;
-        S.money-=it.price; const old=f.gear[it.slot]; f.gear[it.slot]=Object.assign({},it); if(old){ S.inventory=S.inventory||[]; S.inventory.push(old);} addLog(`${f.name}: ${it.name} 장착`); }
-      else if(d.forge){ const f = S.fixers.find(x=>x.id===+d.forge); if(f) await openForge(f, d.slot); }
+        S.money-=it.price; const old=f.gear[it.slot]; f.gear[it.slot]=initDur(JSON.parse(JSON.stringify(it))); if(old){ S.inventory=S.inventory||[]; S.inventory.push(old);} addLog(`${f.name}: ${it.name} 장착${it.slot==="weapon" ? ` (내구도 ${f.gear[it.slot].durMax})` : ""}`); }
+      else if(d.forge){ const f = S.fixers.find(x=>x.id===+d.forge); if(f) await openForge(f, d.slot, d.mode); }
       else return;
       paint(box); save(); render();
+    });
+  });
+}
+
+/* ---- 고유 무기: 공방이 다시 벼려 준다 ----
+   조건: 정식 공방 이상 무기 · 그 무기를 처음 받은 최대 내구도만큼 출동 · 해결사 4급 이상. 조건이 처음 갖춰지는 출동에서 한 번만 10%로 굴린다. */
+const UPGRADE_P = 0.1, UPGRADE_POW = [0, 6, 8];
+async function checkUpgrade(f){
+  const g = f.gear.weapon;
+  if(!isWornable(g) || !g.durMax || (g.tier||0) < 1 || g.rolled || (g.uses||0) < (g.dur0||g.durMax) || f.grade > 4) return false;
+  g.rolled = true;
+  if(Math.random() >= (window.__forceUp ? 1 : UPGRADE_P)) return false;
+  await upgradeWeapon(f, g); return true;
+}
+async function upgradeWeapon(f, g){
+  const maker = g.maker || "공방", uses = g.uses || 0, oldName = g.name;
+  await forgeFx(f, g, maker, uses);
+  Object.assign(g, {unique:true, owner:f.id, basePower:g.power, power:(g.power||10) + (UPGRADE_POW[g.tier]||6), origName:oldName, upDay:S.day});
+  g.bonus = profBonus(g.wtype, g.power); delete g.dur; delete g.durMax;
+  S.records.push({day:S.day, name:f.name, what:"고유 무기", note:`${maker}에서 ${oldName}을(를) ${f.name}만의 것으로 다시 벼렸다 (${uses}번 출동)`});
+  addLog(`${f.name}: ${maker}에서 ${oldName}을(를) 다시 벼려 주었다 — 고유 무기`);
+  f.diary = (f.diary||[]).concat([`${S.day}일차 ${maker}에서 ${oldName}을(를) 내 것으로 다시 벼려 주었다`]).slice(-20);
+  save(); render();
+  await openForge(f, "weapon", "upgrade");
+}
+/* 연출: 공방의 연락 → 닳은 무기 → 망치질 세 번(불꽃·달아오름) → 담금질 김 → 빛이 칼끝까지 훑고 지나감 → "고유 무기 · ○○의 것".
+   대사는 녹아드는 문장으로. 무기 갈래마다 닳은 자리가 다르다 */
+const WEAR_LINE = {slash:"날이 이 빠진 자리마다 같은 버릇이 남아 있더군요.", impact:"자루에 손 모양 그대로 홈이 패여 있었습니다.", pierce:"끝이 늘 같은 각도로만 닳아 있었어요.",
+  gun:"방아쇠가 그 손가락 길이에 맞게 닳아 있었습니다.", tool:"손잡이가 그 손 모양 그대로 굳어 있더군요."};
+const FORGE_MID = ["이 정도로 손에 익은 물건은 남한테 못 팝니다.","고쳐 쓰라고 돌려보내기엔, 너무 그 사람 것이 돼 버렸어요.","그래서 고치는 대신, 처음부터 다시 벼렸습니다."];
+function forgeFx(f, g, maker, uses){
+  return new Promise(res=>{
+    const spec = Object.assign(weaponSpecOf(g)||defaultSpec("blade"), {glow:null}), kd = spec.kind, cat = kd==="gun" ? "gun" : kd==="tool" ? "tool" : (WEAPON_KINDS[kd]||{}).cat || "slash";
+    const o = document.createElement("div"); o.className = "fgx";
+    o.innerHTML = `<canvas class="fgx-cv"></canvas><div class="fgx-lines"></div><div class="fgx-title"><div class="fgx-big">고유 무기</div><div class="fgx-sub">${esc(f.name)}의 것</div></div>
+      <div class="fgx-act"><button class="primary" type="button">받아 든다</button></div><div class="hv-skip">화면을 누르면 넘어간다</div>`;
+    document.body.appendChild(o); requestAnimationFrame(()=>o.classList.add("on"));
+    const cv = o.querySelector(".fgx-cv"), c = cv.getContext("2d"), box = o.querySelector(".fgx-lines");
+    const say = (t, i)=>{ box.innerHTML = ""; const m = HeartFx.melt(t, {size: i ? 19 : 21, dur:1700, color:[240,230,214], edge:[255,170,90]}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); };
+    const lines = [`「${maker}」에서 연락이 왔다.`, `“${uses}번을 함께 나갔더군요. ${WEAR_LINE[cat]}”`, `“${pick(FORGE_MID)} 이제 이건 저희 물건이 아니라, ${f.name} 씨 것입니다.”`];
+    const T = {appear:900, hit:[3600, 4250, 4900], quench:5700, sweep:6500, title:8600, btn:9300};
+    const t0 = performance.now(); let parts = [], shake = 0, live = true, timers = [];
+    const at = (ms, fn)=>timers.push(setTimeout(fn, ms));
+    at(150, ()=>say(lines[0], 0)); at(2000, ()=>say(lines[1], 1)); at(T.sweep, ()=>say(lines[2], 2));
+    T.hit.forEach((ms,i)=>at(ms, ()=>{ shake = 1; for(let k=0;k<26+i*8;k++){ const a = -Math.PI/2 + (Math.random()-0.5)*2.6, v = 2.5+Math.random()*6; parts.push({x:0, y:0, vx:Math.cos(a)*v, vy:Math.sin(a)*v, life:1, kind:"spark"}); } }));
+    at(T.quench, ()=>{ for(let k=0;k<40;k++) parts.push({x:(Math.random()-0.5)*0.8, y:0, vx:(Math.random()-0.5)*0.6, vy:-0.6-Math.random()*1.2, life:1, kind:"steam", r:8+Math.random()*16}); });
+    at(T.title, ()=>o.classList.add("named")); at(T.btn, ()=>o.classList.add("done"));
+    const loop = now=>{ if(!live) return; const t = now - t0, d = devicePixelRatio||1, W = cv.clientWidth, H = cv.clientHeight;
+      if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
+      c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H);
+      const cx = W/2, cy = H*0.55, ap = clamp((t-T.appear)/900, 0, 1), heat = t < T.hit[0] ? 0 : t < T.quench ? clamp((t-T.hit[0])/(T.quench-T.hit[0]), 0, 1) : clamp(1-(t-T.quench)/700, 0, 1);
+      shake *= 0.86; const sx = (Math.random()-0.5)*shake*8, sy = (Math.random()-0.5)*shake*5;
+      // 모루 위의 불빛
+      const fl = c.createRadialGradient(cx, cy+10, 0, cx, cy+10, Math.min(W, H)*0.5); fl.addColorStop(0, `rgba(255,140,60,${0.08 + heat*0.25})`); fl.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = fl; c.fillRect(0,0,W,H);
+      c.fillStyle = "rgba(255,255,255,0.05)"; c.fillRect(cx-W*0.32, cy+28, W*0.64, 2);
+      if(ap > 0){
+        const len = (WEAPON_REACH[kd]||0.6)*(kd==="gun"||kd==="tool" ? 1 : (spec.len||1)), u = Math.min(W*0.8/Math.max(0.35, len+0.2), H*1.6);
+        c.save(); c.globalAlpha = ap; c.translate(cx - len*u*0.45 + sx, cy + sy);
+        if(kd==="fist") drawGauntlet(c, spec, [len*u*0.45, 0], 0, u*1.6, "#2a2d33"); else drawWeaponSpec(c, spec, u, "#2f3238", {noGlow:true});
+        // 닳은 자국: 망치질하면서 사라진다
+        const wear = 1 - clamp((t-T.hit[0])/(T.hit[2]-T.hit[0]+300), 0, 1);
+        if(wear > 0){ c.globalAlpha = ap*wear*0.7; c.strokeStyle = "#1b1a1e"; c.lineWidth = 1.2; for(let i=0;i<9;i++){ const x = (0.08 + i*0.07)*len*u, y = ((i*37)%11-5)*u*0.003; c.beginPath(); c.moveTo(x, y); c.lineTo(x+u*0.02, y+u*0.006); c.stroke(); } }
+        // 달아오름 → 식으며 빛이 칼끝까지 훑는다
+        if(heat > 0){ c.globalAlpha = heat*0.85; c.globalCompositeOperation = "lighter"; c.shadowColor = "#ff7a2a"; c.shadowBlur = 24;
+          if(kd==="fist") drawGauntlet(c, Object.assign({}, spec, {metal:"#ff8a3a"}), [len*u*0.45, 0], 0, u*1.6, "#000000"); else drawWeaponSpec(c, Object.assign({}, spec, {metal:"#ff7a2a"}), u, "#000000", {noGlow:true}); }
+        c.restore();
+        const sw = clamp((t-T.sweep)/900, 0, 1);
+        if(sw > 0 && sw < 1){ c.save(); c.globalCompositeOperation = "lighter"; const x = cx - len*u*0.5 + sw*len*u*1.15 + sx; const gr = c.createLinearGradient(x-40, 0, x+40, 0);
+          gr.addColorStop(0, "rgba(255,255,255,0)"); gr.addColorStop(0.5, `rgba(255,244,220,${0.55*(1-Math.abs(sw-0.5)*1.4)})`); gr.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = gr; c.fillRect(x-40, cy-u*0.2, 80, u*0.4); c.restore(); }
+      }
+      // 망치질 섬광
+      T.hit.forEach(ms=>{ const k = (t-ms)/220; if(k>0 && k<1){ c.save(); c.globalCompositeOperation = "lighter"; const g2 = c.createRadialGradient(cx, cy, 0, cx, cy, 140); g2.addColorStop(0, `rgba(255,236,200,${0.9*(1-k)})`); g2.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g2; c.fillRect(0,0,W,H); c.restore(); } });
+      parts = parts.filter(p=>p.life > 0);
+      parts.forEach(p=>{ if(p.kind==="spark"){ p.x += p.vx; p.y += p.vy; p.vy += 0.22; p.life -= 0.02; c.strokeStyle = `rgba(255,${150+Math.round(p.life*90)},70,${p.life})`; c.lineWidth = 1.6; c.beginPath(); c.moveTo(cx+p.x, cy+p.y); c.lineTo(cx+p.x-p.vx*2, cy+p.y-p.vy*2); c.stroke(); }
+        else { p.x += p.vx; p.y += p.vy; p.life -= 0.008; p.r += 0.4; c.fillStyle = `rgba(230,230,235,${p.life*0.12})`; c.beginPath(); c.arc(cx + p.x*W*0.3, cy + p.y*1.2, p.r, 0, 7); c.fill(); } });
+      requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+    const finish = ()=>{ live = false; timers.forEach(clearTimeout); o.classList.remove("on"); setTimeout(()=>{ o.remove(); res(); }, 500); };
+    o.addEventListener("click", e=>{
+      if(e.target.closest(".fgx-act button")){ finish(); return; }
+      if(!o.classList.contains("done")){ timers.forEach(clearTimeout); timers = []; say(lines[2], 2); o.classList.add("named","done"); }
     });
   });
 }
@@ -3781,44 +3916,49 @@ const EGO_SPECIAL = {
 const egoSpecial = e => e && e.special ? egoSpecList(e.type).find(x=>x.id===e.special) : null;
 const sumPts = o => ATTRS.reduce((t,a)=>t+(o[a]||0),0);
 const ptsText = o => ATTRS.filter(a=>o[a]>0).map(a=>`${ATTR_NAME[a]}+${o[a]}`).join(" · ") || "없음";
-function forgeBudget(mode, slot, kind){ return mode==="ego" ? EGO_PTS : slot==="weapon" ? sumPts(profBonus(kind, UNIQUE_POWER)) : UNIQUE_ARMOR_PTS; }
-function forgeDefault(mode, slot, kind){
-  const B = forgeBudget(mode, slot, kind), o = {str:0,agi:0,tec:0,wil:0};
+function forgeBudget(mode, slot, kind, pw){ return mode==="ego" ? EGO_PTS : slot==="weapon" ? sumPts(profBonus(kind, pw||UNIQUE_POWER)) : UNIQUE_ARMOR_PTS; }
+function forgeDefault(mode, slot, kind, pw){
+  const B = forgeBudget(mode, slot, kind, pw), o = {str:0,agi:0,tec:0,wil:0};
   if(slot==="weapon"){ Object.entries(WEAPON_KINDS[kind].prof).forEach(([k,v])=>o[k] = Math.round(B*v)); const d = B - sumPts(o), top = ATTRS.reduce((x,y)=>o[y]>o[x]?y:x, "str"); o[top] += d; }
   else o.wil = B;
   return o;
 }
+/* mode: "ego" E.G.O. 형상 · "upgrade" 공방이 벼려 준 고유 무기(이름은 이때만) · "retouch" 고유 무기 손질 · 없음 = 특색의 고유 방어구 */
 async function openForge(f, slot0, mode){
-  const ego = mode==="ego";
-  const prevW = ego ? null : (f.unique && f.unique.weapon && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null);
-  const prevA = ego ? null : (f.unique && f.unique.armor && f.gear.armor && f.gear.armor.unique ? f.gear.armor : null);
-  const eL = ego && f.ego.look ? Object.assign({}, f.ego.look) : null;
-  const st = {step: ego || slot0 ? 2 : 1, slot: ego ? egoSlot(f.ego) : (slot0 || null), view:"combat",
-    w: ego ? (egoSlot(f.ego)==="weapon" ? eL : null) : prevW ? Object.assign({}, prevW.look) : null,
+  const ego = mode==="ego", wpn = (mode==="upgrade" || mode==="retouch") && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null, up = !!wpn;
+  if((mode==="upgrade" || mode==="retouch") && !wpn) return;
+  const prevW = up ? wpn : null;
+  const prevA = ego || up ? null : (f.unique && f.unique.armor && f.gear.armor && f.gear.armor.unique ? f.gear.armor : null);
+  const eL = ego && f.ego.look ? Object.assign({add:[]}, f.ego.look) : null;
+  const st = {step: up ? 3 : 2, slot: ego ? egoSlot(f.ego) : up ? "weapon" : "armor", view:"combat",
+    w: ego ? (egoSlot(f.ego)==="weapon" ? eL : null) : up ? Object.assign(defaultSpec(wpn.wtype), wpn.look||{}, {kind:wpn.wtype}) : null,
     a: ego ? (egoSlot(f.ego)==="armor" ? eL : null) : prevA ? Object.assign({}, prevA.look) : null,
-    name: ego ? f.ego.name : "", alloc: null, special: ego ? f.ego.special || null : null};
+    name: ego ? f.ego.name : up ? wpn.name : "", alloc: null, special: ego ? f.ego.special || null : null};
+  if(st.w && !Array.isArray(st.w.add)) st.w.add = [];
   const kindName = () => st.slot==="weapon" ? WEAPON_KINDS[st.w.kind].n : ARMOR_TYPES[st.a.type];
-  const defName = () => ego ? f.ego.name : `${f.title||f.name}의 ${kindName()}`;
-  const budget = () => forgeBudget(mode, st.slot, st.w && st.w.kind);
+  const defName = () => ego ? f.ego.name : up ? wpn.name : `${f.title||f.name}의 ${kindName()}`;
+  const wpw = up ? (wpn.power || UNIQUE_POWER) : 0;
+  const budget = () => forgeBudget(mode, st.slot, st.w && st.w.kind, wpw);
   // 능력 배분: 처음엔 지금 장비(또는 종류의 기본값), 종류가 바뀌어 총점이 달라지면 기본값으로 다시 맞춘다
   const syncAlloc = () => { const B = budget(), key = st.slot + (st.slot==="weapon" && st.w ? st.w.kind : "");
     if(!st.alloc){ const cur = ego ? f.ego.bonus : st.slot==="weapon" ? (prevW && prevW.wtype===(st.w&&st.w.kind) ? prevW.bonus : null) : (prevA ? prevA.bonus : null);
-      st.alloc = Object.assign({str:0,agi:0,tec:0,wil:0}, cur || {}); if(sumPts(st.alloc) !== B) st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind); st.allocKey = key; }
-    else if(st.allocKey !== key || sumPts(st.alloc) > B){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind); st.allocKey = key; } };
+      st.alloc = Object.assign({str:0,agi:0,tec:0,wil:0}, cur || {}); if(sumPts(st.alloc) !== B) st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind, wpw); st.allocKey = key; }
+    else if(st.allocKey !== key || sumPts(st.alloc) > B){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind, wpw); st.allocKey = key; } };
   let doneRes = null;
   const look = () => { const base = fixerLook(f); if(st.slot==="weapon" && st.w) base.weapon = st.w; if(st.slot==="armor" && st.a) base.armor = st.a; return base; };
   const sw = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-sw">${arr.map(cl=>`<button class="sw ${cur===cl?"on":""}" data-${key}="${cl||"none"}" style="background:${cl||"transparent"}">${cl?"":"✕"}</button>`).join("")}</div></div>`;
   const seg = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-seg">${arr.map((n,i)=>`<button class="${cur===i?"on":""}" data-${key}="${i}">${n}</button>`).join("")}</div></div>`;
   const statLine = () => { const sp = ego && st.special ? (egoSpecList(f.ego.type).find(x=>x.id===st.special)||{}).n : null;
-    const base = ego ? ({weapon:"E.G.O. 무기(전투력 +8)", armor:"E.G.O. 의복(받는 피해 -35%)", both:"E.G.O. 일체형(전투력 +6 · 받는 피해 -20%)", tool:"E.G.O. 도구형(전투력 +5 · 정신력 피해 -25% · 체력 피해 -10%)"}[f.ego.type]) : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
+    const base = ego ? ({weapon:"E.G.O. 무기(전투력 +8)", armor:"E.G.O. 의복(받는 피해 -35%)", both:"E.G.O. 일체형(전투력 +6 · 받는 피해 -20%)", tool:"E.G.O. 도구형(전투력 +5 · 정신력 피해 -25% · 체력 피해 -10%)"}[f.ego.type]) : up ? `고유 무기 · 위력 ${wpw} · 닳지 않음` : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
     return [base, ptsText(st.alloc||{}), sp ? `${ego ? egoSpecLabel(f.ego.type) : st.slot==="weapon"?"특수 공격":"특수 방어"} [${sp}]` : ""].filter(Boolean).join(" · "); };
   const steps = ["무기/방어구","종류","생김새","능력","확정"];
   const draw = () => {
-    const head = `<div class="fg-steps">${steps.map((n,i)=> ego && i===0 ? "" : `<span class="${st.step===i+1?"on":st.step>i+1?"done":""}">${ego?i:i+1}. ${n}</span>`).join("")}</div>`;
+    const skip = ego ? 1 : up ? 2 : 1;
+    const head = `<div class="fg-steps">${steps.map((n,i)=> i < skip ? "" : `<span class="${st.step===i+1?"on":st.step>i+1?"done":""}">${i+1-skip}. ${n}</span>`).join("")}</div>`;
     if(st.step===1) return head + `<p class="muted">${esc(f.name)} [${esc(f.title||"")}]의 고유 장비. 무엇을 만들까?</p>
       <div class="fg-pick"><button data-slot="weapon"><b>무기</b><small>${prevW?"지금: "+esc(prevW.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button>
       <button data-slot="armor"><b>방어구</b><small>${prevA?"지금: "+esc(prevA.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button></div>`;
-    const back2 = ego ? "" : `<div class="fg-nav"><button data-fgo="1">이전</button></div>`;
+    const back2 = "";
     if(st.step===2){
       const lead = ego ? `<p class="muted">${esc(f.name)}의 <b>${esc(egoLabel(f.ego))}</b> — 어떤 ${({weapon:"무기", armor:"옷", both:"무기(옷은 E.G.O.를 따라 함께 바뀐다)", tool:"도구"})[f.ego.type]||"무기"}의 모습으로 드러날까?</p>` : "";
       if(st.slot==="weapon") return head + lead + `<p class="muted">무기 종류를 고른다. 종류마다 전투 기술이 다르다.</p>
@@ -3830,14 +3970,17 @@ async function openForge(f, slot0, mode){
     if(st.step===3){
       let ctl;
       if(st.slot==="weapon"){ const K = WEAPON_KINDS[st.w.kind];
+        const ad = st.w.add||[];
         ctl = seg(K.vars, st.w.v||0, "wv", "모양")
-          + `<div class="fg-row"><span>길이</span><input type="range" min="0.8" max="1.3" step="0.05" value="${st.w.len}" data-wlen="1"></div>`
-          + `<div class="fg-row"><span>폭·두께</span><input type="range" min="0.75" max="1.4" step="0.05" value="${st.w.wid}" data-wwid="1"></div>`
-          + sw(METALS, st.w.metal, "metal", "금속색") + sw(GLOWS, st.w.glow, "glow", "발광") + seg(["없음","손잡이 띠","문양"], st.w.deco||0, "deco", "장식");
+          + `<div class="fg-row"><span>길이</span><input type="range" min="0.75" max="1.5" step="0.05" value="${st.w.len}" data-wlen="1"></div>`
+          + `<div class="fg-row"><span>폭·두께</span><input type="range" min="0.7" max="1.6" step="0.05" value="${st.w.wid}" data-wwid="1"></div>`
+          + sw(METALS, st.w.metal, "metal", "금속색") + sw(GLOWS, st.w.glow, "glow", "발광")
+          + `<div class="fg-row"><span>추가 붙임<br><small class="muted">${ad.length}/${ADD_MAX}</small></span><div class="fg-seg fg-add">${WEAPON_ADDS.map(a=>`<button class="${ad.includes(a.id)?"on":""}" data-add="${a.id}" title="${esc(a.d)}" ${!ad.includes(a.id) && ad.length>=ADD_MAX ? "disabled" : ""}>${a.n}</button>`).join("")}</div></div>`;
       } else ctl = seg(ARMOR_TYPES, st.a.type, "atype", "형태") + seg(["없음","작게","크게"], st.a.pad||0, "pad", "어깨 장갑") + seg(["낮게","세움"], st.a.collar||0, "collar", "깃") + sw(GLOWS, st.a.trim, "trim", "장식선");
       return head + `<div class="fg-body">${prev}<div class="fg-ctl">${ctl}
-        <div class="fg-row"><span>이름</span><input id="fgname" maxlength="30" value="${esc(st.name || defName())}"></div>
-        <div class="fg-nav"><button data-fgo="2">이전</button><button class="primary" data-fgo="4">다음</button></div></div></div>`;
+        ${mode==="retouch" ? `<div class="fg-row"><span>이름</span><b>${esc(wpn.name)}</b></div>` : `<div class="fg-row"><span>이름</span><input id="fgname" maxlength="30" value="${esc(st.name || defName())}"></div>`}
+        ${mode==="upgrade" ? `<p class="muted" style="font-size:12px;margin:0">이름은 지금만 지을 수 있다. 생김새와 능력은 나중에 공방 → 고유 장비에서 손질할 수 있다.</p>` : ""}
+        <div class="fg-nav">${up ? "" : `<button data-fgo="2">이전</button>`}<button class="primary" data-fgo="4">다음</button></div></div></div>`;
     }
     if(st.step===4){
       syncAlloc(); const B = budget(), left = B - sumPts(st.alloc), cap = Math.min(STAT_CAP, B);
@@ -3846,7 +3989,7 @@ async function openForge(f, slot0, mode){
       const spx = ego ? `<h4 style="margin:12px 0 6px">${egoSpecLabel(f.ego.type)} <span class="muted" style="font-weight:400;font-size:12px">하나를 고른다 · 합 전투에서 발동</span></h4>
         <div class="fg-spec">${egoSpecList(f.ego.type).map(x=>`<button data-spec="${x.id}" class="${st.special===x.id?"on":""}"><b>${x.n}</b><small>${x.d}</small></button>`).join("")}</div>` : "";
       return head + `<p class="muted">능력치 점수 <b>${B}</b>점을 나눠 준다. 한 능력치엔 최대 ${cap}점. 남은 점수 <b style="color:${left?"#e0d27f":"#9fe8b0"}">${left}</b>
-        ${ego ? "" : st.slot==="weapon" ? "· 기본값은 무기 종류에 맞춘 배분" : `· 피해 감소(체력 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%)는 그대로`}
+        ${ego ? "" : st.slot==="weapon" ? "· 기본값은 무기 종류에 맞춘 배분 · 공방이 벼리며 위력이 올랐다" : `· 피해 감소(체력 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%)는 그대로`}
         <button data-reset="1" style="padding:2px 8px;margin-left:6px">기본값</button></p>
         ${rows}${spx}
         <div class="fg-nav"><button data-fgo="3">이전</button><button class="primary" data-fgo="5" ${left || (ego && !st.special) ? "disabled" : ""}>다음</button></div>
@@ -3854,11 +3997,11 @@ async function openForge(f, slot0, mode){
     }
     return head + `<div class="fg-body">${prev}<div class="fg-ctl">
       <h4 style="margin:0 0 6px">${esc(st.name || defName())}</h4>
-      <div class="kv"><span>주인</span><b>${esc(f.name)}${f.title?` [${esc(f.title)}]`:""}</b><span>종류</span><b>${ego?"E.G.O. ":""}${st.slot==="weapon" ? kindName()+" · "+WEAPON_KINDS[st.w.kind].vars[st.w.v||0] : "방어구 · "+kindName()}</b><span>능력</span><b>${statLine()}</b></div>
-      <p class="muted" style="font-size:12px">${ego ? "확정하면 E.G.O.가 이 모습과 능력으로 드러난다. 관리에서 언제든 다시 정할 수 있다." : "확정하면 바로 장착한다. " + (st.slot==="weapon"?(prevW?"기존 고유 무기는 이 무기로 대체된다.":"지금 끼고 있는 무기는 보관함으로 옮겨진다."):(prevA?"기존 고유 방어구는 대체된다.":"지금 입고 있는 방어구는 보관함으로 옮겨진다."))}</p>
+      <div class="kv"><span>주인</span><b>${esc(f.name)}${f.title?` [${esc(f.title)}]`:""}</b><span>종류</span><b>${ego?"E.G.O. ":up?"고유 무기 · ":""}${st.slot==="weapon" ? kindName()+" · "+WEAPON_KINDS[st.w.kind].vars[st.w.v||0] : "방어구 · "+kindName()}${st.slot==="weapon" && (st.w.add||[]).length ? " · "+st.w.add.map(id=>(WEAPON_ADDS.find(a=>a.id===id)||{}).n).join("·") : ""}</b><span>능력</span><b>${statLine()}</b>${up && wpn.maker ? `<span>벼린 곳</span><b>${esc(wpn.maker)}</b>` : ""}</div>
+      <p class="muted" style="font-size:12px">${ego ? "확정하면 E.G.O.가 이 모습과 능력으로 드러난다. 관리에서 언제든 다시 정할 수 있다." : up ? (mode==="upgrade" ? "확정하면 이 이름과 모습으로 손에 쥔다. 이름은 이후 바꿀 수 없다." : "확정하면 이 모습과 능력으로 손질된다.") : "확정하면 바로 장착한다. " + (prevA?"기존 고유 방어구는 대체된다.":"지금 입고 있는 방어구는 보관함으로 옮겨진다.")}</p>
       <div class="fg-nav"><button data-fgo="4">이전</button><button class="primary" data-confirm="1">확정</button></div></div></div>`;
   };
-  await modal(ego ? "E.G.O. 형상" : "고유 장비 제작", `<div id="fg"></div>`, [{t:"닫기"}], false, root=>{
+  await modal(ego ? "E.G.O. 형상" : up ? (mode==="upgrade" ? "고유 무기" : "고유 무기 손질") : "고유 방어구 제작", `<div id="fg"></div>`, [{t:"닫기"}], false, root=>{
     const box = root.querySelector("#fg"); root.querySelector(".modal").classList.add("modal-wide");
     const paint = () => { box.innerHTML = draw();
       box.querySelectorAll("canvas[data-ik]").forEach(cv=>drawWeaponIcon(cv, defaultSpec(cv.dataset.ik)));
@@ -3869,21 +4012,21 @@ async function openForge(f, slot0, mode){
     box.addEventListener("click", e=>{
       const b = e.target.closest("button"); if(!b || b.disabled) return; const d = b.dataset;
       if(d.slot){ st.slot = d.slot; st.step = 2; st.name = ""; st.alloc = null; }
+      else if(d.add){ const ad = st.w.add = st.w.add||[]; const i = ad.indexOf(d.add); if(i>=0) ad.splice(i,1); else if(ad.length < ADD_MAX) ad.push(d.add); }
       else if(d.kind){ st.w = Object.assign(defaultSpec(d.kind), st.w && st.w.kind===d.kind ? st.w : {}); st.step = 3; }
       else if(d.atype!==undefined){ st.a = Object.assign({type:1, pad:1, collar:0, trim:null}, st.a||{}, {type:+d.atype}); if(st.step===2) st.step = 3; }
       else if(d.wv!==undefined){ st.w.v = +d.wv; }
       else if(d.metal){ st.w.metal = d.metal; }
       else if(d.glow){ st.w.glow = d.glow==="none" ? null : d.glow; }
-      else if(d.deco!==undefined){ st.w.deco = +d.deco; }
       else if(d.pad!==undefined){ st.a.pad = +d.pad; }
       else if(d.collar!==undefined){ st.a.collar = +d.collar; }
       else if(d.trim){ st.a.trim = d.trim==="none" ? null : d.trim; }
       else if(d.ad){ const B = budget(), cap = Math.min(STAT_CAP, B), left = B - sumPts(st.alloc), dv = +d.dv;
         st.alloc[d.ad] = dv>0 ? Math.min(cap, st.alloc[d.ad] + Math.min(dv, left)) : Math.max(0, st.alloc[d.ad] + dv); }
-      else if(d.reset){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind); }
+      else if(d.reset){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind, wpw); }
       else if(d.spec){ st.special = d.spec; }
       else if(d.view){ st.view = d.view; box.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on", x.dataset.view===st.view)); return; }
-      else if(d.fgo){ const n = +d.fgo; if(n===4 && st.step===3){ const i = box.querySelector("#fgname"); if(i) st.name = i.value.trim(); } st.step = n; if(n===1){ st.slot = null; st.alloc = null; } }
+      else if(d.fgo){ const n = +d.fgo; if(n===4 && st.step===3){ const i = box.querySelector("#fgname"); if(i) st.name = i.value.trim(); } st.step = n; }
       else if(d.confirm){
         const name = st.name || defName(), bonus = {}; ATTRS.forEach(a=>{ if(st.alloc[a]>0) bonus[a] = st.alloc[a]; });
         if(ego){
@@ -3892,14 +4035,19 @@ async function openForge(f, slot0, mode){
           addLog(`${f.name}: E.G.O. [${name}]의 형상을 정했다`); save(); render(); doneRes = {name, ego:true};
           root.querySelector(".mf button").click(); return;
         }
+        if(up){
+          if(mode==="upgrade") wpn.name = name.slice(0,30);
+          wpn.look = JSON.parse(JSON.stringify(st.w)); wpn.bonus = bonus; wpn.named = true;
+          S.records.push({day:S.day, name:f.name, what: mode==="upgrade" ? "고유 무기" : "고유 무기 손질", note:`${wpn.name} — ${statLine()}`});
+          addLog(`${f.name}: 고유 무기 [${wpn.name}] ${mode==="upgrade" ? "를 손에 쥐었다" : "손질"}`); save(); render(); doneRes = {name:wpn.name, up:mode};
+          root.querySelector(".mf button").click(); return;
+        }
         f.unique = f.unique || {};
-        let g;
-        if(st.slot==="weapon") g = {slot:"weapon", unique:true, name, wtype:st.w.kind, look:Object.assign({}, st.w), bonus};
-        else g = {slot:"armor", unique:true, name, look:Object.assign({}, st.a), hpRed:UNIQUE_ARMOR.hpRed, mpRed:UNIQUE_ARMOR.mpRed, bonus};
-        const old = f.gear[st.slot]; f.gear[st.slot] = g; if(old && !old.unique){ S.inventory = S.inventory||[]; S.inventory.push(old); }
-        f.unique[st.slot] = true;
-        S.records.push({day:S.day, name:f.name, what:"고유 장비 제작", note:`${name} (${st.slot==="weapon"?"무기":"방어구"})`});
-        addLog(`${f.name}: 고유 장비 [${name}] 완성`); save(); render(); doneRes = g;
+        const g = {slot:"armor", unique:true, name, look:Object.assign({}, st.a), hpRed:UNIQUE_ARMOR.hpRed, mpRed:UNIQUE_ARMOR.mpRed, bonus};
+        const old = f.gear.armor; f.gear.armor = g; if(old && !old.unique){ S.inventory = S.inventory||[]; S.inventory.push(old); }
+        f.unique.armor = true;
+        S.records.push({day:S.day, name:f.name, what:"고유 방어구 제작", note:name});
+        addLog(`${f.name}: 고유 방어구 [${name}] 완성`); save(); render(); doneRes = g;
         root.querySelector(".mf button").click(); return;
       }
       else return;
@@ -3907,7 +4055,8 @@ async function openForge(f, slot0, mode){
     });
   });
   if(doneRes && doneRes.ego) await alertBox("E.G.O. 형상", `<b>${esc(doneRes.name)}</b> — ${esc(f.name)}의 E.G.O.가 모습을 갖췄다.<br><span class="muted">이제 의뢰 연출과 합 전투에서 이 모습과 능력으로 싸운다.</span>`);
-  else if(doneRes) await alertBox("고유 장비 완성", `<b>${esc(doneRes.name)}</b>이(가) 완성되어 ${esc(f.name)}에게 장착되었다.<br><span class="muted">이제 의뢰 연출에서도 이 장비를 들고 나온다.</span>`);
+  else if(doneRes && doneRes.up==="upgrade") await alertBox("고유 무기", `<b>${esc(doneRes.name)}</b> — ${esc(f.name)}만의 무기가 되었다.<br><span class="muted">더는 닳지 않는다. 의뢰 연출과 합 전투에서 이 모습으로 싸운다.</span>`);
+  else if(doneRes && !doneRes.up) await alertBox("고유 방어구 완성", `<b>${esc(doneRes.name)}</b>${josa(doneRes.name,"이","가").slice(doneRes.name.length)} 완성되어 ${esc(f.name)}에게 입혀졌다.<br><span class="muted">이제 의뢰 연출에서도 이 차림으로 나온다.</span>`);
 }
 
 /* ================= 기록 / 저장 ================= */
@@ -3929,7 +4078,7 @@ async function openRecords(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); }); return d; } }catch(_){} return null; }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) initDur(f.gear.weapon); }); (d.inventory||[]).forEach(initDur); return d; } }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
@@ -4002,7 +4151,7 @@ function render(){
     const st = f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? "오늘 출동함" : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     return `<div class="fx"><div class="n"><b>${esc(f.name)}${f.isLeader?" ★":""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
-      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}
+      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
@@ -4534,158 +4683,390 @@ function armorSpecOf(g){
   const s = g.look ? g : (SHOP.find(i=>i.id===g.id) || SHOP.find(i=>i.name===g.name) || {});
   return Object.assign({type:1, pad:0, collar:0, trim:null}, s.look || {type:1, pad:1});
 }
-const carryOf = s => !s ? null : (s.kind==="gun" && s.v>0) ? "back" : (WEAPON_KINDS[s.kind]||{}).carry;
+const poseV = s => !s ? 0 : s.kind==="gun" && s.v===3 ? 0 : (s.v||0);
+const carryOf = s => !s ? null : (s.kind==="gun" && poseV(s)>0) ? "back" : (WEAPON_KINDS[s.kind]||{}).carry;
 
 /* ---- 무기 모양: 손(원점)에서 +x로 뻗는다. u = 길이 단위 ---- */
+/* 무기 그리기 — 손 위치가 원점, +x가 무기 끝 방향, -y가 칼등(위)·+y가 날(아래). 단위 u.
+   레퍼런스: 검(폼멜·손잡이 감개·코등이·리카소·홈·연마면), 사브르(손등 보호대·옐만·가짜 날), 환도(판 코등이·칼집 쇠·술),
+   장도(실 감개·츠바·하바키·하몬·요코테), 처형검(평평한 끝·구멍), 츠바이헨더(감싼 리카소·패링 훅), 팔시온(끝이 넓은 외날),
+   해머(모따기한 머리·띠쇠), 플랜지 메이스(날개·꼭지), 수염 도끼(눈·수염·뒷머리), 모닝스타(가시공), 워해머(망치면·부리·창끝·랑겟),
+   잎날창(가운데 등뼈·소켓), 날개창(러그), 할버드(도끼날·갈고리·창끝), 글레이브(외날·뒤 가시), 랜스(뱀플레이트·그래퍼),
+   스웹트 힐트 레이피어, 에스터크, 리볼버(실린더·해머·방아쇠울), 펌프 산탄총(포엔드·튜브 탄창), 볼트 장총, 자동 권총(슬라이드 톱니),
+   파이프 렌치(갈고리 턱·나사), 전기톱(엔진·손잡이 고리·가이드 바·체인 날) */
+const WEAPON_ADDS = [
+  {id:"branch", n:"가지날", d:"날 양옆으로 엇갈려 뻗은 가지(칠지도처럼)"},
+  {id:"prong",  n:"곁날",   d:"밑동에서 앞으로 나란히 뻗은 두 날(삼지창처럼)"},
+  {id:"hook",   n:"갈고리", d:"끝 가까이 등 쪽으로 휘어 걸리는 갈고리"},
+  {id:"axe",    n:"도끼날", d:"날 쪽에 붙인 초승달 도끼날(할버드처럼)"},
+  {id:"spike",  n:"가시",   d:"등을 따라 줄지어 박힌 가시"},
+  {id:"ring",   n:"고리",   d:"등에 꿰어 단 쇠고리(구환도처럼)"}
+];
+const ADD_MAX = 3;
+function drawAdds(c, u, G, adds, col, edges, far){
+  if(!G || !adds || !adds.length) return;
+  const lt = hexMix(col,"#ffffff",0.4), dk = hexMix(col,"#000000",0.34);
+  const L0 = Math.abs(G.x(1)-G.x(0)), hwA = Math.abs(G.bot(0.5)-G.top(0.5))/2, sz = clamp(Math.min(L0*0.17, hwA*4+0.022), 0.026, 0.075)*(G.k||1);
+  const at = (t,s)=>[G.x(t), s<0 ? G.top(t) : G.bot(t)];
+  const M=(x,y)=>c.moveTo(x*u,y*u), Lt=(x,y)=>c.lineTo(x*u,y*u), Q=(cx,cy,x,y)=>c.quadraticCurveTo(cx*u,cy*u,x*u,y*u);
+  const shape = (fn, bev)=>{ c.fillStyle = col; c.beginPath(); fn(); c.closePath(); c.fill();
+    if(bev){ c.save(); c.beginPath(); fn(); c.closePath(); c.clip(); c.strokeStyle = lt; c.lineWidth = Math.max(0.6, sz*0.38*u); c.beginPath(); bev(); c.stroke(); c.restore(); } };
+  adds.forEach(id=>{
+    if(id==="branch") [[0.3,-1],[0.48,1],[0.66,-1]].forEach(([t,s])=>{ const [x,y] = at(t,s), b = sz*0.3;
+      shape(()=>{ M(x-b,y-s*0.003); Q(x-b*0.2, y+s*sz*0.75, x+sz*0.95, y+s*sz*0.98); Q(x+b*0.5, y+s*sz*0.42, x+b*0.8, y-s*0.003); },
+            ()=>{ M(x-b*0.4, y+s*sz*0.2); Q(x-b*0.1, y+s*sz*0.78, x+sz*0.95, y+s*sz*0.98); });
+      edges.push([[x-b*0.5, y+s*sz*0.3],[x+sz*0.4, y+s*sz*0.85],[x+sz*0.95, y+s*sz*0.98]]); });
+    else if(id==="prong") [-1,1].forEach(s=>{ const [x,y] = at(0.04,s), reach = L0*0.52, th = sz*0.24;
+      shape(()=>{ M(x-0.004, y); Lt(x+sz*0.2, y+s*sz*0.9); Lt(x+reach, y+s*sz*0.62); Lt(x+reach-th*1.8, y+s*(sz*0.62-th*0.75)); Lt(x+sz*0.3+th, y+s*(sz*0.9-th*1.05)); Lt(x+th*1.4, y); },
+            ()=>{ M(x+sz*0.2, y+s*sz*0.92); Lt(x+reach, y+s*sz*0.64); });
+      edges.push([[x+sz*0.2, y+s*sz*0.9],[x+reach, y+s*sz*0.62]]); });
+    else if(id==="hook"){ const [x,y] = at(0.8,-1), b = sz*0.3, sz0 = sz; { const sz = sz0*1.35;
+      shape(()=>{ M(x-b,y+0.002); Q(x-b*0.1, y-sz*1.1, x-sz*0.9, y-sz*0.82); Q(x+b*0.3, y-sz*0.5, x+b, y+0.002); },
+            ()=>{ M(x-b*0.6, y-sz*0.5); Q(x-b*0.4, y-sz*0.95, x-sz*0.9, y-sz*0.82); });
+      edges.push([[x-b*0.4, y-sz*0.6],[x-sz*0.3, y-sz*1.0],[x-sz*0.9, y-sz*0.82]]); } }
+    else if(id==="axe"){ const [x1,y1] = at(0.42,1), [x2,y2] = at(0.78,1), m = (x1+x2)/2, ym = Math.max(y1,y2), w = clamp((x2-x1)*0.32, sz*0.9, 0.065);
+      const outer = ()=>{ M(x1-w*0.25, ym+w*1.05); Q(m, ym+w*1.6, x2+w*0.35, ym+w*1.0); };
+      shape(()=>{ M(x1,y1); Lt(x1-w*0.25, ym+w*1.05); Q(m, ym+w*1.6, x2+w*0.35, ym+w*1.0); Lt(x2,y2); Q(m, ym+w*0.45, x1, y1); }, outer);
+      edges.push([[x1-w*0.25, ym+w*1.05],[m, ym+w*1.33],[x2+w*0.35, ym+w*1.0]]); }
+    else if(id==="spike"){ const n = 6; for(let i=0;i<n;i++){ const t = 0.12 + 0.76*i/(n-1), [x,y] = at(t,-1), b = sz*0.16;
+      c.fillStyle = col; c.beginPath(); M(x-b,y+0.002); Lt(x+sz*0.12, y-sz*0.52); Lt(x+b,y+0.002); c.closePath(); c.fill();
+      c.fillStyle = lt; c.beginPath(); M(x,y); Lt(x+sz*0.12, y-sz*0.52); Lt(x+b,y); c.closePath(); c.fill(); } }
+    else if(id==="ring"){ const n = 4; for(let i=0;i<n;i++){ const t = 0.18 + 0.6*i/(n-1), [x,y] = at(t,-1), r = sz*0.3;
+      c.strokeStyle = far ? dk : lt; c.lineWidth = Math.max(0.6, sz*0.11*u); c.beginPath(); c.arc(x*u, (y-r*0.35)*u, r*u, 0, 7); c.stroke();
+      c.fillStyle = dk; c.beginPath(); c.arc(x*u, (y+0.002)*u, Math.max(0.4, sz*0.07*u), 0, 7); c.fill(); } }
+  });
+}
 function drawWeaponSpec(c, s, u, dark, opt){
   if(!s) return; opt = opt || {};
   const L = s.len||1, Wd = s.wid||1, col = s.metal || METALS[0];
+  // 길이·두께를 늘릴 때: 날은 그대로 늘고, 손잡이·자루는 조금만, 코등이는 중간만큼, 칼끝은 폭에 맞춰 길어진다
+  const gW = 1+(Wd-1)*0.45, gL = 1+(L-1)*0.35, Gd = 1+(Wd-1)*0.6, Tw = Math.pow(Wd, 0.6);
+  const dk = hexMix(col,"#000000",0.34), lt = hexMix(col,"#ffffff",0.42), brass = "#c9a86a";
+  const wood = hexMix("#6b4a32", dark, 0.2), woodL = hexMix("#8a6444", dark, 0.2);
+  const lw = v => Math.max(0.6, u*v);
   const R = (x,y,w,hh)=>c.fillRect(x*u, y*u, w*u, hh*u);
   const poly = pts=>{ c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.closePath(); c.fill(); };
-  const shine = (x0,x1,y,w)=>{ c.fillStyle="rgba(235,240,245,0.5)"; R(x0, y, x1-x0, w); };
-  const edges = [];                                   // 발광선(가장자리)
-  const grip = (len, w)=>{ c.fillStyle=dark; R(-len,-w/2,len+0.05,w); c.beginPath(); c.arc(-len*u,0,w*0.75*u,0,7); c.fill();
-    if(s.deco===1){ c.fillStyle="rgba(255,255,255,0.25)"; for(let i=0;i<4;i++) R(-len+0.02+i*len/4, -w/2, 0.008, w); } };
+  const ln = (pts, w, st)=>{ c.strokeStyle = st; c.lineWidth = lw(w); c.beginPath(); pts.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); };
+  const circ = (x,y,r)=>{ c.beginPath(); c.arc(x*u,y*u,Math.max(0.3,r*u),0,7); c.fill(); };
+  const ring = (x,y,r,w,st)=>{ c.strokeStyle = st; c.lineWidth = lw(w); c.beginPath(); c.arc(x*u,y*u,Math.max(0.3,r*u),0,7); c.stroke(); };
+  const ell = (x,y,rx,ry)=>{ c.beginPath(); c.ellipse(x*u,y*u,Math.max(0.3,rx*u),Math.max(0.3,ry*u),0,0,7); c.fill(); };
+  const fs = st => c.fillStyle = st;
+  const M=(x,y)=>c.moveTo(x*u,y*u), Lt=(x,y)=>c.lineTo(x*u,y*u), Q=(cx,cy,x,y)=>c.quadraticCurveTo(cx*u,cy*u,x*u,y*u);
+  // 모양을 채우고 그 안쪽 가장자리를 따라 밝은 연마면을 그린다
+  const shape = (fn, st, bev, bw)=>{ fs(st||col); c.beginPath(); fn(); c.closePath(); c.fill();
+    if(bev){ c.save(); c.beginPath(); fn(); c.closePath(); c.clip(); c.strokeStyle = lt; c.lineWidth = lw(bw||0.02); c.beginPath(); bev(); c.stroke(); c.restore(); } };
+  const edges = []; let G = null;
+  // 손잡이: 가죽 감개(사선) · 실 감개(마름모) · 감개 없음. 끝(폼멜 쪽) x를 돌려준다
+  const grip = (len, w, wrap)=>{ len *= gL; w *= gW; fs(dark); R(-len, -w/2, len+0.014, w);
+    c.save(); c.beginPath(); c.rect(-len*u, -w/2*u, (len+0.014)*u, w*u); c.clip();
+    if(wrap==="ito"){ fs(hexMix(dark,"#ffffff",0.28)); for(let x=-len+0.008; x<0.006; x+=0.021) poly([[x,-w/2],[x+0.0105,0],[x,w/2],[x-0.0105,0]]);
+      fs(dark); for(let x=-len+0.008; x<0.006; x+=0.021) poly([[x,-w*0.2],[x+0.004,0],[x,w*0.2],[x-0.004,0]]); }
+    else if(wrap!=="none"){ c.strokeStyle = hexMix(dark,"#ffffff",0.2); c.lineWidth = lw(0.0035); for(let x=-len-0.01; x<0.02; x+=0.012){ c.beginPath(); M(x, -w/2); Lt(x+0.011, w/2); c.stroke(); } }
+    c.restore(); return -len; };
+  // 나무 자루: 결 두 줄
+  const haft = (x0, x1, w, st)=>{ w *= gW; fs(st||wood); R(x0, -w/2, x1-x0, w); ln([[x0+0.02,-w*0.18],[x1-0.03,-w*0.22]], 0.0025, woodL); ln([[x0+0.06,w*0.2],[x1-0.06,w*0.16]], 0.0022, hexMix(wood,"#000000",0.3)); };
+  // 칼날: 몸통 → 날 쪽 연마면 → (양날이면) 등 쪽 연마면 → 홈·등뼈·리카소
+  const blade = (x0, len, top, bot, tips, o={})=>{
+    const N = 16, X = t=>x0+len*t, bev = o.bev||0.36, tip = tips[Math.floor(tips.length/2)];
+    const pts = (f0,f1)=>{ const A=[],B=[]; for(let i=0;i<=N;i++){ const t=i/N; A.push([X(t), f0(t)]); B.unshift([X(t), f1(t)]); } return [A,B]; };
+    let [A,B] = pts(top, bot); fs(col); poly([...A, ...tips, ...B]);
+    [A,B] = pts(t=>bot(t)-(bot(t)-top(t))*bev, bot); fs(lt); poly([...A, tip, ...B]);
+    if(o.dbl){ [A,B] = pts(top, t=>top(t)+(bot(t)-top(t))*bev); fs(hexMix(col,"#ffffff",0.2)); poly([...A, tip, ...B]); }
+    if(o.ricasso){ const r = o.ricasso/len; fs(col); poly([[x0,top(0)],[X(r),top(r)],[X(r),bot(r)],[x0,bot(0)]]); ln([[X(r),top(r)],[X(r),bot(r)]], 0.003, dk); }
+    if(o.fuller){ const [f0,f1] = o.fuller, fy = o.fy||0, fw = o.fw||0.13, F=[],H=[];
+      for(let i=0;i<=8;i++){ const t=f0+(f1-f0)*i/8, m=(top(t)+bot(t))/2 + fy*(bot(t)-top(t)), hw=(bot(t)-top(t))*fw*(i===0||i===8?0.55:1); F.push([X(t),m-hw]); H.unshift([X(t),m+hw]); }
+      fs(dk); poly([...F,...H]); }
+    if(o.ridge){ c.strokeStyle = dk; c.lineWidth = lw(0.0028); c.beginPath(); M(x0, (top(0)+bot(0))/2); for(let i=1;i<=N;i++){ const t=i/N; Lt(X(t), (top(t)+bot(t))/2); } Lt(tip[0], tip[1]); c.stroke(); }
+    const eg = (f)=>[...Array.from({length:7},(_,i)=>{ const t=0.04+0.96*i/6; return [X(t), f(t)]; }), tip];
+    edges.push(eg(bot)); if(o.dbl) edges.push(eg(top));
+    G = {x:X, top, bot};
+  };
   const k = s.kind, v = s.v||0;
-  // 검 날 그리기: 위(-y)가 등, 아래(+y)가 날. top(x)/bot(x)로 윤곽을 받는다
-  const bladeShape = (x0, len, top, bot, tipY, N=12)=>{ const A = [], B = [];
-    for(let i=0;i<=N;i++){ const t = i/N, x = x0 + len*t; A.push([x, top(t)]); B.unshift([x, bot(t)]); }
-    poly([...A, [x0+len+0.0001, tipY], ...B]); };
-  const fuller = (x0, x1, y, w)=>{ c.fillStyle = "rgba(0,0,0,0.28)"; R(x0, y-w/2, x1-x0, w); };
   if(k==="blade"){
-    if(v===0){ // 양날검(아밍소드): 원반 폼멜, 곧은 십자 코등이, 가운데 홈
-      grip(0.08, 0.024); c.fillStyle=col; c.beginPath(); c.arc(-0.085*u,0,0.024*u,0,7); c.fill();
-      poly([[0.045,-0.075*Wd],[0.062,-0.07*Wd],[0.062,0.07*Wd],[0.045,0.075*Wd]]);
-      const len = 0.55*L, w = 0.02*Wd; c.fillStyle=col;
-      bladeShape(0.062, len, t=>-w*(1-t*0.35), t=>w*(1-t*0.35), 0); poly([[0.062+len,-w*0.65],[0.062+len+0.06*L,0],[0.062+len,w*0.65]]);
-      fuller(0.075, 0.062+len*0.7, 0, w*0.35); shine(0.08, 0.062+len*0.9, -w*0.85, 0.005); edges.push([[0.07,w],[0.062+len+0.06*L,0]]); }
-    else if(v===1){ // 외날검(사브르): 손등을 감싸는 D자 손잡이 보호대, 휘어진 외날, 잘린 칼끝
-      grip(0.08, 0.024); c.strokeStyle=col; c.lineWidth=Math.max(1,u*0.008);
-      c.beginPath(); c.moveTo(0.05*u, 0.03*u); c.quadraticCurveTo(-0.02*u, 0.07*u, -0.085*u, 0.012*u); c.stroke();
-      c.fillStyle=col; poly([[0.04,-0.04],[0.06,-0.035],[0.06,0.04],[0.04,0.045]]);
-      const len = 0.56*L, w = 0.021*Wd, bend = t=>-0.075*L*t*t;
-      bladeShape(0.06, len, t=>bend(t)-w*0.55, t=>bend(t)+w*(1.1-t*0.3), -0.075*L-w*0.9);
-      shine(0.07, 0.06+len*0.6, -w*0.6, 0.005); edges.push([[0.07,w],[0.06+len*0.5,-0.018*L+w],[0.06+len,-0.075*L+w*0.4]]); }
-    else if(v===2){ // 톱날검: 넓은 날, 등에 큰 톱니, 각진 코등이
-      grip(0.08, 0.026); c.fillStyle=col; R(0.042,-0.06*Wd,0.024,0.12*Wd);
-      const len = 0.52*L, w = 0.026*Wd;
-      bladeShape(0.066, len, t=>-w - (Math.floor(t*10)%2===0 && t>0.08 && t<0.92 ? 0.016 : 0), t=>w*(1-t*0.2), 0, 20);
-      poly([[0.066+len,-w],[0.066+len+0.05*L,0],[0.066+len,w*0.8]]); edges.push([[0.07,w],[0.066+len+0.05*L,0]]); }
-    else { // 단검: 짧고 넓은 잎날, 작은 코등이, 고리 폼멜
-      grip(0.06, 0.022); c.strokeStyle=col; c.lineWidth=Math.max(1,u*0.007); c.beginPath(); c.arc(-0.075*u,0,0.018*u,0,7); c.stroke();
-      c.fillStyle=col; R(0.035,-0.04*Wd,0.016,0.08*Wd);
-      const len = 0.26*L, w = 0.024*Wd; bladeShape(0.051, len, t=>-w*(0.8+Math.sin(t*Math.PI)*0.45), t=>w*(0.8+Math.sin(t*Math.PI)*0.45), 0); poly([[0.051+len,-w*0.5],[0.051+len+0.05,0],[0.051+len,w*0.5]]);
-      fuller(0.06, 0.051+len*0.8, 0, w*0.3); edges.push([[0.06,w],[0.051+len+0.05,0]]); }
-    if(s.deco===2){ c.fillStyle="rgba(0,0,0,0.3)"; for(let i=1;i<5;i++) R(0.09+i*0.08*L, -0.006, 0.025, 0.004); }
-  }
-  else if(k==="twin"){
-    if(v===0){ // 팔시온(쌍): 끝으로 갈수록 넓어지는 외날, 잘린 칼끝, S자 코등이
-      grip(0.07, 0.024); c.fillStyle=col; poly([[0.035,-0.05],[0.055,-0.035],[0.055,0.035],[0.035,0.05]]);
-      const len = 0.4*L, w = 0.02*Wd; bladeShape(0.055, len, t=>-w*0.7-t*0.006, t=>w*(0.9+t*1.3), -w*1.5);
-      poly([[0.055+len,-w*0.7],[0.055+len+0.05*L,-w*1.4],[0.055+len,w*2.2]]); fuller(0.065, 0.055+len*0.55, -w*0.15, w*0.25);
-      edges.push([[0.06,w],[0.055+len,w*2.2],[0.055+len+0.05*L,-w*1.4]]); }
-    else { // 단검(쌍): 가늘고 곧은 양날, 감긴 손잡이, 둥근 고리
-      grip(0.07, 0.02); c.fillStyle="rgba(255,255,255,0.22)"; for(let i=0;i<4;i++) R(-0.065+i*0.017,-0.01,0.006,0.02);
-      c.strokeStyle=col; c.lineWidth=Math.max(1,u*0.007); c.beginPath(); c.arc(-0.085*u,0,0.02*u,0,7); c.stroke();
-      c.fillStyle=col; c.beginPath(); c.ellipse(0.04*u, 0, 0.01*u, 0.03*u, 0, 0, 7); c.fill();
-      const len = 0.3*L, w = 0.014*Wd; bladeShape(0.05, len, t=>-w, t=>w, 0); poly([[0.05+len,-w],[0.05+len+0.06,0],[0.05+len,w]]); edges.push([[0.055,w],[0.05+len+0.06,0]]); }
-  }
-  else if(k==="great"){
-    grip(0.17, 0.034); c.fillStyle=col; R(0.055,-0.075*Wd,0.03,0.15*Wd);
-    const len = 0.82*L, w = 0.04*Wd;
-    if(v===0){ poly([[0.085,-w],[0.085+len,-w*1.1],[0.085+len+0.03,-w*0.6],[0.085+len+0.03,w*1.1],[0.085,w]]);
-      c.fillStyle=dark; c.beginPath(); c.arc((0.085+len*0.82)*u, 0, w*0.4*u, 0, 7); c.fill(); }
-    else if(v===1) poly([[0.085,-w],[0.085+len,-w*0.85],[0.085+len+0.12,0.003],[0.085+len,w*0.9],[0.085,w]]);
-    else poly([[0.085,-w*0.8],[0.085+len,-w*1.5],[0.085+len+0.05,-w*1.2],[0.085+len,w*0.9],[0.085,w*0.7]]);
-    c.fillStyle=col; shine(0.1, 0.07+len, -w*0.85, 0.009);
-    edges.push([[0.09,-w],[0.085+len,-w]]);
-    if(s.deco===2){ c.fillStyle="rgba(0,0,0,0.28)"; R(0.12, -0.004, len*0.7, 0.008); }
-  }
-  else if(k==="blunt"){
-    const sh = 0.42*L; c.fillStyle=dark; poly([[-0.08,-0.015],[sh,-0.02],[sh,0.02],[-0.08,0.015]]);
-    if(s.deco===1){ c.fillStyle="rgba(255,255,255,0.25)"; for(let i=0;i<3;i++) R(-0.06+i*0.03,-0.016,0.008,0.032); }
-    c.fillStyle=col; const hw = 0.075*Wd;
-    if(v===0){ R(sh-0.02, -hw, 0.09*Wd, hw*2); shine(sh-0.015, sh+0.06, -hw, 0.01); edges.push([[sh+0.07*Wd,-hw],[sh+0.07*Wd,hw]]); }
-    else if(v===1){ c.beginPath(); c.arc((sh+0.03)*u, 0, 0.045*Wd*u, 0, 7); c.fill();
-      for(let i=0;i<6;i++){ const a = i/6*Math.PI*2; poly([[sh+0.03+Math.cos(a)*0.04*Wd, Math.sin(a)*0.04*Wd],[sh+0.03+Math.cos(a+0.25)*0.07*Wd, Math.sin(a+0.25)*0.07*Wd],[sh+0.03+Math.cos(a+0.5)*0.04*Wd, Math.sin(a+0.5)*0.04*Wd]]); }
-      edges.push([[sh+0.03, -0.07*Wd],[sh+0.03, 0.07*Wd]]); }
-    else if(v===2){ c.fillStyle=dark; poly([[0.0,-0.022],[sh+0.06,-0.05*Wd],[sh+0.1,-0.03*Wd],[sh+0.1,0.03*Wd],[sh+0.06,0.05*Wd],[0.0,0.022]]);   // 몽둥이: 끝으로 굵어지는 통짜
-      c.fillStyle="rgba(255,255,255,0.12)"; R(0.05, -0.03*Wd, sh, 0.012); edges.push([[0.05,-0.03*Wd],[sh+0.08,-0.05*Wd]]); }
-    else { poly([[sh-0.06,-0.02],[sh+0.02,-0.02],[sh+0.07,-hw*1.3],[sh+0.1,0],[sh+0.07,hw*0.9],[sh+0.02,0.02],[sh-0.06,0.02]]); edges.push([[sh+0.07,-hw*1.3],[sh+0.1,0],[sh+0.07,hw*0.9]]); }
+    if(v===0){ // 양날검(아밍소드): 바퀴 폼멜, 끝이 벌어진 곧은 코등이, 짧은 리카소, 긴 홈
+      const gp = grip(0.085, 0.024); fs(col); ell(gp-0.011, 0, 0.012*gW, 0.026*gW); fs(dk); ell(gp-0.011, 0, 0.005*gW, 0.013*gW);
+      const x0 = 0.026, len = 0.52*L, w = 0.021*Wd;
+      blade(x0, len, t=>-w*(1-t*0.38), t=>w*(1-t*0.38), [[x0+len+0.07*L*Tw, 0]], {dbl:true, fuller:[0.06,0.62], ricasso:0.02});
+      fs(col); poly([[0.012,-0.086*Gd],[0.027,-0.08*Gd],[0.024,-0.012],[0.024,0.012],[0.027,0.08*Gd],[0.012,0.086*Gd],[0.016,0.012],[0.016,-0.012]]); fs(dk); R(0.015,-0.013,0.01,0.026); }
+    else if(v===1){ // 외날검(사브르): 손등 보호대, 등 쇠, 휜 외날, 끝이 넓어지는 옐만, 가짜 날
+      const gp = grip(0.08, 0.024); fs(col); poly([[gp+0.006,-0.014*gW],[gp-0.016,-0.01*gW],[gp-0.02,0.006],[gp-0.008,0.014*gW],[gp+0.006,0.012*gW]]);
+      const x0 = 0.026, len = 0.56*L, w = 0.02*Wd, B = 0.075*L, bend = t=>-B*t*t, yel = t=>t>0.7 ? w*0.45*(t-0.7)/0.3 : 0;
+      blade(x0, len, t=>bend(t)-w*0.5, t=>bend(t)+w*(1.05-t*0.25)+yel(t), [[x0+len+0.035*L*Tw, -B-w*0.75]], {fuller:[0.05,0.55], fy:-0.24, fw:0.07});
+      fs(hexMix(col,"#ffffff",0.25)); poly([[x0+len*0.78, bend(0.78)-w*0.5],[x0+len, -B-w*0.5],[x0+len+0.035*L*Tw, -B-w*0.75],[x0+len, -B-w*0.3],[x0+len*0.78, bend(0.78)-w*0.3]]);
+      fs(col); poly([[0.012,-0.03],[0.027,-0.026],[0.027,0.03],[0.012,0.036]]);
+      c.strokeStyle = col; c.lineWidth = lw(0.0075); c.beginPath(); M(0.02,0.03); Q(0.03, 0.075*Gd, -0.035, 0.06*Gd); Q(gp+0.004, 0.048*Gd, gp+0.006, 0.012*gW); c.stroke(); }
+    else if(v===2){ // 톱날검: 넓은 외날, 등에 낫 모양 톱니, 각진 코등이
+      const gp = grip(0.08, 0.026); fs(col); ell(gp-0.008, 0, 0.012*gW, 0.019*gW);
+      const x0 = 0.03, len = 0.5*L, w = 0.026*Wd;
+      blade(x0, len, t=>-w, t=>w*(1-t*0.12), [[x0+len, -w],[x0+len+0.055*L*Tw, -w*0.05],[x0+len, w*0.88]], {bev:0.3});
+      const n = Math.max(5, Math.round(9*L)), st = len*0.78/n; fs(col);
+      for(let i=0;i<n;i++){ const x = x0+len*0.1+i*st; c.beginPath(); M(x,-w+0.001); Q(x+st*0.25, -w-0.004*Tw, x+st*0.85, -w-0.019*Tw); Lt(x+st, -w+0.001); c.closePath(); c.fill(); }
+      edges.push([[x0+len*0.1,-w],[x0+len*0.88,-w-0.019*Tw]]);
+      fs(col); poly([[0.012,-0.058*Gd],[0.03,-0.058*Gd],[0.03,0.062*Gd],[0.012,0.062*Gd]]); fs(dk); R(0.018,-0.05*Gd,0.004,0.104*Gd); }
+    else if(v===3){ // 단검: 고리 폼멜, 끝이 굽은 짧은 코등이, 잎 모양 양날과 등뼈
+      const gp = grip(0.06, 0.022); ring(gp-0.016, 0, 0.016*gW, 0.006, col);
+      const x0 = 0.022, len = 0.26*L, w = 0.024*Wd, hw = t=>w*(0.72+Math.sin(t*Math.PI)*0.42);
+      blade(x0, len, t=>-hw(t), hw, [[x0+len+0.055*Tw, 0]], {dbl:true, ridge:true});
+      fs(col); poly([[0.006,-0.046*Gd],[0.02,-0.036*Gd],[0.022,0],[0.02,0.036*Gd],[0.006,0.046*Gd],[0.014,0]]); }
+    else { // 환도: 판 코등이, 칼집 쇠(하바키), 끝 쇠, 붉은 술, 살짝 휜 외날
+      const gp = grip(0.085, 0.024); fs(col); R(gp-0.008, -0.013*gW, 0.012, 0.026*gW);
+      c.strokeStyle = "#9a2f2f"; c.lineWidth = lw(0.004); [[-0.03,0.05],[-0.022,0.056],[-0.014,0.05]].forEach(([dx,dy])=>{ c.beginPath(); M(gp-0.006, 0.006); Q(gp-0.012+dx*0.3, dy*0.5, gp-0.006+dx, dy); c.stroke(); });
+      const x0 = 0.026, len = 0.55*L, w = 0.017*Wd, B = 0.035*L, bend = t=>-B*t*t;
+      blade(x0, len, t=>bend(t)-w*0.75, t=>bend(t)+w*(1-t*0.15), [[x0+len+0.04*L*Tw, -B-w*0.25]], {fuller:[0.06,0.7], fy:-0.26, fw:0.07});
+      fs(brass); poly([[x0-0.002,-w*0.75-0.004],[x0+0.022,-w*0.76-0.004],[x0+0.022,w+0.004],[x0-0.002,w+0.004]]);
+      fs(dk); ell(0.016, 0, 0.0095, 0.044*Gd); fs(col); ell(0.016, 0, 0.0062, 0.04*Gd); }
   }
   else if(k==="long"){
-    if(v===1){ // 장도: 감긴 긴 손잡이, 둥근 코등이, 완만하게 휜 날
-      grip(0.16, 0.022); c.fillStyle="rgba(255,255,255,0.2)"; for(let i=0;i<7;i++) R(-0.15+i*0.022,-0.011,0.009,0.022);
-      c.fillStyle=col; c.beginPath(); c.ellipse(0.035*u, 0, 0.012*u, 0.045*Wd*u, 0, 0, 7); c.fill();
-      const len = 0.72*L, w = 0.016*Wd, bend = t=>-0.055*L*Math.pow(t,1.5);
-      bladeShape(0.045, len, t=>bend(t)-w*0.7, t=>bend(t)+w*(1-t*0.2), -0.055*L-w*0.6);
-      shine(0.055, 0.045+len*0.8, -w*0.4-0.012*L, 0.004); edges.push([[0.05,w],[0.045+len*0.6,-0.025*L+w],[0.045+len,-0.055*L]]); }
-    else { // 장검(롱소드): 긴 손잡이와 무거운 폼멜, 넓게 뻗은 십자 코등이, 곧은 날
-      grip(0.15, 0.024); c.fillStyle=col; c.beginPath(); c.ellipse(-0.16*u,0,0.02*u,0.026*u,0,0,7); c.fill();
-      poly([[0.03,-0.1*Wd],[0.05,-0.095*Wd],[0.05,0.095*Wd],[0.03,0.1*Wd]]);
-      const len = 0.74*L, w = 0.019*Wd; bladeShape(0.05, len, t=>-w*(1-t*0.4), t=>w*(1-t*0.4), 0); poly([[0.05+len,-w*0.6],[0.05+len+0.07,0],[0.05+len,w*0.6]]);
-      fuller(0.06, 0.05+len*0.55, 0, w*0.35); shine(0.06, 0.05+len*0.9, -w*0.85, 0.004); edges.push([[0.06,w],[0.05+len+0.07,0]]); }
+    if(v===1){ // 장도: 실 감개 손잡이, 끝 쇠, 둥근 츠바, 하바키, 하몬·요코테
+      const gp = grip(0.16, 0.022, "ito"); fs(col); R(gp-0.012, -0.012*gW, 0.014, 0.024*gW); R(-0.004, -0.012*gW, 0.012, 0.024*gW);
+      const x0 = 0.022, len = 0.72*L, w = 0.016*Wd, B = 0.055*L, bend = t=>-B*Math.pow(t,1.5);
+      blade(x0, len, t=>bend(t)-w*0.7, t=>bend(t)+w*(1-t*0.2), [[x0+len+0.028*L*Tw, -B-w*0.3]], {bev:0.42});
+      c.strokeStyle = hexMix(col,"#ffffff",0.7); c.lineWidth = lw(0.0028); c.beginPath();
+      for(let i=0;i<=40;i++){ const t = 0.05+0.9*i/40, b = bend(t)+w*(1-t*0.2), tp = bend(t)-w*0.7, y = b-(b-tp)*0.42 + Math.sin(t*46)*w*0.09; i ? Lt(x0+len*t, y) : M(x0+len*t, y); } c.stroke();
+      ln([[x0+len*0.955, bend(0.955)-w*0.7],[x0+len*0.955, bend(0.955)+w*0.8]], 0.0025, dk);
+      fs(brass); poly([[x0-0.002,-w*0.7-0.004],[x0+0.022,bend(0.03)-w*0.7-0.004],[x0+0.022,bend(0.03)+w+0.004],[x0-0.002,w+0.004]]);
+      fs(dk); ell(0.012, 0, 0.009, 0.047*Gd); fs(col); ell(0.012, 0, 0.006, 0.043*Gd); }
+    else { // 장검(롱소드): 긴 손잡이, 향병 모양 폼멜, 끝이 칼끝 쪽으로 굽은 긴 코등이, 리카소, 홈
+      const gp = grip(0.15, 0.024); fs(col); poly([[gp+0.002,-0.016*gW],[gp-0.014,-0.022*gW],[gp-0.03,-0.009*gW],[gp-0.035,0],[gp-0.03,0.009*gW],[gp-0.014,0.022*gW],[gp+0.002,0.016*gW]]); fs(dk); circ(gp-0.036, 0, 0.004);
+      const x0 = 0.026, len = 0.74*L, w = 0.019*Wd;
+      blade(x0, len, t=>-w*(1-t*0.42), t=>w*(1-t*0.42), [[x0+len+0.075*L*Tw, 0]], {dbl:true, fuller:[0.07,0.5], ricasso:0.03});
+      fs(col); poly([[0.012,-0.1*Gd],[0.03,-0.112*Gd],[0.031,-0.096*Gd],[0.024,-0.012],[0.024,0.012],[0.031,0.096*Gd],[0.03,0.112*Gd],[0.012,0.1*Gd],[0.016,0]]); fs(dk); R(0.014,-0.013,0.01,0.026); }
   }
-  else if(k==="staff"){  // 봉: 가운데를 쥐는 긴 막대, 양끝 쇠고리
-    c.fillStyle = v===1 ? "#4a3a2c" : dark; R(-0.5*L,-0.014*Wd,1.25*L,0.028*Wd);
-    c.fillStyle = col; R(-0.5*L,-0.019*Wd,0.07,0.038*Wd); R(0.68*L,-0.019*Wd,0.07,0.038*Wd);
-    if(s.deco===1){ c.fillStyle="rgba(255,255,255,0.25)"; for(let i=0;i<4;i++) R(-0.08+i*0.03,-0.015,0.008,0.03); }
-    edges.push([[-0.5*L,-0.019*Wd],[0.75*L,-0.019*Wd]]);
+  else if(k==="twin"){
+    if(v===0){ // 팔시온: 끝으로 넓어지는 외날, 잘린 끝, S자 코등이, 원반 폼멜
+      const gp = grip(0.07, 0.024); fs(col); ell(gp-0.008, 0, 0.011*gW, 0.017*gW);
+      const x0 = 0.022, len = 0.4*L, w = 0.02*Wd;
+      blade(x0, len, t=>-w*0.7-t*0.006, t=>w*(0.9+t*1.3), [[x0+len, -w*0.7-0.006],[x0+len+0.05*L*Tw, -w*1.45],[x0+len+0.012, w*2.25]], {fuller:[0.05,0.5], fy:-0.28, fw:0.07});
+      fs(col); poly([[0.004,-0.05*Gd],[0.012,-0.044*Gd],[0.022,-0.01],[0.022,0.01],[0.024,0.044*Gd],[0.016,0.05*Gd],[0.014,0.01],[0.014,-0.01]]); }
+    else { // 단검(쌍): 감긴 손잡이, 고리 폼멜, 둥근 코등이, 가늘고 곧은 양날
+      const gp = grip(0.07, 0.02); ring(gp-0.016, 0, 0.017*gW, 0.006, col);
+      const x0 = 0.02, len = 0.3*L, w = 0.014*Wd;
+      blade(x0, len, t=>-w*(1-t*0.15), t=>w*(1-t*0.15), [[x0+len+0.06*Tw, 0]], {dbl:true, ridge:true});
+      fs(col); ell(0.012, 0, 0.008, 0.03*Gd); }
+  }
+  else if(k==="great"){
+    const x0 = 0.05, len = 0.8*L, w = 0.04*Wd;
+    if(v===0){ // 처형검: 평평하고 둥근 끝, 곧은 넓은 양날, 끝 가까이 구멍 셋, 새김 줄
+      const gp = grip(0.17, 0.032); fs(col); circ(gp-0.014, 0, 0.021*gW); fs(dk); circ(gp-0.014, 0, 0.008*gW);
+      blade(x0, len, t=>-w, t=>w*1.02, [[x0+len+0.012*Tw, -w*0.85],[x0+len+0.026*Tw, -w*0.3],[x0+len+0.028*Tw, w*0.2],[x0+len+0.012*Tw, w*0.9]], {dbl:true, fuller:[0.04,0.45], fw:0.08});
+      fs(dark); [0.78,0.85,0.92].forEach(t=>circ(x0+len*t, 0, 0.0065*Wd));
+      ln([[x0+len*0.5, -w*0.15],[x0+len*0.7, -w*0.15]], 0.0025, lt);
+      fs(col); poly([[0.02,-0.08*Gd],[0.052,-0.08*Gd],[0.052,0.08*Gd],[0.02,0.08*Gd]]); circ(0.036,-0.082*Gd,0.014); circ(0.036,0.082*Gd,0.014); }
+    else if(v===1){ // 양날 대검(츠바이헨더): 긴 손잡이, 배 모양 폼멜, 긴 코등이와 옆 고리, 가죽 감은 리카소, 패링 훅
+      const gp = grip(0.19, 0.03); fs(col); ell(gp-0.016, 0, 0.018*gW, 0.022*gW);
+      blade(x0, len, t=>-w*(1-t*0.4), t=>w*(1-t*0.4), [[x0+len+0.09*L*Tw, 0]], {dbl:true, fuller:[0.18,0.55], fw:0.1});
+      fs(dark); R(x0, -w*0.92, 0.1, w*1.84); c.strokeStyle = hexMix(dark,"#ffffff",0.2); c.lineWidth = lw(0.003); for(let x=x0; x<x0+0.1; x+=0.012){ c.beginPath(); M(x,-w*0.92); Lt(x+0.01, w*0.92); c.stroke(); }
+      fs(col); [-1,1].forEach(s=>{ c.beginPath(); M(x0+0.1, s*w*0.8); Q(x0+0.11, s*(w+0.03), x0+0.135, s*(w+0.026)); Lt(x0+0.122, s*(w+0.014)); Q(x0+0.11, s*(w+0.012), x0+0.112, s*w*0.8); c.closePath(); c.fill(); });
+      poly([[0.022,-0.12*Gd],[0.046,-0.12*Gd],[0.04,0.0],[0.046,0.12*Gd],[0.022,0.12*Gd],[0.028,0]]); ring(0.06, -0.05*Gd, 0.016, 0.006, col); ring(0.06, 0.05*Gd, 0.016, 0.006, col); }
+    else { // 외날 대검: 두꺼운 등, 넓어지는 외날, 잘린 끝, 판 코등이
+      const gp = grip(0.17, 0.032); fs(col); R(gp-0.014, -0.018*gW, 0.016, 0.036*gW);
+      blade(x0, len, t=>-w*0.85, t=>w*(1+0.35*t), [[x0+len, -w*0.85],[x0+len+0.065*Tw, -w*1.15],[x0+len+0.02, w*1.4]], {fuller:[0.05,0.7], fy:-0.3, fw:0.06, bev:0.3});
+      fs(dk); poly([[x0,-w*0.85],[x0+len,-w*0.85],[x0+len,-w*0.62],[x0,-w*0.62]]);
+      fs(col); R(0.024, -0.07*Gd, 0.028, 0.14*Gd); fs(dk); R(0.03, -0.06*Gd, 0.004, 0.12*Gd); }
+  }
+  else if(k==="blunt"){
+    const sh = 0.42*L;
+    if(v===0){ // 해머: 나무 자루, 모따기한 쇠머리와 띠쇠, 밝은 망치면
+      haft(-0.09, sh+0.02, 0.026); const hw = 0.075*Wd, bw = 0.085*Wd, x1 = sh-0.025;
+      fs(dk); R(x1-0.012, -0.018, 0.024, 0.036);
+      shape(()=>{ M(x1, -hw+0.012); Lt(x1+0.012, -hw); Lt(x1+bw-0.012, -hw); Lt(x1+bw, -hw+0.012); Lt(x1+bw, hw-0.012); Lt(x1+bw-0.012, hw); Lt(x1+0.012, hw); Lt(x1, hw-0.012); });
+      fs(lt); R(x1+0.012, -hw, bw-0.024, 0.007); R(x1+0.012, hw-0.007, bw-0.024, 0.007);
+      fs(dk); R(x1+0.004, -hw*0.62, bw-0.008, 0.005); R(x1+0.004, hw*0.62-0.005, bw-0.008, 0.005); R(x1+bw*0.55, -hw*0.62, 0.004, hw*1.24);
+      edges.push([[x1+0.012,-hw],[x1+bw-0.012,-hw]], [[x1+0.012,hw],[x1+bw-0.012,hw]]); G = {x:t=>x1+bw*t, top:()=>-hw, bot:()=>hw, k:0.8}; }
+    else if(v===1){ // 플랜지 메이스: 쇠 자루와 가죽 손잡이, 고리 띠, 일곱 날개, 꼭지
+      fs(dk); R(-0.09, -0.012*gW, sh+0.03, 0.024*gW); grip(0.09, 0.026); fs(col); R(sh-0.04, -0.016*gW, 0.012, 0.032*gW);
+      const hx = sh-0.02, hl = 0.09, fw = 0.064*Wd;
+      fs(dk); ell(hx+hl*0.5, 0, hl*0.5, 0.02);
+      [-1,1].forEach(sg=>{ fs(col); poly([[hx, sg*0.016],[hx+0.012, sg*fw],[hx+hl-0.022, sg*fw*1.04],[hx+hl, sg*0.024],[hx+hl, sg*0.012]]);
+        fs(lt); poly([[hx+0.012, sg*fw],[hx+hl-0.022, sg*fw*1.04],[hx+hl-0.028, sg*fw*0.9],[hx+0.016, sg*fw*0.88]]);
+        fs(dk); poly([[hx+0.006, sg*0.014],[hx+0.016, sg*fw*0.55],[hx+hl-0.02, sg*fw*0.58],[hx+hl-0.006, sg*0.014]]); });
+      fs(lt); poly([[hx+0.004,-0.006],[hx+hl+0.004,-0.004],[hx+hl+0.004,0.004],[hx+0.004,0.006]]);
+      fs(col); circ(hx+hl+0.012, 0, 0.012*Tw); fs(lt); circ(hx+hl+0.009, -0.004, 0.004);
+      edges.push([[hx+0.012,-fw],[hx+hl-0.022,-fw*1.04]], [[hx+0.012,fw],[hx+hl-0.022,fw*1.04]]); G = {x:t=>hx+hl*t, top:()=>-fw, bot:()=>fw, k:0.8}; }
+    else if(v===2){ // 몽둥이: 끝으로 굵어지는 나무, 박힌 쇠못, 끝 띠쇠
+      fs(wood); poly([[-0.09,-0.016*gW],[sh+0.06,-0.046*Wd],[sh+0.1,-0.04*Wd],[sh+0.1,0.04*Wd],[sh+0.06,0.046*Wd],[-0.09,0.016*gW]]);
+      ln([[0,-0.012],[sh+0.06,-0.03*Wd]], 0.003, woodL); grip(0.09, 0.034, "band");
+      fs(col); R(sh+0.085, -0.044*Wd, 0.016, 0.088*Wd);
+      for(let i=0;i<5;i++) for(let j=-1;j<=1;j++){ const x = sh-0.06+i*0.03, ww = 0.02+(x+0.09)/(sh+0.19)*0.026*Wd; fs(lt); circ(x+(j%2?0.012:0), j*ww*0.7, 0.0055); }
+      edges.push([[0.05,-0.025*Wd],[sh+0.1,-0.046*Wd]]); G = {x:t=>sh-0.08+0.18*t, top:t=>-(0.034+0.012*t)*Wd, bot:t=>(0.034+0.012*t)*Wd, k:0.9}; }
+    else if(v===3 || v===6){ // 도끼(수염 도끼) · 양날 도끼: 나무 자루, 자루 구멍(눈)을 감싼 쇠, 아래로 늘어진 수염과 넓은 날
+      haft(-0.09, sh+0.05, 0.024); const ex = sh-0.004, B = Wd;
+      fs(col); poly([[ex-0.006,-0.024],[ex+0.036,-0.024],[ex+0.036,0.024],[ex-0.006,0.024]]); fs(dk); R(ex+0.002, -0.02, 0.026, 0.004);
+      const bit = sg=>{ const f = ()=>{ M(ex-0.004, sg*0.022); Lt(ex+0.03, sg*0.022); Q(ex+0.042, sg*0.05*B, ex+0.06, sg*0.102*B); Q(ex+0.004, sg*0.135*B, ex-0.08*B, sg*0.104*B); Q(ex-0.03, sg*0.074*B, ex-0.004, sg*0.03); };
+        shape(f, col, ()=>{ M(ex+0.06, sg*0.102*B); Q(ex+0.004, sg*0.135*B, ex-0.08*B, sg*0.104*B); }, 0.024*B);
+        fs(dk); circ(ex+0.004, sg*0.05*B, 0.006);
+        edges.push([[ex+0.06, sg*0.102*B],[ex+0.006, sg*0.12*B],[ex-0.04*B, sg*0.118*B],[ex-0.08*B, sg*0.104*B]]); };
+      bit(1); if(v===6) bit(-1); else { fs(col); R(ex-0.002, -0.036, 0.034, 0.014); fs(lt); R(ex-0.002, -0.036, 0.034, 0.004); }
+      G = {x:t=>ex-0.07*B+0.13*B*t, top:()=>v===6 ? -0.12*B : -0.036, bot:()=>0.11*B, k:0.75}; }
+    else if(v===4){ // 모닝스타: 나무 자루와 쇠띠, 가시 박힌 공, 앞으로 뻗은 긴 가시
+      haft(-0.09, sh+0.01, 0.026); grip(0.09, 0.03); fs(col); R(sh-0.05, -0.016*gW, 0.012, 0.032*gW); R(sh-0.02, -0.016*gW, 0.01, 0.032*gW);
+      const cx = sh+0.04, r = 0.038*Wd;
+      fs(col); for(let i=0;i<10;i++){ const a = i/10*Math.PI*2+0.3; poly([[cx+Math.cos(a-0.22)*r*0.9, Math.sin(a-0.22)*r*0.9],[cx+Math.cos(a)*r*1.75, Math.sin(a)*r*1.75],[cx+Math.cos(a+0.22)*r*0.9, Math.sin(a+0.22)*r*0.9]]); }
+      fs(col); circ(cx, 0, r); fs(dk); circ(cx+r*0.15, r*0.2, r*0.72); fs(col); circ(cx-r*0.08, -r*0.1, r*0.68); fs(lt); circ(cx-r*0.35, -r*0.4, r*0.18);
+      fs(col); poly([[cx+r*0.7,-r*0.25],[cx+r*2.3,0],[cx+r*0.7,r*0.25]]);
+      edges.push([[cx+r*0.7,-r*0.25],[cx+r*2.3,0]]); G = {x:t=>cx-r+2*r*t, top:()=>-r*1.1, bot:()=>r*1.1, k:0.7}; }
+    else if(v===5){ // 워해머: 랑겟을 댄 나무 자루, 톱니진 망치면, 휜 부리, 앞으로 뻗은 창끝
+      haft(-0.09, sh+0.02, 0.024); fs(col); R(sh-0.11, -0.016*gW, 0.11, 0.004); R(sh-0.11, 0.012*gW, 0.11, 0.004);
+      const hx = sh-0.016;
+      fs(col); R(hx, -0.022, 0.034, 0.044);
+      fs(col); poly([[hx+0.002,-0.022],[hx+0.03,-0.022],[hx+0.034,-0.056*Wd],[hx-0.002,-0.056*Wd]]);
+      fs(lt); for(let i=0;i<3;i++) poly([[hx+i*0.012,-0.056*Wd],[hx+0.006+i*0.012,-0.064*Wd],[hx+0.012+i*0.012,-0.056*Wd]]);
+      shape(()=>{ M(hx+0.004, 0.02); Q(hx+0.012, 0.075*Wd, hx-0.03*Wd, 0.11*Wd); Q(hx+0.024, 0.07*Wd, hx+0.032, 0.02); }, col, ()=>{ M(hx+0.004,0.02); Q(hx+0.012, 0.075*Wd, hx-0.03*Wd, 0.11*Wd); }, 0.012);
+      fs(col); poly([[hx+0.032,-0.012],[hx+0.032+0.075*L,0],[hx+0.032,0.012]]); fs(lt); poly([[hx+0.032,-0.012],[hx+0.032+0.075*L,0],[hx+0.032,-0.003]]);
+      edges.push([[hx+0.032,-0.012],[hx+0.032+0.075*L,0]], [[hx+0.004,0.02],[hx-0.03*Wd,0.11*Wd]]); G = {x:t=>hx+0.032+0.07*L*t, top:t=>-0.012*(1-t), bot:t=>0.012*(1-t), k:0.6}; }
+    else { // 쇠파이프: 테이프 감은 손잡이, 이음쇠와 꺾인 끝
+      const pw = 0.024*Wd; fs(dk); R(-0.09, -pw/2, sh+0.07, pw); fs(hexMix(col,"#ffffff",0.15)); R(-0.09, -pw*0.38, sh+0.07, pw*0.22);
+      grip(0.09, pw*1.15/gW, "band");
+      fs(col); R(sh-0.022, -pw*0.8, 0.04, pw*1.6); fs(dk); for(let i=0;i<4;i++) R(sh-0.018+i*0.009, -pw*0.8, 0.003, pw*1.6);
+      fs(dk); R(sh+0.012, -pw*0.7, pw*1.3, pw*1.4); fs(col); R(sh+0.012+pw*0.15, -pw*0.7-0.03, pw, 0.032);
+      edges.push([[-0.06,-pw/2],[sh+0.03,-pw/2]]); G = {x:t=>sh-0.12+0.14*t, top:()=>-pw*0.6, bot:()=>pw*0.6, k:0.8}; }
+  }
+  else if(k==="staff"){  // 봉: 가운데를 쥐는 긴 막대. 쇠봉은 감개 두 곳과 마디 홈, 곤은 나무 결과 쇠 고리
+    const w = 0.028*Wd, x0 = -0.5*L, x1 = 0.75*L;
+    if(v===1){ haft(x0, x1, 0.028*Wd/gW, wood); }
+    else { fs(hexMix(col,"#000000",0.42)); R(x0, -w/2, x1-x0, w); fs(hexMix(col,"#ffffff",0.08)); R(x0, -w*0.36, x1-x0, w*0.18);
+      [[-0.07,0.07],[x0+0.1,x0+0.22]].forEach(([a,b])=>{ fs(dark); R(a, -w*0.62, b-a, w*1.24); c.strokeStyle = hexMix(dark,"#ffffff",0.2); c.lineWidth = lw(0.003); for(let x=a; x<b; x+=0.012){ c.beginPath(); M(x,-w*0.62); Lt(x+0.01, w*0.62); c.stroke(); } }); }
+    fs(col); [x0, x1-0.07].forEach(x=>{ R(x, -w*0.7, 0.07, w*1.4); fs(dk); R(x+0.016, -w*0.7, 0.004, w*1.4); R(x+0.05, -w*0.7, 0.004, w*1.4); fs(col); });
+    fs(lt); R(x0, -w*0.7, 0.07, w*0.25); R(x1-0.07, -w*0.7, 0.07, w*0.25);
+    edges.push([[x0,-w*0.7],[x1,-w*0.7]]); G = {x:t=>x1-0.3+0.3*t, top:()=>-w*0.7, bot:()=>w*0.7, k:0.8};
   }
   else if(k==="rapier"){
-    c.fillStyle=dark; R(-0.07,-0.011,0.1,0.022); c.fillStyle=col; c.beginPath(); c.ellipse(-0.078*u,0,0.016*u,0.02*u,0,0,7); c.fill();
-    c.strokeStyle=col; c.lineWidth=Math.max(1,u*0.007);
-    if(v===0){ // 레이피어: 손을 감싸는 고리들(스웹트 힐트) + 긴 십자 + 아주 가는 날
-      c.beginPath(); c.moveTo(0.04*u, 0.0); c.quadraticCurveTo(0.0, 0.07*u, -0.07*u, 0.012*u); c.stroke();
-      c.beginPath(); c.ellipse(0.045*u, 0.018*u, 0.03*u, 0.022*u, 0, 0, 7); c.stroke();
-      R(0.035,-0.075,0.012,0.15);
-      const len = 0.68*L, w = 0.006*Wd; poly([[0.05,-w],[0.05+len,-0.0015],[0.05+len+0.02,0],[0.05+len,0.0015],[0.05,w]]); edges.push([[0.06,-w],[0.05+len+0.02,0]]); }
-    else { // 에스터크: 곧은 십자, 굵고 뻣뻣한 세모 날
-      R(0.035,-0.06,0.014,0.12); c.beginPath(); c.arc(0.04*u, 0, 0.022*u, 0, 7); c.stroke();
-      const len = 0.66*L, w = 0.011*Wd; poly([[0.05,-w],[0.05+len,-0.002],[0.05+len+0.025,0],[0.05+len,0.002],[0.05,w]]);
-      c.fillStyle="rgba(0,0,0,0.3)"; R(0.06,-0.0015,len*0.9,0.003); edges.push([[0.06,-w],[0.05+len+0.025,0]]); }
+    const gp = grip(0.075, 0.02);
+    if(v===0){ // 레이피어(스웹트 힐트): 달걀 폼멜, 손을 감싸는 여러 겹의 고리, 긴 십자, 아주 가는 날과 리카소
+      fs(col); ell(gp-0.012, 0, 0.014, 0.018); fs(lt); ell(gp-0.016, -0.005, 0.004, 0.005);
+      const x0 = 0.03, len = 0.68*L, w = 0.006*Wd;
+      blade(x0, len, t=>-w*(1-t*0.6), t=>w*(1-t*0.6), [[x0+len+0.022, 0]], {dbl:true, ricasso:0.04});
+      c.strokeStyle = col; c.lineWidth = lw(0.006);
+      c.beginPath(); M(0.03, 0.006); Q(0.0, 0.075, gp+0.01, 0.014); c.stroke();
+      c.beginPath(); M(0.034, 0.008); Q(0.02, 0.055, -0.03, 0.05); c.stroke();
+      c.beginPath(); c.ellipse(0.045*u, 0.022*u, 0.028*u, 0.019*u, 0, 0, 7); c.stroke();
+      c.beginPath(); c.ellipse(0.045*u, -0.02*u, 0.022*u, 0.014*u, 0, 0, 7); c.stroke();
+      fs(col); R(0.026, -0.08, 0.011, 0.16); circ(0.0315, -0.082, 0.007); circ(0.0315, 0.082, 0.007); }
+    else { // 에스터크: 곧은 십자, 컵 고리, 굵고 뻣뻣한 마름모 날과 등뼈
+      fs(col); ell(gp-0.012, 0, 0.015, 0.016);
+      const x0 = 0.03, len = 0.66*L, w = 0.011*Wd;
+      blade(x0, len, t=>-w*(1-t*0.7), t=>w*(1-t*0.7), [[x0+len+0.028, 0]], {dbl:true, ridge:true});
+      fs(col); R(0.024, -0.062, 0.013, 0.124); ring(0.036, 0, 0.022, 0.006, col); }
   }
   else if(k==="spear"){
-    const sh = 0.55*L; c.fillStyle=dark; R(-0.52,-0.011,0.52+sh,0.022);
-    if(s.deco===1){ c.fillStyle="rgba(255,255,255,0.25)"; for(let i=0;i<5;i++) R(sh-0.15+i*0.025,-0.011,0.008,0.022); }
-    c.fillStyle=col;
-    R(sh-0.02,-0.024,0.018,0.048); poly([[sh,-0.011],[sh+0.05,-0.036*Wd],[sh+0.19*L,0.002],[sh+0.05,0.038*Wd],[sh,0.011]]); edges.push([[sh+0.05,-0.036*Wd],[sh+0.19*L,0]]);
-    if(v===1) poly([[sh+0.03,0.01],[sh+0.06,0.08*Wd],[sh+0.08,0.075*Wd],[sh+0.06,0.01]]);
+    const sh = 0.55*L; haft(-0.52, sh-0.02, 0.022);
+    fs(col); poly([[-0.52,-0.012*gW],[-0.54,0],[-0.52,0.012*gW]]); R(-0.52, -0.012*gW, 0.02, 0.024*gW);
+    fs(col); poly([[sh-0.05,-0.012*gW],[sh+0.012,-0.016],[sh+0.012,0.016],[sh-0.05,0.012*gW]]); fs(dk); R(sh-0.04, -0.012*gW, 0.004, 0.024*gW); R(sh-0.02, -0.014, 0.004, 0.028);
+    const x0 = sh+0.012;
+    if(v===4){ // 글레이브: 부엌칼처럼 휜 넓은 외날, 등 쪽 가시
+      const len = 0.21*L, w = 0.03*Wd, B = 0.03*L;
+      blade(x0, len, t=>-0.014-B*t*t, t=>w*(1-t*0.2)-B*t*t, [[x0+len+0.04*L*Tw, -B-0.006]], {fuller:[0.08,0.6], fy:-0.2, fw:0.08});
+      fs(col); poly([[x0+0.012,-0.012],[x0+0.005,-0.05*Wd],[x0+0.03,-0.014]]); }
+    else if(v===3){ // 할버드: 좁고 긴 창끝, 한쪽 도끼날, 반대쪽 갈고리, 자루를 따라 내려온 랑겟
+      fs(col); R(sh-0.14, -0.013*gW, 0.12, 0.003); R(sh-0.14, 0.01*gW, 0.12, 0.003);
+      const len = 0.24*L, w = 0.013*Wd;
+      blade(x0+0.03, len, t=>-w*(1-t*0.5), t=>w*(1-t*0.5), [[x0+0.03+len+0.04*Tw, 0]], {dbl:true, ridge:true});
+      fs(col); R(x0-0.012, -0.014, 0.048, 0.028);
+      const H = 1.5*Wd;
+      shape(()=>{ M(x0-0.008, 0.012); Lt(x0-0.03*H, 0.06*H); Q(x0+0.004, 0.11*H, x0+0.07*H, 0.09*H); Lt(x0+0.036, 0.012); }, col, ()=>{ M(x0-0.03*H, 0.06*H); Q(x0+0.004, 0.11*H, x0+0.07*H, 0.09*H); }, 0.022*H);
+      shape(()=>{ M(x0+0.002, -0.012); Q(x0+0.008, -0.055*H, x0-0.04*H, -0.075*H); Q(x0+0.022, -0.045*H, x0+0.032, -0.012); }, col);
+      edges.push([[x0-0.03*H, 0.06*H],[x0+0.01, 0.1*H],[x0+0.07*H, 0.09*H]]); }
+    else { // 잎날창 · 갈고리창 · 날개창: 소켓, 가운데 등뼈가 선 잎 모양 날
+      const len = 0.19*L, w = 0.036*Wd, hw = t=>w*(t<0.3 ? 0.35+0.65*t/0.3 : 1-(t-0.3)/0.7*0.82);
+      blade(x0, len, t=>-hw(t), hw, [[x0+len+0.025*Tw, 0]], {dbl:true, ridge:true});
+      if(v===1){ shape(()=>{ M(x0+0.004, 0.01); Q(x0+0.018, 0.07*Wd, x0+0.05, 0.08*Wd); Q(x0+0.024, 0.05*Wd, x0+0.03, 0.012); }, col, ()=>{ M(x0+0.012, 0.04*Wd); Q(x0+0.022, 0.07*Wd, x0+0.05, 0.08*Wd); }, 0.01);
+        edges.push([[x0+0.012,0.04*Wd],[x0+0.05,0.08*Wd]]); }
+      if(v===2){ fs(col); [-1,1].forEach(sg=>{ poly([[sh-0.044, sg*0.012],[sh-0.026, sg*0.05*Gd],[sh-0.014, sg*0.046*Gd],[sh-0.018, sg*0.012]]); }); }
+    }
   }
-  else if(k==="gun"){
-    if(v===0){ c.fillStyle=dark; poly([[-0.035,-0.04],[0.035,-0.04],[0.026,0.05],[-0.04,0.05]]); R(0.03,-0.04,0.05,0.025);
-      c.fillStyle=col; poly([[-0.045,-0.085],[0.25*L,-0.085],[0.25*L,-0.04],[-0.045,-0.036]]); c.fillStyle="rgba(0,0,0,0.3)"; R(0.0,-0.075,0.22*L,0.008); edges.push([[0,-0.085],[0.25*L,-0.085]]); }
-    else { const bl = (v===1 ? 0.5 : 0.68)*L; c.fillStyle=dark; poly([[-0.24,-0.03],[-0.02,-0.04],[0.02,0.03],[-0.03,0.05],[-0.24,0.035]]);
-      c.fillStyle=col; R(-0.02,-0.06,bl,0.032*Wd); if(v===1){ c.fillStyle=dark; R(0.12,-0.035,0.12,0.028); } else { c.fillStyle=col; R(0.05,-0.095,0.14,0.022); }
-      edges.push([[-0.02,-0.06],[bl,-0.06]]); }
-  }
-  else if(k==="lance"){
-    c.fillStyle=dark; R(-0.58,-0.016,0.64,0.032); c.fillStyle=col;
-    c.beginPath(); c.ellipse(0.07*u, 0, 0.02*u, 0.075*Wd*u, 0, 0, 7); c.fill();
-    const cl = 0.85*L, cw = 0.05*Wd; poly([[0.08,-cw],[0.08+cl,0],[0.08,cw]]); c.fillStyle="rgba(255,255,255,0.3)"; poly([[0.09,-cw*0.9],[0.08+cl,0],[0.09,-cw*0.4]]);
-    if(v===1){ c.strokeStyle="rgba(0,0,0,0.35)"; c.lineWidth=Math.max(1,u*0.007); for(let i=0;i<7;i++){ const x=0.1+i*cl/8, w=cw*(1-(x-0.08)/cl); c.beginPath(); c.moveTo(x*u,-w*u); c.lineTo((x+0.04)*u, w*u); c.stroke(); } }
-    edges.push([[0.08,-cw],[0.08+cl,0]]);
+  else if(k==="lance"){ // 랜스: 손잡이 아래 그래퍼 고리, 종 모양 뱀플레이트, 긴 원뿔(나선 랜스는 드릴 홈과 코일)
+    fs(dark); R(-0.58, -0.016*gW, 0.68, 0.032*gW); fs(col); R(-0.12, -0.02*gW, 0.016, 0.04*gW);
+    grip(0.1, 0.03); fs(col);
+    shape(()=>{ M(0.03,-0.016); Q(0.06,-0.03*Gd, 0.1,-0.08*Gd); Lt(0.112,-0.078*Gd); Lt(0.11,0.078*Gd); Lt(0.1,0.08*Gd); Q(0.06,0.03*Gd, 0.03,0.016); }, col, ()=>{ M(0.1,-0.08*Gd); Lt(0.112,-0.078*Gd); Lt(0.11,0.078*Gd); }, 0.006);
+    fs(dk); R(0.106, -0.075*Gd, 0.004, 0.15*Gd);
+    const cl = 0.85*L, cw = 0.05*Wd, x0 = 0.112;
+    blade(x0, cl, t=>-cw*(1-t), t=>cw*(1-t), [[x0+cl+0.004, 0]], {dbl:true, bev:0.3});
+    if(v===1){ c.strokeStyle = dk; c.lineWidth = lw(0.006); for(let i=0;i<9;i++){ const x = x0+0.02+i*cl/10, ww = cw*(1-(x-x0)/cl); c.beginPath(); M(x,-ww); Lt(x+0.045, ww*(1-0.045/cl)); c.stroke(); }
+      fs(s.glow || brass); for(let i=0;i<3;i++) R(x0+0.006+i*0.012, -cw*0.98, 0.005, cw*1.96); }
+    else { fs(dk); [0.3,0.55].forEach(t=>R(x0+cl*t, -cw*(1-t), 0.004, cw*(1-t)*2)); }
   }
   else if(k==="tool"){
-    if(v===1){ c.fillStyle=dark; R(-0.1,-0.04,0.14,0.08); c.fillStyle=col; R(0.04,-0.03*Wd,0.4*L,0.06*Wd);
-      c.beginPath(); c.arc((0.04+0.4*L)*u,0,0.03*Wd*u,-Math.PI/2,Math.PI/2); c.fill();
-      c.fillStyle=dark; for(let i=0;i<9;i++) R(0.05+i*0.045*L,-0.036*Wd,0.016,0.007); edges.push([[0.04,-0.036*Wd],[0.04+0.4*L,-0.036*Wd]]); }
-    else { c.fillStyle=dark; R(-0.06,-0.015,0.36*L,0.03); c.fillStyle=col;
-      c.beginPath(); c.arc(0.34*L*u, 0, 0.052*Wd*u, 0.55, Math.PI*2-0.55); c.lineTo(0.33*L*u, 0); c.closePath(); c.fill(); edges.push([[0.3*L,-0.05*Wd],[0.38*L,-0.04*Wd]]); }
+    if(v===1){ // 전기톱: 엔진 몸체와 냉각 핀, 위 손잡이 고리, 뒤 손잡이, 가이드 바, 체인 날, 앞 톱니바퀴
+      const bh = 0.03*Wd, x0 = 0.05, bl = 0.4*L;
+      fs(col); R(x0, -bh, bl, bh*2); c.beginPath(); c.arc((x0+bl)*u, 0, bh*u, -Math.PI/2, Math.PI/2); c.fill();
+      fs(lt); R(x0, -bh*0.2, bl, bh*0.4); fs(dk); for(let i=0;i<3;i++) circ(x0+0.04+i*bl*0.3, 0, 0.005);
+      fs(dark); const n = Math.round(bl/0.022); for(let i=0;i<=n;i++){ const x = x0+i*bl/n; poly([[x,-bh-0.003],[x+0.007,-bh-0.012],[x+0.014,-bh-0.003]]); poly([[x,bh+0.003],[x+0.007,bh+0.012],[x+0.014,bh+0.003]]); }
+      c.strokeStyle = dark; c.lineWidth = lw(0.005); c.beginPath(); M(x0, -bh-0.002); Lt(x0+bl, -bh-0.002); c.arc((x0+bl)*u, 0, (bh+0.002)*u, -Math.PI/2, Math.PI/2); Lt(x0, bh+0.002); c.stroke();
+      fs(dk); circ(x0+bl, 0, bh*0.45);
+      fs(hexMix(col,"#000000",0.5)); poly([[-0.1,-0.045],[0.03,-0.05],[0.06,-0.03],[0.06,0.04],[-0.1,0.045]]);
+      fs(dark); for(let i=0;i<5;i++) R(-0.08+i*0.022, -0.035, 0.008, 0.06);
+      c.strokeStyle = dark; c.lineWidth = lw(0.012); c.beginPath(); M(-0.06,-0.046); Q(-0.03,-0.11, 0.03,-0.05); c.stroke();
+      fs(dark); R(-0.16, -0.012, 0.07, 0.024);
+      edges.push([[x0,-bh-0.006],[x0+bl,-bh-0.006]]); G = {x:t=>x0+bl*t, top:()=>-bh-0.008, bot:()=>bh+0.008, k:0.8}; }
+    else { // 파이프 렌치: 구멍 뚫린 I자 손잡이, 아래 고정 턱, 나사로 움직이는 갈고리 턱(톱니), 홈 파인 조절 너트
+      const hl = 0.34*L, w = 0.03*gW, J = Wd;
+      fs(col); R(-0.07, -w/2, hl+0.07, w); fs(dk); R(-0.05, -w*0.12, hl-0.02, w*0.24); fs(dark); circ(-0.05, 0, w*0.22);
+      const hx = hl-0.01;
+      fs(col); poly([[hx,-w/2],[hx+0.06*J,-w/2],[hx+0.07*J,-0.004],[hx+0.07*J,0.022*J],[hx,0.022*J]]);
+      fs(lt); for(let i=0;i<4;i++) poly([[hx+0.02*J+i*0.012*J,-w/2],[hx+0.026*J+i*0.012*J,-w/2-0.006],[hx+0.032*J+i*0.012*J,-w/2]]);
+      fs(col); R(hx+0.01, -0.09*J, 0.022, 0.07*J); poly([[hx+0.01,-0.09*J],[hx+0.075*J,-0.09*J],[hx+0.085*J,-0.07*J],[hx+0.032,-0.064*J]]);
+      fs(lt); for(let i=0;i<4;i++) poly([[hx+0.036*J+i*0.012*J,-0.066*J],[hx+0.042*J+i*0.012*J,-0.058*J],[hx+0.048*J+i*0.012*J,-0.066*J]]);
+      fs(dk); R(hx-0.004, -0.046*J, 0.03, 0.026*J); c.strokeStyle = lt; c.lineWidth = lw(0.0025); for(let i=0;i<5;i++){ c.beginPath(); M(hx-0.002+i*0.006, -0.046*J); Lt(hx-0.002+i*0.006, -0.02*J); c.stroke(); }
+      edges.push([[hx+0.01,-0.09*J],[hx+0.085*J,-0.07*J]]); G = {x:t=>hx-0.1+0.16*t, top:()=>-w*0.6, bot:()=>w*0.6, k:0.8}; }
   }
+  else if(k==="gun"){
+    if(v===1){ // 펌프 산탄총: 나무 개머리, 몸통, 굵은 총열, 아래 튜브 탄창, 홈 파인 포엔드, 가늠쇠
+      const bl = 0.5*L, bw = 0.022*Wd, by = -0.064;
+      fs(wood); poly([[-0.25,-0.035],[-0.04,-0.05],[-0.02,-0.03],[0.0,0.02],[-0.03,0.04],[-0.25,0.04]]); fs(dark); R(-0.26, -0.035, 0.012, 0.075);
+      fs(dk); R(-0.04, -0.075, 0.12, 0.05); fs(dark); R(0.0, -0.068, 0.04, 0.012);
+      fs(col); R(0.08, by-bw/2, bl, bw); fs(lt); R(0.08, by-bw/2, bl, bw*0.25); fs(dk); R(0.08, by+bw/2, bl*0.86, 0.014);
+      fs(wood); R(0.14, by+bw/2-0.004, 0.13, 0.024); fs(hexMix(wood,"#000000",0.35)); for(let i=0;i<8;i++) R(0.148+i*0.015, by+bw/2-0.004, 0.004, 0.024);
+      fs(lt); circ(0.08+bl-0.01, by-bw/2-0.004, 0.004);
+      c.strokeStyle = dk; c.lineWidth = lw(0.005); c.beginPath(); c.arc(0.0*u, -0.02*u, 0.022*u, 0.1, Math.PI-0.1); c.stroke(); fs(dark); R(-0.004, -0.025, 0.006, 0.02);
+      edges.push([[0.08,by-bw/2],[0.08+bl,by-bw/2]]); G = {x:t=>0.08+bl*0.55+bl*0.45*t, top:()=>by-bw/2, bot:()=>by+bw/2+0.012, k:0.8}; }
+    else if(v===2){ // 장총: 긴 나무 개머리, 볼트 손잡이, 긴 총열, 가늠자·가늠쇠, 멜빵 고리
+      const bl = 0.68*L, by = -0.062, bw = 0.014*Wd;
+      fs(wood); poly([[-0.25,-0.03],[-0.08,-0.044],[0.0,-0.046],[0.3*L,-0.05],[0.3*L,-0.04],[0.0,-0.03],[-0.01,0.03],[-0.04,0.045],[-0.25,0.042]]);
+      fs(woodL); R(-0.2, -0.026, 0.15, 0.004); fs(dark); R(-0.26, -0.03, 0.012, 0.072);
+      fs(dk); R(-0.04, -0.074, 0.11, 0.026); fs(col); R(0.07, by-bw/2, bl, bw); fs(lt); R(0.07, by-bw/2, bl, bw*0.3);
+      fs(col); R(0.02, -0.084, 0.004, 0.014); circ(0.024, -0.094, 0.009); fs(dk); R(0.12, by-bw/2-0.008, 0.012, 0.008); R(0.07+bl-0.012, by-bw/2-0.008, 0.005, 0.008);
+      ring(0.24*L, -0.032, 0.008, 0.003, dk);
+      c.strokeStyle = dk; c.lineWidth = lw(0.005); c.beginPath(); c.arc(0.0*u, -0.02*u, 0.022*u, 0.1, Math.PI-0.1); c.stroke();
+      edges.push([[0.07,by-bw/2],[0.07+bl,by-bw/2]]); G = {x:t=>0.07+bl*0.6+bl*0.4*t, top:()=>by-bw/2, bot:()=>by+bw/2, k:0.75}; }
+    else if(v===3){ // 자동 권총: 톱니 홈 슬라이드, 몸통, 각진 손잡이와 탄창 바닥, 방아쇠울
+      const sl = 0.24*L;
+      fs(dark); poly([[-0.035,-0.042],[0.03,-0.042],[0.024,0.052],[-0.03,0.056],[-0.044,0.004]]); fs(hexMix(dark,"#ffffff",0.15)); for(let i=0;i<4;i++) R(-0.03+i*0.012, -0.02, 0.005, 0.05);
+      fs(dk); R(-0.034, 0.052, 0.054, 0.008);
+      fs(dk); R(-0.04, -0.056, sl*0.85, 0.016);
+      fs(col); R(-0.045, -0.088, sl, 0.034); fs(lt); R(-0.045, -0.088, sl, 0.006); fs(dk); for(let i=0;i<5;i++) R(-0.04+i*0.008, -0.084, 0.003, 0.026);
+      fs(dk); R(-0.045+sl-0.006, -0.094, 0.005, 0.006); R(-0.042, -0.094, 0.008, 0.006);
+      c.strokeStyle = dk; c.lineWidth = lw(0.005); c.beginPath(); c.arc(0.03*u, -0.03*u, 0.02*u, 0.2, Math.PI-0.2); c.stroke();
+      edges.push([[-0.045,-0.088],[-0.045+sl,-0.088]]); G = {x:t=>-0.045+sl*0.5+sl*0.5*t, top:()=>-0.088, bot:()=>-0.054, k:0.7}; }
+    else { // 리볼버: 휜 손잡이, 몸틀, 홈 파인 실린더, 해머, 총열과 꽂을대, 가늠쇠, 방아쇠울
+      const bl = 0.22*L;
+      fs(wood); poly([[-0.03,-0.04],[0.008,-0.04],[0.016,0.0],[0.012,0.05],[-0.026,0.058],[-0.05,0.01]]); fs(woodL); R(-0.022, -0.024, 0.004, 0.06);
+      fs(dk); poly([[-0.034,-0.09],[0.064,-0.09],[0.064,-0.04],[0.01,-0.034],[-0.034,-0.04]]);
+      fs(col); R(0.0, -0.092, 0.052, 0.054); fs(lt); R(0.0, -0.092, 0.052, 0.008); fs(dk); [-0.075,-0.062,-0.05].forEach(y=>R(0.004, y, 0.044, 0.0035));
+      fs(dk); poly([[-0.034,-0.084],[-0.05,-0.104],[-0.042,-0.108],[-0.024,-0.09]]);
+      fs(col); R(0.064, -0.088, bl, 0.022); fs(lt); R(0.064, -0.088, bl, 0.005); fs(dk); R(0.064, -0.064, bl*0.7, 0.008); R(0.064+bl-0.01, -0.096, 0.006, 0.008);
+      c.strokeStyle = dk; c.lineWidth = lw(0.005); c.beginPath(); c.arc(0.022*u, -0.03*u, 0.02*u, 0.2, Math.PI-0.2); c.stroke(); fs(dark); R(0.018, -0.036, 0.005, 0.018);
+      edges.push([[0.064,-0.088],[0.064+bl,-0.088]]); G = {x:t=>0.064+bl*0.4+bl*0.6*t, top:()=>-0.088, bot:()=>-0.056, k:0.7}; }
+  }
+  drawAdds(c, u, G, s.add, col, edges, opt.far);
   // 발광: 날 가장자리에 가는 빛
-  if(s.glow && !opt.noGlow){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round";
+  if(s.glow && !opt.noGlow){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round"; c.lineJoin="round";
     edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); c.restore(); }
 }
-// 건틀릿은 손에 낀다: 아래팔을 덮는 판 + 주먹(마디가 앞). hand: 주먹 가운데, a: 아래팔 방향
+// 건틀릿은 손에 낀다: 판을 겹친 아래팔 덮개 + 손등 판 + 손가락 마디 판(앞). hand: 주먹 가운데, a: 아래팔 방향
 function drawGauntlet(c, s, hand, a, h, dark, far){
   c.save(); c.translate(hand[0], hand[1]); c.rotate(a); const u = h, W = s.wid||1, m = s.metal || METALS[0], mc = far ? hexMix(m, "#000000", 0.38) : m;
+  const dk = hexMix(mc, "#000000", 0.35), lt = hexMix(mc, "#ffffff", 0.35);
   const pts = arr => arr.map(([x,y])=>[x*u, y*W*u]);
-  c.fillStyle = mc; smoothShape(c, pts([[-0.115,-0.019],[-0.07,-0.024],[-0.03,-0.027],[-0.012,-0.023],[-0.012,0.023],[-0.03,0.027],[-0.07,0.023],[-0.115,0.018]])); c.fill();
-  c.beginPath(); c.roundRect(-0.024*u, -0.027*W*u, 0.05*u, 0.054*W*u, 0.017*u); c.fill();
-  c.fillStyle = dark; c.fillRect(0.012*u, -0.024*W*u, 0.005*u, 0.048*W*u); c.fillRect(-0.055*u, -0.025*W*u, 0.006*u, 0.05*W*u);
-  if(s.v===1){ c.fillStyle = mc; for(let i=-1;i<=1;i++){ c.beginPath(); c.moveTo(0.022*u, (i*0.017-0.006)*W*u); c.lineTo((0.06+0.025*(s.len||1))*u, i*0.022*W*u); c.lineTo(0.022*u, (i*0.017+0.006)*W*u); c.closePath(); c.fill(); } }
-  if(s.glow && !far){ c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=6; c.lineWidth=Math.max(1,u*0.006); c.beginPath(); c.moveTo(-0.1*u,-0.019*W*u); c.lineTo(-0.02*u,-0.027*W*u); c.stroke(); }
+  c.fillStyle = mc; smoothShape(c, pts([[-0.118,-0.02],[-0.07,-0.024],[-0.03,-0.027],[-0.012,-0.023],[-0.012,0.023],[-0.03,0.027],[-0.07,0.023],[-0.122,0.02]])); c.fill();
+  c.fillStyle = dk; [-0.1,-0.078,-0.056,-0.035].forEach(x=>c.fillRect(x*u, -0.025*W*u, Math.max(0.6,0.004*u), 0.05*W*u));
+  if(!far){ c.fillStyle = lt; c.fillRect(-0.112*u, -0.021*W*u, 0.09*u, Math.max(0.6, 0.004*W*u)); }
+  c.fillStyle = mc; c.beginPath(); c.roundRect(-0.024*u, -0.028*W*u, 0.05*u, 0.056*W*u, 0.017*u); c.fill();
+  c.fillStyle = dk; c.fillRect(0.012*u, -0.025*W*u, Math.max(0.6,0.004*u), 0.05*W*u); c.fillRect(-0.002*u, -0.026*W*u, Math.max(0.6,0.003*u), 0.052*W*u);
+  c.fillStyle = far ? dk : lt; for(let i=0;i<4;i++){ c.beginPath(); c.arc(0.02*u, (-0.019+i*0.0127)*W*u, Math.max(0.4, 0.0042*u), 0, 7); c.fill(); }
+  if(s.v===1){ c.fillStyle = mc; for(let i=-1;i<=1;i++){ c.beginPath(); c.moveTo(0.022*u, (i*0.017-0.006)*W*u); c.quadraticCurveTo((0.05+0.012*(s.len||1))*u, (i*0.019-0.004)*W*u, (0.065+0.025*(s.len||1))*u, i*0.024*W*u); c.lineTo(0.022*u, (i*0.017+0.006)*W*u); c.closePath(); c.fill(); } }
+  const edges = [[[-0.1,-0.02*W],[-0.02,-0.028*W]]];
+  drawAdds(c, u, {x:t=>-0.06+0.085*t, top:()=>-0.028*W, bot:()=>0.028*W, k:0.6}, s.add, mc, edges, far);
+  if(s.glow && !far){ c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=6; c.lineWidth=Math.max(1,u*0.006); c.lineCap="round"; edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); }
   c.restore();
 }
 /* 전투 자세(손 위치 g · 무기 각도 a) — 대기 → w(젖힘·겨눔) → s(휘두름·찌름·반동). two: 뒷손이 잡는 손잡이 위치 */
@@ -4725,7 +5106,7 @@ const GUARD = {
   saw:   {f1:0.13, f2:-0.11, crouch:0.05,  lean:0.1,  hipDx:0,     chest:1.05, head:[0,0],       g:[0.24,-0.47], a:-0.25, two:-0.07},
   none:  {f1:0.11, f2:-0.1,  crouch:0.045, lean:0.16, hipDx:-0.005,chest:0.9,  head:[0.01,0.035],   g:[0.16,-0.79], a:-1.3,  off:[0.085,-0.775], l2:0.22}
 };
-const guardKey = s => !s ? "none" : s.kind==="gun" ? (s.v>0 ? "rifle" : "gun") : s.kind==="tool" && s.v===1 ? "saw" : (GUARD[s.kind] ? s.kind : "none");
+const guardKey = s => !s ? "none" : s.kind==="gun" ? (poseV(s)>0 ? "rifle" : "gun") : s.kind==="tool" && s.v===1 ? "saw" : (GUARD[s.kind] ? s.kind : "none");
 const GRIP = GUARD;
 /* 무기별 공격 동작 보정: 기본 동작(ATK)에 덮어쓴다. step 앞발 내딛기, body 허리 이동 */
 const ATK_K = {
@@ -4835,7 +5216,7 @@ function ikArm(S, T, L1, L2, bendFwd){ return ik2(S, T, L1, L2, bendFwd ? [1,0.1
 /* 평상 자세(무기별). hand: 앞손 목표(몸통 좌표면 tl:true), mount: 몸에 찬 무기(behind면 몸 뒤), inHand: 손에 든 무기 각도
    기본은 콘트라포스토: 뒷다리에 무게, 앞다리는 무릎을 풀고 뒤꿈치를 살짝 든다. 팔은 팔꿈치를 조금 굽혀 늘어뜨린다 */
 function idlePose(ws){
-  const k = ws ? ws.kind : "none", v = ws ? (ws.v||0) : 0;
+  const k = ws ? ws.kind : "none", v = poseV(ws);
   const P = {f1:0.06, f2:-0.035, crouch:0, lean:0.0, hipDx:-0.012, chest:1, head:[0,0], lift1:0.16, lift2:0, h1:{tl:[0.04,0.075]}, h2:{tl:[-0.02,0.07]}};
   if(k==="blade"){ P.mount = {tl:[-0.02,0.095], a:2.3, sheath:0.5, behind:true}; P.h1 = {hilt:true}; }
   else if(k==="rapier"){ P.lean = -0.04; P.chest = 0.92; P.mount = {tl:[-0.03,0.085], a:2.62, sheath:0.6, behind:true}; P.h1 = {hilt:true}; P.f1 = 0.075; P.f2 = -0.05; P.lift1 = 0.05; }
@@ -4897,7 +5278,7 @@ function drawFixerSD(c, x, gy, h, o){
     blunt:{near:[0.17,-0.6], a:-2.3, behind:true, shoulder:true}, staff:{near:[0.16,-0.5], a:-Math.PI/2+0.06}, spear:{near:[0.16,-0.56], a:-Math.PI/2+0.1}, lance:{near:[0.17,-0.6], a:-Math.PI/2+0.03},
     twin:{near:[0.13,-0.44], a:1.25, far:[-0.14,-0.44], farA:1.95}, fist:{near:[0.12,-0.45], a:0}, none:{near:[0.12,-0.44], a:0},
     gun0:{near:[0.12,-0.44], a:1.35}, gun1:{near:[0.17,-0.6], a:-2.3, behind:true, shoulder:true}, gun2:{near:[0.13,-0.48], a:0.42, two:0.15}, tool0:{near:[0.13,-0.44], a:1.35}, tool1:{near:[0.12,-0.46], a:0.3, two:-0.07}};
-  const ik_ = kind==="gun" ? "gun"+(ws.v||0) : kind==="tool" ? "tool"+(ws.v||0) : kind==="long" ? "long"+(ws.v||0) : kind;
+  const ik_ = kind==="gun" ? "gun"+poseV(ws) : kind==="tool" ? "tool"+(ws.v||0) : kind==="long" ? "long"+(ws.v||0) : kind;
   let K;
   if(state==="hurt"){
     // 부상: 무기마다 다르게 버틴다 — 가벼운 칼은 뒤로 젖혀지며 칼을 치켜들고, 무거운 무기는 땅에 짚고 몸을 숙이고,
@@ -6225,7 +6606,7 @@ function fxTestPanel(){
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
-   <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 장비 제작</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
+   <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>`;
   document.body.appendChild(el);
   el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
@@ -6234,6 +6615,8 @@ function fxTestPanel(){
     else if(k==="tw1"){ const t = S.fixers.find(x=>!x.isLeader); if(!t) return toast("동료가 없다"); await twistFixer(t); }
     else if(k==="tw0"){ await twistLeader(f); }
     else if(k==="shin"){ const t = S.fixers.find(x=>!x.isLeader) || f; t.shin = null; if(t.grade>2) t.grade = 2; t.mp = Math.round(t.mpMax*0.2); await awakenShin(t); }
+    else if(k==="upw"){ const it = SHOP.find(i=>i.id==="m1"); f.gear.weapon = initDur(JSON.parse(JSON.stringify(it))); f.gear.weapon.uses = f.gear.weapon.dur0; if(f.grade>4) f.grade = 4; window.__forceUp = true; await checkUpgrade(f); window.__forceUp = false; save(); render(); }
+    else if(k==="wear"){ const g = f.gear.weapon; if(!isWornable(g)) return toast("닳는 무기를 끼고 있지 않다"); initDur(g); g.dur = Math.floor(g.durMax/2); save(); render(); toast(`${g.name}: ${durText(g)}`); }
     else if(k==="omen"){ const t = S.fixers.find(x=>!x.isLeader) || f; const tone = Math.random()<0.5 ? "vermil" : "moon"; showOmen(t.name, pick(OMEN[tone]), tone); }
     else if(k==="ego0" || k==="ego1"){ const t = k==="ego0" ? f : S.fixers.find(x=>!x.isLeader); if(!t) return toast("동료가 없다"); t.ego = null; await bloomEgo(t); save(); render(); }
     else if(k==="shop") await openShop();
