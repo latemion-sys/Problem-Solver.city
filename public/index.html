@@ -1264,6 +1264,70 @@ function egoMake(f){
   return {name: e[0], type: e[1], desc: e[2], origin: egoWhy(f, e, t)};
 }
 function egoNameFor(f){ return egoMake(f).name; }
+/* 개화 E.G.O 창작: 개화하는 순간, 그 해결사의 기록 전부를 AI에게 건네 이름과 모습을 새로 짓게 한다.
+   미리보기(claude.ai)에서는 sample, 본 사이트에서는 /api/ego(Cloudflare Worker → Anthropic API). 둘 다 안 되면 위의 손으로 지은 목록에서 고른다. */
+function egoDossier(f){
+  const plain = t => String(t).replace(/<[^>]*>/g,"").replace(/\s+/g," ").trim().slice(0,90);
+  return {name:f.name, grade:gName(f.grade), personality:f.personality, leader:!!f.isLeader, stats:f.stats,
+    precious: f.precious ? {kind:f.precious.kind==="마음" ? "정하지 않음" : f.precious.kind, text:f.precious.text, lost:!!f.precious.lost, why:f.precious.why||""} : {kind:"—", text:"—"},
+    days: Math.max(1, S.day - (f.hiredDay||1) + 1), done: f.done||0, life: f.life||{},
+    weapon: f.gear && f.gear.weapon ? f.gear.weapon.name : null,
+    diary: (f.diary||[]).slice(-12).map(plain),
+    records: (S.records||[]).filter(r=>r.name===f.name).slice(-5).map(r=>plain(`${r.day}일차 ${r.what} ${r.note||""}`)),
+    taken: S.fixers.filter(x=>x!==f && x.ego).map(x=>x.ego.name)};
+}
+function egoPrompt(d){
+  const lines = [];
+  lines.push(`이름: ${d.name} / 등급: ${d.grade} / 성격: ${d.personality}${d.leader ? " / 사무소의 대표" : ""}`);
+  lines.push(`능력치: 근력 ${d.stats.str}, 민첩 ${d.stats.agi}, 재주 ${d.stats.tec}, 의지 ${d.stats.wil}`);
+  lines.push(`마음속에 간직한 것(${d.precious.kind}): ${d.precious.text}${d.precious.lost ? ` — 잃었다(${d.precious.why})` : ""}`);
+  lines.push(`사무소에 온 지 ${d.days}일, 해낸 의뢰 ${d.done}건`);
+  const L = d.life, cnt = [["kill","숨통을 끊고 끝낸 의뢰"],["spare","숨만 붙여 데려온 의뢰"],["escort","호위"],["chase","추적"],["search","수색"],["abno","환상체"],["hunt","뒤틀림 토벌"],["fail","실패"],["heavy","중상 이상으로 돌아온 날"],["solo","홀로 나간 의뢰"],["crew","셋 이상 함께 나간 의뢰"],["grief","먼저 떠나보낸 동료"]]
+    .filter(([k])=>L[k]).map(([k,n])=>`${n} ${L[k]}`);
+  lines.push(`행적: ${cnt.length ? cnt.join(", ") : "아직 거의 없음"}`);
+  if(d.weapon) lines.push(`쥐어 온 무기: ${d.weapon}`);
+  if(d.diary.length) lines.push(`최근의 일들:\n- ${d.diary.join("\n- ")}`);
+  if(d.records.length) lines.push(`남은 기록: ${d.records.join(" / ")}`);
+  return `너는 Project Moon(로보토미 코퍼레이션 · 라이브러리 오브 루이나 · 림버스 컴퍼니)의 '도시'를 무대로 한 팬게임에서, 한 해결사가 정신이 바닥난 끝에 다정한 목소리를 뿌리치고 개화 E.G.O를 피워 내는 순간을 쓴다.
+개화 E.G.O는 환상체에게서 빌린 E.G.O와 달리 그 사람 자신의 자아에서 피어나 그 사람을 닮는다. 정해진 짓는 법은 없다. 그 사람이 어떻게 살아왔는지, 개화하기 전까지 무엇을 하며 어떻게 행동했는지, 무엇을 바라는지가 이름과 모습이 된다.
+
+[이 해결사의 기록]
+${lines.join("\n")}
+
+위 기록을 끝까지 읽고, 이 사람만의 개화 E.G.O 하나를 창작하라.
+- name: "개화 E.G.O::" 뒤에 붙는 낱말 하나 또는 아주 짧은 명사구. 세상에 실제로 있는 사물 · 재료 · 도구 · 현상 · 민속 · 놀이 · 직업 같은 것의 이름이 좋다. 어느 나라 말이든 되지만 반드시 한글로 적는다.
+- "개화 E.G.O::이름"으로 소리 내 읽었을 때 어색하지 않고, 이 사람의 삶이 한 낱말로 응축된 느낌이어야 한다.
+- 쓰지 말 것: 덕목 · 감정 · 성격을 그대로 이르는 추상어(낙천, 희망, 정의, 분노 따위), 무기 종류 이름(한손검, 대검, 창, 총 따위), 기록의 낱말을 그대로 옮긴 것(호위, 추적, 여동생, 빵집, 회중시계 따위 — 기록은 이름의 까닭이지 이름 자체가 아니다).
+- 원작에 있거나 닮은 이름은 쓰지 않는다: 동백, 마름, 가스하푼, 대행, 이립, 라바크롬 상귀니스, 케츠엔, 곰방대, 밀랍날개, 오감도, 삼라염상, 타인의 사슬, 허환경, 시체자루, 작살박이, 그리고 로보토미 · 림버스의 환상체 E.G.O 이름들.
+- 다음은 결만 보여 주는 예다. 그대로 쓰거나 비슷하게 만들지 않는다: 올가미, 스테일비즈크, 엑셀레이터, 아스트라페, 앙고라, 봉합, 초목껍질, 말뚝이, 역청.
+- 이미 이 사무소에 있는 이름: ${d.taken.length ? d.taken.join(", ") : "없음"} — 쓰지 않는다.
+- type: weapon(무기) · armor(의복) · both(무기와 의복이 함께 드러나는 일체형) · tool(도구형) 가운데 이 사람에게 맞는 하나.
+- look: 드러난 모습 한두 문장. 무엇을 입고 쥐었는지, 어떻게 작동하는지를 담백하게. 과장된 수사는 쓰지 않는다. 사람의 다리와 발은 묘사하지 않는다(늘 긴 코트 차림).
+- why: 이 이름이 이 사람의 어떤 삶에서 나왔는지 한 문장. 기록의 구체적인 사실을 짚는다.
+먼저 속으로 후보를 여럿 떠올리고, 위 조건에 하나라도 걸리는 것은 버린 뒤, 가장 이 사람다운 하나만 골라라.
+JSON 하나만 출력한다: {"name":"","type":"","look":"","why":""}`;
+}
+
+function egoParse(t, taken){
+  try{ const m = String(t).match(/\{[\s\S]*\}/); const o = JSON.parse(m ? m[0] : t);
+    const name = String(o.name||"").replace(/^개화\s*E\.G\.O::\s*/,"").trim();
+    if(!name || name.length > 14 || !/^[가-힣 ·\-]+$/.test(name) || taken.includes(name)) return null;
+    const type = ["weapon","armor","both","tool"].includes(o.type) ? o.type : null; if(!type) return null;
+    return {name, type, desc: String(o.look||"").trim().slice(0,160), origin: String(o.why||"").trim().slice(0,140), ai:true};
+  }catch(e){ return null; }
+}
+async function egoCreate(f){
+  const d = egoDossier(f), prompt = egoPrompt(d);
+  try{
+    const sample = window.claude && window.claude.use ? await window.claude.use("sample") : null;
+    if(sample){ for(let i=0;i<2;i++){ const r = await sample(prompt, {modelTier:"complex", cache:false}); const e = egoParse(r.text, d.taken); if(e) return e; } }
+  }catch(e){}
+  try{
+    const res = await fetch("/api/ego", {method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify(d)});
+    if(res.ok){ const e = egoParse(await res.text(), d.taken); if(e) return e; }
+  }catch(e){}
+  return egoMake(f);
+}
 const egoSlot = e => e && e.type==="armor" ? "armor" : "weapon";   // 형상 고르기에서 정하는 쪽(일체형·도구형은 손에 드는 쪽)
 const egoSpecList = type => type==="weapon" ? EGO_SPECIAL.weapon : type==="armor" ? EGO_SPECIAL.armor : EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor);
 const egoSpecLabel = type => type==="weapon" ? "특수 공격" : type==="armor" ? "특수 방어" : "특수 능력";
@@ -1287,6 +1351,7 @@ const preciousText = f => !f.precious ? "—" : `${f.precious.text}${f.precious.
 function markLost(f, why){
   if(!f || !f.precious || f.precious.lost) return;
   f.precious.lost = S.day; f.precious.why = why;
+  f.diary = (f.diary||[]).concat([`${S.day}일차 간직하던 ${f.precious.text}을(를) 잃었다 — ${why}`]).slice(-20);
   f.mp = Math.max(1, f.mp - Math.round(f.mpMax*0.15));
   addLog(`${f.name}: 간직하던 것을 잃었다 — ${f.precious.text}`, "omenlog");
   (S.lossQ = S.lossQ || []).push(f.id);
@@ -2899,6 +2964,7 @@ async function dispatch(qid, fids){
       else if(q.attrs[0]==="agi") inc("chase"); else if(q.attrs[0]==="tec") inc("search"); }
     const oc = combat && combat.outcome ? combat.outcome : success && q.attrs[0]==="str" && q.kind==="일반" ? q.goal : null;
     if(oc==="사살") inc("kill"); else if(oc==="제압") inc("spare");
+    f.diary = (f.diary||[]).concat([`${S.day}일차 [${q.kind}] ${q.text} — ${success ? "성공" : "실패"}${oc ? `(${oc})` : ""}${team.length>1 ? `, ${team.length}명이 함께` : ", 혼자"}${(f._w||0)>=2 ? `, ${["안정","경상","중상","치명상"][f._w]}으로 돌아옴` : ""}`]).slice(-20);
     if(!success) inc("fail"); if((f._w||0) >= 2) inc("heavy"); if(team.length===1) inc("solo"); else if(team.length>=3) inc("crew"); });
   team.forEach(f=>{ if(S.fixers.includes(f)) lossFromRequest(f, f._w||0, success); });
   await flushLoss();
@@ -3310,9 +3376,11 @@ async function twistLeader(f){
   clearSave(); S = null; renderStart();
 }
 async function bloomEgo(f){
+  const making = egoCreate(f);
   await HeartFx.voice(f.name);
   await HeartFx.bloom(f);
-  const mk = egoMake(f);
+  let waitBox = null; const tm = setTimeout(()=>{ waitBox = document.createElement("div"); waitBox.className = "omen moon on"; waitBox.style.cssText = "position:fixed;inset:0;z-index:9999"; waitBox.innerHTML = `<div class="ol">마음이 모양을 찾고 있다…</div>`; document.body.appendChild(waitBox); }, 300);
+  const mk = await making; clearTimeout(tm); if(waitBox) waitBox.remove();
   f.ego = {type: mk.type, name: mk.name, desc: mk.desc, origin: mk.origin};
   if(f.isLeader){
     const how = await modal("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다.<br><b>개화 E.G.O::${esc(mk.name)}</b> (${EGO_FORM_NAME[mk.type]})<br><span class="muted">${esc(mk.desc)}</span><br><span class="muted">살아온 날: ${esc(mk.origin)}</span>`,
@@ -3333,7 +3401,7 @@ async function bloomEgo(f){
 }
 function removeFixer(f, what, note){
   S.fixers = S.fixers.filter(x=>x.id!==f.id);
-  if(what==="사망" || what==="뒤틀림") S.fixers.forEach(x=>{ x.life = x.life || {}; x.life.grief = (x.life.grief||0) + 1; });
+  if(what==="사망" || what==="뒤틀림") S.fixers.forEach(x=>{ x.life = x.life || {}; x.life.grief = (x.life.grief||0) + 1; x.diary = (x.diary||[]).concat([`${S.day}일차 동료 ${f.name}이(가) ${what==="사망" ? "죽었다" : "뒤틀렸다"}`]).slice(-20); });
   if(what==="사망" || what==="뒤틀림" || what==="해고" || what==="이탈") S.fixers.forEach(x=>{ if(x.precious && x.precious.kind==="동료" && x.precious.ref===f.id) markLost(x, what==="뒤틀림" ? `${josa(f.name,"은","는")} 목소리를 따라갔다.` : what==="사망" ? `${josa(f.name,"이","가")} 돌아오지 못했다.` : `${josa(f.name,"이","가")} 사무소를 떠났다.`); });
   if(what==="사망" || what==="뒤틀림") S.fixers.forEach(x=>{ if(x.isLeader && x.precious && x.precious.kind==="마음") markLost(x, `${josa(f.name,"을","를")} 잃었다. 간직하던 것은 결국 사무소의 사람들이었다.`); });
   S.records.push({day:S.day, name:f.name, what, note:`${gName(f.grade)} · ${note}`});
