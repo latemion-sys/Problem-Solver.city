@@ -635,6 +635,10 @@ const DROP=COMMON+`
 const float TF=2.4,TD=4.1,TH=5.0,TB=8.6;
 const vec2 C=vec2(0.,-.04);
 vec3 moon(){return vec3(.74,.84,1.);}
+// 가벼운 보로노이(3×3 한 번): x=가장 가까운 점까지, y=경계까지(F2-F1), z=세포 값
+vec3 vorC(vec2 x){vec2 n=floor(x),f=fract(x);float d1=8.,d2=8.,id=0.;
+ for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){vec2 g=vec2(i,j),r=g+hash2(n+g)-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;id=hash(n+g);}else if(d<d2)d2=d;}
+ return vec3(sqrt(d1),(sqrt(d2)-sqrt(d1))*.5,id);}
 float crackReach(float t){return .21*(.28*smoothstep(TH,TH+.8,t)+.32*smoothstep(TH+1.3,TH+2.,t)+.5*smoothstep(TH+2.4,TB,t));}
 float dropY(float t){if(t<TD)return .43;float u=clamp((t-TD)/(TH-TD),0.,1.);return mix(.43,C.y,u*u);}
 float dropR(float t){return mix(.002,.015,smoothstep(2.9,TD,t));}
@@ -642,8 +646,8 @@ vec3 scene(vec2 p,float t){
  vec2 q=p-C;float r=length(q),th=atan(q.y,q.x);
  vec3 c=vec3(.004,.005,.009);
  float tf=min(t,TF);
- vec2 w=p*1.8+vec2(fbm(p*1.3+tf*.08),fbm(p*1.3-tf*.06+5.));
- float fog=fbm(w*1.2);
+ vec2 w=p*1.8+vec2(noise(p*1.3+tf*.08),noise(p*1.3-tf*.06+5.));
+ float fog=fbm3(w*1.2);
  float redK=smoothstep(0.,1.6,t)*(1.-smoothstep(TF,TF+1.3,t));
  c+=vec3(.55,.06,.05)*fog*redK*smoothstep(1.2,0.,length(p))*1.1;
  float cold=smoothstep(TF,TF+1.4,t);
@@ -660,9 +664,9 @@ vec3 scene(vec2 p,float t){
     float b=exp(-pow((r-rr)*24.,2.));wave+=sin((r-rr)*120.)*b*amp;ring+=b*amp;}}}
   vec2 qq=q+normalize(q+1e-4)*wave*.006;
   float rq=length(qq);
-  vec2 vq=qq*7.;vec3 v=voronoi(vq);
+  vec2 vq=qq*7.;vec3 v=vorC(vq);
   float shell=smoothstep(R+.004,R-.004,rq)*vis;
-  vec3 sc=vec3(.025,.028,.04)+vec3(.05,.06,.09)*fbm(vq*.9);
+  vec3 sc=vec3(.025,.028,.04)+vec3(.05,.06,.09)*noise(vq*.9);
   sc*=.75+.25*smoothstep(0.,.05,v.y);
   float rim=smoothstep(R-.035,R,rq)*shell;
   sc+=moon()*rim*.35*(.6+.4*smoothstep(-.2,.2,q.y));
@@ -672,10 +676,10 @@ vec3 scene(vec2 p,float t){
   c+=moon()*exp(-pow((r-R-.005)*60.,2.))*ring*.6;
   float reach=crackReach(t);
   // 금: 촘촘한 세포 경계를 노이즈로 비틀어 들쭉날쭉한 실금으로, 바깥으로 갈수록 가늘게
-  vec2 vc=qq*11.+vec2(fbm(qq*16.+3.),fbm(qq*16.-7.))*.9;vec3 v2=voronoi(vc);
-  float rr2=rq+.035*(fbm(vq*.6)-.5);
+  vec2 vc=qq*11.+vec2(noise(qq*16.+3.),noise(qq*16.-7.))*.9;vec3 v2=vorC(vc);
+  float rr2=rq+.035*(noise(vq*.6)-.5);
   float wid=(.03+.035*smoothstep(TH+2.,TB,t))*(1.-.5*smoothstep(0.,reach+.001,rq));
-  float crack=(1.-smoothstep(0.,wid,v2.y))*step(rr2,reach)*shell*(.55+.45*smoothstep(.2,.8,fbm(vc*.7)));
+  float crack=(1.-smoothstep(0.,wid,v2.y))*step(rr2,reach)*shell*(.55+.45*smoothstep(.2,.8,noise(vc*.7)));
   v=v2;
   float pulse=.75+.25*sin(t*8.);
   vec3 cc=mix(vec3(.82,.9,1.),vec3(1.,.96,.88),smoothstep(TH+2.,TB,t));
@@ -700,10 +704,10 @@ vec3 scene(vec2 p,float t){
  }else{
   float m0=s*.55*(1.-exp(-s*2.2))+s*.06;
   vec2 dir=normalize(q+1e-4);
-  vec2 q0=(q-dir*m0)*7.;vec3 v0=voronoi(q0);
+  vec2 q0=(q-dir*m0)*7.;vec3 v0=vorC(q0);
   float m=m0*(.75+.5*v0.z);
   vec2 q1=(q-dir*m);float rq=length(q1);
-  vec3 v1=voronoi(q1*7.);
+  vec3 v1=vorC(q1*7.);
   float inside=smoothstep(R,R-.004,rq)*step(.05+.02*v1.z,rq);
   float edge=smoothstep(0.,.03,v1.y);
   float fade=1.-smoothstep(.4,1.5,s);
@@ -719,7 +723,7 @@ vec3 scene(vec2 p,float t){
    float Lmax=(.36-fl*.09)*k;
    float a=mod(th+spin*(fl==1.?-1.:1.)+off,6.28318/n)-3.14159/n;
    float prof=pow(max(cos(a*n*.5),0.),.55+fl*.25);
-   float edgeN=1.+.07*(fbm(vec2(th*4.+fl*7.,s*.6))-.5)+uA*.06*(fbm(vec2(th*9.,t*3.))-.5);
+   float edgeN=1.+.07*(noise(vec2(th*4.+fl*7.,s*.6))-.5)+uA*.06*(noise(vec2(th*9.,t*3.))-.5);
    float pr=Lmax*prof*edgeN;
    float pd=r-pr;
    float body=smoothstep(.006,-.006,pd)*step(.012,r);
@@ -732,7 +736,7 @@ vec3 scene(vec2 p,float t){
    c=mix(c,pc,body*(.92-fl*.1));
    c+=mix(moon(),vec3(1.,.3,.25),uA*.35)*exp(-max(pd,0.)*55.)*.18*k;
   }
-  float ray=pow(fbm(vec2(th*5.,r*1.6-s*.5)),3.)*3.;
+  float ray=pow(fbm3(vec2(th*5.,r*1.6-s*.5)),3.)*3.;
   c+=moon()*ray*smoothstep(.05,.2,r)*exp(-r*1.8)*smoothstep(0.,.6,s)*.42;
   c+=vec3(.9,.95,1.)*exp(-s*6.)*exp(-r*r*9.)*1.2;
   c+=vec3(.95,.97,1.)*exp(-r*r/.003)*(1.2+.3*sin(t*6.));
@@ -746,8 +750,8 @@ void main(){
  if(s>0.&&s<1.6){
   float rr=s*1.1,r=length(p-C),band=exp(-pow((r-rr)*18.,2.))*(1.-s/1.6);
   vec2 d=normalize(p-C+1e-4)*band*.035;
-  col=vec3(scene(p-d*1.3,t).r,scene(p-d,t).g,scene(p-d*.7,t).b);
-  col+=vec3(.8,.9,1.)*band*.25;
+  col=scene(p-d,t);                      // 굴절은 한 번만(세 번 그리지 않는다)
+  col+=vec3(.8,.9,1.)*band*.3;
  }else if(t>TH&&t<TH+.6){
   float e=t-TH,r=length(p-C),band=exp(-pow((r-e*.5)*30.,2.))*(1.-e/.6);
   col=scene(p-normalize(p-C+1e-4)*band*.012,t);
@@ -1370,14 +1374,14 @@ const TIER_NAME = ["양산 공방","정식 공방","상급 공방","고유 장�
 const MAKERS = {
   "이름 없는 공방":"골목 어딘가에서 찍어 내는 양산품. 싸고 흔하다.",
   "묵 공방":"환도 같은 한국식 무기를 만든다.",
-  "랑가 공방":"갈퀴 달린 건틀릿과 단검.",
-  "젤코바 공방":"메이스와 도끼.",
-  "올드 보이즈 공방":"망치.",
+  "랑아 공방":"갈퀴 달린 건틀릿과 단검.",
+  "느티나무 공방":"메이스와 도끼.",
+  "늙은소년 공방":"망치.",
   "알라스 공방":"손놀림을 빠르게 해 주는 장갑과 랜스.",
   "네스터 공방":"진동으로 좁은 곳에서도 충격을 키우는 작은 망치.",
   "로즈스패너 공방":"거대한 렌치나 전기톱을 닮은 무기.",
   "나미르 공방":"떠올랐다가 내리꽂는 건틀릿.",
-  "클라우드 공방":"흑운회에 대는 칼날.",
+  "구름 공방":"흑운회에 대는 칼날.",
   "리플렛 공방":"실험적인 증기 동력 무기.",
   "유니온 공방":"기성품 생체 무기·장비와 의체 시술.",
   "파나르 공방":"압박 붕대.",
@@ -1385,7 +1389,7 @@ const MAKERS = {
   "메즈틸 공방":"[상급 공방] 빠르지만 다루기 어렵고 위험한 검.",
   "휠스 인더스트리":"[인더스트리] 처형인의 대검.",
   "슈바르츠 인더스트리":"[인더스트리] 의체 전문.",
-  "아틀리에 로직":"[아틀리에] 총기와 부품.",
+  "로직 아틀리에":"[아틀리에] 총기와 부품.",
   "크리스탈 아틀리에":"[아틀리에] 팔시온.",
   "스크류 아틀리에":"[아틀리에] 전기로 강화한 나선형 무기."
 };
@@ -1418,19 +1422,19 @@ const SHOP = [
   C_("nc2",0,"이름 없는 공방","손때 묻은 염주",3500,{bonus:{wil:2}}),
   C_("nc3",0,"이름 없는 공방","보급형 경보 팔찌",9000,{mpRed:0.15,bonus:{wil:1}}),
   // 고급 제작 — 원작 공방 (위력 8~13)
-  W_("m2",1,"랑가 공방","랑가 공방 단검","blade",{v:3,metal:"#c8ccd2"},8,70000),
+  W_("m2",1,"랑아 공방","랑아 공방 단검","blade",{v:3,metal:"#c8ccd2"},8,70000),
   W_("m8",1,"네스터 공방","네스터 공방 진동 망치","blunt",{v:5,len:0.75,glow:"#c6ff5a"},8,70000),
-  W_("m4",1,"젤코바 공방","젤코바 공방 메이스","blunt",{v:1},9,90000),
-  W_("m5",1,"젤코바 공방","젤코바 공방 도끼","blunt",{v:3},9,90000),
-  W_("m3",1,"랑가 공방","랑가 공방 갈퀴 장갑","fist",{v:1,metal:"#c8ccd2"},10,120000),
+  W_("m4",1,"느티나무 공방","느티나무 공방 메이스","blunt",{v:1},9,90000),
+  W_("m5",1,"느티나무 공방","느티나무 공방 도끼","blunt",{v:3},9,90000),
+  W_("m3",1,"랑아 공방","랑아 공방 갈퀴 장갑","fist",{v:1,metal:"#c8ccd2"},10,120000),
   W_("m9",1,"로즈스패너 공방","로즈스패너 공방 렌치","tool",{v:0,len:1.25,wid:1.3,metal:"#b07a5a"},10,120000),
-  W_("m12",1,"클라우드 공방","클라우드 공방 직검","blade",{v:0,len:1.1,metal:"#c8ccd2"},10,120000),
+  W_("m12",1,"구름 공방","구름 공방 직검","blade",{v:0,len:1.1,metal:"#c8ccd2"},10,120000),
   W_("m1",1,"묵 공방","묵 공방 환도","blade",{v:4,len:1.1},11,160000),
-  W_("m6",1,"올드 보이즈 공방","올드 보이즈 공방 망치","blunt",{v:0,wid:1.25},12,200000),
-  W_("m16",1,"젤코바 공방","젤코바 공방 모닝스타","blunt",{v:4},11,160000),
+  W_("m6",1,"늙은소년 공방","늙은소년 공방 망치","blunt",{v:0,wid:1.25},12,200000),
+  W_("m16",1,"느티나무 공방","느티나무 공방 모닝스타","blunt",{v:4},11,160000),
   W_("m7",1,"알라스 공방","알라스 공방 랜스","lance",{v:0,metal:"#c8ccd2"},12,200000),
   W_("m14",1,"리플렛 공방","리플렛 공방 증기 봉","staff",{v:1,glow:"#ff8a3a"},11,160000),
-  W_("m15",1,"클라우드 공방","클라우드 공방 장도","long",{v:1,metal:"#c8ccd2"},12,200000),
+  W_("m15",1,"구름 공방","구름 공방 장도","long",{v:1,metal:"#c8ccd2"},12,200000),
   W_("m10",1,"로즈스패너 공방","로즈스패너 공방 전기톱","tool",{v:1,metal:"#b07a5a"},13,260000),
   W_("m11",1,"나미르 공방","나미르 공방 건틀릿","fist",{v:0,wid:1.3,glow:"#b48cff"},13,260000),
   W_("m13",1,"리플렛 공방","리플렛 공방 증기 대검","great",{v:2,glow:"#ff8a3a",metal:"#8e959e"},13,260000),
@@ -1439,9 +1443,9 @@ const SHOP = [
   C_("mc1",1,"파나르 공방","파나르 공방 압박 붕대",80000,{hpRed:0.08,mpRed:0.1}),
   C_("mc2",1,"유니온 공방","유니온 공방 신경 안정 칩",150000,{mpRed:0.25,bonus:{wil:2}}),
   // 특수 제작 — 고급 공방·인더스트리·아틀리에 (위력 16~24)
-  W_("s3",2,"아틀리에 로직","아틀리에 로직 권총","gun",{v:3,metal:"#5f6670"},16,650000),
+  W_("s3",2,"로직 아틀리에","로직 아틀리에 권총","gun",{v:3,metal:"#5f6670"},16,650000),
   W_("s7",2,"메즈틸 공방","메즈틸 공방 세검","rapier",{v:0,len:1.1,metal:"#c8ccd2"},19,1100000),
-  W_("s4",2,"아틀리에 로직","아틀리에 로직 산탄총","gun",{v:1,metal:"#5f6670"},20,1300000),
+  W_("s4",2,"로직 아틀리에","로직 아틀리에 산탄총","gun",{v:1,metal:"#5f6670"},20,1300000),
   W_("s5",2,"스크류 아틀리에","스크류 아틀리에 랜스","lance",{v:1,glow:"#7fe0ff"},20,1300000),
   W_("s2",2,"크리스탈 아틀리에","크리스탈 아틀리에 팔시온","twin",{v:0,metal:"#c8ccd2",glow:"#7fe0ff"},21,1700000),
   W_("s6",2,"스티그마 공방","스티그마 공방 장검","long",{v:0,len:1.05,glow:"#ff8a3a"},22,1900000),
@@ -1534,7 +1538,7 @@ function newFixer(name, grade, stats, opts={}){
     id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
     hp:100, hpMax:100, mp:100, mpMax:100, personality: pick(PERSONALITIES)[0], look: randomLook(), precious: null,
     gear:{weapon:null,armor:null,acc:null}, ego:null, title:null, cap:70,
-    lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0
+    lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0, tech:"allout", techs:[], wuse:{}
   }, opts);
 }
 function total(f){ return ATTRS.reduce((s,a)=>s+f.stats[a],0); }
@@ -2161,8 +2165,51 @@ const CARDS = {
   tool: [{n:"공구 휘두르기",a:4,b:8},{n:"틈새 쑤시기",a:4,b:7},{n:"막아서기",a:3,b:6,def:true}],
   twin: [{n:"연속 베기",a:4,b:8,cleave:true},{n:"교차 베기",a:5,b:7},{n:"쳐내기",a:3,b:6,def:true}],
   fist: [{n:"연타",a:4,b:8},{n:"올려치기",a:3,b:9},{n:"가드",a:3,b:6,def:true}],
-  none: [{n:"주먹",a:3,b:7},{n:"발차기",a:4,b:7},{n:"팔로 막기",a:3,b:5,def:true}]
+  none: [{n:"주먹질",a:3,b:7},{n:"발차기",a:4,b:7},{n:"막기",a:3,b:5,def:true}]
 };
+/* 합 전투의 세 칸: 기본 공격(무기의 공격 동작 가운데 하나가 나간다) · 방어 · 기술.
+   기술은 아무것도 모르면 "전력 공격". 무기를 오래 써 손에 익거나(장비 · 기량) 능력치가 높아지면(능력) 스스로 깨우친다.
+   레퍼런스 — 독일식 장검술의 마이스터하우(Zornhau 분노베기 · Zwerchhau 가로지르기)와 Mordhau(칼날을 쥐고 코등이로 치는 살격),
+   펜싱의 리포스트(막고 바로 되찌르기)·플레슈(몸의 균형을 던지며 뛰어드는 공격), 발도술(칼을 뽑는 첫 칼), 리볼버 패닝(해머를 손바닥으로 연달아 쳐 쏘기),
+   유도식 메치기, 창의 자루 걸기, 랜스 돌격 */
+const TECHS = {
+  allout:   {n:"전력 공격", d:"온 힘을 실어 친다. 기본 위력 +2. 대신 합에서 지면 받는 피해 1.5배, 쓰고 나면 숨이 차 정신력 -10."},
+  zorn:     {n:"분노베기",  kinds:["long","blade"],   d:"높이 든 자세를 깨는 사선 내려베기. 기본 위력 +2, 맞히면 상대가 휘청인다(다음 합 기본 위력 -2)."},
+  zwerch:   {n:"가로지르기", kinds:["long","great"], def:true, d:"내려오는 공격을 받으며 동시에 가로로 벤다. 방어 기술 — 이기면 반격이 제 위력 그대로(×1.2) 들어간다."},
+  mordhau:  {n:"살격",      kinds:["long","great"],   d:"칼날을 쥐고 코등이로 내리찍는다. 상대의 방어를 무시하고, 맞히면 상대 기본 위력 -1(이 전투 동안 쌓인다)."},
+  iai:      {n:"발도",      kinds:["blade","long"],   d:"칼을 뽑는 첫 칼에 모든 것을 건다. 전투의 첫 사용만 기본 위력 +6, 그 뒤로는 +1."},
+  riposte:  {n:"되찌르기",  kinds:["rapier","twin"],  def:true, d:"막고 바로 되찌른다. 방어 기술 — 이기면 반격 피해 ×1.5."},
+  fleche:   {n:"플레슈",    kinds:["rapier","spear"], d:"몸의 균형을 앞으로 던지며 뛰어든다. 기본 위력 +4. 합에서 지면 받는 피해 1.3배."},
+  sweep:    {n:"자루 걸기", kinds:["spear","staff"],  d:"자루로 발을 걸어 넘어뜨린다. 기본 위력 +1, 맞히면 상대가 휘청이고 정신력 -8."},
+  charge:   {n:"돌격",      kinds:["lance"],          d:"자세를 낮추고 그대로 들이받는다. 기본 위력 +5. 합에서 지면 받는 피해 1.3배."},
+  smash:    {n:"뼈 부수기", kinds:["blunt","great"],  d:"막은 팔째로 부순다. 맞히면 피해 +2, 상대 기본 위력 -1(이 전투 동안 쌓인다)."},
+  fanning:  {n:"패닝",      kinds:["gun"],            d:"해머를 손바닥으로 연달아 쳐 쏟아붓는다. 코인 5개, 코인 위력 -1."},
+  flurry:   {n:"연환격",    kinds:["fist","none","twin"], d:"쉬지 않고 이어 친다. 코인 +2, 코인 위력 -1."},
+  throw:    {n:"메치기",    kinds:["fist","none"],    d:"붙잡아 바닥에 메친다. 맞히면 피해 +3, 상대가 휘청이고 정신력 -10."},
+  dismantle:{n:"해체",      kinds:["tool"],           d:"관절과 장비의 이음매를 노린다. 맞히면 상대 기본 위력 -2(이 전투 동안 쌓인다)."},
+  spin:     {n:"회전 연격", kinds:["staff"],          d:"봉을 휘돌려 쉬지 않고 친다. 코인 +1."},
+  onestrike:{n:"일격",      stat:"str", d:"모든 것을 한 번에. 코인이 하나로 줄고 그만큼 기본 위력이 오른다(+3)."},
+  afterimage:{n:"잔상 걸음", stat:"agi", d:"눈이 따라오지 못하게 움직인다. 이 합에서 앞면 확률 +15%."},
+  vital:    {n:"급소 찌르기", stat:"tec", d:"틈 하나만 노린다. 이겼을 때 코인이 모두 앞면이면 피해 1.7배."},
+  kiai:     {n:"기합",      stat:"wil", d:"숨을 몰아 내지른다. 합 전에 정신력 +15, 기본 위력 +1."}
+};
+const techFits = (id, wt) => { const T = TECHS[id]; return !!T && (!T.kinds || T.kinds.includes(wt)); };
+// 깨우침: 같은 갈래의 무기로 출동한 횟수(장비) + 등급(기량) · 능력치(능력). 조건을 갖춘 출동마다 35%로 자연스럽게
+const TECH_STAT_REQ = 35;
+function techCandidates(f){ const out = [], u = f.wuse || {}, know = f.techs || [];
+  Object.entries(TECHS).forEach(([id,T])=>{ if(id==="allout" || know.includes(id)) return;
+    if(T.kinds){ const n = T.kinds.reduce((s,k)=>s+(u[k]||0),0), order = Object.keys(TECHS).filter(x=>TECHS[x].kinds && TECHS[x].kinds.some(k=>T.kinds.includes(k)) && know.includes(x)).length;
+      const need = 6 + order*8, gradeOk = f.grade <= 8 - Math.min(4, order*2); if(n >= need && gradeOk) out.push(id); }
+    else if(T.stat && f.stats[T.stat] >= TECH_STAT_REQ && f.done >= 8) out.push(id); });
+  return out; }
+async function checkTech(f){
+  const c = techCandidates(f); if(!c.length || Math.random() >= (window.__forceTech ? 1 : 0.35)) return;
+  const wt = weaponTypeOf(wGear(f)) || "none", fit = c.filter(id=>techFits(id, wt)), id = pick(fit.length ? fit : c), T = TECHS[id];
+  f.techs = (f.techs||[]).concat(id); if(!f.tech || f.tech==="allout") { if(techFits(id, wt)) f.tech = id; }
+  S.records.push({day:S.day, name:f.name, what:"기술", note:`${T.n} — ${T.d}`}); addLog(`${f.name}: 기술 [${T.n}]을(를) 깨우쳤다`);
+  f.diary = (f.diary||[]).concat([`${S.day}일차 기술 ${T.n}을(를) 깨우쳤다`]).slice(-20); save(); render();
+  await modal("기술", `${esc(josa(f.name,"이","가"))} 몸으로 익힌 것을 하나의 기술로 깨우쳤다.<br><b style="color:#9fd0ff">[${esc(T.n)}]</b> ${esc(T.d)}<br><span class="muted">${T.kinds ? (()=>{ const w = T.kinds.map(k=>k==="none"?"맨손":WEAPON_KINDS[k].n).join(" · "), ch = w.charCodeAt(w.length-1)-0xAC00, jj = ch>=0 && ch<11172 && ch%28 && ch%28!==8 ? "으로" : "로"; return `${w}${jj} 싸울 때 쓸 수 있다.`; })() : "어떤 무기로든 쓸 수 있다."} 관리에서 합 전투의 "기술" 칸에 무엇을 둘지 고른다.</span>`, [{t:"확인",primary:true}]);
+}
 const FOE_WEAPONS = ["blade","blunt","gun","spear","great","lance","long","rapier","staff","twin"];
 const FOE_NAMES = {9:"골목 불량배",8:"조직 행동대원",7:"조직 행동대장",6:"뒷골목 해결사 출신 깡패",5:"하청 조직 간부",4:"조직 간부",3:"현상금 걸린 해결사",2:"조직의 대리인",1:"도시의 악몽급 괴인",0:"도시의 별급 위협"};
 const roll = (a,b) => a + Math.floor(Math.random()*(b-a+1));
@@ -2201,7 +2248,18 @@ function mgCombat(ctx){
       if(me.wsp==="cloud") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
     const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base), cp: sk.cp + supCp() + w.cp}); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
-    const foeSk = () => foe.daze ? Object.assign({}, foeSkill, {base: Math.max(1, foeSkill.base - 2)}) : foeSkill;
+    const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
+    const techOf = me => { const id = me.f.tech && techFits(me.f.tech, me.wt) ? me.f.tech : "allout"; return Object.assign({id}, TECHS[id]); };
+    // 기술 스킬: 무기의 가장 센 공격(방어 기술이면 방어 동작)을 바탕으로 고친다
+    function techSkill(me){ const T = techOf(me), base = T.def ? defCard(me.wt) : atkCards(me.wt).reduce((a,b)=>b.b>a.b?b:a); const sk = skillOf(base);
+      const id = T.id;
+      if(id==="allout"){ sk.base += 2; } else if(id==="zorn"){ sk.base += 2; } else if(id==="iai"){ sk.base += me.iaiUsed ? 1 : 6; }
+      else if(id==="fleche"){ sk.base += 4; } else if(id==="sweep"){ sk.base += 1; } else if(id==="charge"){ sk.base += 5; }
+      else if(id==="fanning"){ sk.coins = 5; sk.cp = Math.max(1, sk.cp-1); } else if(id==="flurry"){ sk.coins += 2; sk.cp = Math.max(1, sk.cp-1); }
+      else if(id==="spin"){ sk.coins += 1; } else if(id==="onestrike"){ sk.base += sk.cp*(sk.coins-1) + 3; sk.coins = 1; } else if(id==="kiai"){ sk.base += 1; }
+      sk.def = !!T.def; return {T, sk, card: Object.assign({}, base, {n:T.n, def:!!T.def})}; }
+    const MOVES = ["기본 공격","방어","기술"];
+    const foeSk = () => (foe.daze || foe.down) ? Object.assign({}, foeSkill, {base: Math.max(1, foeSkill.base - (foe.daze ? 2 : 0) - (foe.down||0))}) : foeSkill;
     const headP = sp => clamp(50 + sp, 5, 95)/100;
     const flip = (n, sp)=>{ const r = []; for(let i=0;i<n;i++) r.push(Math.random() < headP(sp)); return r; };
     const powOf = (sk, heads)=> sk.base + heads.filter(Boolean).length*sk.cp;
@@ -2230,20 +2288,30 @@ function mgCombat(ctx){
         <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""})을 내려 한다.</span>
         ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}
         ${statusLine()}${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
-      m.ctrl.innerHTML = `<div class="pk-moves">${CARDS[me.wt].map((c,i)=>{ const sk = mySkill(skillOf(c)), p = odds(sk, mySp(me), foeSk(), foe.sp, me.sp2==="charge" ? (me.charge||0) : null), [lb, lc] = oddLabel(p);
-        return `<button data-sk="${i}"><b>${c.n}</b><small>${sk.def?"방어 · ":""}기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 위력 ${sk.base}~${sk.base+sk.coins*sk.cp}<br><span style="color:${lc}">합 ${lb} ${Math.round(p*100)}%</span>${sk.def?" · 이기면 반격, 지면 피해 절반":""}</small></button>`; }).join("")}</div>`;
+      const chg = me.sp2==="charge" ? (me.charge||0) : null, ak = atkCards(me.wt), dc = defCard(me.wt), tk = techSkill(me);
+      const pA = ak.reduce((s,c)=>s + odds(mySkill(skillOf(c)), mySp(me), foeSk(), foe.sp, chg), 0)/ak.length, [la, ca] = oddLabel(pA);
+      const lo = Math.min(...ak.map(c=>mySkill(skillOf(c)).base)), hi = Math.max(...ak.map(c=>{ const k = mySkill(skillOf(c)); return k.base + k.coins*k.cp; }));
+      const dk = mySkill(skillOf(dc)), pD = odds(dk, mySp(me), foeSk(), foe.sp, chg), [ld, cd] = oddLabel(pD);
+      const tsk = mySkill(tk.sk), pT = odds(tsk, mySp(me) + (tk.T.id==="afterimage" ? 15 : 0) + (tk.T.id==="kiai" ? 15 : 0), foeSk(), foe.sp, chg), [lt, ct] = oddLabel(pT);
+      m.ctrl.innerHTML = `<div class="pk-moves">
+        <button data-sk="0"><b>기본 공격</b><small>${ak.map(c=>c.n).join(" · ")} 가운데 하나가 나간다 · 위력 ${lo}~${hi}<br><span style="color:${ca}">합 ${la} ${Math.round(pA*100)}%</span></small></button>
+        <button data-sk="1"><b>방어</b><small>${dc.n} · 기본 ${dk.base} · 코인 ${coinStr(dk)} +${dk.cp}<br><span style="color:${cd}">합 ${ld} ${Math.round(pD*100)}%</span> · 이기면 반격, 지면 피해 절반</small></button>
+        <button data-sk="2" class="pk-tech"><b>기술 · ${tk.T.n}</b><small>${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp}<br><span style="color:${ct}">합 ${lt} ${Math.round(pT*100)}%</span> · ${tk.T.d}</small></button></div>`;
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
       phase = "anim"; m.ctrl.innerHTML = "";
-      const me = party[act], c = CARDS[me.wt][si], sk = mySkill(skillOf(c)), fk = foeSk(), wNote = [];
+      const me = party[act], tk = si===2 ? techSkill(me) : null, T = tk ? tk.T : null;
+      const c = si===0 ? pick(atkCards(me.wt)) : si===1 ? defCard(me.wt) : tk.card, sk = mySkill(tk ? tk.sk : skillOf(c)), fk = foeSk(), wNote = [], tNote = [];
+      if(T && T.id==="kiai"){ me.sp = clamp(me.sp + 15, -45, 45); tNote.push(`기합 — 정신력 ${me.sp>=0?"+":""}${me.sp}`); }
+      if(T && T.id==="iai") me.iaiUsed = true;
       if(foe.daze){ foe.daze = 0; wNote.push(`${josa(foe.name,"이","가")} 휘청이며 합에 나선다(기본 위력 -2)`); }
       if(me.wsp==="screw" && me.wchg>=10){ me.wchg = 0; me.hp = Math.max(1, me.hp - 3); wNote.push("방전 — 코인 위력 +2, 손끝이 저릿하게 감전됐다"); }
-      const R = simClash(sk, mySp(me), fk, foe.sp, me.sp2==="charge" ? (me.charge||0) : null);
+      const R = simClash(sk, mySp(me) + (T && T.id==="afterimage" ? 15 : 0), fk, foe.sp, me.sp2==="charge" ? (me.charge||0) : null);
       if(me.wsp==="ye") me.ye = Math.min(10, me.ye + 2);
       if(me.wsp==="screw") me.wchg = Math.min(10, me.wchg + 3);
       if(me.sp2==="charge") me.charge = R.chg;
-      const lines = [`${esc(me.name)}의 ${c.n} vs ${foe.name}의 ${fk.n}`];
+      const lines = [`${esc(me.name)}의 ${T ? `<b style="color:#9fd0ff">${c.n}</b>` : si===0 ? `기본 공격 — ${c.n}` : `방어 — ${c.n}`} vs ${foe.name}의 ${fk.n}`];
       clash = {mine:{sk, coins:sk.coins, broken:0, heads:[], p:sk.base}, foe:{sk:fk, coins:fk.coins, broken:0, heads:[], p:fk.base}, t: performance.now(), res:null};
       m.info.innerHTML = `<div class="pk-text">${lines[0]} — 합!</div>`;
       for(const e of R.ex){
@@ -2266,7 +2334,16 @@ function mgCombat(ctx){
       if(clash){ (won ? clash.mine : clash.foe).heads = heads; (won ? clash.mine : clash.foe).p = P; clash.flipAt = performance.now(); clash.res = won ? "foe" : "me"; }
       let total = 0;
       const egoNote = [];
-      if(won){ let dmg = Math.round(P*(wSk.def ? 0.6 : 1)); if(fk.def && !wSk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+      if(won){ let dmg = Math.round(P*(wSk.def ? (T && T.id==="riposte" ? 1.5 : T && T.id==="zwerch" ? 1.2 : 0.6) : 1)); if(fk.def && !wSk.def && !(T && T.id==="mordhau")) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+        if(T){ const id = T.id;
+          if(id==="riposte") tNote.push("되찌르기 — 막은 그대로 찔러 들어갔다"); if(id==="zwerch") tNote.push("가로지르기 — 받으며 동시에 벴다");
+          if(id==="zorn" || id==="sweep" || id==="throw"){ foe.daze = 1; } if(id==="zorn") tNote.push(`분노베기 — ${josa(foe.name,"이","가")} 휘청인다`);
+          if(id==="sweep"){ foe.sp = clamp(foe.sp - 8, -45, 45); tNote.push("자루 걸기 — 발을 걸어 넘어뜨렸다"); }
+          if(id==="throw"){ dmg += 3; foe.sp = clamp(foe.sp - 10, -45, 45); tNote.push("메치기 — 바닥에 내리꽂았다(+3)"); }
+          if(id==="mordhau"){ foe.down = (foe.down||0) + 1; tNote.push(`살격 — 막는 손째로 찍었다(상대 기본 위력 -${foe.down})`); }
+          if(id==="smash"){ dmg += 2; foe.down = (foe.down||0) + 1; tNote.push(`뼈 부수기 — +2, 상대 기본 위력 -${foe.down}`); }
+          if(id==="dismantle"){ foe.down = (foe.down||0) + 2; tNote.push(`해체 — 이음매가 풀렸다(상대 기본 위력 -${foe.down})`); }
+          if(id==="vital" && heads.length && heads.every(Boolean)){ dmg = Math.round(dmg*1.7); tNote.push("급소 찌르기 — 틈을 꿰뚫었다(×1.7)"); } }
         if(crit) egoNote.push(`호흡 — 치명타 ${crit}개`);
         if(me.sp2==="rupture"){ if(foe.rupture) egoNote.push(`파열 +${foe.rupture}`); dmg += foe.rupture; foe.rupture += 2; }
         if(me.sp2==="burn"){ foe.burn = Math.min(9, foe.burn + 3); egoNote.push(`화상 ${foe.burn}`); }
@@ -2275,7 +2352,7 @@ function mgCombat(ctx){
         // 고유 무기: 공방 특수
         const W = me.wsp; me.hits++;
         if(W==="ye" && me.ye){ dmg = Math.round(dmg*(1 + me.ye*0.03)); wNote.push(`예(銳) ${me.ye} — 피해 +${me.ye*3}%`); }
-        if(W==="ranga"){ if(foe.bleed>0){ dmg += 2; wNote.push("갈퀴 — 벌어진 상처를 다시 할퀴었다(+2)"); } foe.bleed = Math.min(9, foe.bleed + 2); wNote.push(`출혈 ${foe.bleed}`); }
+        if(W==="ranga"){ if(me.rend){ dmg += me.rend; wNote.push(`찢어발기기 — 벌려 둔 상처를 다시 할퀴었다(+${me.rend})`); } me.rend = Math.min(8, (me.rend||0) + 2); }
         if(W==="cloud"){ foe.bleed = Math.min(9, foe.bleed + 2); wNote.push(`흑운도 — 출혈 ${foe.bleed}`); }
         if(W==="zelkova"){ const ex = Math.max(1, Math.round(P*0.4)); dmg += ex; wNote.push(`한 쌍 — 다른 손으로 한 번 더(+${ex})`); }
         if(W==="oldboys"){ foe.daze = 1; foe.sp = clamp(foe.sp - 5, -45, 45); wNote.push(`내려찍기 — ${josa(foe.name,"이","가")} 휘청인다`); }
@@ -2290,6 +2367,9 @@ function mgCombat(ctx){
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c); }
       else { let dmg = Math.round(P*3*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(me.wsp==="meztil"){ dmg = Math.round(dmg*1.2); wNote.push("과속 — 몸이 따라가지 못했다(받는 피해 +20%)"); }
+        if(me.wsp==="ranga" && me.rend){ me.rend = 0; wNote.push("벌려 둔 상처가 아물었다"); }
+        if(T && T.id==="allout"){ dmg = Math.round(dmg*1.5); tNote.push("전력 공격 — 빈틈을 그대로 맞았다(받는 피해 ×1.5)"); }
+        if(T && (T.id==="fleche" || T.id==="charge")){ dmg = Math.round(dmg*1.3); tNote.push(`${T.n} — 무너진 자세로 받아냈다(받는 피해 ×1.3)`); }
         if(me.sp2==="evade" && Math.random()<0.25){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
         if(dmg && me.shield){ const ab = Math.min(me.shield, dmg); dmg -= ab; me.shield -= ab; egoNote.push(`보호막이 ${ab}을(를) 막았다`); }
         if(me.sp2==="endure" && !me.endured && dmg >= me.hp){ dmg = Math.max(0, me.hp - 1); me.endured = true; egoNote.push("인내 — 쓰러질 공격을 버텼다"); }
@@ -2301,6 +2381,8 @@ function mgCombat(ctx){
       if(R.fired) egoNote.unshift("충전 10 소모 — 이번 턴 코인 위력 +1");
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       if(wNote.length) lines.push(`<span style="color:#f2c27a">고유 무기</span> ${wNote.join(" · ")}`);
+      if(T && T.id==="allout"){ me.sp = clamp(me.sp - 10, -45, 45); tNote.push(`숨이 차오른다(정신력 -10 → ${me.sp>=0?"+":""}${me.sp})`); }
+      if(tNote.length) lines.push(`<span style="color:#9fd0ff">기술</span> ${tNote.join(" · ")}`);
       S2.log = lines.concat(S2.log).slice(0,4);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       await wait(900);
@@ -3168,6 +3250,7 @@ async function dispatch(qid, fids){
     f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax); f._w = w;
     lines.push(`${esc(f.name)}: ${W_NAME[w]} — ${mental?"정신력":"체력"} -${pct}%(${main})${spPct?` · 정신력 -${spPct}%`:""} → 체력 -${dH}, 정신력 -${dM}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
+  team.forEach(f=>{ const k = weaponTypeOf(wGear(f)) || "none"; f.wuse = f.wuse || {}; f.wuse[k] = (f.wuse[k]||0) + 1; });
   // 무기 내구도: 실제로 들고 나간 무기만 1씩 닳는다(E.G.O.·고유 무기·수리가 필요한 무기는 빼고)
   team.forEach(f=>{ const g = f.gear.weapon; if(!isWornable(g) || !g.durMax || needsRepair(g) || wGear(f)!==g) return;
     g.dur = Math.max(0, g.dur-1); g.uses = (g.uses||0) + 1;
@@ -3205,6 +3288,7 @@ async function dispatch(qid, fids){
     f.diary = (f.diary||[]).concat([`${S.day}일차 [${q.kind}] ${q.text} — ${success ? "성공" : "실패"}${oc ? `(${oc})` : ""}${team.length>1 ? `, ${team.length}명이 함께` : ", 혼자"}${(f._w||0)>=2 ? `, ${["안정","경상","중상","치명상"][f._w]}으로 돌아옴` : ""}`]).slice(-20);
     if(!success) inc("fail"); if((f._w||0) >= 2) inc("heavy"); if(team.length===1) inc("solo"); else if(team.length>=3) inc("crew"); });
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkUpgrade(f); }
+  for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkTech(f); }
   team.forEach(f=>{ if(S.fixers.includes(f)) lossFromRequest(f, f._w||0, success); });
   await flushLoss();
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkCollapse(f); }
@@ -3318,7 +3402,7 @@ const HeartFx = (()=>{
       const sub = unstable ? "금이 간 채로 피어났다 — 껍질 안쪽이 아직 붉다" : "달빛 한 방울이 마음에 떨어져, 껍질을 깨고 피어났다";
       o.innerHTML = `<div class="hv-center hv-drop-top"><div class="hv-lines hv-meltlines"></div></div>
         <div class="hv-title moon${unstable ? " unstable" : ""}"><div class="hv-big">${title} <span>E.G.O</span></div><div class="hv-sub">${sub}</div></div><div class="hv-skip">화면을 누르면 넘어간다</div>`;
-      glLayer(o, "drop", {a: unstable ? 1 : 0, seed: 7 + (f.id||0)%13, scale:0.5});
+      glLayer(o, "drop", {a: unstable ? 1 : 0, seed: 7 + (f.id||0)%13, scale:0.42});
       const box = o.querySelector(".hv-meltlines"), ms = [], say = [`“${ahya(f.name)}.”`, `“${TWIST_MID[f.personality] || "애썼어. 정말로."}”`];
       say.forEach((t,i)=>at(250 + i*800, ()=>{ const m = melt(t, {size: i===0 ? 22 : 19, dur:1500}); ms.push(m); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); }));
       at(1850, ()=>{ o.classList.add("turning"); ms.forEach((m,i)=>setTimeout(()=>m.red(1100), i*160)); });
@@ -3885,6 +3969,9 @@ async function openManage(){
       ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
+      <span>기술</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
+        return `<select data-tech="1">${list.map(id=>`<option value="${id}" ${(f.tech||"allout")===id?"selected":""} ${techFits(id, wt)?"":"disabled"}>${TECHS[id].n}${techFits(id, wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
+          <br><span class="muted" style="font-weight:400">${esc(TECHS[f.tech && techFits(f.tech, wt) ? f.tech : "allout"].d)}${(f.techs||[]).length ? "" : " · 무기를 오래 쓰거나 능력치가 높아지면 기술을 깨우친다."}</span>`; })()}</b>
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
     <h4 style="margin:14px 0 6px">유료 회복 <span class="muted" style="font-weight:400">(10당 ${won(hc)})</span></h4>
@@ -3901,6 +3988,7 @@ async function openManage(){
     const box = root.querySelector("#mg");
     const prev = ()=>{ const cv = box.querySelector(".mgp"), f = S.fixers.find(x=>x.id===sel); if(cv && f) animPreview(cv, ()=>Object.assign(fixerLook(f), stateOpts(mview))); };
     prev();
+    root.addEventListener("change", e=>{ if(!e.target.dataset || !e.target.dataset.tech) return; const f = S.fixers.find(x=>x.id===sel); if(f){ f.tech = e.target.value; save(); box.innerHTML = draw(); prev(); } });
     root.addEventListener("click", async e=>{
       const d = (e.target.closest("button")||e.target).dataset; const f = S.fixers.find(x=>x.id===sel);
       if(d.mview){ mview = d.mview; box.querySelectorAll("[data-mview]").forEach(x=>x.classList.toggle("on", x.dataset.mview===mview)); return; }
@@ -4013,17 +4101,17 @@ async function openShop(startTab){
    조건: 정식 공방 이상 무기 · 그 무기를 처음 받은 최대 내구도만큼 출동 · 해결사 4급 이상. 조건이 처음 갖춰지는 출동에서 한 번만 10%로 굴린다. */
 const UPGRADE_P = 0.17, UPGRADE_STAT = [0, 3, 4];
 /* 공방이 벼려 줄 때 붙여 주는 특수 능력(공방마다 하나). 원작에 무기의 작동이 적힌 공방은 그대로,
-   적히지 않은 공방(올드 보이즈·젤코바·휠스·크리스탈·랑가·리플렛·아틀리에 로직)은 무기 생김새와 쓰임에서 끌어냈다.
+   적히지 않은 공방(늙은소년·느티나무·휠스·크리스탈·랑아·리플렛·로직 아틀리에)은 무기 생김새와 쓰임에서 끌어냈다.
    · 묵: 예(銳) 2식 발도 — 쌓일수록 베기 피해가 오르고 방어는 약해진다(림버스) · 스티그마: 가열·점화, 지워지지 않는 낙인(림버스·루이나 '화상 +1')
    · 네스터: 치는 순간 단추를 눌러 진동을 터뜨린다 · 로즈스패너: 진동(떨림)을 키우는 렌치·전기톱(림버스 진영)
    · 스크류: 전기로 강화한 드릴, 잘못 쓰면 자신도 감전 · 알라스: 손놀림을 다섯 배까지 빠르게 · 메즈틸: 알라스처럼 빠르지만 다루기 위험
-   · 나미르: G사 특이점 '구체'로 무게를 바꿔 떠올랐다 내리꽂는다 · 클라우드: 흑운회의 칼(흑운도 — 베기 위력과 출혈) */
+   · 나미르: G사 특이점 '구체'로 무게를 바꿔 떠올랐다 내리꽂는다 · 구름: 흑운회 계열 공방의 칼(흑운도 — 베기 위력과 출혈) */
 const WORKSHOP_SP = {
   "묵 공방":         {id:"ye",     n:"예(銳) 발도", d:"합을 겨룰 때마다 예리함이 2씩 쌓이고(최대 10), 이긴 피해가 쌓인 만큼 3%씩 오른다. 대신 방어 스킬의 기본 위력 -1."},
-  "랑가 공방":       {id:"ranga",  n:"갈퀴",        d:"맞히면 출혈 2. 이미 피 흘리는 상대에게는 피해 +2."},
-  "클라우드 공방":   {id:"cloud",  n:"흑운도",      d:"기본 위력 +1, 맞히면 출혈 2."},
-  "젤코바 공방":     {id:"zelkova",n:"한 쌍",       d:"이긴 합 뒤, 다른 손의 무기로 한 번 더 친다(그 위력의 40%)."},
-  "올드 보이즈 공방":{id:"oldboys",n:"내려찍기",    d:"맞히면 상대가 휘청인다 — 다음 합에서 상대 기본 위력 -2, 정신력 -5."},
+  "랑아 공방":       {id:"ranga",  n:"찢어발기기",  d:"맞힐 때마다 갈퀴가 상처를 벌려, 다음에 맞힐 때 피해가 2씩 더 들어간다(최대 +8). 합에서 지면 벌린 상처가 아문다."},
+  "구름 공방":       {id:"cloud",  n:"흑운도",      d:"흑운회에 대는 칼. 기본 위력 +1, 맞히면 출혈 2."},
+  "느티나무 공방":     {id:"zelkova",n:"한 쌍",       d:"이긴 합 뒤, 다른 손의 무기로 한 번 더 친다(그 위력의 40%)."},
+  "늙은소년 공방":{id:"oldboys",n:"내려찍기",    d:"맞히면 상대가 휘청인다 — 다음 합에서 상대 기본 위력 -2, 정신력 -5."},
   "알라스 공방":     {id:"allas",  n:"가속",        d:"손놀림이 빨라져 합을 겨룰 때 앞면 확률 +12%."},
   "네스터 공방":     {id:"nester", n:"진동 단추",   d:"맞히면 진동 3. 진동이 6 이상이 되면 터뜨려 진동만큼 피해를 더하고 상대 정신력을 진동×2만큼 깎는다."},
   "로즈스패너 공방": {id:"rose",   n:"떨림 증폭",   d:"맞히면 진동 2. 이미 진동이 있으면 두 배로 키운다. 진동이 8 이상이면 터져 진동만큼 피해."},
@@ -4032,7 +4120,7 @@ const WORKSHOP_SP = {
   "스티그마 공방":   {id:"stigma", n:"낙인",        d:"맞히면 화상 3(최대 12). 새겨진 화상은 턴이 끝나도 줄지 않는다."},
   "메즈틸 공방":     {id:"meztil", n:"과속",        d:"코인 위력 +1. 대신 합에서 지면 받는 피해 +20%."},
   "휠스 인더스트리": {id:"wheels", n:"처형",        d:"상대 체력이 30% 이하이면 피해 2배."},
-  "아틀리에 로직":   {id:"logic",  n:"연사",        d:"이긴 합 뒤 한 발을 더 쏜다(코인 위력 2배만큼 추가 피해)."},
+  "로직 아틀리에":   {id:"logic",  n:"연사",        d:"이긴 합 뒤 한 발을 더 쏜다(코인 위력 2배만큼 추가 피해)."},
   "크리스탈 아틀리에":{id:"crystal",n:"쌍 팔시온", d:"남은 코인으로 칠 때 코인 하나마다 피해 +2."},
   "스크류 아틀리에": {id:"screw",  n:"방전",        d:"합마다 충전 3. 10이 되면 소모해 그 합의 코인 위력 +2 — 다만 감전돼 자신도 조금 다친다."}
 };
@@ -4357,7 +4445,9 @@ async function openRecords(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) initDur(f.gear.weapon); }); (d.inventory||[]).forEach(initDur); return d; } }catch(_){} return null; }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); return d; }
+const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나무"],["랑가 공방","랑아 공방"],["클라우드 공방","구름 공방"],["아틀리에 로직","로직 아틀리에"]];
+function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); } }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
