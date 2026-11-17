@@ -1081,63 +1081,42 @@ function bindLook(box, L, st){
     redraw(); });
   box.addEventListener("click", e=>{ if(!e.target.dataset.lkrand) return; Object.assign(L, randomLook()); redraw(); });
 }
-/* 개화 E.G.O 이름: "개화 E.G.O::이름" — 실제로 쓰이는 낱말 하나(외국어는 한글 표기).
-   레퍼런스(림버스 컴퍼니 · 나무위키 E.G.O 문서의 발현자 목록)에서 이름은 모두 그 사람의 삶에 있던 것을 가리킨다:
-   · 동백(동백) — 본인의 이름이자 꽃. 옛 벗들과의 시절을 그리는 마음에서 핌        → 간직한 것
-   · 케츠엔=결연(아라야) — 지키려던 사람과의 인연. 일본어 발음을 한글로            → 간직한 것(사람)
-   · 곰방대(모제스) · 유리아 공방 · 도서관(앤젤라) — 늘 곁에 둔 물건 · 자리 그대로   → 간직한 것(물건 · 꿈)
-   · 마름(동랑) — 스스로 택한 구실(지주의 땅을 대신 관리하는 사람) / 대행(소라) — 맡은 일 → 맡아 온 일
-   · 가스하푼(에이해브) · 밀랍날개(필립) — 손에 쥔 연장                              → 쥔 연장
-   · 이립(가치우) — 논어의 말(뜻이 확고히 섬) / 라바크롬 상귀니스(베르길리우스) — 라틴어 → 신념을 이르는 옛말 · 외국어
-   그래서 이름은 따로 지어내지 않고, 그 해결사가 실제로 가진 것 — 간직한 것 · 가장 많이 해낸 의뢰 · 쥔 무기 · 성격 — 에서 낱말을 가져온다. */
-const PRECIOUS_WORD = {
-  "여동생":"누이","늙은 어머니":"사모곡","옛 스승":"사은","뒷골목에서 길러 준 할머니":"내리사랑","소꿉친구":"소꿉","약혼자":"언약","어린 조카":"조카","같은 둥지에서 자란 친구":"죽마고우","목숨을 빚진 은인":"보은","함께 떠돌던 형":"길동무",
-  "아버지의 낡은 회중시계":"회중시계","처음 받은 해결사 자격증":"자격증","먼저 간 동료의 장갑":"장갑","귀퉁이가 닳은 가족사진":"가족사진","어머니의 머리핀":"머리핀","첫 의뢰비로 산 만년필":"만년필","둥지 이주 허가증 사본":"허가증","부러진 첫 칼날":"칼날","녹음된 목소리가 든 재생기":"재생기","손때 묻은 수첩":"수첩",
-  "1급 해결사가 되는 것":"승급","둥지에 집 한 칸을 얻는 것":"입주","잃어버린 동생을 찾는 것":"상봉","빚 없이 하루를 사는 것":"청산","특색 칭호를 받는 것":"칭호","아무도 잃지 않는 사무소":"무사","협회에 들어가는 것":"입회","고향 뒷골목으로 돌아가지 않는 것":"이향","원수를 찾아내는 것":"복수","언젠가 작은 빵집을 여는 것":"빵집"
+/* 개화 E.G.O 이름: "개화 E.G.O::이름" — 낱말 하나. 규칙으로 조합하지 않고, 성격마다 · 무기마다 손으로 지어 둔 이름에서 고른다.
+   결: 박제 · 마름 · 대행 · 가스하푼 · 전기톱 · 파사처럼 짧고 단단한 실제 낱말(외국어는 한글 표기). 원작에 있는 이름과 비슷한 것은 쓰지 않는다. [이름, 풀이] */
+const EGO_NAMES = {
+  "공격적":[["파죽","破竹 — 대나무를 쪼개는 기세"],["벌초","웃자란 것을 베어 냄"],["도화선","불을 폭약까지 데려가는 줄"],["슐라크","독일어 Schlag — 일격"]],
+  "신중함":[["삼사","三思 — 세 번 생각함"],["퇴고","글을 고치고 또 고침"],["누름돌","뜨지 못하게 눌러 두는 돌"],["아프바르텐","독일어 abwarten — 때를 기다리다"]],
+  "헌신":[["살신","殺身 — 제 몸을 바침"],["대속","남의 죗값을 대신 치름"],["버팀목","쓰러지지 않게 받치는 나무"],["오퍼","독일어 Opfer — 제물"]],
+  "냉소":[["백안","白眼 — 흘겨보는 눈"],["박제","죽은 것을 산 모양으로 굳힘"],["조소","비웃음"],["호온","독일어 Hohn — 조롱"]],
+  "충동적":[["일촉","一觸 — 닿기만 해도 터짐"],["불티","튀어 옮겨붙는 작은 불"],["월담","담을 넘음"],["슈프룽","독일어 Sprung — 도약"]],
+  "침착함":[["부동","不動 — 흔들리지 않음"],["정박","닻을 내리고 머묾"],["동면","겨울을 자며 견딤"],["슈틸레","독일어 Stille — 고요"]],
+  "집요함":[["마부","磨斧 — 도끼를 갈아 바늘을 만듦"],["거머리","붙으면 떨어지지 않는 것"],["압류","놓아주지 않고 묶어 둠"],["페어비센","독일어 verbissen — 이를 악문"]],
+  "낙천적":[["낙천","樂天 — 하늘의 뜻을 즐김"],["해장","쓰린 속을 풂"],["볕","해가 내리쬐는 기운"],["모르겐","독일어 Morgen — 아침, 내일"]],
+  "비관적":[["기우","杞憂 — 하늘이 무너질까 하는 걱정"],["썰물","빠져나가는 물"],["폐광","더는 캐지 않는 굴"],["벨트슈메르츠","독일어 Weltschmerz — 세상에 대한 비애"]],
+  "오만함":[["독존","獨尊 — 홀로 높음"],["첨탑","뾰족하게 솟은 탑"],["사열","늘어선 것들을 내려다보며 살핌"],["호흐무트","독일어 Hochmut — 교만"]],
+  "소심함":[["긍긍","兢兢 — 조심하며 떪"],["골방","집 안쪽의 작은 방"],["뒷걸음","물러서는 걸음"],["앙스트","독일어 Angst — 불안"]],
+  "정의감":[["파사","破邪 — 그릇된 것을 깨뜨림"],["단죄","죄를 끊어 처단함"],["영장","붙잡아 올 것을 명하는 글"],["리히텐","독일어 richten — 심판하다"]],
+  "탐욕":[["농단","壟斷 — 이익을 독차지함"],["고리대","비싼 이자를 받는 돈놀이"],["독식","혼자 다 먹음"],["기어","독일어 Gier — 탐욕"]],
+  "다정함":[["측은","惻隱 — 가엾게 여기는 마음"],["군불","방을 덥히려 때는 불"],["자장가","재우려 부르는 노래"],["트뢰스텐","독일어 trösten — 달래다"]],
+  "무심함":[["무념","無念 — 아무 생각도 두지 않음"],["방치","내버려 둠"],["여백","비워 둔 자리"],["레레","독일어 Leere — 공허"]],
+  "광기":[["광란","狂亂 — 미친 듯 날뜀"],["난장","뒤죽박죽 떠드는 판"],["탈춤","탈을 쓰고 추는 춤"],["반진","독일어 Wahnsinn — 광기"]]
 };
-// 맡아 온 일: 의뢰 종류 → 그 일을 이르는 말(대행 · 마름처럼)
-const DEED_WORD = {"제압":"제압","사살":"처분","추적":"추적","수색":"수색","호위":"호위","환상체":"격리","뒤틀림 토벌":"토벌"};
-const DEED_BY_ATTR = {str:"제압", agi:"추적", tec:"수색", wil:"격리"};
-const deedKey = q => q.kind==="일반" ? (q.attrs[0]==="str" ? (q.goal==="사살" ? "사살" : "제압") : q.attrs[0]==="agi" ? "추적" : "수색") : q.kind;
-// 신념을 이르는 옛말 · 외국어(이립 · 라바크롬 상귀니스처럼). [낱말, 풀이]
-const CREED_WORD = {
-  "공격적":[["파죽","破竹 — 대나무를 쪼개는 기세"],["푸리아","라틴어 furia — 격노"]],
-  "신중함":[["삼사","三思 — 세 번 생각함"],["프루덴티아","라틴어 prudentia — 신중"]],
-  "헌신":[["살신","殺身 — 제 몸을 바침"],["아가페","그리스어 — 조건 없는 사랑"]],
-  "냉소":[["백안","白眼 — 흘겨보는 눈"],["이로니","독일어 Ironie — 반어"]],
-  "충동적":[["일촉","一觸 — 닿기만 해도 터짐"],["임풀스","독일어 Impuls — 충동"]],
-  "침착함":[["부동","不動 — 흔들리지 않음"],["아타락시아","그리스어 — 마음의 평정"]],
-  "집요함":[["마부","磨斧 — 도끼를 갈아 바늘을 만듦"],["이데픽스","프랑스어 idée fixe — 떨칠 수 없는 생각"]],
-  "낙천적":[["낙천","樂天 — 하늘의 뜻을 즐김"],["에스페란사","스페인어 esperanza — 희망"]],
-  "비관적":[["기우","杞憂 — 하늘이 무너질까 하는 걱정"],["벨트슈메르츠","독일어 Weltschmerz — 세상에 대한 비애"]],
-  "오만함":[["독존","獨尊 — 홀로 높음"],["휴브리스","그리스어 hubris — 오만"]],
-  "소심함":[["긍긍","兢兢 — 조심하며 떪"],["앙스트","독일어 Angst — 불안"]],
-  "정의감":[["파사","破邪 — 그릇된 것을 깨뜨림"],["유스티치아","라틴어 iustitia — 정의"]],
-  "탐욕":[["농단","壟斷 — 이익을 독차지함"],["아바리티아","라틴어 avaritia — 탐욕"]],
-  "다정함":[["측은","惻隱 — 가엾게 여기는 마음"],["카리타스","라틴어 caritas — 사랑"]],
-  "무심함":[["무념","無念 — 아무 생각도 두지 않음"],["아파테이아","그리스어 — 감정에 흔들리지 않음"]],
-  "광기":[["광란","狂亂 — 미친 듯 날뜀"],["폴리","프랑스어 folie — 광기"]]
+// 쥔 무기에서: 무기 모양마다 붙여 둔 이름(가스하푼 · 전기톱의 결)
+const EGO_ARMS = {
+  blade:["브로드소드","세이버","띠톱","스틸레토"], long:["츠바이헨더","참마도"], twin:["팔시온","쌍비수"], great:["단두대","클레이모어","작두"],
+  blunt:["오함마","모닝스타","쇠지레","장작도끼"], staff:["철근","편곤"], fist:["너클더스터","쇠갈퀴"], tool:["파이프렌치","전기톱"],
+  spear:["파르티잔","빌훅"], lance:["파일벙커","착암기"], rapier:["플뢰레","에스터크"], gun:["데린저","블런더버스","머스킷"]
 };
+const EGO_COATS = ["방검복","트렌치코트","더스터","판금"];
 function egoMake(f, type){
-  const used = n => S && S.fixers.some(x=>x!==f && x.ego && x.ego.name===n), C = [];   // [낱말, 유래, 비중]
-  // 간직한 것
-  if(f.precious && f.precious.text){ const t = f.precious.text;
-    const w = f.precious.kind==="동료" ? "동행" : PRECIOUS_WORD[t] || (!/\s/.test(t) && t.length<=6 && t!=="소중한 것" ? t : null);
-    if(w) C.push([w, `간직한 것 — ${t}${f.precious.lost ? "(잃음)" : ""}`, 35]); }
-  // 맡아 온 일
-  const h = f.hist || {}, top = Object.keys(h).filter(k=>DEED_WORD[k]).sort((a,b)=>h[b]-h[a])[0];
-  if(top) C.push([DEED_WORD[top], `맡아 온 일 — ${top==="환상체" ? "환상체 제압" : top} 의뢰 ${h[top]}건`, 25]);
-  else { const k = DEED_BY_ATTR[topAttr(f)]; C.push([DEED_WORD[k], `맡아 온 일 — ${k==="격리" ? "환상체 제압" : k}(해낸 의뢰가 아직 없어 가장 높은 능력 '${ATTR_NAME[topAttr(f)]}'으로 가늠)`, 25]); }
-  // 쥔 연장
-  if(type==="weapon" && f.gear.weapon){ const g = f.gear.weapon, K = WEAPON_KINDS[weaponTypeOf(g)], v = K && g.look ? K.vars[g.look.v||0] : K ? K.n : null;
-    if(v){ const w = v==="갈퀴 장갑" ? "갈퀴" : v.split(" ").pop(); C.push([w, `손에 쥔 것 — ${g.name}`, 20]); } }
-  if(type==="armor" && f.gear.armor){ const g = f.gear.armor, v = ARMOR_TYPES[g.look ? g.look.type : 1]; C.push([v.split(" ").pop(), `몸에 걸친 것 — ${g.name}`, 20]); }
-  // 신념
-  (CREED_WORD[f.personality] || []).forEach(([w,g])=>C.push([w, `성격(${f.personality}) — ${g}`, 10]));
-  const free = C.filter(c=>!used(c[0])), pool = free.length ? free : C;
-  let r = Math.random()*pool.reduce((t,c)=>t+c[2],0), pickd = pool[0];
-  for(const c of pool){ r -= c[2]; if(r <= 0){ pickd = c; break; } }
-  return {name: pickd[0], origin: pickd[1], desc: ""};
+  const used = n => S && S.fixers.some(x=>x!==f && x.ego && x.ego.name===n), C = [];
+  (EGO_NAMES[f.personality] || []).forEach(([w,g])=>C.push([w, g, 2]));
+  if(type==="weapon" && f.gear.weapon){ const g = f.gear.weapon, k = weaponTypeOf(g), w = EGO_ARMS[k] && EGO_ARMS[k][g.look ? g.look.v||0 : 0]; if(w) C.push([w, `쥐고 있던 ${g.name}`, 4]); }
+  if(type==="armor" && f.gear.armor){ const g = f.gear.armor, w = EGO_COATS[g.look ? g.look.type : 1]; if(w) C.push([w, `입고 있던 ${g.name}`, 3]); }
+  const free = C.filter(c=>!used(c[0])), pool = free.length ? free : Object.values(EGO_NAMES).flat().filter(c=>!used(c[0])).map(c=>[c[0],c[1],1]);
+  let r = Math.random()*pool.reduce((t,c)=>t+c[2],0), pk = pool[0];
+  for(const c of pool){ r -= c[2]; if(r <= 0){ pk = c; break; } }
+  return {name: pk[0], origin: pk[1], desc: ""};
 }
 function egoNameFor(f, type){ return egoMake(f, type).name; }
 const egoLabel = e => `개화 E.G.O::${e.name}`;
@@ -3190,7 +3169,7 @@ async function bloomEgo(f){
   f.mp = Math.round(f.mpMax*0.5);
   playFx("에고", "E.G.O. 개화", `${f.name} — ${egoLabel(f.ego)}`, true); save(); render();
   S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${type==="weapon"?"무기":"방어구"})`});
-  const go = await modal("E.G.O. 개화", `${esc(josa(f.name,"이","가"))} <b>${esc(egoLabel(f.ego))}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>${f.ego.origin ? `<span class="muted">이름의 유래: ${esc(f.ego.origin)}</span><br>` : ""}전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${type==="weapon"?"특수 공격":"특수 방어"})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
+  const go = await modal("E.G.O. 개화", `${esc(josa(f.name,"이","가"))} <b>${esc(egoLabel(f.ego))}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>${f.ego.origin ? `<span class="muted">뜻: ${esc(f.ego.origin)}</span><br>` : ""}전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${type==="weapon"?"특수 공격":"특수 방어"})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
   if(go) await openForge(f, null, "ego");
 }
 function removeFixer(f, what, note){
@@ -3431,7 +3410,7 @@ async function openManage(){
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
       ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${f.ego.type==="weapon"?"무기":"방어구"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
-        ${f.ego.origin ? `<br><span class="muted" style="font-weight:400">이름의 유래: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${f.ego.type==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${f.ego.type==="weapon"?"특수 공격":"특수 방어"} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
+        ${f.ego.origin ? `<br><span class="muted" style="font-weight:400">뜻: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${f.ego.type==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${f.ego.type==="weapon"?"특수 공격":"특수 방어"} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
