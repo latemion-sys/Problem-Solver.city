@@ -1081,44 +1081,192 @@ function bindLook(box, L, st){
     redraw(); });
   box.addEventListener("click", e=>{ if(!e.target.dataset.lkrand) return; Object.assign(L, randomLook()); redraw(); });
 }
-/* 개화 E.G.O 이름: "개화 E.G.O::이름" — 낱말 하나. 규칙으로 조합하지 않고, 성격마다 · 무기마다 손으로 지어 둔 이름에서 고른다.
-   결: 박제 · 마름 · 대행 · 가스하푼 · 전기톱 · 파사처럼 짧고 단단한 실제 낱말(외국어는 한글 표기). 원작에 있는 이름과 비슷한 것은 쓰지 않는다. [이름, 풀이] */
-const EGO_NAMES = {
-  "공격적":[["파죽","破竹 — 대나무를 쪼개는 기세"],["벌초","웃자란 것을 베어 냄"],["도화선","불을 폭약까지 데려가는 줄"],["라파가","스페인어 ráfaga — 몰아치는 돌풍"],["그로자","러시아어 гроза — 뇌우"]],
-  "신중함":[["삼사","三思 — 세 번 생각함"],["퇴고","글을 고치고 또 고침"],["누름돌","뜨지 못하게 눌러 두는 돌"],["아탕트","프랑스어 attente — 기다림"],["요진","일본어 用心 — 조심"]],
-  "헌신":[["살신","殺身 — 제 몸을 바침"],["대속","남의 죗값을 대신 치름"],["버팀목","쓰러지지 않게 받치는 나무"],["오퍼","독일어 Opfer — 제물"],["미가와리","일본어 身代わり — 대신 당하는 몸"]],
-  "냉소":[["백안","白眼 — 흘겨보는 눈"],["박제","죽은 것을 산 모양으로 굳힘"],["조소","비웃음"],["리카느망","프랑스어 ricanement — 비웃음"],["나스메시카","러시아어 насмешка — 조롱"]],
-  "충동적":[["일촉","一觸 — 닿기만 해도 터짐"],["불티","튀어 옮겨붙는 작은 불"],["월담","담을 넘음"],["아레바토","스페인어 arrebato — 치미는 충동"],["슈프룽","독일어 Sprung — 도약"]],
-  "침착함":[["부동","不動 — 흔들리지 않음"],["정박","닻을 내리고 머묾"],["동면","겨울을 자며 견딤"],["나기","일본어 凪 — 바람이 멎은 바다"],["소시에고","스페인어 sosiego — 평온"]],
-  "집요함":[["마부","磨斧 — 도끼를 갈아 바늘을 만듦"],["거머리","붙으면 떨어지지 않는 것"],["압류","놓아주지 않고 묶어 둠"],["아샤르느망","프랑스어 acharnement — 악착"],["슈넨","일본어 執念 — 집념"]],
-  "낙천적":[["낙천","樂天 — 하늘의 뜻을 즐김"],["해장","쓰린 속을 풂"],["볕","해가 내리쬐는 기운"],["마냐나","스페인어 mañana — 내일"],["라두가","러시아어 радуга — 무지개"]],
-  "비관적":[["기우","杞憂 — 하늘이 무너질까 하는 걱정"],["썰물","빠져나가는 물"],["폐광","더는 캐지 않는 굴"],["토스카","러시아어 тоска — 까닭 모를 비애"],["데센가뇨","스페인어 desengaño — 환멸"]],
-  "오만함":[["독존","獨尊 — 홀로 높음"],["첨탑","뾰족하게 솟은 탑"],["사열","늘어선 것들을 내려다보며 살핌"],["오르괴유","프랑스어 orgueil — 오만"],["알티보","스페인어 altivo — 거만한"]],
-  "소심함":[["긍긍","兢兢 — 조심하며 떪"],["골방","집 안쪽의 작은 방"],["뒷걸음","물러서는 걸음"],["오쿠뵤","일본어 臆病 — 겁"],["티미도","이탈리아어 timido — 소심한"]],
-  "정의감":[["파사","破邪 — 그릇된 것을 깨뜨림"],["단죄","죄를 끊어 처단함"],["영장","붙잡아 올 것을 명하는 글"],["프라우다","러시아어 правда — 진실, 정의"],["리히텐","독일어 richten — 심판하다"]],
-  "탐욕":[["농단","壟斷 — 이익을 독차지함"],["고리대","비싼 이자를 받는 돈놀이"],["독식","혼자 다 먹음"],["코디시아","스페인어 codicia — 탐욕"],["아바르","프랑스어 avare — 구두쇠"]],
-  "다정함":[["측은","惻隱 — 가엾게 여기는 마음"],["군불","방을 덥히려 때는 불"],["자장가","재우려 부르는 노래"],["카리시아","스페인어 caricia — 쓰다듬음"],["누쿠모리","일본어 温もり — 온기"]],
-  "무심함":[["무념","無念 — 아무 생각도 두지 않음"],["방치","내버려 둠"],["여백","비워 둔 자리"],["니체보","러시아어 ничего — 아무것도 아님"],["레레","독일어 Leere — 공허"]],
-  "광기":[["광란","狂亂 — 미친 듯 날뜀"],["난장","뒤죽박죽 떠드는 판"],["탈춤","탈을 쓰고 추는 춤"],["로쿠라","스페인어 locura — 광기"],["폴리","프랑스어 folie — 광기"]]
+/* 개화 E.G.O — 원작처럼 정해진 명칭이나 짓는 법은 없다. 그 사람이 어떻게 살아왔는지 · 개화 전까지 무엇을 해 왔는지 · 무엇을 바라는지에 따라 저마다 다를 뿐.
+   그래서 이름 하나하나를 손으로 짓고, 그 이름이 어떤 삶에 어울리는지를 함께 적어 두었다.
+   개화할 때 그 해결사의 실제 행적(life) · 간직한 것 · 성격 · 능력을 이 기록과 맞대어 가장 닮은 것을 고른다.
+   형태는 이름을 따른다: 무기 · 의복 · 일체형(무기와 의복) · 도구형.
+   각 항목: [이름, 형태, 드러난 모습, 어울리는 삶] */
+const EGO_BANK = [
+  ["도리깨","weapon","곡식을 털던 도리깨가 쇠사슬과 쇠공이로 무거워졌다. 내리칠 때마다 마른 낟알 같은 불티가 튄다.",["공격적","kill","str","veteran"]],
+  ["낙인","weapon","끝이 붉게 달아오른 쇠도장. 찍힌 자리는 무엇으로도 지워지지 않는다.",["정의감","오만함","kill","hunt","revenge"]],
+  ["쐐기","weapon","쇠망치와 쇠쐐기 한 벌. 틈이 보이면 어디든 박아 넣어 기어이 벌려 놓는다.",["집요함","str","search","rank"]],
+  ["숫돌","weapon","손바닥에 붙어 버린 숫돌. 갈면 갈수록 맨손이 날이 된다.",["집요함","heavy","veteran","blade"]],
+  ["잉걸","weapon","속까지 붉게 탄 숯덩이를 쥔 쇠갈고리. 꺼진 줄 알았던 불이 휘두를 때마다 되살아난다.",["비관적","집요함","grief","revenge","lost"]],
+  ["부지깽이","weapon","아궁이 불을 뒤적이던 쇠막대. 끝에는 언제나 불씨가 살아 있다.",["다정함","헌신","family","mother","home"]],
+  ["연탄집게","weapon","연탄 두 장을 집어 나르던 긴 집게. 이제는 사람도 집어 내던진다.",["다정함","무심함","home","debt","str","crew"]],
+  ["맷돌","weapon","어깨에 멘 맷돌 한 짝. 돌릴수록 무거워지고, 그 사이에 든 것은 가루가 된다.",["집요함","침착함","str","veteran","kill"]],
+  ["다듬이","weapon","다듬잇방망이 두 자루. 두드리는 박자가 한 번도 흐트러지지 않아, 맞는 쪽이 먼저 숨이 찬다.",["침착함","다정함","mother","family","spare"]],
+  ["투망","weapon","펼치면 골목 하나를 덮는 쇠그물. 걸린 것은 숨만 붙은 채 끌려온다.",["신중함","spare","chase","agi"]],
+  ["족쇄","weapon","쇠사슬 끝에 달린 차꼬. 던지면 스스로 발목을 찾아 감긴다.",["집요함","spare","chase","revenge"]],
+  ["재갈","tool","가죽 재갈과 묶음 끈. 물린 자는 비명도 지르지 못한 채 고꾸라진다.",["냉소","무심함","spare","search"]],
+  ["블러드하운드","both","코트 깃이 사냥개의 주둥이처럼 솟고, 손에 쥔 쇠사슬 끝이 냄새를 좇아 스스로 당긴다.",["집요함","chase","revenge","hunt","agi","search"]],
+  ["술래","both","눈을 가린 붉은 천과 긴 장대. 눈을 가리고도 숨은 것을 누구보다 먼저 찾아낸다.",["광기","낙천적","chase","search","novice"]],
+  ["그림자밟기","armor","발소리 없는 납작한 신과 바닥에 붙어 끌리는 망토. 밟힌 그림자는 그 자리에 붙박인다.",["소심함","충동적","chase","agi"]],
+  ["역마","both","말 굴레를 닮은 가죽 견갑과 박차. 한자리에 서 있으면 도리어 숨이 차오른다.",["충동적","chase","escort","wander","escape","agi"]],
+  ["쿠드그라스","weapon","얇고 곧은 송곳 한 자루. 괴로운 숨을 단번에 끊어 주는 데에만 쓰인다.",["다정함","냉소","kill","grief"]],
+  ["뱃삯","tool","손가락 사이에 낀 녹슨 동전 몇 닢. 튕긴 동전이 닿는 곳마다 누군가의 길이 끝난다.",["무심함","냉소","kill","grief","veteran"]],
+  ["데스마스크","armor","얼굴을 덮은 석고 가면. 지금껏 보낸 이들의 얼굴이 가면 안쪽에 차례로 떠오른다.",["냉소","무심함","kill","grief","lost"]],
+  ["상여","both","어깨에 멘 꽃상여의 가마채와 오색 만장 자락. 가마채를 휘두르면 요령 소리가 따라 울린다.",["헌신","grief","lost","colleague","crew"]],
+  ["넋전","tool","종이를 사람 모양으로 오려 엮은 줄. 흩날린 넋전이 적에게 들러붙어 발을 붙든다.",["다정함","비관적","grief","lost","abno","voice"]],
+  ["하울링","tool","목에 건 찌그러진 확성기. 소리가 소리를 먹고 불어나, 듣는 쪽의 귀가 먼저 찢어진다.",["광기","공격적","heavy","abno"]],
+  ["꽹과리","tool","한 손엔 꽹과리, 한 손엔 채. 장단이 빨라지면 곁의 모두가 그 박자에 휩쓸린다.",["광기","낙천적","crew","colleague"]],
+  ["팽이","weapon","쇠심을 박은 무거운 팽이와 팽이채. 얻어맞을수록 더 빠르게 돈다.",["낙천적","광기","heavy","agi"]],
+  ["피냐타","armor","색종이를 겹겹이 바른 몸통 갑옷. 터질 때마다 안에서 사탕 대신 불꽃이 쏟아진다.",["낙천적","광기","heavy","fail"]],
+  ["파타 모르가나","tool","언제나 손 닿을 듯 떠 있는 빛의 창문. 적은 그 너머에 있는 것을 향해 헛손질한다.",["낙천적","dream","home","lost","goal"]],
+  ["첫차","both","새벽 전차의 앞등을 닮은 흉갑과 차장 모자. 누구보다 먼저 어둠을 뚫고 나간다.",["낙천적","home","escape","escort","goal"]],
+  ["막차","armor","빈 객차의 손잡이가 주렁주렁 달린 외투. 놓쳐 버린 것들이 손잡이마다 매달려 흔들린다.",["비관적","fail","lost","goal","escape"]],
+  ["이정표","tool","길 이름이 새겨진 쇠기둥. 꽂힌 자리에서는 누구도 길을 잃지 않는다.",["신중함","헌신","escort","protect","goal"]],
+  ["솟대","tool","장대 끝에 나무새를 얹은 솟대. 바람이 불면 새가 바라던 쪽으로 고개를 돌린다.",["낙천적","dream","rank","goal"]],
+  ["연줄","weapon","사기를 먹인 연줄과 얼레. 끊어질 듯 팽팽한 줄이 칼날처럼 벤다.",["다정함","friend","colleague","crew","agi"]],
+  ["경첩","armor","어깨와 팔꿈치마다 녹슨 경첩이 박힌 갑옷. 한번 이어 붙인 두 쪽은 결코 떨어지지 않는다.",["헌신","friend","lover","colleague","crew"]],
+  ["트로이카","both","세 갈래 고삐와 방울. 뒤따르는 동료들의 걸음까지 함께 끌고 달린다.",["헌신","colleague","crew","escort","leader"]],
+  ["빗장","armor","가슴을 가로지르는 굵은 나무 빗장. 걸어 잠그면 무엇도 안으로 들이지 않는다.",["소심함","신중함","home","protect","family"]],
+  ["문풍지","armor","얇은 한지를 겹겹이 바른 외투. 가장 얇은데도 찬바람 한 줄기 들이지 않는다.",["소심함","다정함","family","mother","child"]],
+  ["금줄","tool","숯과 고추를 꿴 새끼줄. 둘러친 안쪽으로는 부정한 것이 넘어오지 못한다.",["헌신","child","family","abno","protect"]],
+  ["장승","armor","나뭇결이 그대로 살아 있는 갑주. 마을 어귀에 서듯 버티고 서면 한 걸음도 밀리지 않는다.",["침착함","헌신","escort","protect","veteran"]],
+  ["침목","armor","등에 철길 침목을 겹쳐 댄 외투. 위로 무엇이 지나가도 깔린 채 버틴다.",["헌신","heavy","escort","crew","debt"]],
+  ["주춧돌","armor","발밑에서부터 다리를 감싸 오른 돌 기단. 사무소 하나쯤은 거뜬히 떠받친다.",["침착함","leader","protect","home"]],
+  ["방파제","armor","테트라포드를 엮은 듯한 육중한 어깨 갑주. 밀려드는 것을 부숴 되돌려 보낸다.",["헌신","escort","protect","str","heavy"]],
+  ["모래주머니","armor","자루를 겹겹이 동여맨 몸. 맞은 만큼 모래가 흘러내리고, 어느새 다시 차오른다.",["헌신","비관적","heavy","crew"]],
+  ["피뢰침","tool","등에 꽂힌 쇠장대. 동료에게 떨어질 것이 모두 이리로 끌려와 땅으로 흘러간다.",["헌신","heavy","protect","crew","colleague"]],
+  ["퓨즈","tool","손목에 감긴 유리관 퓨즈 다발. 하나씩 끊어질 때마다 대신 막아 낸 것이 있다.",["충동적","헌신","heavy","protect"]],
+  ["데드맨 스위치","tool","손에 꽉 쥔 손잡이 하나. 놓는 순간 주변의 모든 것이 함께 터진다.",["집요함","충동적","revenge","solo","heavy"]],
+  ["페일세이프","both","겹겹이 맞물린 안전핀과 걸쇠가 달린 작업복. 하나가 무너져도 다음 것이 받친다.",["신중함","tec","fail","protect"]],
+  ["담금질","weapon","검게 그을린 쇠 팔. 다칠 때마다 물에 처박힌 쇠처럼 더 단단해진다.",["집요함","heavy","veteran","str"]],
+  ["굳은살","armor","손과 어깨에 앉은 거칠고 두꺼운 껍질. 몇 번이고 터졌던 자리가 가장 단단하다.",["침착함","집요함","heavy","veteran"]],
+  ["모루","armor","가슴판이 된 쇠모루. 내려친 쪽의 팔이 먼저 저려 온다.",["침착함","무심함","heavy","str"]],
+  ["양생","armor","회색 반죽이 천천히 굳어 가는 외투. 시간이 지날수록 단단해진다.",["신중함","침착함","heavy","novice"]],
+  ["블랙박스","armor","주황빛 강철 상자를 닮은 흉갑. 모든 것이 무너져도 그날의 기록만은 남는다.",["신중함","fail","heavy","search","writing"]],
+  ["몽타주","tool","얼굴 조각을 끼워 맞추는 종이판. 맞춰진 얼굴의 주인은 어디로도 숨지 못한다.",["정의감","search","chase","tec"]],
+  ["탐침","tool","손끝에서 길게 뻗는 가는 쇠바늘. 벽 너머의 숨소리까지 짚어 낸다.",["신중함","search","tec","abno"]],
+  ["숨바꼭질","armor","몸을 접어 넣는 커다란 장롱 같은 외투. 문을 닫으면 아무도 찾아내지 못한다.",["소심함","search","escape","child"]],
+  ["다림추","tool","실 끝에 매단 납추. 흔들림이 멎는 곳이 언제나 정확한 아래다.",["정의감","침착함","tec","search"]],
+  ["먹줄","weapon","먹물 먹인 실을 퉁기는 먹통. 퉁겨진 선을 따라 무엇이든 곧게 잘려 나간다.",["정의감","신중함","tec"]],
+  ["알리바이","armor","언제나 다른 곳에 서 있는 듯 흐릿한 회색 정장. 맞은 자리에 그는 없다.",["냉소","신중함","search","solo","escape"]],
+  ["가라쿠리","tool","등에 진 태엽 상자에서 나무 팔 여러 개가 뻗어 나온다.",["광기","신중함","tec"]],
+  ["물레","tool","허리에 찬 물레와 끝없는 실. 자아낸 실이 적을 감아 천천히 조인다.",["집요함","다정함","mother","tec"]],
+  ["납땜","tool","인두와 땜납이 박힌 장갑. 끊어진 것은 사람이든 무기든 이어 붙인다.",["헌신","tec","colleague","protect"]],
+  ["메트로놈","tool","가슴께에서 똑딱이는 추. 박자를 쥔 쪽이 싸움을 쥔다.",["침착함","신중함","tec"]],
+  ["오르골","tool","뚜껑을 열면 낡은 노래가 흘러나오는 작은 상자. 노래가 끝날 때까지 누구도 그를 해치지 못한다.",["다정함","voice","family","lost","keepsake"]],
+  ["츠쿠모","both","오래 아껴 쓴 물건이 넋을 얻어 그대로 무장이 되었다. 손때가 가장 짙은 곳이 가장 단단하다.",["keepsake","veteran","time"]],
+  ["전당표","tool","번호가 찍힌 누런 쪽지 묶음. 붙인 것은 무엇이든 잠시 맡겨 둘 수 있다 — 되찾을 때까지.",["탐욕","debt","keepsake"]],
+  ["차용증","tool","인감이 찍힌 종이 다발. 한 장 찢을 때마다 갚아야 할 것이 상대에게 넘어간다.",["탐욕","집요함","debt"]],
+  ["외상장부","tool","두꺼운 가죽 장부와 몽당연필. 적힌 이름은 끝까지 쫓긴다.",["집요함","탐욕","debt","chase","writing"]],
+  ["금이빨","both","이를 드러내면 번쩍이는 금니. 물어뜯은 것은 무엇이든 제 몫이 된다.",["탐욕","공격적","kill"]],
+  ["넝마주이","both","주워 모은 천 조각을 기운 외투와 쇠갈고리. 버려진 것은 무엇이든 쓸모가 된다.",["탐욕","비관적","home","escape","tec"]],
+  ["개평","tool","손가락 사이에서 굴러다니는 낡은 주사위와 칩. 남의 판에서 언제나 한몫을 떼어 간다.",["낙천적","탐욕","solo"]],
+  ["저울추","weapon","줄 끝에 매단 쇳덩이 추. 휘두르면 상대가 지은 죄만큼 무거워진다.",["정의감","kill","hunt"]],
+  ["각설이","both","누더기 각설이 차림과 찌그러진 깡통. 흥얼거리는 타령이 끝나기 전에 판이 엎어진다.",["광기","낙천적","fail","escape"]],
+  ["엿가위","weapon","철컥이는 커다란 엿장수 가위. 장단을 맞춰 끊어 낸다.",["낙천적","다정함","crew","novice"]],
+  ["상모","both","끝에 긴 흰 띠를 단 전립. 고개를 돌릴 때마다 띠가 칼날처럼 원을 그린다.",["광기","낙천적","agi"]],
+  ["도깨비불","tool","허공을 떠도는 푸른 불덩이 몇 개. 홀린 듯 따라온 자는 길을 잃는다.",["광기","소심함","abno","escape"]],
+  ["가위눌림","tool","상대의 가슴 위에 올라앉는 검은 그림자. 몸을 짓눌러 손가락 하나 움직이지 못하게 한다.",["비관적","소심함","abno","heavy"]],
+  ["나자르","armor","푸른 유리 눈알이 줄줄이 달린 망토. 노려보는 것은 모두 되돌려 받는다.",["소심함","신중함","abno","protect"]],
+  ["카게무샤","armor","누군가와 똑같이 지은 옷과 가면. 칼끝은 언제나 진짜가 아닌 그를 향한다.",["헌신","소심함","escort","protect"]],
+  ["마트료시카","armor","몇 겹이고 겹쳐 입은 둥근 칠기 갑옷. 하나가 깨지면 안에서 조금 작은 그가 나온다.",["소심함","신중함","heavy","family"]],
+  ["사모바르","tool","등에 진 놋쇠 주전자에서 끓는 김이 끝없이 피어오른다. 곁에 있는 이는 얼어 죽지 않는다.",["다정함","crew","colleague","home"]],
+  ["칼라베라","armor","꽃으로 꾸민 해골 가면. 죽음을 웃으며 맞이한다.",["낙천적","광기","grief","lost"]],
+  ["카라반","both","방울과 짐 꾸러미를 매단 낙타털 외투. 짐도 사람도 끝까지 데려간다.",["헌신","escort","crew","wander"]],
+  ["보부상","both","등짐과 패랭이. 짐 속에서 필요한 것이 꼭 하나씩 나온다.",["탐욕","escort","wander","tec","debt"]],
+  ["지게","both","등에 붙어 버린 나무 지게. 진 것이 무거울수록 걸음이 단단해진다.",["헌신","str","debt","family","crew"]],
+  ["봉화","tool","어깨에 짊어진 봉화대 화로. 불을 올리면 멀리 있는 동료가 반드시 알아챈다.",["헌신","충동적","colleague","crew","protect"]],
+  ["심지","tool","제 몸을 태우는 굵은 초 심지. 다 타기 전까지는 꺼지지 않는다.",["헌신","집요함","heavy","grief"]],
+  ["등피","armor","그을음 앉은 유리 덮개 같은 외투. 안의 작은 불씨를 바람으로부터 지켜 낸다.",["다정함","헌신","protect","child","family"]],
+  ["철조망","armor","가시철사를 칭칭 감은 외투. 다가오는 자가 먼저 피를 본다.",["소심함","냉소","신중함","protect"]],
+  ["압정","tool","손바닥 가득 쥔 압정. 흩뿌리면 작고 날카로운 것들이 길을 막는다.",["소심함","무심함","novice"]],
+  ["방탄유리","armor","투명한 판유리를 이어 댄 갑옷. 모든 것이 보이지만 무엇도 닿지 않는다.",["무심함","냉소","solo"]],
+  ["셔터","armor","가게 철문처럼 말려 내려오는 금속 외투. 내려 닫으면 그날 장사는 끝이다.",["소심함","dream","home","fail"]],
+  ["성에","armor","유리창에 피는 서리 무늬가 온몸에 번진 외투. 숨결만 닿아도 얼어붙는다.",["무심함","냉소","grief","solo"]],
+  ["수은","weapon","은빛 액체가 고였다 흩어지는 채찍. 스친 것은 천천히 미쳐 간다.",["광기","냉소","tec"]],
+  ["양철지붕","armor","빗소리가 요란한 양철판을 이어 댄 외투. 시끄러울 뿐 결코 새지 않는다.",["비관적","home","family","fail"]],
+  ["누더기","armor","기우고 또 기운 천 조각 외투. 해진 곳마다 그날의 상처가 있다.",["비관적","heavy","fail","veteran"]],
+  ["레테","tool","발목을 적시는 희뿌연 물. 닿은 자는 자신이 왜 싸우고 있었는지 잊는다.",["무심함","grief","lost","abno"]],
+  ["에리니에스","both","검은 날개 같은 망토와 비늘 돋은 채찍. 지은 죄를 끝까지 따라가 묻는다.",["집요함","정의감","revenge","hunt"]],
+  ["팔랑크스","armor","겹쳐 세운 방패의 벽이 그의 등 뒤로 늘어선다. 혼자가 아니라는 듯이.",["헌신","crew","colleague","escort","protect"]],
+  ["테스투도","armor","등과 팔을 덮은 거북 등딱지 같은 방패들. 웅크리면 무엇도 뚫지 못한다.",["신중함","소심함","protect","heavy"]],
+  ["바리케이드","armor","부서진 가구와 철판을 엮은 몸체. 그가 선 곳이 곧 막힌 길이다.",["헌신","정의감","escort","protect","spare"]],
+  ["차단기","tool","붉은 줄무늬의 긴 차단봉. 내려지면 누구도 그 선을 넘지 못한다.",["신중함","정의감","escort","spare"]],
+  ["자명종","tool","등에 멘 커다란 탁상시계. 울리면 잠든 것도 홀린 것도 모두 깨어난다.",["신중함","time","abno","keepsake"]],
+  ["그라피티","tool","어디에든 휘갈기는 스프레이 깡통. 그려 넣은 표식은 그의 영역이 된다.",["오만함","광기","solo"]],
+  ["금박","armor","온몸에 얇게 붙인 금박. 벗겨진 자리마다 더 눈부시게 빛난다.",["오만함","탐욕","rank"]],
+  ["훈장","armor","가슴 가득 매단 녹슨 훈장들. 하나하나가 그가 이긴 싸움이다.",["오만함","rank","veteran","kill"]],
+  ["쇠스랑","weapon","땅을 갈아엎던 네 갈래 쇠스랑. 찍어 당기면 무엇이든 뒤집혀 나온다.",["공격적","str","kill","home"]],
+  ["투견","both","목줄 자국이 남은 가죽 견갑과 쇠징 박힌 장갑. 한번 물면 놓지 않는다.",["공격적","집요함","kill","solo"]],
+  ["불도저","both","삽날 같은 흉갑과 궤도 무늬가 찍힌 외투. 앞을 막는 것은 무엇이든 밀어낸다.",["공격적","str","crew","escort"]],
+  ["화약고","tool","허리춤에 주렁주렁 매단 화약통. 하나에 불이 붙으면 줄줄이 터진다.",["공격적","충동적","heavy","solo"]],
+  ["아귀","both","턱이 크게 벌어지는 투구와 갈고리 손. 삼켜도 삼켜도 배가 고프다.",["공격적","탐욕","kill"]],
+  ["확성기","tool","목에 건 낡은 확성기. 그의 목소리가 닿는 데까지가 그의 땅이다.",["오만함","leader","crew"]],
+  ["샹들리에","tool","머리 위에 떠 있는 유리 샹들리에. 떨어질 때 가장 눈부시다.",["오만함","광기","solo"]],
+  ["대리석","armor","희고 차가운 흉상 같은 갑옷. 금이 가도 고개는 숙이지 않는다.",["오만함","heavy","rank"]],
+  ["망루","tool","등 뒤로 솟은 나무 망루. 그 위에서는 모든 것이 내려다보인다.",["오만함","신중함","search","escort"]],
+  ["폭주기관차","both","굴뚝 같은 견갑에서 검은 연기가 뿜어 나온다. 멈추는 법을 모른다.",["충동적","공격적","chase","heavy"]],
+  ["도화선","tool","손목에서 바닥까지 늘어진 도화선. 불이 붙으면 끝까지 달려간다.",["충동적","revenge","solo"]],
+  ["용수철","both","다리와 등에 감긴 굵은 용수철. 눌린 만큼 튀어 오른다.",["충동적","agi","heavy","chase"]],
+  ["장마","armor","늘 젖어 있는 외투에서 빗물이 끊이지 않는다. 그 비는 그치지 않는다.",["비관적","grief","fail"]]
+];
+const EGO_FORM_NAME = {weapon:"무기", armor:"의복", both:"일체형", tool:"도구형"};
+// 간직한 것 하나하나가 어떤 삶을 말하는지
+const PRECIOUS_TAGS = {
+  "여동생":["family","child"],"늙은 어머니":["family","mother"],"옛 스승":["teacher"],"뒷골목에서 길러 준 할머니":["family","mother","home"],"소꿉친구":["friend"],"약혼자":["lover"],
+  "어린 조카":["family","child"],"같은 둥지에서 자란 친구":["friend","home"],"목숨을 빚진 은인":["debt","teacher"],"함께 떠돌던 형":["family","wander"],
+  "아버지의 낡은 회중시계":["keepsake","time","family"],"처음 받은 해결사 자격증":["keepsake","rank"],"먼저 간 동료의 장갑":["keepsake","grief","colleague"],"귀퉁이가 닳은 가족사진":["keepsake","family"],
+  "어머니의 머리핀":["keepsake","mother"],"첫 의뢰비로 산 만년필":["keepsake","writing"],"둥지 이주 허가증 사본":["keepsake","home"],"부러진 첫 칼날":["keepsake","blade"],
+  "녹음된 목소리가 든 재생기":["keepsake","voice","grief"],"손때 묻은 수첩":["keepsake","writing"],
+  "1급 해결사가 되는 것":["goal","rank"],"둥지에 집 한 칸을 얻는 것":["goal","home"],"잃어버린 동생을 찾는 것":["goal","family","search"],"빚 없이 하루를 사는 것":["goal","debt"],
+  "특색 칭호를 받는 것":["goal","rank"],"아무도 잃지 않는 사무소":["goal","protect","colleague"],"협회에 들어가는 것":["goal","rank"],"고향 뒷골목으로 돌아가지 않는 것":["goal","escape"],
+  "원수를 찾아내는 것":["goal","revenge"],"언젠가 작은 빵집을 여는 것":["goal","dream"]
 };
-// 쥔 무기에서: 무기 모양마다 붙여 둔 이름(가스하푼 · 전기톱의 결)
-const EGO_ARMS = {
-  blade:["브로드소드","세이버","띠톱","스틸레토"], long:["츠바이헨더","참마도"], twin:["팔시온","쌍비수"], great:["단두대","클레이모어","작두"],
-  blunt:["오함마","모닝스타","쇠지레","장작도끼"], staff:["철근","편곤"], fist:["너클더스터","쇠갈퀴"], tool:["파이프렌치","전기톱"],
-  spear:["파르티잔","빌훅"], lance:["파일벙커","착암기"], rapier:["플뢰레","에스터크"], gun:["데린저","블런더버스","머스킷"]
-};
-const EGO_COATS = ["방검복","트렌치코트","더스터","판금"];
-function egoMake(f, type){
-  const used = n => S && S.fixers.some(x=>x!==f && x.ego && x.ego.name===n), C = [];
-  (EGO_NAMES[f.personality] || []).forEach(([w,g])=>C.push([w, g, 2]));
-  if(type==="weapon" && f.gear.weapon){ const g = f.gear.weapon, k = weaponTypeOf(g), w = EGO_ARMS[k] && EGO_ARMS[k][g.look ? g.look.v||0 : 0]; if(w) C.push([w, `쥐고 있던 ${g.name}`, 4]); }
-  if(type==="armor" && f.gear.armor){ const g = f.gear.armor, w = EGO_COATS[g.look ? g.look.type : 1]; if(w) C.push([w, `입고 있던 ${g.name}`, 3]); }
-  const free = C.filter(c=>!used(c[0])), pool = free.length ? free : Object.values(EGO_NAMES).flat().filter(c=>!used(c[0])).map(c=>[c[0],c[1],1]);
-  let r = Math.random()*pool.reduce((t,c)=>t+c[2],0), pk = pool[0];
-  for(const c of pool){ r -= c[2]; if(r <= 0){ pk = c; break; } }
-  return {name: pk[0], origin: pk[1], desc: ""};
+// 이 해결사가 살아온 모습
+function lifeTags(f){
+  const L = f.life || {}, t = {}, add = (k,w)=>{ t[k] = Math.max(t[k]||0, w); };
+  add(f.personality, 3);
+  add(topAttr(f), 1);
+  if(f.isLeader) add("leader", 2);
+  if(f.precious){ const P = f.precious;
+    (PRECIOUS_TAGS[P.text] || []).forEach(k=>add(k, 3));
+    if(P.kind==="사람") add("family", 1);
+    if(P.kind==="동료"){ add("colleague", 3); add("friend", 2); }
+    if(P.kind==="물건") add("keepsake", 2);
+    if(P.kind==="목표") add("goal", 2);
+    if(P.lost){ add("lost", 3); add("grief", 2); } }
+  const b = (k, n, w) => { if((L[k]||0) >= n) add(k, w + Math.min(2, Math.floor(((L[k]||0) - n)/3))); };
+  if((L.kill||0) > (L.spare||0)) b("kill", 2, 2); else b("spare", 2, 2);
+  b("escort", 2, 2); b("chase", 2, 2); b("search", 2, 2); b("abno", 1, 2); b("hunt", 1, 2);
+  b("heavy", 2, 2); b("fail", 2, 2); b("grief", 1, 2); b("solo", 3, 1); b("crew", 3, 1);
+  if(f.done >= 15) add("veteran", 2); else if(f.done <= 2) add("novice", 1);
+  if(t.escort || t.colleague) add("protect", 1);
+  return t;
 }
-function egoNameFor(f, type){ return egoMake(f, type).name; }
+const LIFE_TEXT = {
+  kill: L=>`숨통을 끊은 의뢰 ${L.kill}번`, spare: L=>`숨만 붙여 데려온 의뢰 ${L.spare}번`, escort: L=>`호위 ${L.escort}번`, chase: L=>`추적 ${L.chase}번`, search: L=>`수색 ${L.search}번`,
+  abno: L=>`환상체 의뢰 ${L.abno}번`, hunt: L=>`뒤틀림 토벌 ${L.hunt}번`, heavy: L=>`중상 이상으로 돌아온 날 ${L.heavy}번`, fail: L=>`실패한 의뢰 ${L.fail}번`,
+  solo: L=>`홀로 나간 의뢰 ${L.solo}번`, crew: L=>`셋 이상 함께 나간 의뢰 ${L.crew}번`
+};
+function egoWhy(f, e, t){
+  const L = f.life || {}, out = [];
+  e[3].filter(k=>t[k]).sort((a,b)=>t[b]-t[a]).forEach(k=>{
+    if(k===f.personality) out.push(`성격 ${k}`);
+    else if(LIFE_TEXT[k] && L[k]) out.push(LIFE_TEXT[k](L));
+    else if(k==="grief" && L.grief) out.push(`먼저 떠나보낸 동료 ${L.grief}명`);
+    else if(k==="veteran") out.push(`해낸 의뢰 ${f.done}건`);
+    else if(k==="novice") out.push(`아직 해낸 의뢰 ${f.done}건`);
+    else if(k==="leader") out.push("사무소의 대표");
+    else if(f.precious && f.precious.text!=="소중한 것" && !out.some(x=>x.startsWith("간직한 것"))) out.push(`간직한 것: ${f.precious.text}${f.precious.lost ? " (잃음)" : ""}`);
+  });
+  return [...new Set(out)].slice(0,3).join(" · ");
+}
+function egoMake(f){
+  const t = lifeTags(f), used = n => S && S.fixers.some(x=>x!==f && x.ego && x.ego.name===n);
+  const scored = EGO_BANK.filter(e=>!used(e[0])).map(e=>[e, e[3].reduce((s,k)=>s+(t[k]||0),0)]).sort((a,b)=>b[1]-a[1]);
+  const top = scored.slice(0,3), sum = top.reduce((s,x)=>s+x[1]*x[1],0);
+  let r = Math.random()*sum, e = top[0][0];
+  for(const [x,sc] of top){ r -= sc*sc; if(r <= 0){ e = x; break; } }
+  return {name: e[0], type: e[1], desc: e[2], origin: egoWhy(f, e, t)};
+}
+function egoNameFor(f){ return egoMake(f).name; }
+const egoSlot = e => e && e.type==="armor" ? "armor" : "weapon";   // 형상 고르기에서 정하는 쪽(일체형·도구형은 손에 드는 쪽)
+const egoSpecList = type => type==="weapon" ? EGO_SPECIAL.weapon : type==="armor" ? EGO_SPECIAL.armor : EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor);
+const egoSpecLabel = type => type==="weapon" ? "특수 공격" : type==="armor" ? "특수 방어" : "특수 능력";
 const egoLabel = e => `개화 E.G.O::${e.name}`;
 /* 마음속에 간직한 것: 뒤틀림은 정신력이 0인 채로 소중한 것을 잃었을 때만 일어난다.
    해결사는 사람(인간관계) · 동료(사무소의 누군가) · 물건 · 목표 중 하나를, 대표는 개업 때 직접 정한다(정하지 않으면 "소중한 것") */
@@ -1523,14 +1671,14 @@ function gearList(f){ return [f.gear.weapon,f.gear.armor,f.gear.acc].filter(Bool
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
-  if(f.ego){ p += f.ego.type==="weapon" ? 8 : 3; if(f.ego.bonus) p += attrs.reduce((s,a)=>s+(f.ego.bonus[a]||0),0)/attrs.length; }
+  if(f.ego){ p += {weapon:8, armor:3, both:6, tool:5}[f.ego.type] || 3; if(f.ego.bonus) p += attrs.reduce((s,a)=>s+(f.ego.bonus[a]||0),0)/attrs.length; }
   if(f.shin) p += 4;
   return p;
 }
 // 팀 전력: 가장 강한 1명 + 나머지의 40%
 function teamPower(team, attrs){ const ps = team.map(f=>power(f,attrs)).sort((a,b)=>b-a); return ps[0] + 0.4*ps.slice(1).reduce((s,v)=>s+v,0); }
-function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego&&f.ego.type==="armor") r+=0.35; return Math.min(r,0.7); }
-function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego&&f.ego.type==="armor") r+=0.35; if(f.shin) r+=0.15; return Math.min(r,0.75); }
+function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.1}[f.ego.type] || 0; return Math.min(r,0.7); }
+function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.25}[f.ego.type] || 0; if(f.shin) r+=0.15; return Math.min(r,0.75); }
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
 function rate(team, q){ const P = teamPower(team,q.attrs); return clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)), 5, 97); }
 function isMental(q){ return q.attrs.includes("wil") && (q.kind==="환상체"||q.kind==="뒤틀림 토벌"||q.attrs[0]==="wil"); }
@@ -1549,8 +1697,8 @@ function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30
 /* ================= 장비 정보(연출용) ================= */
 function weaponTypeOf(g){ if(!g) return null; if(g.wtype) return g.wtype==="drill" ? "lance" : g.wtype; const s = SHOP.find(i=>i.name===g.name); return s ? s.wtype : "blade"; }
 // E.G.O.가 형상을 갖추면 그 무기·방어구 모습으로 나선다(가진 장비 대신)
-function wGear(f){ return f.ego && f.ego.type==="weapon" && f.ego.look ? {name:f.ego.name, wtype:f.ego.look.kind, look:f.ego.look, ego:true} : f.gear.weapon; }
-function aGear(f){ return f.ego && f.ego.type==="armor" && f.ego.look ? {name:f.ego.name, look:f.ego.look, ego:true} : f.gear.armor; }
+function wGear(f){ return f.ego && f.ego.type!=="armor" && f.ego.look ? {name:f.ego.name, wtype:f.ego.look.kind, look:f.ego.look, ego:true} : f.gear.weapon; }
+function aGear(f){ return f.ego && f.ego.type==="armor" && f.ego.look ? {name:f.ego.name, look:f.ego.look, ego:true} : f.ego && f.ego.type==="both" && f.ego.look ? {name:f.ego.name, look:Object.assign({type:2, pad:1, collar:1, trim:f.ego.look.glow||null}, f.ego.look2||{}), ego:true} : f.gear.armor; }
 function leadGear(f){
   if(!f) return null; const w = wGear(f), acc = f.gear.acc, ar = aGear(f);
   return { wtype: weaponTypeOf(w), weaponName: w ? w.name : null, spec: weaponSpecOf(w), armorSpec: armorSpecOf(ar), armor: !!ar, acc: !!acc,
@@ -2746,6 +2894,12 @@ async function dispatch(qid, fids){
   playFx(q.kind, `${q.kind} — ${success?"성공":"실패"}`, `${names} · ${q.client}`, success);
   addLog(`[${q.kind}] ${names}: ${q.text} → ${success?"성공":"실패"}${success?" (+"+won(pay)+")":""}${mode==="play"?" · 직접 수행":hasGame?" · 자동":""}`);
   await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${lines.join("<br>")}</p>`, [{t:"확인",primary:true}]);
+  team.forEach(f=>{ const L = f.life = f.life || {}, inc = k => L[k] = (L[k]||0) + 1;
+    if(success){ if(q.kind==="호위") inc("escort"); else if(q.kind==="수색") inc("search"); else if(q.kind==="환상체") inc("abno"); else if(q.kind==="뒤틀림 토벌") inc("hunt");
+      else if(q.attrs[0]==="agi") inc("chase"); else if(q.attrs[0]==="tec") inc("search"); }
+    const oc = combat && combat.outcome ? combat.outcome : success && q.attrs[0]==="str" && q.kind==="일반" ? q.goal : null;
+    if(oc==="사살") inc("kill"); else if(oc==="제압") inc("spare");
+    if(!success) inc("fail"); if((f._w||0) >= 2) inc("heavy"); if(team.length===1) inc("solo"); else if(team.length>=3) inc("crew"); });
   team.forEach(f=>{ if(S.fixers.includes(f)) lossFromRequest(f, f._w||0, success); });
   await flushLoss();
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkCollapse(f); }
@@ -3158,22 +3312,28 @@ async function twistLeader(f){
 async function bloomEgo(f){
   await HeartFx.voice(f.name);
   await HeartFx.bloom(f);
-  let type;
-  const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
+  const mk = egoMake(f);
+  f.ego = {type: mk.type, name: mk.name, desc: mk.desc, origin: mk.origin};
   if(f.isLeader){
-    type = await modal("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 어떤 형태로 드러낼 것인가?`, [{t:"무기",v:"weapon",primary:true},{t:"방어구",v:"armor"}], true);
-  } else type = p[1];
-  const mk = egoMake(f, type);
-  f.ego = {type, name: f.isLeader ? ((await promptBox("E.G.O. 이름", `개화한 E.G.O.의 이름을 정한다. (개화 E.G.O::이름)<br><span class="muted">${esc(mk.name)}: ${esc(mk.origin)}</span>`, mk.name)) || mk.name) : mk.name, desc: mk.desc};
-  f.ego.origin = f.ego.name===mk.name ? mk.origin : "대표가 직접 지음";
+    const how = await modal("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다.<br><b>개화 E.G.O::${esc(mk.name)}</b> (${EGO_FORM_NAME[mk.type]})<br><span class="muted">${esc(mk.desc)}</span><br><span class="muted">살아온 날: ${esc(mk.origin)}</span>`,
+      [{t:"직접 정하기",v:"edit"},{t:"이대로 받아들인다",v:"ok",primary:true}], true);
+    if(how==="edit"){
+      const nm = (await promptBox("E.G.O. 이름", "개화한 E.G.O.의 이름 (개화 E.G.O::이름)", mk.name)) || mk.name;
+      const ty = await modal("E.G.O. 형태", "어떤 형태로 드러나는가?", [{t:"무기",v:"weapon"},{t:"의복",v:"armor"},{t:"일체형",v:"both"},{t:"도구형",v:"tool"}], true) || mk.type;
+      if(nm!==mk.name){ f.ego.name = nm; f.ego.desc = ""; f.ego.origin = "대표가 직접 지음"; }
+      f.ego.type = ty;
+    }
+  }
+  const type = f.ego.type;
   f.mp = Math.round(f.mpMax*0.5);
   playFx("에고", "E.G.O. 개화", `${f.name} — ${egoLabel(f.ego)}`, true); save(); render();
-  S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${type==="weapon"?"무기":"방어구"})`});
-  const go = await modal("E.G.O. 개화", `${esc(josa(f.name,"이","가"))} <b>${esc(egoLabel(f.ego))}</b>(${type==="weapon"?"무기":"방어구"})를 개화했다.<br>${f.ego.origin ? `<span class="muted">뜻: ${esc(f.ego.origin)}</span><br>` : ""}전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${type==="weapon"?"특수 공격":"특수 방어"})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
+  S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${EGO_FORM_NAME[type]})`});
+  const go = await modal("E.G.O. 개화", `${esc(josa(f.name,"이","가"))} <b>${esc(josa(egoLabel(f.ego),"을","를"))}</b> 개화했다. (${EGO_FORM_NAME[type]})<br>${f.ego.desc ? `<span class="muted">${esc(f.ego.desc)}</span><br>` : ""}${f.ego.origin ? `<span class="muted">살아온 날: ${esc(f.ego.origin)}</span><br>` : ""}전투력이 크게 오르고, 이제 뒤틀림 현상에 휩쓸리지 않는다.<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${egoSpecLabel(type)})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
   if(go) await openForge(f, null, "ego");
 }
 function removeFixer(f, what, note){
   S.fixers = S.fixers.filter(x=>x.id!==f.id);
+  if(what==="사망" || what==="뒤틀림") S.fixers.forEach(x=>{ x.life = x.life || {}; x.life.grief = (x.life.grief||0) + 1; });
   if(what==="사망" || what==="뒤틀림" || what==="해고" || what==="이탈") S.fixers.forEach(x=>{ if(x.precious && x.precious.kind==="동료" && x.precious.ref===f.id) markLost(x, what==="뒤틀림" ? `${josa(f.name,"은","는")} 목소리를 따라갔다.` : what==="사망" ? `${josa(f.name,"이","가")} 돌아오지 못했다.` : `${josa(f.name,"이","가")} 사무소를 떠났다.`); });
   if(what==="사망" || what==="뒤틀림") S.fixers.forEach(x=>{ if(x.isLeader && x.precious && x.precious.kind==="마음") markLost(x, `${josa(f.name,"을","를")} 잃었다. 간직하던 것은 결국 사무소의 사람들이었다.`); });
   S.records.push({day:S.day, name:f.name, what, note:`${gName(f.grade)} · ${note}`});
@@ -3409,8 +3569,8 @@ async function openManage(){
       <span>경험</span><b class="muted">근력 ${f.exp.str}/2 · 민첩 ${f.exp.agi}/2 · 재주 ${f.exp.tec}/2 · 의지 ${f.exp.wil}/2</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
-      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${f.ego.type==="weapon"?"무기":"방어구"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
-        ${f.ego.origin ? `<br><span class="muted" style="font-weight:400">뜻: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${f.ego.type==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${f.ego.type==="weapon"?"특수 공격":"특수 방어"} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
+        ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
@@ -3552,7 +3712,7 @@ const EGO_SPECIAL = {
     {id:"mind",    n:"정신 방벽", d:"합에서 져도 정신력이 줄지 않고, 정신력이 0 아래로 내려가지 않는다."},
     {id:"regen",   n:"재생",   d:"턴이 끝날 때마다 상처를 6씩 회복한다."}]
 };
-const egoSpecial = e => e && e.special ? (EGO_SPECIAL[e.type]||[]).find(x=>x.id===e.special) : null;
+const egoSpecial = e => e && e.special ? egoSpecList(e.type).find(x=>x.id===e.special) : null;
 const sumPts = o => ATTRS.reduce((t,a)=>t+(o[a]||0),0);
 const ptsText = o => ATTRS.filter(a=>o[a]>0).map(a=>`${ATTR_NAME[a]}+${o[a]}`).join(" · ") || "없음";
 function forgeBudget(mode, slot, kind){ return mode==="ego" ? EGO_PTS : slot==="weapon" ? sumPts(profBonus(kind, UNIQUE_POWER)) : UNIQUE_ARMOR_PTS; }
@@ -3567,9 +3727,9 @@ async function openForge(f, slot0, mode){
   const prevW = ego ? null : (f.unique && f.unique.weapon && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null);
   const prevA = ego ? null : (f.unique && f.unique.armor && f.gear.armor && f.gear.armor.unique ? f.gear.armor : null);
   const eL = ego && f.ego.look ? Object.assign({}, f.ego.look) : null;
-  const st = {step: ego || slot0 ? 2 : 1, slot: ego ? f.ego.type : (slot0 || null), view:"combat",
-    w: ego ? (f.ego.type==="weapon" ? eL : null) : prevW ? Object.assign({}, prevW.look) : null,
-    a: ego ? (f.ego.type==="armor" ? eL : null) : prevA ? Object.assign({}, prevA.look) : null,
+  const st = {step: ego || slot0 ? 2 : 1, slot: ego ? egoSlot(f.ego) : (slot0 || null), view:"combat",
+    w: ego ? (egoSlot(f.ego)==="weapon" ? eL : null) : prevW ? Object.assign({}, prevW.look) : null,
+    a: ego ? (egoSlot(f.ego)==="armor" ? eL : null) : prevA ? Object.assign({}, prevA.look) : null,
     name: ego ? f.ego.name : "", alloc: null, special: ego ? f.ego.special || null : null};
   const kindName = () => st.slot==="weapon" ? WEAPON_KINDS[st.w.kind].n : ARMOR_TYPES[st.a.type];
   const defName = () => ego ? f.ego.name : `${f.title||f.name}의 ${kindName()}`;
@@ -3583,9 +3743,9 @@ async function openForge(f, slot0, mode){
   const look = () => { const base = fixerLook(f); if(st.slot==="weapon" && st.w) base.weapon = st.w; if(st.slot==="armor" && st.a) base.armor = st.a; return base; };
   const sw = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-sw">${arr.map(cl=>`<button class="sw ${cur===cl?"on":""}" data-${key}="${cl||"none"}" style="background:${cl||"transparent"}">${cl?"":"✕"}</button>`).join("")}</div></div>`;
   const seg = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-seg">${arr.map((n,i)=>`<button class="${cur===i?"on":""}" data-${key}="${i}">${n}</button>`).join("")}</div></div>`;
-  const statLine = () => { const sp = ego && st.special ? (EGO_SPECIAL[st.slot].find(x=>x.id===st.special)||{}).n : null;
-    const base = ego ? (st.slot==="weapon" ? "E.G.O. 무기(전투력 +8)" : "E.G.O. 방어구(받는 피해 -35%)") : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
-    return [base, ptsText(st.alloc||{}), sp ? `${st.slot==="weapon"?"특수 공격":"특수 방어"} [${sp}]` : ""].filter(Boolean).join(" · "); };
+  const statLine = () => { const sp = ego && st.special ? (egoSpecList(f.ego.type).find(x=>x.id===st.special)||{}).n : null;
+    const base = ego ? ({weapon:"E.G.O. 무기(전투력 +8)", armor:"E.G.O. 의복(받는 피해 -35%)", both:"E.G.O. 일체형(전투력 +6 · 받는 피해 -20%)", tool:"E.G.O. 도구형(전투력 +5 · 정신력 피해 -25% · 체력 피해 -10%)"}[f.ego.type]) : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
+    return [base, ptsText(st.alloc||{}), sp ? `${ego ? egoSpecLabel(f.ego.type) : st.slot==="weapon"?"특수 공격":"특수 방어"} [${sp}]` : ""].filter(Boolean).join(" · "); };
   const steps = ["무기/방어구","종류","생김새","능력","확정"];
   const draw = () => {
     const head = `<div class="fg-steps">${steps.map((n,i)=> ego && i===0 ? "" : `<span class="${st.step===i+1?"on":st.step>i+1?"done":""}">${ego?i:i+1}. ${n}</span>`).join("")}</div>`;
@@ -3594,7 +3754,7 @@ async function openForge(f, slot0, mode){
       <button data-slot="armor"><b>방어구</b><small>${prevA?"지금: "+esc(prevA.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button></div>`;
     const back2 = ego ? "" : `<div class="fg-nav"><button data-fgo="1">이전</button></div>`;
     if(st.step===2){
-      const lead = ego ? `<p class="muted">${esc(f.name)}의 <b>${esc(egoLabel(f.ego))}</b>이(가) 어떤 ${st.slot==="weapon"?"무기":"옷"}의 모습으로 드러날까?</p>` : "";
+      const lead = ego ? `<p class="muted">${esc(f.name)}의 <b>${esc(josa(egoLabel(f.ego),"이","가"))}</b> 어떤 ${({weapon:"무기", armor:"옷", both:"무기(옷은 E.G.O.를 따라 함께 바뀐다)", tool:"도구"})[f.ego.type]||"무기"}의 모습으로 드러날까?</p>` : "";
       if(st.slot==="weapon") return head + lead + `<p class="muted">무기 종류를 고른다. 종류마다 전투 기술이 다르다.</p>
         <div class="fg-kinds">${Object.entries(WEAPON_KINDS).map(([k,K])=>`<button data-kind="${k}" class="${st.w&&st.w.kind===k?"on":""}"><canvas class="wicon" data-ik="${k}"></canvas><b>${K.n}</b><small>${CAT_NAME[K.cat]}</small></button>`).join("")}</div>${back2}`;
       return head + lead + `<p class="muted">방어구 형태를 고른다.</p>
@@ -3617,8 +3777,8 @@ async function openForge(f, slot0, mode){
       syncAlloc(); const B = budget(), left = B - sumPts(st.alloc), cap = Math.min(STAT_CAP, B);
       const rows = ATTRS.map(a=>`<div class="fg-row"><span>${ATTR_NAME[a]}</span><div class="fg-pts"><button data-ad="${a}" data-dv="-5" ${st.alloc[a]<=0?"disabled":""}>−5</button><button data-ad="${a}" data-dv="-1" ${st.alloc[a]<=0?"disabled":""}>−</button>
         <b>+${st.alloc[a]}</b><button data-ad="${a}" data-dv="1" ${left<=0||st.alloc[a]>=cap?"disabled":""}>+</button><button data-ad="${a}" data-dv="5" ${left<=0||st.alloc[a]>=cap?"disabled":""}>+5</button></div></div>`).join("");
-      const spx = ego ? `<h4 style="margin:12px 0 6px">${st.slot==="weapon"?"특수 공격":"특수 방어"} <span class="muted" style="font-weight:400;font-size:12px">하나를 고른다 · 합 전투에서 발동</span></h4>
-        <div class="fg-spec">${EGO_SPECIAL[st.slot].map(x=>`<button data-spec="${x.id}" class="${st.special===x.id?"on":""}"><b>${x.n}</b><small>${x.d}</small></button>`).join("")}</div>` : "";
+      const spx = ego ? `<h4 style="margin:12px 0 6px">${egoSpecLabel(f.ego.type)} <span class="muted" style="font-weight:400;font-size:12px">하나를 고른다 · 합 전투에서 발동</span></h4>
+        <div class="fg-spec">${egoSpecList(f.ego.type).map(x=>`<button data-spec="${x.id}" class="${st.special===x.id?"on":""}"><b>${x.n}</b><small>${x.d}</small></button>`).join("")}</div>` : "";
       return head + `<p class="muted">능력치 점수 <b>${B}</b>점을 나눠 준다. 한 능력치엔 최대 ${cap}점. 남은 점수 <b style="color:${left?"#e0d27f":"#9fe8b0"}">${left}</b>
         ${ego ? "" : st.slot==="weapon" ? "· 기본값은 무기 종류에 맞춘 배분" : `· 피해 감소(체력 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%)는 그대로`}
         <button data-reset="1" style="padding:2px 8px;margin-left:6px">기본값</button></p>
