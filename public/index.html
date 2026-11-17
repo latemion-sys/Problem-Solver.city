@@ -3134,7 +3134,7 @@ async function bloomEgo(f){
   await HeartFx.voice(f.name);
   await HeartFx.bloom(f);
   const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
-  const nm = await promptBox("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 이 E.G.O.에 이름을 지어 준다.<br><span class="muted">비워 두면 "개화 E.G.O::"로만 남는다. 관리에서 나중에 지어 줄 수도 있다.</span>`, "");
+  const nm = await promptBox("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 이 E.G.O.에 이름을 지어 준다.<br><span class="muted">이름은 지금만 지을 수 있다. 비워 두면 "개화 E.G.O::"로만 남고, 나중에 지을 수 없다.</span>`, "");
   const ty = await modal("E.G.O. 형태", `${esc(f.name)}의 E.G.O.는 어떤 형태로 드러나는가?`, [{t:"무기",v:"weapon",primary:p[1]==="weapon"},{t:"의복",v:"armor",primary:p[1]==="armor"},{t:"일체형",v:"both"},{t:"도구형",v:"tool"}], true) || p[1];
   f.ego = {type: ty, name: (nm && nm!=="__c" ? String(nm).trim().replace(/^개화\s*E\.G\.O::\s*/,"") : "").slice(0,20)};
   const type = f.ego.type;
@@ -3382,7 +3382,7 @@ async function openManage(){
       <span>경험</span><b class="muted">근력 ${f.exp.str}/2 · 민첩 ${f.exp.agi}/2 · 재주 ${f.exp.tec}/2 · 의지 ${f.exp.wil}/2</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
-      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoname="1" style="padding:2px 8px">${f.ego.name ? "이름 바꾸기" : "이름 짓기"}</button> <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
       <span>완료 의뢰</span><b>${f.done}건</b>
@@ -3406,8 +3406,6 @@ async function openManage(){
       if(d.mview){ mview = d.mview; box.querySelectorAll("[data-mview]").forEach(x=>x.classList.toggle("on", x.dataset.mview===mview)); return; }
       if(d.forgego && f){ await openForge(f); }
       else if(d.egoforge && f){ await openForge(f, null, "ego"); }
-      else if(d.egoname && f && f.ego){ const nm = await promptBox("E.G.O. 이름", `${esc(f.name)}의 E.G.O. 이름 (개화 E.G.O::이름). 비워 두면 이름 없이 남는다.`, f.ego.name||"");
-        if(nm!==null && nm!=="__c"){ f.ego.name = String(nm||"").trim().replace(/^개화\s*E\.G\.O::\s*/,"").slice(0,20); S.records.push({day:S.day, name:f.name, what:"E.G.O. 이름", note:egoLabel(f.ego)}); } }
       else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.heal && f){
         const hc = healCost(f), isH = d.heal.startsWith("hp"), all = d.heal.endsWith("all");
