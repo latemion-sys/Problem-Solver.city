@@ -196,6 +196,32 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .hv-mrow{display:flex;justify-content:center}.hv-melt{display:block;max-width:92vw;height:auto!important}
 .hv-twist.turning .hv-meltlines{animation:hv-jit .14s steps(2) infinite}
 .hv-shin .hv-meltlines{gap:10px}.hv-ov.hv-shin:not(.hv-gl-on){background:#050302}
+/* 신(心) 발현 */
+.hv-shin-a{background:#040302}
+.hv-shin .hv-center.hv-shin-top{position:absolute;left:50%;top:6%;transform:translateX(-50%);margin:0;z-index:3}
+.hv-breath{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,rgba(60,38,14,.35),rgba(0,0,0,0) 60%);animation:hv-breathe 4.2s ease-in-out infinite}
+@keyframes hv-breathe{0%,100%{opacity:.25}50%{opacity:.8}}
+.hv-shards{position:absolute;inset:0;pointer-events:none}
+.hv-shard{position:absolute;transform:translate(-50%,-50%);white-space:nowrap;font:500 16px "Noto Serif KR",serif;color:#f2e2c4;opacity:0;filter:blur(3px);
+ animation:hv-shard-in 1.2s ease-out var(--d) forwards,hv-drift 6s ease-in-out var(--d) infinite;text-shadow:0 0 10px rgba(255,190,110,.35),0 0 2px rgba(0,0,0,.9)}
+@keyframes hv-shard-in{to{opacity:var(--o,.6);filter:blur(0)}}
+@keyframes hv-drift{0%,100%{margin-top:0}50%{margin-top:-6px}}
+.hv-shard.gone{animation:hv-ash 1.3s ease-in forwards!important}
+@keyframes hv-ash{0%{opacity:var(--o,.6);filter:blur(0);letter-spacing:0}60%{color:#ffb35a;text-shadow:0 0 10px rgba(255,150,60,.8)}100%{opacity:0;filter:blur(6px);letter-spacing:.4em;margin-top:-28px}}
+.hv-shard.hv-heavy{font-size:18px;font-weight:600;color:#f3e2c2;opacity:0;animation:hv-shard-in 1.4s ease-out .4s forwards;--o:1;transition:top 1.6s cubic-bezier(.5,0,.3,1),color 1s,text-shadow 1s,filter 1s,letter-spacing 1.2s}
+.hv-shard.hv-heavy.sink{top:60%!important;color:#fff0d0;text-shadow:0 0 14px rgba(255,190,90,.65),0 0 2px #000}
+.hv-shard.hv-heavy.melt{filter:blur(5px);letter-spacing:.3em;color:#ffb35a}
+.hv-shard.hv-heavy.wish{color:#ffe6a8;text-shadow:0 0 18px rgba(255,200,100,.9),0 0 40px rgba(255,160,60,.4);font-size:20px}
+.hv-wrap{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.hv-band{fill:none;stroke:url(#hvbg);stroke-width:7;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:1000;stroke-dashoffset:1000;animation:hv-band 0.42s linear var(--d) forwards}
+.hv-band.back{stroke-width:5;opacity:.3}
+@keyframes hv-band{to{stroke-dashoffset:0}}
+.hv-lit .hv-band{transition:opacity 1.6s ease 1.2s;opacity:0}
+.hv-mang{fill:none;stroke:#ffd890;stroke-width:2.4;opacity:0;stroke-dasharray:6 3 40 3;transform-box:fill-box;transform-origin:center;animation:hv-mang-in 1s ease-out var(--d) forwards,hv-mang-spin 6s linear var(--d) infinite}
+@keyframes hv-mang-in{0%{opacity:0;transform:scale(.6)}60%{opacity:1}100%{opacity:.9;transform:scale(1)}}
+@keyframes hv-mang-spin{to{stroke-dashoffset:-104}}
+.hv-shin .hv-title.shin .hv-big span{animation-delay:calc(6.2s + var(--i)*.09s)}
+.hv-shin .hv-title.shin .hv-sub{animation-delay:7.4s}.hv-shin .hv-title.shin .hv-rule{animation-delay:7.1s}
 /* 대표 뒤틀림 엔딩 */
 .hv-endlines p.end{margin:10px 0;font-size:clamp(14px,2.2vw,18px);line-height:1.8;color:#e8b0aa;text-shadow:0 0 10px rgba(0,0,0,.95),0 0 3px rgba(0,0,0,.9);animation:hv-line 1.6s ease-out both}
 .hv-endstats{opacity:0;transition:opacity 1s;color:#d8c0bc;min-width:min(90vw,360px)}.hv-endstats.on{opacity:1}
@@ -1063,10 +1089,19 @@ const EGO_MOD = {
   "비관적":["무너질","금 간","빗물 고인"], "오만함":["하늘을 긋는","굽히지 않는","내려다보는"], "소심함":["웅크린","작게 떨리는","숨죽인"], "정의감":["굽지 않는","기울지 않는","곧게 선"],
   "탐욕":["모자란","움켜쥔","끝없이 삼키는"], "다정함":["내민","감싸 안는","따스한"], "무심함":["비어 있는","돌아보지 않는","말 없는"], "광기":["웃는","멈추지 않는","뒤집힌"]
 };
-const EGO_MAT = {str:["쇠","무쇠","납"], agi:["깃털","바람","은"], tec:["톱니","유리","구리"], wil:["밀랍","촛농","재"]};
+/* 재질(24): 도시에서 흔히 마주치는 것들 — 엔케팔린·황금가지(L사), 의체 합금·특이점 강철(날개의 기술), 톱니·태엽(정비·R사),
+   잉크·책장(도서관·검지), 인장 밀랍(검지의 지령), 붉은 실·거미줄(거미의 집), 검은 구름(쿠로쿠모), 탄피(엄지), 담뱃재·성냥불(뒷골목) …
+   가장 많이 쓴 능력치 쪽에서 고른다(6종씩) */
+const EGO_MAT = {
+  str:["녹슨 쇠","특이점 강철","의체 합금","탄피","굳은 피","검은 구름"],
+  agi:["검은 깃털","붉은 실","거미줄","담뱃재","성냥불","새벽빛"],
+  tec:["톱니","태엽","기계 기름","잉크","책장","인장 밀랍"],
+  wil:["엔케팔린","황금가지","밀랍","붕대","핏빛 유리","가시덩굴"]
+};
+/* 사물(44): 무기 24 · 방어구 20. 환상체·E.G.O에서 자주 보이는 일상의 물건이 무기와 옷이 된 모양 */
 const EGO_OBJ = {
-  weapon:{str:["도끼","망치","철퇴","대검"], agi:["화살","칼날","낫","단검"], tec:["바늘","렌치","끌","실타래"], wil:["등불","촛대","횃불","종"]},
-  armor:{str:["방패","성벽","갑주"], agi:["외투","날개","망토"], tec:["갑옷","덧판","톱니 장갑"], wil:["장막","우산","등롱"]}
+  weapon:{str:["망치","철퇴","대검","도끼","쇠사슬","작살"], agi:["단검","낫","화살","갈고리","투창","부채"], tec:["바늘","가위","톱","열쇠","깃펜","석궁"], wil:["등불","촛대","종","횃불","지팡이","회중시계"]},
+  armor:{str:["방패","성벽","갑주","투구","껍데기"], agi:["외투","망토","날개","목도리","면사포"], tec:["가면","장갑","갑각","새장","톱니 흉갑"], wil:["장막","우산","등롱","고치","수의"]}
 };
 function egoNameFor(f, type){
   const mods = EGO_MOD[f.personality] || ["이름 없는"], a = topAttr(f), objs = EGO_OBJ[type][a];
@@ -1080,6 +1115,52 @@ function egoNameFor(f, type){
   return `${pick(mods)} ${pick(objs)}`;
 }
 const egoLabel = e => `개화 E.G.O:: [${e.name}]`;
+/* 마음속에 간직한 것: 뒤틀림은 정신력이 0인 채로 소중한 것을 잃었을 때만 일어난다.
+   해결사는 사람(인간관계) · 동료(사무소의 누군가) · 물건 · 목표 중 하나를, 대표는 개업 때 직접 정한다(정하지 않으면 "소중한 것") */
+const PRECIOUS_POOL = {
+  사람:["여동생","늙은 어머니","옛 스승","뒷골목에서 길러 준 할머니","소꿉친구","약혼자","어린 조카","같은 둥지에서 자란 친구","목숨을 빚진 은인","함께 떠돌던 형"],
+  물건:["아버지의 낡은 회중시계","처음 받은 해결사 자격증","먼저 간 동료의 장갑","귀퉁이가 닳은 가족사진","어머니의 머리핀","첫 의뢰비로 산 만년필","둥지 이주 허가증 사본","부러진 첫 칼날","녹음된 목소리가 든 재생기","손때 묻은 수첩"],
+  목표:["1급 해결사가 되는 것","둥지에 집 한 칸을 얻는 것","잃어버린 동생을 찾는 것","빚 없이 하루를 사는 것","특색 칭호를 받는 것","아무도 잃지 않는 사무소","협회에 들어가는 것","고향 뒷골목으로 돌아가지 않는 것","원수를 찾아내는 것","언젠가 작은 빵집을 여는 것"]
+};
+function rollPrecious(f){
+  const others = S ? S.fixers.filter(x=>x.id!==f.id && !x.isLeader) : [];
+  const r = Math.random();
+  if(r < 0.2 && others.length){ const o = pick(others); return {kind:"동료", text:`동료 ${o.name}`, ref:o.id}; }
+  const kind = r < 0.5 ? "사람" : r < 0.75 ? "물건" : "목표";
+  return {kind, text: pick(PRECIOUS_POOL[kind])};
+}
+const preciousText = f => !f.precious ? "—" : `${f.precious.text}${f.precious.kind==="마음" ? "" : ` (${f.precious.kind})`}${f.precious.lost ? ` — 잃음(${f.precious.lost}일차): ${f.precious.why}` : ""}`;
+// 잃는 순간(동기): 표시만 해 두고, 안내는 flushLoss()가 알맞은 때에 띄운다
+function markLost(f, why){
+  if(!f || !f.precious || f.precious.lost) return;
+  f.precious.lost = S.day; f.precious.why = why;
+  f.mp = Math.max(1, f.mp - Math.round(f.mpMax*0.15));
+  addLog(`${f.name}: 간직하던 것을 잃었다 — ${f.precious.text}`, "omenlog");
+  (S.lossQ = S.lossQ || []).push(f.id);
+}
+async function flushLoss(){
+  if(!S || !S.lossQ || !S.lossQ.length) return;
+  const ids = S.lossQ.splice(0); save();
+  for(const id of ids){ const f = S.fixers.find(x=>x.id===id); if(!f || !f.precious) continue;
+    playFx("뒤틀림", "상실", `${f.name} — ${f.precious.text}`, false);
+    await modal("상실", `${esc(josa(f.name,"이","가"))} 마음속에 간직하던 것을 잃었다.<br><b>${esc(f.precious.text)}</b> — ${esc(f.precious.why)}<br><span class="muted">정신력이 15% 줄었다. 정신력이 바닥나면, 이제 목소리가 들어올 틈이 있다.</span>`, [{t:"확인",primary:true}]);
+  }
+}
+// 의뢰가 남긴 상처로 잃는 것: 물건은 치명상에서, 목표는 실패하며 중상 이상일 때
+function lossFromRequest(f, w, success){
+  if(!f.precious || f.precious.lost) return;
+  const k = f.precious.kind;
+  if(k==="물건" && w>=3 && Math.random()<0.4) markLost(f, "의뢰 중 쓰러졌을 때 어딘가에 떨어뜨렸다. 다시 찾을 수 없었다.");
+  else if(k==="목표" && !success && w>=2 && Math.random()<0.25) markLost(f, "부서진 몸으로 돌아오던 길에, 그것이 이제 닿지 않는 곳에 있다는 걸 알았다.");
+}
+// 하루가 지나며 잃는 것: 사람은 뒷골목의 밤에, 물건·목표는 아주 드물게
+function lossByDay(f){
+  if(!f.precious || f.precious.lost) return;
+  const k = f.precious.kind, r = Math.random();
+  if(k==="사람" && r < 0.015) markLost(f, "어젯밤 뒷골목의 밤이 그 동네를 지나갔다. 소식이 끊겼다.");
+  else if(k==="물건" && r < 0.004) markLost(f, "숙소에 도둑이 들었다. 다른 것은 다 두고 그것만 사라졌다.");
+  else if(k==="목표" && r < 0.004) markLost(f, "어느 아침 문득, 그것이 더는 자신을 붙잡아 주지 않는다는 걸 알았다.");
+}
 const SURNAMES = ["김","이","박","최","정","강","조","윤","장","임","한","오","서","신","권","황","안","송","류","홍"];
 const GIVEN = ["민준","서연","도윤","하은","지호","수아","현우","지민","예준","채원","건우","다인","우진","소율","태오","유나","시우","하린","준서","서윤","은호","나연","재원","가온","도현","이안","세아","한결","무진","단비"];
 const FOREIGN = ["올리비에","레오나르","미셸","카를로","이자벨","마르타","에반","루카","오스카","니나","빅토르","엘리안","줄리아","하인츠","아델","로렌츠","세바스티안","클라라","펠릭스","노아","마야","휴고","레나","라울","에디트","테오","실비아","얀","미라","케이"];
@@ -1273,7 +1354,7 @@ let S = null;
 function newFixer(name, grade, stats, opts={}){
   return Object.assign({
     id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
-    hp:100, hpMax:100, mp:100, mpMax:100, personality: pick(PERSONALITIES)[0], look: randomLook(),
+    hp:100, hpMax:100, mp:100, mpMax:100, personality: pick(PERSONALITIES)[0], look: randomLook(), precious: null,
     gear:{weapon:null,armor:null,acc:null}, ego:null, title:null, cap:70,
     lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0
   }, opts);
@@ -1303,8 +1384,9 @@ function newGame(leaderName, officeName, partnerName, lead){
         fixers:[], requests:[], records:[], log:[], reviewSuccess:0, recruitPool:[], nextId:1,
         todayIncome:0, over:false, inventory:[], paidThisWeek:0 };
   const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, Object.assign({isLeader:true}, lead ? {look: Object.assign({}, lead.look), personality: lead.pers || pick(PERSONALITIES)[0]} : {}));
+  L.precious = lead && lead.precious && lead.precious.text ? {kind: lead.precious.kind || "마음", text: lead.precious.text} : {kind:"마음", text:"소중한 것"};
   const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7});
-  S.fixers.push(L,P);
+  S.fixers.push(L,P); P.precious = rollPrecious(P);
   startDay(true);
   addLog(`${S.officeName}의 문을 열었다. 남은 빚은 ${won(S.debt)}.`);
   save();
@@ -2630,7 +2712,7 @@ async function dispatch(qid, fids){
     const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
     let dH = mental ? 0 : main, dM = mental ? main : 0;
     if(spPct) dM += Math.floor(f.mpMax * spPct/100);
-    f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax);
+    f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax); f._w = w;
     lines.push(`${esc(f.name)}: ${W_NAME[w]} — ${mental?"정신력":"체력"} -${pct}%(${main})${spPct?` · 정신력 -${spPct}%`:""} → 체력 -${dH}, 정신력 -${dM}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
@@ -2658,7 +2740,10 @@ async function dispatch(qid, fids){
   playFx(q.kind, `${q.kind} — ${success?"성공":"실패"}`, `${names} · ${q.client}`, success);
   addLog(`[${q.kind}] ${names}: ${q.text} → ${success?"성공":"실패"}${success?" (+"+won(pay)+")":""}${mode==="play"?" · 직접 수행":hasGame?" · 자동":""}`);
   await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${lines.join("<br>")}</p>`, [{t:"확인",primary:true}]);
+  team.forEach(f=>{ if(S.fixers.includes(f)) lossFromRequest(f, f._w||0, success); });
+  await flushLoss();
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkCollapse(f); }
+  await flushLoss();
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f); }
   if(S && !S.over) team.forEach(f=>{ if(S.fixers.includes(f)) checkOmen(f); });
   if(!S) return;
@@ -2687,8 +2772,14 @@ async function checkCollapse(f){
       removeFixer(f,"사망","정신력 소진으로 사망");
       await modal("사망", `${esc(f.name)}의 정신이 무너졌고, 다시 눈을 뜨지 않았다.`, [{t:"확인"}]);
     } else if(r<75){
-      if(f.isLeader) return twistLeader(f);
-      await twistFixer(f);
+      if(f.precious && f.precious.lost){
+        if(f.isLeader) return twistLeader(f);
+        await twistFixer(f);
+      } else {
+        // 잃은 것이 없으면 목소리가 붙잡을 곳이 없다 — 쓰러질 뿐
+        f.mp = Math.round(f.mpMax*0.15); f.unavailUntil = S.day+1;
+        await modal("기절", `${esc(f.name)}의 귓가에 다정한 목소리가 맴돌았다. 하지만 ${esc(josa(f.name,"은","는"))} 아직 ${esc(josa(f.precious ? f.precious.text : "간직한 것","을","를"))} 붙들고 있었다.<br>정신을 잃고 쓰러졌다. 다음 날 출동할 수 없다.`, [{t:"확인"}]);
+      }
     } else {
       await bloomEgo(f);
     }
@@ -2825,26 +2916,73 @@ const HeartFx = (()=>{
       });
     });
   }
-  /* 신(心): 죄를 돌아보는 문장들이 햇살처럼 녹아들고 → 소망이 된 말들이 가슴으로 모여 금빛 기운으로 몸에 감긴다 → 신(心) 발현 */
-  function shin(f, lines, words){
+  /* 신(心) 발현 — 레퍼런스(림버스 컴퍼니의 신(心)·망(望)): 숨을 죽이고 마음을 비운 뒤, 기억 가운데 가장 무겁고 빽빽한 것을 골라
+     그 감정으로 몸을 채우면 금빛 불길 같은 기운이 몸을 감싸고, 따스한 빛의 고리(망)가 맺힌다.
+     ① 숨을 죽임: 화면이 숨 쉬듯 어두워지고 첫 문장이 녹아든다
+     ② 기억을 고름: 행적의 조각들이 떠다니다 가벼운 것부터 재처럼 흩어지고, 가장 무거운 하나(죄)만 가운데로 가라앉아 남는다
+     ③ 죄 → 소망: 남은 조각이 녹아 소망의 글귀로 다시 맺힌다
+     ④ 감음: 소망이 금빛 붕대가 되어 손목에서 가슴까지 감겨 들고, 심장이 뛰며 기운에 불이 붙는다
+     ⑤ 발현: 망(望) 고리가 등급만큼 맺히고 "신(心) - 이름" */
+  function shin(f, lines, shards, d, nMang){
     return new Promise(res=>{
       const o = open("shin");
-      o.innerHTML = `<div class="hv-center"><div class="hv-lines hv-meltlines"></div></div><div class="hv-skip">화면을 누르면 건너뜁니다</div>`;
-      const box = o.querySelector(".hv-meltlines"), gap = 2300;
-      lines.forEach((t,i)=>at(500 + i*gap, ()=>{ const m = melt(t, {size:19, dur:2000, color:[246,232,206], edge:[255,196,96]}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); }));
+      o.classList.add("hv-shin-a");
+      o.innerHTML = `<div class="hv-breath" aria-hidden="true"></div><div class="hv-shards" aria-hidden="true"></div>
+        <div class="hv-center hv-shin-top"><div class="hv-lines hv-meltlines"></div></div><div class="hv-skip">화면을 누르면 다음으로</div>`;
+      const box = o.querySelector(".hv-meltlines"), sh = o.querySelector(".hv-shards");
+      const say = (t, i) => { box.innerHTML = ""; const m = melt(t, {size:19, dur:2000, color:[246,232,206], edge:[255,196,96]}); const dv = document.createElement("div"); dv.className = "hv-mrow"; dv.appendChild(m.el); box.appendChild(dv); };
+      // ① 숨을 죽임
+      at(300, ()=>say(lines[0]));
+      // ② 기억 조각
+      const heavy = d.sin, list = shards.slice(0,7);
+      at(3400, ()=>{
+        say(lines[1]);
+        let html = "";
+        list.forEach((t,i)=>{ const a = (i/list.length)*Math.PI*2 + .4, rx = 34 + R(i*3.3)*8, ry = 22 + R(i*5.1)*7;
+          html += `<span class="hv-shard" style="left:${(50+Math.cos(a)*rx).toFixed(1)}%;top:${(54+Math.sin(a)*ry).toFixed(1)}%;--d:${(i*.18).toFixed(2)}s;--o:${(.6+R(i)*.3).toFixed(2)}">${esc(t)}</span>`; });
+        html += `<span class="hv-shard hv-heavy" style="left:50%;top:40%">${esc(heavy)}</span>`;
+        sh.innerHTML = html;
+      });
+      at(6400, ()=>sh.querySelectorAll(".hv-shard:not(.hv-heavy)").forEach((el,i)=>setTimeout(()=>el.classList.add("gone"), i*240)));
+      at(7400, ()=>sh.querySelector(".hv-heavy").classList.add("sink"));
+      // ③ 죄 → 소망
+      at(9200, ()=>{ say(lines[2]); const hv = sh.querySelector(".hv-heavy"); hv.classList.add("melt");
+        setTimeout(()=>{ hv.textContent = `“${d.wish}”`; hv.classList.remove("melt"); hv.classList.add("wish"); }, 1400); });
       let phase2 = false;
       const go2 = ()=>{ if(phase2) return; phase2 = true; timers.forEach(clearTimeout); timers = [];
-        const o2 = open("shin"), R0 = Math.min(innerWidth, innerHeight)*0.34; let ws = "";
-        words.slice(0,7).forEach((w,i)=>{ const a = -Math.PI/2 + (i-(Math.min(7,words.length)-1)/2)*0.62 + (R(i)-.5)*.2, x = Math.cos(a)*R0*1.25, y = Math.sin(a)*R0*0.85;
-          ws += `<span class="hv-word" style="left:calc(50% + ${x.toFixed(0)}px);top:calc(40% + ${y.toFixed(0)}px);--tx:${(-x).toFixed(0)}px;--ty:${(-y).toFixed(0)}px;--d:${(.35+i*.22).toFixed(2)}s">${esc(w)}</span>`; });
-        o2.innerHTML = `<div class="hv-words" aria-hidden="true">${ws}</div><div class="hv-title shin"><div class="hv-big">${[..."신(心)"].map((ch,i)=>`<span style="--i:${i}">${esc(ch)}</span>`).join("")}</div><div class="hv-rule"></div><div class="hv-sub">${esc(f.name)} · 발현</div></div>`;
-        glLayer(o2, "shin", {a:2.6, b:3.0, seed:7});
-        at(2600, ()=>shake(o2, "hv-shake", 380)); at(3020, ()=>shake(o2, "hv-shake", 380));
+        // ④ 감음 · ⑤ 발현
+        // 붕대: 오른 손목 → 팔뚝을 감아 오르며 어깨 → 가슴을 비스듬히 두 바퀴. 반 바퀴마다 앞(밝게)·뒤(흐리게)를 번갈아 그린다
+        const o2 = open("shin"), W = innerWidth, H = innerHeight, cx = W/2, X = px => cx + px*H, Y = py => H*(0.5 - py);
+        const wr = [0.104, 0.005], so = [0.082, 0.168], halves = [];
+        const ARM = 7, CH = 4;   // 팔 3.5바퀴, 가슴 2바퀴
+        for(let k=0;k<ARM;k++){ const pts = []; for(let j=0;j<=12;j++){ const t = (k + j/12)/ARM, ang = (k + j/12)*Math.PI, r = 0.027*(1 - t*0.15) + 0.003*Math.sin(k*1.7);
+            const ax = wr[0] + (so[0]-wr[0])*t, ay = wr[1] + (so[1]-wr[1])*t; pts.push([X(ax + Math.sin(ang)*r), Y(ay + Math.cos(ang)*r*0.3 + Math.sin(ang)*0.004)]); }
+          halves.push([pts, k%2===0]); }
+        for(let k=0;k<CH;k++){ const pts = []; for(let j=0;j<=18;j++){ const t = (k + j/18)/CH, ang = Math.PI/2 + (k + j/18)*Math.PI, r = 0.097 - 0.008*t;
+            const cy = 0.155 + 0.03*Math.sin(ang*0.5) - 0.025*t; pts.push([X(Math.sin(ang)*r), Y(cy + Math.cos(ang)*r*0.22 - Math.sin(ang)*0.022)]); }
+          halves.push([pts, k%2===1]); }
+        let segs = "";
+        halves.forEach(([pts, front], i)=>{ const dd = pts.map((q,j)=>(j?"L":"M") + q[0].toFixed(1) + " " + q[1].toFixed(1)).join("");
+          segs += `<path class="hv-band ${front?"front":"back"}" d="${dd}" style="--d:${(0.3 + i*0.2).toFixed(2)}s"/>`; });
+        let rings = ""; for(let i=0;i<nMang;i++){ const ry = H*(0.06 + i*0.018), rx = H*(0.2 + i*0.05);
+          rings += `<ellipse class="hv-mang" cx="${cx}" cy="${H*0.40 - i*H*0.03}" rx="${rx.toFixed(0)}" ry="${ry.toFixed(0)}" style="--d:${(5.2 + i*0.55).toFixed(2)}s"/>`; }
+        const title = shinLabel(f.shin);
+        o2.innerHTML = `<svg class="hv-wrap" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="hvbg" x1="0" x2="1"><stop offset="0" stop-color="#ffcf78"/><stop offset=".5" stop-color="#fff2cf"/><stop offset="1" stop-color="#e89a3c"/></linearGradient>
+          <filter id="hvgl" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+          <g filter="url(#hvgl)">${segs}</g><g class="hv-mangs" filter="url(#hvgl)">${rings}</g></svg>
+          <div class="hv-center hv-shin-top"><div class="hv-lines hv-meltlines"></div></div>
+          <div class="hv-title shin"><div class="hv-big">${[...title].map((ch,i)=>`<span style="--i:${i}">${ch===" "?"&nbsp;":esc(ch)}</span>`).join("")}</div><div class="hv-rule"></div><div class="hv-sub">“${esc(d.wish)}” · 망(望) ${nMang}</div></div>`;
+        const b2 = o2.querySelector(".hv-meltlines"), m = melt(lines[3], {size:19, dur:2000, color:[246,232,206], edge:[255,196,96]}); const dv = document.createElement("div"); dv.className = "hv-mrow"; dv.appendChild(m.el); b2.appendChild(dv);
+        glLayer(o2, "shin", {a:2.7, b:3.1, seed:7});
+        at(2700, ()=>shake(o2, "hv-shake", 380)); at(3120, ()=>shake(o2, "hv-shake", 380));
+        at(3200, ()=>o2.classList.add("hv-lit"));
         let done = false; const finish = () => { if(done) return; done = true; fadeOut(res); };
-        o2.addEventListener("click", finish); at(8600, finish);
+        o2.addEventListener("click", finish); at(10200, finish);
       };
-      at(500 + lines.length*gap + 800, go2);
-      o.addEventListener("click", go2);
+      at(13600, go2);
+      o.addEventListener("click", ()=>{ // 단계별 넘기기: 처음 누르면 ③까지 당기고, 한 번 더 누르면 ④로
+        if(!o.dataset.skip){ o.dataset.skip = "1"; timers.forEach(clearTimeout); timers = []; sh.innerHTML = `<span class="hv-shard hv-heavy sink wish" style="left:50%;top:40%">“${esc(d.wish)}”</span>`; say(lines[2]); at(2600, go2); }
+        else go2(); });
     });
   }
   // 대표가 뒤틀렸을 때의 엔딩: 같은 화면 위에서 문장이 차례로 내려앉고, 처음으로 돌아간다
@@ -2859,10 +2997,12 @@ const HeartFx = (()=>{
       at(tEnd + 900, ()=>c.querySelector(".hv-actions").classList.add("on"));
       o.addEventListener("click", e=>{ if(e.target.closest("[data-end]")) fadeOut(res); });
     });
-  }
-  // 미리 데우기: 처음 열 때 셰이더 컴파일로 화면이 멈칫하지 않도록, 게임을 연 뒤 한가할 때 작은 캔버스에서 한 번씩 컴파일해 둔다(브라우저가 컴파일 결과를 재사용)
+  }  // 미리 데우기: 처음 열 때 셰이더 컴파일로 화면이 멈칫하지 않도록, 게임을 연 뒤 한가할 때 작은 캔버스에서 한 번씩 컴파일해 둔다(브라우저가 컴파일 결과를 재사용)
   function warm(){
     if(!window.HeartGL || !HeartGL.supported()) return;
+    // 소프트웨어 렌더러(GPU 없음)에서는 컴파일 자체가 오래 걸려 오히려 게임이 멈칫한다 — 이때는 건너뛴다
+    try{ const g = document.createElement("canvas").getContext("webgl2"), ext = g && g.getExtension("WEBGL_debug_renderer_info");
+      const rn = ext ? String(g.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : ""; if(/swiftshader|llvmpipe|software/i.test(rn)) return; }catch(e){ return; }
     const kinds = ["voice","bloom","twist","shin"]; let i = 0;
     const next = () => { if(i >= kinds.length) return; const k = kinds[i++];
       try{ const c = document.createElement("canvas"); c.width = c.height = 4; c.style.cssText = "position:fixed;left:-9px;top:-9px;width:4px;height:4px"; document.body.appendChild(c);
@@ -2918,28 +3058,48 @@ const SHIN = {
   "무심함":{sin:"돌아보지 않음으로써 많은 것을 버려 두었다", img:"빈 액자의 먼지", wish:"단 하나라도 마음에 들여놓기를", words:["빈 액자","먼지","마음에"]},
   "광기":{sin:"웃음으로 남의 비명을 덮었다", img:"헛돌던 톱니", wish:"미쳐 있더라도 곁의 사람을 알아보기를", words:["톱니","웃음","알아보기를"]}
 };
+/* 이름: 신(心)은 대개 자기 이름을 갖는다(신(心) - 서연). 드물게(20%) 이름 대신 그가 짊어진 것이 이름이 된다 — 불명예 · 운명처럼 */
+const SHIN_EXC = {"공격적":"분노","신중함":"숙고","헌신":"대리","냉소":"운명","충동적":"불씨","침착함":"정적","집요함":"집념","낙천적":"여명",
+  "비관적":"낙화","오만함":"왕관","소심함":"그늘","정의감":"심판","탐욕":"불명예","다정함":"온기","무심함":"공백","광기":"광대"};
+function givenName(nm){ for(const sn of SURNAMES.slice().sort((a,b)=>b.length-a.length)) if(nm.startsWith(sn) && nm.length > sn.length && nm.length <= sn.length+2) return nm.slice(sn.length); return nm; }
+const shinLabel = sh => `신(心) - ${sh.name}`;
+// 기억 조각: 이 해결사의 행적(기록 · 일지)에서 몇 장, 간직한 것, 그리고 죄의 말들
+function memoryShards(f, d){
+  const plain = t => String(t).replace(/<[^>]*>/g,"").replace(/\s+/g," ").trim();
+  const logs = (S.log||[]).filter(l=>l.t && l.t.includes(f.name)).slice(0,8).map(l=>`${l.d}일차 · ${plain(l.t).replace(f.name+": ","").replace(/^\[[^\]]+\]\s*/,"")}`);
+  const recs = (S.records||[]).filter(r=>r.name===f.name).slice(-3).map(r=>`${r.day}일차 · ${r.what}`);
+  const out = [...new Set(recs.concat(logs))].map(t=>t.length>22 ? t.slice(0,21)+"…" : t).slice(0,5);
+  if(f.precious) out.push(f.precious.text);
+  const fill = ["첫 의뢰비","비 오는 뒷골목","흉터의 방문","식은 도시락","피 묻은 장갑","이름 모를 의뢰인"];
+  while(out.length < 5) out.push(fill[out.length % fill.length]);
+  return out.concat(d.words.slice(0,2));
+}
+/* 문장(레퍼런스: 숨을 죽이고 마음을 비운 뒤, 기억 가운데 가장 무겁고 빽빽한 것을 골라 그 감정으로 몸을 채운다 → 금빛 기운 · 망(望)) */
 function shinLines(f, d){
   const nm = josa(f.name, "은", "는");
-  return [`${nm} 오래 눌러 두었던 것을 꺼내 들여다보았다. ${d.sin}.`,
-          `죄는 ${d.img}처럼 거기 있었다. 씻어 낼 수도, 두고 갈 수도 없는 것이었다.`,
-          `그래서 ${f.name}은(는) 그것을 한 줄의 바람으로 엮었다 — “${d.wish}”.`.replace(`${f.name}은(는)`, nm),
-          `바람은 붕대처럼 손목에서 어깨로, 어깨에서 가슴으로 감겨 들었다. 그 아래에서 무언가가 다시 뛰기 시작했다.`];
+  return [`숨을 죽인다. 마음을 비운다. 사무소의 소음도, 빚 독촉 소리도 한 겹씩 멀어진다.`,
+          `기억을 한 장씩 넘긴다. 가벼운 것들은 흩어지게 둔다. 끝까지 가라앉지 않는 것 — 가장 무겁고 빽빽한 하나만 손에 남는다.`,
+          `${d.sin}. 죄는 씻기지 않는다. 그러니 ${nm} 그것을 꼬고 엮어 한 줄의 소망으로 짓는다 — “${d.wish}”.`,
+          `엮은 소망을 붕대처럼 손목부터 감는다. 어깨를 지나 가슴께에 닿자, 꺼져 가던 심장이 그 아래서 다시 뛴다.`];
 }
+const MANG_N = f => f.grade<=0 ? 3 : f.grade===1 ? 2 : 1;
 async function awakenShin(f){
   const d = SHIN[f.personality] || SHIN["침착함"];
-  f.shin = {sin: d.sin, wish: d.wish, day: S.day};
+  const name = Math.random() < 0.2 ? (SHIN_EXC[f.personality] || "운명") : givenName(f.name);
+  f.shin = {name, sin: d.sin, wish: d.wish, day: S.day};
   f.mp = Math.max(f.mp, Math.round(f.mpMax*0.6));
   save();
-  await HeartFx.shin(f, shinLines(f, d), d.words.concat([d.wish]));
+  await HeartFx.shin(f, shinLines(f, d), memoryShards(f, d), d, MANG_N(f));
   HeartFx.clear();
-  S.records.push({day:S.day, name:f.name, what:"신(心) 발현", note:`소망: ${d.wish}`}); addLog(`${f.name}: 신(心)을 깨우쳤다 — “${d.wish}”`);
+  S.records.push({day:S.day, name:f.name, what:"신(心) 발현", note:`${shinLabel(f.shin)} — 소망: ${d.wish}`}); addLog(`${f.name}: ${shinLabel(f.shin)}을(를) 깨우쳤다 — “${d.wish}”`);
   save(); render();
-  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 제 죄를 소망으로 엮어 몸에 감았다.<br><b>“${esc(d.wish)}”</b><br><span class="muted">정신력이 60%까지 돌아왔다. 이후 전투력 +4, 받는 정신력 피해 -15%.</span>`, [{t:"확인",primary:true}]);
+  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 제 죄를 소망으로 엮어 몸에 감았다.<br><b style="color:#ffd27a">${esc(shinLabel(f.shin))}</b><br>“${esc(d.wish)}”<br><span class="muted">정신력이 60%까지 돌아왔다. 이후 전투력 +4, 받는 정신력 피해 -15%. 망(望) ${MANG_N(f)}개.</span>`, [{t:"확인",primary:true}]);
 }
-// 깨우칠 수 있는 때: 2급 이상 · 정신력 30% 미만(0 초과) · 아직 신이 없음 — 하루 한 번, 60% 확률로 깨우친다
+// 깨우칠 수 있는 때: 2급 이상 · 정신력 30% 미만(0 초과) · 아직 신이 없음 — 조건을 모두 갖춘 날에만, 하루 한 번 15%
+const shinReady = f => !!(S && f && !f.shin && f.grade <= 2 && f.mp > 0 && f.mp/Math.max(1,f.mpMax) < 0.3);
 async function checkShin(f){
-  if(!S || !f || f.shin || f.grade > 2 || f.mp<=0 || f.mp/Math.max(1,f.mpMax) >= 0.3 || f.shinTry===S.day) return false;
-  f.shinTry = S.day; if(Math.random() >= 0.6) return false;
+  if(!shinReady(f) || f.shinTry===S.day) return false;
+  f.shinTry = S.day; if(Math.random() >= 0.15) return false;
   await awakenShin(f); return true;
 }
 let omenQ = Promise.resolve();
@@ -2957,7 +3117,7 @@ function showOmen(name, line, tone){
   return omenQ;
 }
 function checkOmen(f){
-  if(!S || !f || f.isLeader || f.ego || f.mp<=0 || f.mp/Math.max(1,f.mpMax) > 0.3 || f.omenDay===S.day) return;
+  if(!S || !f || f.isLeader || f.ego || !f.precious || !f.precious.lost || f.mp<=0 || f.mp/Math.max(1,f.mpMax) > 0.3 || f.omenDay===S.day) return;
   f.omenDay = S.day;
   const tone = Math.random()<0.5 ? "vermil" : "moon", line = pick(OMEN[tone]);
   addLog(`${f.name}: “${line}”`, "omenlog");
@@ -3007,6 +3167,8 @@ async function bloomEgo(f){
 }
 function removeFixer(f, what, note){
   S.fixers = S.fixers.filter(x=>x.id!==f.id);
+  if(what==="사망" || what==="뒤틀림" || what==="해고" || what==="이탈") S.fixers.forEach(x=>{ if(x.precious && x.precious.kind==="동료" && x.precious.ref===f.id) markLost(x, what==="뒤틀림" ? `${josa(f.name,"은","는")} 목소리를 따라갔다.` : what==="사망" ? `${josa(f.name,"이","가")} 돌아오지 못했다.` : `${josa(f.name,"이","가")} 사무소를 떠났다.`); });
+  if(what==="사망" || what==="뒤틀림") S.fixers.forEach(x=>{ if(x.isLeader && x.precious && x.precious.kind==="마음") markLost(x, `${josa(f.name,"을","를")} 잃었다. 간직하던 것은 결국 사무소의 사람들이었다.`); });
   S.records.push({day:S.day, name:f.name, what, note:`${gName(f.grade)} · ${note}`});
   addLog(`${f.name}: ${note}`);
 }
@@ -3068,7 +3230,9 @@ async function endDayInner(reason){
   startDay(false);
   save(); render();
   playFx("아침", `${S.day}일차`, `의뢰 ${S.requests.length}건이 게시판에 올라왔다.`, true);
-  S.fixers.forEach(checkOmen);
+  S.fixers.forEach(lossByDay); await flushLoss();
+  for(const f of S.fixers.slice()){ if(!S || S.over) break; await checkShin(f); }
+  if(S && !S.over) S.fixers.forEach(checkOmen);
 }
 async function weekly(){
   await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
@@ -3191,12 +3355,13 @@ function genRecruits(){
     const f = newFixer(randomName(), g, genStats(g));
     f.hpMax = f.mpMax = 100 + (9-g)*10; f.hp=f.hpMax; f.mp=f.mpMax;
     f.cost = Math.round(HIRE_COST[g]*(0.9+Math.random()*0.2)/100)*100;
+    f.precious = rollPrecious(f);
     S.recruitPool.push(f);
   }
 }
 async function openRecruit(){
   const draw = () => S.recruitPool.length ? S.recruitPool.map(f=>`<div class="item"><div><b>${esc(f.name)}</b> <span class="badge">${gName(f.grade)}</span> <span class="badge">${f.personality}</span>
-    <div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">${esc(hairText(f.look||{}))} · ${esc(eyeText(f.look||{}))}</div><div class="d">고용비 ${won(f.cost)}</div></div>
+    <div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">${esc(hairText(f.look||{}))} · ${esc(eyeText(f.look||{}))}</div><div class="d">간직한 것: ${esc(f.precious ? f.precious.text : "—")}</div><div class="d">고용비 ${won(f.cost)}</div></div>
     <button class="primary" data-hire="${f.id}" ${S.money<f.cost||S.fixers.length>=10?"disabled":""}>고용</button></div>`).join("") : `<p class="muted">오늘은 더 이상 찾아온 해결사가 없다. 명단은 매일 아침 바뀐다.</p>`;
   await modal("영입", `<p class="muted">${gName(S.officeGrade)} 사무소 · 최대 ${gName(Math.max(2,S.officeGrade-1))}까지 찾아온다. 1급과 특색은 영입으로 오지 않는다. 소속 ${S.fixers.length}/10명.</p><div class="list" id="rlist">${draw()}</div>`, [{t:"닫기"}], false, root=>{
     root.addEventListener("click", async e=>{
@@ -3229,9 +3394,10 @@ async function openManage(){
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} <button data-rename="1" style="padding:2px 8px">이름 변경</button></b>
       <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
       <span>성격</span><b>${f.personality}</b>
+      <span>간직한 것</span><b style="${f.precious&&f.precious.lost?"color:#e7a07c":""}">${esc(preciousText(f))}</b>
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
-      ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">“${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">— 돌아본 죄: ${esc(f.shin.sin)} · 전투력 +4 · 정신력 피해 -15%</span></b>`:""}
+      ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">${esc(shinLabel(f.shin.name ? f.shin : Object.assign({name:givenName(f.name)}, f.shin)))} — “${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">· 돌아본 죄: ${esc(f.shin.sin)} · 전투력 +4 · 정신력 피해 -15% · 망(望) ${MANG_N(f)}</span></b>`:""}
       <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)}${f.grade>=2?" / 다음 승급 "+PROMO[f.grade]:""})</b>
       <span>경험</span><b class="muted">근력 ${f.exp.str}/2 · 민첩 ${f.exp.agi}/2 · 재주 ${f.exp.tec}/2 · 의지 ${f.exp.wil}/2</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
@@ -3530,7 +3696,7 @@ async function openRecords(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); }); return d; } }catch(_){} return null; }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); }); return d; } }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
@@ -3603,7 +3769,7 @@ function render(){
     const st = f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? "오늘 출동함" : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     return `<div class="fx"><div class="n"><b>${esc(f.name)}${f.isLeader?" ★":""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
-      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${f.shin?`<div class="title">신(心) · ${esc(f.shin.wish)}</div>`:""}
+      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
@@ -3713,6 +3879,9 @@ function renderStart(){
         <div class="field"><label>사무소 이름</label><input id="s2" maxlength="20" value="${esc(randomOffice())}"><button data-r="s2">랜덤</button></div>
         <div class="field"><label>동료 이름</label><input id="s3" maxlength="16" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
         <h4 class="np-sub">대표의 생김새와 성격</h4><div id="lkbox">${lookFields(NEWLEAD.look, NEWLEAD.pers)}</div>
+        <h4 class="np-sub">마음속에 간직한 것 <span class="muted" style="font-weight:400;font-size:11px">— 이것을 잃은 채 정신력이 바닥나면 목소리가 들어온다</span></h4>
+        <div class="field"><label>종류</label><select id="pk"><option value="마음">정하지 않음</option><option>사람</option><option>물건</option><option>목표</option></select></div>
+        <div class="field"><label>무엇을</label><input id="pt" maxlength="24" placeholder="비워 두면 &quot;소중한 것&quot;"><button data-r="pt">예시</button></div>
         ${hasSave?`<p class="warn">새로 개업하면 지금 진행 중인 사무소 기록은 사라진다.</p>`:""}
       </div>
       <div class="np-f"><button data-t="back">돌아가기</button><button class="primary" data-t="go">사무소 열기</button></div>
@@ -3724,6 +3893,7 @@ function renderStart(){
   bindLook(ts.querySelector("#lkbox"), NEWLEAD.look, NEWLEAD);
   ts.onclick = async e=>{
     const t = e.target.dataset.t, r = e.target.dataset.r;
+    if(r==="pt"){ const k = ts.querySelector("#pk").value, kk = k==="마음" ? pick(["사람","물건","목표"]) : k; ts.querySelector("#pk").value = kk; ts.querySelector("#pt").value = pick(PRECIOUS_POOL[kk]); return; }
     if(r){ ts.querySelector("#"+r).value = r==="s2"?randomOffice():randomName(); return; }
     if(t==="ach") return openAchievements();
     if(t==="cont"){ S = load(); leaveTitle(); render(); spawnRumors(); playFx("아침", `${S.day}일차`, "사무소에 돌아왔다.", true); return; }
@@ -3736,6 +3906,8 @@ function renderStart(){
       const skip = ts.querySelector("#skip"); skip.hidden=false;
       clearSave();
       await Title.opening(b, a, c, skip);
+      const pk = ts.querySelector("#pk").value, pt = ts.querySelector("#pt").value.trim();
+      NEWLEAD.precious = pt ? {kind: pk==="마음" ? "마음" : pk, text: pt} : null;
       newGame(a, b, c, NEWLEAD);
       leaveTitle(); render();
       playFx("아침", "1일차", `${S.officeName}의 첫날. 의뢰 ${S.requests.length}건.`, true);
