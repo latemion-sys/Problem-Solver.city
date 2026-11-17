@@ -2727,7 +2727,7 @@ async function dispatch(qid, fids){
     lines.push(`보수 +${won(pay)}`);
     if(q.grade===S.officeGrade) S.reviewSuccess++;
     team.forEach(f=>{
-      f.done++; f.hist = f.hist || {}; const dk = deedKey(q); f.hist[dk] = (f.hist[dk]||0) + 1;
+      f.done++;
       if(q.grade===0 && f.grade===1) f.starCleared = true;
       // 경험: 관련 능력치 +1, 2회마다 능력치 +1, 상위 등급 의뢰는 2배
       const gain = (q.grade < f.grade || (q.grade===0 && f.grade>0)) ? 2 : 1;
