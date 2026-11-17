@@ -30,6 +30,9 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .stage .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;pointer-events:none;text-shadow:0 0 12px #000,0 0 4px #000}
 .stage .cap .t{font-size:20px;font-weight:700;letter-spacing:.05em}
 .stage .cap .s{font-size:13px;color:#d6cfc2}
+.stage .cap.log .t{font-size:15px;font-weight:600;letter-spacing:.04em;font-family:ui-monospace,"D2Coding",Consolas,monospace;animation:cap-log 5.5s ease forwards}
+.stage .cap.log .s{font-size:12px;animation:cap-log 5.5s ease forwards}
+@keyframes cap-log{0%{opacity:0;transform:translateY(4px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:.0}}
 .stage{cursor:default}
 .fxtest{position:fixed;right:10px;bottom:10px;z-index:60;background:rgba(15,14,18,.95);border:1px solid var(--accent);border-radius:8px;padding:10px;width:250px;font-size:12px}
 .fxtest h4{margin:0 0 6px}.fxtest .g{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.fxtest button{padding:4px 7px;font-size:12px}
@@ -1568,7 +1571,7 @@ function genStats(grade){
 function newGame(leaderName, officeName, partnerName, lead){
   S = { v:VERSION, day:1, money:20000, debt:START_DEBT, scars:0, officeName, officeGrade:8,
         fixers:[], requests:[], records:[], log:[], reviewSuccess:0, recruitPool:[], nextId:1,
-        todayIncome:0, over:false, inventory:[], paidThisWeek:0 };
+        todayIncome:0, over:false, inventory:[], paidThisWeek:0, weather: rollWeather() };
   const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, Object.assign({isLeader:true}, lead ? {look: Object.assign({}, lead.look), personality: lead.pers || pick(PERSONALITIES)[0]} : {}));
   L.precious = lead && lead.precious && lead.precious.text ? {kind: lead.precious.kind || "마음", text: lead.precious.text} : {kind:"마음", text:"소중한 것"};
   const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7});
@@ -3280,8 +3283,7 @@ async function dispatch(qid, fids){
     lines.push(q.kind==="뒤틀림 토벌" ? "토벌에 실패했다. 뒤틀림은 아직 남아 있다." : "의뢰는 다른 곳으로 넘어갔다.");
     if(q.kind==="특색 심사"){ team[0].unavailUntil = S.day+2; lines.push("심사 실패. 2일간 출동할 수 없다."); }
   }
-  await playScene(q.kind, {attr:q.attrs[0], success, team:team.map(f=>f.name), lead:leadGear(team[0]), client:q.client, grade:q.grade, risk:q.risk, hazard:q.hazard});
-  playFx(q.kind, `${q.kind} — ${success?"성공":"실패"}`, `${names} · ${q.client}`, success);
+  stageLog(`[${q.kind} 의뢰 ${success?"성공":"실패"}]`, `${names} · ${q.client}`, success);
   addLog(`[${q.kind}] ${names}: ${q.text} → ${success?"성공":"실패"}${success?" (+"+won(pay)+")":""}${mode==="play"?" · 직접 수행":hasGame?" · 자동":""}`);
   await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${lines.join("<br>")}</p>`, [{t:"확인",primary:true}]);
   team.forEach(f=>{ const L = f.life = f.life || {}, inc = k => L[k] = (L[k]||0) + 1;
@@ -3863,10 +3865,10 @@ async function endDayInner(reason){
   if(ended%14===0) await review();
   if(ended%7===0 && S.debt>0) { await scarVisit(); if(!S||S.over) return; }
   if(ended%7===0) await weekly();
-  S.day++;
+  S.day++; S.weather = rollWeather();
   startDay(false);
   save(); render();
-  playFx("아침", `${S.day}일차`, `의뢰 ${S.requests.length}건이 게시판에 올라왔다.`, true);
+  playFx("아침", `${S.day}일차 · ${weatherText(S.weather)}`, `의뢰 ${S.requests.length}건이 게시판에 올라왔다.`, true);
   S.fixers.forEach(lossByDay); await flushLoss();
   for(const f of S.fixers.slice()){ if(!S || S.over) break; await checkShin(f); }
   if(S && !S.over) S.fixers.forEach(checkOmen);
@@ -4518,7 +4520,7 @@ async function openRecords(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); return d; }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); return d; }
 const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나무"],["랑가 공방","랑아 공방"],["클라우드 공방","구름 공방"],["아틀리에 로직","로직 아틀리에"]];
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); } }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
@@ -4563,7 +4565,7 @@ function render(){
   const nextVisit = 7 - ((S.day-1)%7);
   app.querySelector(".topbar").innerHTML = `
     <span class="office">${esc(S.officeName)} <span class="badge">${gName(S.officeGrade)} 사무소</span></span>
-    <span class="stat">${S.day}일차</span>
+    <span class="stat">${S.day}일차${S.weather ? ` · ${weatherText(S.weather)}` : ""}</span>
     <span class="stat">자금 <b>${won(S.money)}</b></span>
     <span class="stat">남은 빚 <b>${won(S.debt)}</b></span>
     <span class="stat">${S.debt>0?`흉터 방문 <b>${nextVisit-1===0?"오늘 밤":(nextVisit-1)+"일 뒤"}</b>`:"<b style='color:var(--accent)'>빚 청산</b>"}</span>
@@ -4982,17 +4984,59 @@ function buildSky(){
       skyline.push({x,w,h,layer:li,depth,wins}); x+=w+Math.random()*6*devicePixelRatio; }
   });
 }
+/* 결과 한 줄: 상단 칸에 로그처럼 문장만 띄운다(빛무리·어두워짐 없이) */
+function stageLog(title, sub, good){
+  fx = {t:0, kind:"", good:true, color:"#c9a86a"};
+  const t=document.getElementById("capt"), s=document.getElementById("caps");
+  if(t){ t.textContent = title; t.style.color = good ? "#cfe3c4" : "#e7a99a"; s.textContent = sub||""; const cap = t.parentNode; cap.classList.remove("log"); void cap.offsetWidth; cap.classList.add("log"); }
+}
+/* 날씨: 매 일차 바뀐다. 시간(낮·밤) × 하늘(맑음 · 흐림 · 비 · 마른 벼락) */
+const WEATHERS = [["clear","맑은"],["cloud","흐린"],["rain","비 내리는"],["thunder","마른 벼락이 치는"]];
+function rollWeather(){ const r = Math.random(), w = r<0.32 ? "clear" : r<0.58 ? "cloud" : r<0.86 ? "rain" : "thunder"; return {w, night: Math.random()<0.5}; }
+const weatherText = W => !W ? "" : `${WEATHERS.find(x=>x[0]===W.w)[1]} ${W.night ? "밤" : "낮"}`;
+let bolt = null, nextBolt = 0, clouds = [], stars = [];
+function drawWeather(now, W, H, layer){
+  const Wd = (S && S.weather) || {w:"rain", night:true}, d = devicePixelRatio;
+  if(layer==="sky"){
+    const g = cx.createLinearGradient(0,0,0,H), N = Wd.night, w = Wd.w;
+    const top = N ? (w==="clear" ? "#070a18" : w==="cloud" ? "#0d0d14" : "#08080d") : (w==="clear" ? "#4f6f8f" : w==="cloud" ? "#5a5e66" : w==="rain" ? "#3e434b" : "#34363f");
+    const bot = N ? (w==="clear" ? "#1a1830" : "#16141c") : (w==="clear" ? "#c8b49a" : w==="cloud" ? "#8f9298" : w==="rain" ? "#6a6e75" : "#5b5866");
+    g.addColorStop(0, top); g.addColorStop(1, bot); cx.fillStyle = g; cx.fillRect(0,0,W,H);
+    if(w==="clear" && N){ if(!stars.length) for(let i=0;i<70;i++) stars.push([Math.random(), Math.random()*0.6, Math.random()]);
+      stars.forEach(s2=>{ cx.fillStyle = `rgba(255,250,235,${0.25+0.5*(0.5+0.5*Math.sin(now/900+s2[2]*30))})`; cx.fillRect(s2[0]*W, s2[1]*H, d, d); });
+      const mg = cx.createRadialGradient(W*0.78, H*0.22, 0, W*0.78, H*0.22, H*0.3); mg.addColorStop(0, "rgba(255,240,205,0.35)"); mg.addColorStop(1, "rgba(0,0,0,0)"); cx.fillStyle = mg; cx.fillRect(0,0,W,H);
+      cx.fillStyle = "#f3ead2"; cx.beginPath(); cx.arc(W*0.78, H*0.22, H*0.06, 0, 7); cx.fill(); }
+    if(w==="clear" && !N){ const sg = cx.createRadialGradient(W*0.22, H*0.2, 0, W*0.22, H*0.2, H*0.7); sg.addColorStop(0, "rgba(255,236,190,0.55)"); sg.addColorStop(1, "rgba(0,0,0,0)"); cx.fillStyle = sg; cx.fillRect(0,0,W,H); }
+    if(w!=="clear"){ if(!clouds.length) for(let i=0;i<9;i++) clouds.push({x:Math.random(), y:Math.random()*0.35, r:0.12+Math.random()*0.18, v:0.000004+Math.random()*0.000008});
+      clouds.forEach(c2=>{ c2.x += c2.v*16; if(c2.x > 1.3) c2.x = -0.3; const cxp = c2.x*W, cyp = c2.y*H, R2 = c2.r*W*0.5;
+        const cg = cx.createRadialGradient(cxp, cyp, 0, cxp, cyp, R2); const ca = N ? "rgba(40,40,52," : w==="cloud" ? "rgba(150,152,158," : "rgba(90,92,100,";
+        cg.addColorStop(0, ca+(N?0.55:0.5)+")"); cg.addColorStop(1, ca+"0)"); cx.fillStyle = cg; cx.fillRect(cxp-R2, cyp-R2, R2*2, R2*2); }); }
+    // 마른 벼락: 비 없이 번개만, 가끔 하늘이 하얗게 번쩍인다
+    if(w==="thunder"){ if(now > nextBolt){ nextBolt = now + 2500 + Math.random()*5000; const x0 = W*(0.15+Math.random()*0.7), pts = [[x0,0]]; let x = x0, y = 0; while(y < H*0.75){ y += H*(0.06+Math.random()*0.08); x += (Math.random()-0.5)*W*0.05; pts.push([x,y]); } bolt = {t:now, pts}; }
+      if(bolt){ const a = (now - bolt.t)/1000; if(a < 0.5){ const k = a<0.06 ? 1 : a<0.12 ? 0.3 : a<0.18 ? 0.9 : Math.max(0, 1-(a-0.18)/0.32);
+        cx.fillStyle = `rgba(230,235,255,${0.28*k})`; cx.fillRect(0,0,W,H);
+        cx.strokeStyle = `rgba(235,240,255,${k})`; cx.lineWidth = 2*d; cx.shadowColor = "#cfd8ff"; cx.shadowBlur = 14*d; cx.beginPath(); bolt.pts.forEach(([x,y],i)=> i ? cx.lineTo(x,y) : cx.moveTo(x,y)); cx.stroke(); cx.shadowBlur = 0; } } }
+  }
+  else if(layer==="building") return Wd.night ? null : (Wd.w==="clear" ? [44,50,60] : [40,42,48]);
+  else if(layer==="rain"){
+    if(Wd.w!=="rain") return;
+    cx.strokeStyle = Wd.night ? "rgba(170,180,200,0.22)" : "rgba(210,215,225,0.28)"; cx.lineWidth = 1*d; cx.beginPath();
+    rain.forEach(r=>{ r.y+=0.016*r.v; if(r.y>1){r.y=0;r.x=Math.random();} const x=r.x*W,y=r.y*H; cx.moveTo(x,y); cx.lineTo(x-3*d,y+13*d); }); cx.stroke();
+    if(!Wd.night){ cx.fillStyle = "rgba(60,64,72,0.12)"; cx.fillRect(0,0,W,H); }
+  }
+}
 function playFx(kind, title, sub, good){
   fx = {t:performance.now(), kind, good, color: kind==="흉터"||kind==="뒤틀림"||kind==="사망"||kind==="종료" ? "#c94a4a" : kind==="에고"?"#f4e6b8" : KIND_COLOR[kind] || "#c9a86a"};
   const t=document.getElementById("capt"), s=document.getElementById("caps");
-  if(t){ t.textContent=title; t.style.color=fx.color; s.textContent=sub||""; }
+  if(t){ t.parentNode.classList.remove("log"); t.textContent=title; t.style.color=fx.color; s.textContent=sub||""; }
 }
 function loop(now){
   if(!cx){ return; }
   if(window.__hvBusy){ requestAnimationFrame(loop); return; }   // 개화·뒤틀림 화면이 떠 있는 동안 뒤 화면은 쉰다
   if(scene && drawScene(now)){ requestAnimationFrame(loop); return; }
   const W=cv.width,H=cv.height; const age=(now-fx.t)/1000;
-  const g=cx.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0a0a12"); g.addColorStop(1,"#14121a"); cx.fillStyle=g; cx.fillRect(0,0,W,H);
+  drawWeather(now, W, H, "sky");
+  const bday = drawWeather(now, W, H, "building"), NIGHT = !bday;
   // 은은한 빛무리
   const glow = Math.max(0, 1-age/3);
   if(glow>0){ const rg=cx.createRadialGradient(W/2,H*0.55,0,W/2,H*0.55,W*0.5); rg.addColorStop(0,fx.color+"55"); rg.addColorStop(1,"transparent"); cx.globalAlpha=glow; cx.fillStyle=rg; cx.fillRect(0,0,W,H); cx.globalAlpha=1; }
@@ -5000,13 +5044,11 @@ function loop(now){
   for(let L=0;L<3;L++){ skyline.forEach(b=>{ if(b.layer!==L) return;
     const off = Math.sin(now/4000+b.depth)*2*b.depth + (shake? (Math.random()-0.5)*shake:0);
     const shade = Math.round(10+b.layer*9);
-    cx.fillStyle=`rgb(${shade},${shade},${shade+6})`;
+    cx.fillStyle = NIGHT ? `rgb(${shade},${shade},${shade+6})` : `rgb(${bday[0]-b.layer*12},${bday[1]-b.layer*12},${bday[2]-b.layer*10})`;
     cx.fillRect(b.x+off, H-b.h, b.w, b.h);
-    b.wins.forEach(w=>{ const fl = 0.5+0.5*Math.sin(now/700+w[2]*40); if(fl<0.15) return; cx.fillStyle=`rgba(232,200,130,${0.25+0.5*fl*b.depth})`; cx.fillRect(b.x+off+w[0], H-b.h+w[1], 3*devicePixelRatio, 4*devicePixelRatio); });
+    b.wins.forEach(w=>{ const fl = 0.5+0.5*Math.sin(now/700+w[2]*40); if(fl<0.15 || (!NIGHT && w[2] > 0.35)) return; cx.fillStyle = NIGHT ? `rgba(232,200,130,${0.25+0.5*fl*b.depth})` : `rgba(200,210,220,${0.15+0.2*fl*b.depth})`; cx.fillRect(b.x+off+w[0], H-b.h+w[1], 3*devicePixelRatio, 4*devicePixelRatio); });
   }); if(L<2) drawRumors(now, L); }
-  // 비
-  cx.strokeStyle="rgba(170,180,200,0.18)"; cx.lineWidth=1*devicePixelRatio; cx.beginPath();
-  rain.forEach(r=>{ r.y+=0.012*r.v; if(r.y>1){r.y=0;r.x=Math.random();} const x=r.x*W,y=r.y*H; cx.moveTo(x,y); cx.lineTo(x-3*devicePixelRatio,y+12*devicePixelRatio); }); cx.stroke();
+  drawWeather(now, W, H, "rain");
   // 뒤틀림: 화면 조각 어긋남
   if(fx.kind==="뒤틀림" && age<2.5){ for(let i=0;i<6;i++){ const y=Math.random()*H, h=6+Math.random()*20; cx.drawImage(cv,0,y,W,h,(Math.random()-0.5)*40*devicePixelRatio,y,W,h);} }
   // 에고/특색: 위로 솟는 빛줄기
