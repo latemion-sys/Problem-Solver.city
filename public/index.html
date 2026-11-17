@@ -182,6 +182,18 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-20px);opacity:0;background:#241d14;border:1px solid var(--accent);color:#f3e3c0;padding:10px 18px;border-radius:6px;z-index:80;transition:all .35s}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
+/* 하루 마감 */
+.cls{position:fixed;inset:0;z-index:8500;background:#060508;opacity:0;transition:opacity .7s ease;cursor:pointer}
+.cls.on{opacity:1}
+.cls canvas{position:absolute;inset:0;width:100%;height:100%}
+.cls-clock{position:absolute;top:22px;right:28px;font-family:ui-monospace,"D2Coding",Consolas,monospace;font-size:20px;letter-spacing:.12em;color:rgba(235,232,224,.55)}
+.cls-clock.late{color:rgba(255,150,120,.8)}
+.cls-text{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);width:min(88vw,760px);text-align:center;color:#f4f2ee;font:400 clamp(15px,2.1vw,19px)/1.7 "Noto Sans KR",sans-serif;letter-spacing:.02em;word-break:keep-all;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.cls-cur{display:inline-block;width:.5em;height:1.05em;margin-left:2px;vertical-align:-2px;background:rgba(244,242,238,.75);animation:cls-blink 1s steps(1) infinite}
+.cls.typed .cls-cur{opacity:0;animation:none}
+@keyframes cls-blink{50%{opacity:0}}
+.cls-skip{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:#5d5850}
+.cls.typed .cls-skip{display:none}
 /* 고유 무기 연출 */
 .fgx{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 58%,#1a1210 0%,#070606 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .6s ease;cursor:pointer}
 .fgx.on{opacity:1}
@@ -3842,6 +3854,68 @@ async function endDay(reason){
   S.ending = true;
   try { await endDayInner(reason); } finally { if(S) S.ending = false; }
 }
+/* 하루 마감: 사무소 문 앞. 동료들이 하나둘 돌아가고 → 안쪽 불이 꺼지고 → "영업중" 팻말을 뒤집고 → 셔터를 내리고 → 자물쇠를 채운다.
+   시계는 3시 13분(뒷골목의 밤)을 향해 간다. 마지막에 흰 글씨가 지친 퇴근길처럼 한 글자씩, 쉼표에서 한 번 숨을 고르며 찍힌다 */
+const CLOSE_LINE = "3시 13분부터 시작되는 뒷골목의 밤이 오기 전, 문을 닫고 동료 해결사를 돌려보내고 하루를 마친다.";
+function closeShop(){
+  return new Promise(res=>{
+    const o = document.createElement("div"); o.className = "cls";
+    o.innerHTML = `<canvas></canvas><div class="cls-clock">02:41</div><div class="cls-text"><span class="cls-t"></span><span class="cls-cur"></span></div><div class="cls-skip">화면을 누르면 넘어간다</div>`;
+    document.body.appendChild(o); requestAnimationFrame(()=>o.classList.add("on"));
+    const cv = o.querySelector("canvas"), c = cv.getContext("2d"), clk = o.querySelector(".cls-clock"), tx = o.querySelector(".cls-t");
+    const mates = S.fixers.filter(f=>!f.isLeader).slice(0,3), office = S.officeName;
+    const T = {mates:500, light:2600, plate:3100, shut:3600, shutEnd:5000, lock:5300, sign:5900, text:6500};
+    const t0 = performance.now(); let live = true, typed = 0, nextType = T.text, done = false, shakeT = -1;
+    const loop = now=>{ if(!live) return; const t = now - t0, d = devicePixelRatio||1, W = innerWidth, H = innerHeight;
+      if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
+      c.setTransform(d,0,0,d,0,0);
+      const sh = shakeT>0 && t-shakeT < 180 ? (Math.random()-0.5)*4*(1-(t-shakeT)/180) : 0; c.translate(sh, 0);
+      const g = H*0.72, dw = Math.min(W*0.26, 260), dh = Math.min(H*0.42, 330), dx = W/2 - dw/2, dy = g - dh;
+      // 골목 벽과 젖은 바닥
+      c.fillStyle = "#0b0a0e"; c.fillRect(-10,0,W+20,H); c.fillStyle = "#111016"; for(let yy=0; yy<g; yy+=22) c.fillRect(-10, yy, W+20, 1);
+      c.fillStyle = "#07060a"; c.fillRect(-10, g, W+20, H-g);
+      const lamp = c.createRadialGradient(W*0.18, g-dh*1.1, 0, W*0.18, g-dh*1.1, H*0.75); lamp.addColorStop(0, "rgba(255,210,150,0.16)"); lamp.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = lamp; c.fillRect(0,0,W,H);
+      // 문 안쪽 불빛 → 꺼짐
+      const lightK = t < T.light ? 1 : t < T.light+120 ? 0.3 : t < T.light+200 ? 0.8 : Math.max(0, 1-(t-T.light-200)/200);
+      c.fillStyle = "#1a1714"; c.fillRect(dx-14, dy-14, dw+28, dh+14);
+      const ig = c.createLinearGradient(0, dy, 0, g); ig.addColorStop(0, `rgba(255,214,150,${0.75*lightK})`); ig.addColorStop(1, `rgba(255,180,100,${0.45*lightK})`);
+      c.fillStyle = "#0e0d10"; c.fillRect(dx, dy, dw, dh); c.fillStyle = ig; c.fillRect(dx, dy, dw, dh);
+      c.fillStyle = "#1a1714"; c.fillRect(dx+dw/2-2, dy, 4, dh); c.fillRect(dx, dy+dh*0.45, dw, 4);
+      if(lightK > 0){ const fl = c.createLinearGradient(0, g, 0, g+90); fl.addColorStop(0, `rgba(255,200,130,${0.25*lightK})`); fl.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = fl; c.fillRect(dx-30, g, dw+60, 90); }
+      // 동료들이 문을 나서 골목 양쪽으로 돌아간다(뒷모습)
+      mates.forEach((f,i)=>{ const st = T.mates + i*500, k = clamp((t-st)/1700, 0, 1); if(k<=0 || k>=1) return; const dir = i%2 ? 1 : -1;
+        const x = W/2 + dir*(k*W*0.45), a = k<0.15 ? k/0.15 : k>0.75 ? (1-k)/0.25 : 1; c.save(); c.globalAlpha = a; fig(c, x, g, Math.min(H*0.3, 210)*(1-k*0.15), {side:"ally", face:-dir}); c.restore(); });
+      // 간판(사무소 이름) → 깜빡이다 꺼짐
+      const signOn = t < T.sign ? 1 : (t < T.sign+90 || (t > T.sign+180 && t < T.sign+240)) ? 0.4 : 0;
+      c.font = `700 ${Math.max(14, dw*0.085)|0}px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
+      c.fillStyle = "#121015"; c.fillRect(dx-10, dy-58, dw+20, 34); c.strokeStyle = signOn ? "rgba(255,200,120,0.8)" : "#2a2622"; c.lineWidth = 1.4; c.strokeRect(dx-10, dy-58, dw+20, 34);
+      c.save(); c.shadowColor = "#ffb060"; c.shadowBlur = signOn ? 14 : 0; c.fillStyle = signOn ? `rgba(255,214,150,${0.5+0.5*signOn})` : "#3a342e"; c.fillText(office, W/2, dy-41); c.restore();
+      // 팻말: 영업중 → 마감 (뒤집힘)
+      const pk = clamp((t-T.plate)/380, 0, 1), sx2 = Math.abs(Math.cos(pk*Math.PI)), face = pk < 0.5 ? "영업중" : "마감";
+      c.save(); c.translate(W/2 + dw*0.22, dy + dh*0.25); c.scale(Math.max(0.04, sx2), 1); c.fillStyle = pk < 0.5 ? "#f0e6d0" : "#2a2420"; c.fillRect(-28,-12,56,24);
+      c.fillStyle = pk < 0.5 ? "#7a2e22" : "#d9cdb8"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.fillText(face, 0, 1); c.restore();
+      // 셔터: 위에서 내려온다(살마다 줄), 바닥에 닿으면 살짝 튄다
+      const su = t < T.shut ? 0 : t < T.shutEnd ? Math.pow((t-T.shut)/(T.shutEnd-T.shut), 1.4) : 1, bounce = t > T.shutEnd && t < T.shutEnd+260 ? Math.sin((t-T.shutEnd)/260*Math.PI)*5 : 0;
+      const shH = (dh+4)*su - bounce;
+      c.fillStyle = "#26252b"; c.fillRect(dx-14, dy-14, dw+28, 16);
+      if(shH > 0){ c.fillStyle = "#3a3a40"; c.fillRect(dx-6, dy, dw+12, shH); c.fillStyle = "#2c2c31"; for(let yy=dy+6; yy<dy+shH; yy+=9) c.fillRect(dx-6, yy, dw+12, 2);
+        c.fillStyle = "rgba(255,255,255,0.05)"; c.fillRect(dx-6, dy, dw+12, 3); c.fillStyle = "#4a4a52"; c.fillRect(dx-6, dy+shH-6, dw+12, 6); }
+      // 자물쇠: 떨어져 걸리고, 고리가 딸깍 닫힌다
+      if(t > T.lock){ const k = clamp((t-T.lock)/300, 0, 1), ly = g - 2 + (1-k)*-40, closed = t > T.lock+420; if(closed && shakeT < 0) shakeT = t;
+        c.save(); c.translate(W/2, ly); c.strokeStyle = "#b9a46a"; c.lineWidth = 3; c.beginPath(); c.arc(0, -14 - (closed?0:5), 8, Math.PI, 0); c.stroke();
+        c.fillStyle = "#c9b27a"; c.fillRect(-11, -14, 22, 18); c.fillStyle = "#2a2418"; c.fillRect(-1.5, -8, 3, 7);
+        if(closed && t-shakeT < 500){ c.fillStyle = `rgba(255,250,220,${1-(t-shakeT)/500})`; c.beginPath(); c.arc(8, -16, 3+(t-shakeT)/60, 0, 7); c.fill(); } c.restore(); }
+      // 시계: 3시 13분을 향해
+      const mins = 41 + Math.min(17, Math.floor(t/700)); clk.textContent = `02:${String(mins).padStart(2,"0")}`; clk.classList.toggle("late", mins >= 55);
+      // 글자: 한 글자씩, 쉼표에서 숨 고르기
+      if(t >= nextType && typed < CLOSE_LINE.length){ const ch = CLOSE_LINE[typed]; typed++; tx.textContent = CLOSE_LINE.slice(0, typed); nextType = t + (ch===","||ch==="." ? 520 : ch===" " ? 70 : 58 + Math.random()*30); }
+      if(typed >= CLOSE_LINE.length && !done){ done = true; o.classList.add("typed"); setTimeout(finish, 2600); }
+      requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+    const finish = ()=>{ if(!live) return; live = false; o.classList.remove("on"); setTimeout(()=>{ o.remove(); res(); }, 700); };
+    o.addEventListener("click", ()=>{ if(done) return finish(); if(typed < CLOSE_LINE.length){ typed = CLOSE_LINE.length - 1; nextType = 0; } });
+  });
+}
 async function endDayInner(reason){
   const ended = S.day;
   // 회복
@@ -3862,6 +3936,7 @@ async function endDayInner(reason){
     html += `<p style="color:var(--red)">토벌 기한이 지났다. ${distortExpired.map(q=>esc(q.distorted)).join(", ")}의 뒤틀림은 다른 해결사 사무소가 처리했다. 대표를 제외한 모든 해결사의 정신력이 15% 줄었다.</p>`;
   }
   await modal(`${ended}일차 정산`, html, [{t:"다음으로",primary:true}]);
+  await closeShop();
   if(ended%14===0) await review();
   if(ended%7===0 && S.debt>0) { await scarVisit(); if(!S||S.over) return; }
   if(ended%7===0) await weekly();
@@ -4765,15 +4840,21 @@ const Title = {
       this.towers.push({x,w,h,steps:Math.floor(R(1,4)),strips,blink:R(0,6)}); x+=w+R(10,70); }
     this.beams=[{x:W*R(0.15,0.3),p:R(0,6),s:R(0.15,0.25)},{x:W*R(0.65,0.85),p:R(0,6),s:R(0.12,0.2)}];
     // 뒷골목 건물(중경)
-    const SIGNS=["국밥","수리","전당포","의수 정비","약국","24시","여관","당구","노래방","해결사","부품","세탁"];
+    /* 뒷골목 간판: 새벽 3시 즈음 청소부가 쓸고 지나가는 '뒷골목의 밤' 때문에, 진짜 24시는 거의 없다 */
+    const SIGNS=[{t:"전당포",s:"의수·장기 감정"},{t:"수리",s:"~02:30"},{t:"24시",s:"03:00~04:00 휴업",warn:1},{t:"국밥",s:"~02:40"},{t:"의수 정비"},{t:"약국",s:"~02:00"},
+      {t:"여관",s:"3시 전 입실"},{t:"편의점",s:"새벽 3시 전 마감"},{t:"부품"},{t:"세탁",s:"~01:00"},{t:"해결사",s:"8급 사무소"},{t:"3시 이후 외출 금지",warn:2},{t:"당구",s:"~02:00"},{t:"중고 의수"}];
     const NEON=["#ff5a5a","#5ad1ff","#ffd35a","#9b7bff","#5aff9e","#ff8ad8"];
-    this.mids=[]; x=-30;
+    this.mids=[]; x=-30; const bag = SIGNS.slice().sort(()=>Math.random()-0.5);
     while(x<W+60){ const w=R(60,140), h=R(H*0.22,H*0.48), wins=[];
       for(let wy=14;wy<h-30;wy+=16) for(let wx=8;wx<w-12;wx+=14) if(Math.random()<0.35) wins.push({x:wx,y:wy,c:Math.random()<0.8?"warm":"cold",p:R(0,50)});
-      const sign = Math.random()<0.55 ? {t:pick(SIGNS),c:pick(NEON),y:R(20,Math.max(30,h*0.5)),v:Math.random()<0.5,fl:R(0,1)} : null;
+      let sign = null; if(Math.random()<0.6 && bag.length){ const sg = bag.pop(), vert = !sg.s && !sg.warn && [...sg.t].length<=4 && Math.random()<0.5;
+        sign = {t:sg.t, sub:sg.s||"", warn:sg.warn||0, c: sg.warn===2 ? "#ff5a5a" : pick(NEON), y:R(20,Math.max(30,h*0.5)), v:vert, fl:R(0,1)}; }
       this.mids.push({x,w,h,wins,sign,tank:Math.random()<0.3,ant:Math.random()<0.3}); x+=w+R(0,8); }
     // 옥상 위 해결사 실루엣이 설 건물
     this.perch = this.mids.reduce((b,m)=> (m.x>W*0.55&&m.x<W*0.85&&(!b||m.h>b.h))?m:b, null) || this.mids[Math.floor(this.mids.length*0.7)];
+    // 햄햄팡팡 체인점: 반드시 한 곳, 눈에 잘 띄는 가운데쯤 건물 1층에
+    const hb = this.mids.filter(m=>m!==this.perch && m.x>W*0.36 && m.x<W*0.7 && m.w>=90).sort((a,b)=>b.w-a.w)[0] || this.mids.filter(m=>m!==this.perch)[Math.floor(this.mids.length/2)];
+    if(hb){ hb.ham = {fl:R(0,1)}; hb.wins = hb.wins.filter(w=>w.y < hb.h-70); }
     // 근경 전선
     this.wires=[]; for(let i=0;i<4;i++) this.wires.push({y1:R(H*0.05,H*0.3),y2:R(H*0.05,H*0.3),sag:R(20,60)});
     this.rain=[]; for(let i=0;i<Math.floor(W*H/6000);i++) this.rain.push({x:Math.random()*W,y:Math.random()*H,v:R(10,18),l:R(8,18),z:R(0.4,1)});
@@ -4820,6 +4901,7 @@ const Title = {
       m.wins.forEach(w=>{ const on=Math.sin(t*0.3+w.p)>-0.7; if(!on) return;
         cx.fillStyle = w.c==="warm" ? "rgba(255,196,120,0.55)" : "rgba(150,200,255,0.4)"; cx.fillRect(x+w.x,y+w.y,7,9); });
       if(m.sign) this.neon(m.sign, x+m.w/2, y+m.sign.y, t);
+      if(m.ham) this.hamham(x, g+oy2, m.w, t);
     });
     // 옥상 위 해결사
     if(this.perch){ const p=this.perch; this.fixer(p.x+ox2+p.w*0.5, g-p.h+oy2, t); }
@@ -4828,7 +4910,7 @@ const Title = {
     // 지면/물웅덩이 반사
     cx.fillStyle="#08070b"; cx.fillRect(-W,g,W*3,H);
     cx.save(); cx.globalAlpha=0.18; cx.translate(0,g*2); cx.scale(1,-1);
-    this.mids.forEach(m=>{ if(m.sign){ const x=m.x+ox2; this.neon(m.sign, x+m.w/2, g-m.h+oy2+m.sign.y, t, true); } });
+    this.mids.forEach(m=>{ const x=m.x+ox2; if(m.sign) this.neon(m.sign, x+m.w/2, g-m.h+oy2+m.sign.y, t, true); if(m.ham) this.hamham(x, g+oy2, m.w, t, true); });
     cx.restore();
     for(let i=0;i<5;i++){ const yy=g+8+i*9; cx.fillStyle=`rgba(255,255,255,${0.025})`; cx.fillRect(0,yy+Math.sin(t*2+i)*1.5,W,1); }
     // 근경: 전선과 가로등
@@ -4862,8 +4944,32 @@ const Title = {
     const txt=s.t;
     if(s.v){ const ch=[...txt]; const hgt=ch.length*15+10; cx.fillStyle="#0a090d"; cx.fillRect(x-12,y-6,24,hgt); cx.strokeStyle=on?s.c:"#333"; cx.lineWidth=1.2; cx.strokeRect(x-12,y-6,24,hgt);
       cx.shadowColor=s.c; cx.shadowBlur=on?14:0; cx.fillStyle=on?s.c:"#3a3a40"; ch.forEach((c,i)=>cx.fillText(c,x,y+6+i*15)); }
-    else { const w=cx.measureText(txt).width+16; cx.fillStyle="#0a090d"; cx.fillRect(x-w/2,y-11,w,22); cx.strokeStyle=on?s.c:"#333"; cx.lineWidth=1.2; cx.strokeRect(x-w/2,y-11,w,22);
-      cx.shadowColor=s.c; cx.shadowBlur=on?16:0; cx.fillStyle=on?s.c:"#3a3a40"; cx.fillText(txt,x,y+1); }
+    else { const w=Math.max(cx.measureText(txt).width+16, s.sub ? (cx.font=`500 10px "Noto Sans KR",sans-serif`, cx.measureText(s.sub).width+14) : 0), hh = s.sub ? 34 : 22;
+      cx.font=`700 14px "Noto Sans KR",sans-serif`;
+      cx.fillStyle = s.warn===2 ? "#1a0a0b" : "#0a090d"; cx.fillRect(x-w/2,y-11,w,hh); cx.strokeStyle=on?s.c:"#333"; cx.lineWidth=1.2; cx.strokeRect(x-w/2,y-11,w,hh);
+      cx.shadowColor=s.c; cx.shadowBlur=on?16:0; cx.fillStyle=on?s.c:"#3a3a40"; cx.fillText(txt,x,y+1);
+      if(s.sub){ cx.shadowBlur = 0; cx.font=`500 10px "Noto Sans KR",sans-serif`; cx.fillStyle = on ? (s.warn ? "#ffb0a0" : "rgba(235,228,214,0.8)") : "#3a3a40"; cx.fillText(s.sub, x, y+15); }
+      // "24시"는 줄을 그어 휴업 시간을 덧붙였다
+      if(s.warn===1 && on){ const tw = cx.measureText("24시").width; cx.strokeStyle = "#ff6b5a"; cx.lineWidth = 1.6; cx.beginPath(); cx.moveTo(x-18, y+5); cx.lineTo(x+18, y-4); cx.stroke(); } }
+    cx.restore();
+  },
+  // 햄햄팡팡 체인점: 1층 가게 앞 — 큰 간판, 줄무늬 차양, 불 켜진 진열창
+  hamham(x, g, w, t, refl){
+    const cx=this.cx, s = {fl:0}; const on = refl || (Math.sin(t*13+1.3)>-0.9);
+    const bw = Math.min(w-10, 150), bx = x + (w-bw)/2, top = g-66;
+    cx.save();
+    if(!refl){ const win = cx.createLinearGradient(0, top+28, 0, g); win.addColorStop(0, "rgba(255,206,140,0.55)"); win.addColorStop(1, "rgba(255,170,90,0.25)");
+      cx.fillStyle = win; cx.fillRect(bx+6, top+30, bw-12, 36); cx.fillStyle = "#0a090d"; cx.fillRect(bx+bw*0.62, top+32, 3, 34); cx.fillRect(bx+bw*0.3, top+32, 2, 34);
+      for(let i=0;i<8;i++){ cx.fillStyle = i%2 ? "#e9e2d2" : "#d9442e"; cx.beginPath(); cx.moveTo(bx+i*bw/8, top+22); cx.lineTo(bx+(i+1)*bw/8, top+22); cx.lineTo(bx+(i+1)*bw/8-2, top+30); cx.lineTo(bx+i*bw/8-2, top+30); cx.fill(); } }
+    cx.fillStyle = "#140c08"; cx.fillRect(bx, top-6, bw, 28); cx.strokeStyle = on ? "#ffb347" : "#3a2a20"; cx.lineWidth = 1.6; cx.strokeRect(bx, top-6, bw, 28);
+    cx.font = `900 17px "Noto Sans KR",sans-serif`; cx.textAlign = "left"; cx.textBaseline = "middle";
+    const t1 = "햄햄", t2 = "팡팡", w1 = cx.measureText(t1).width, w2 = cx.measureText(t2).width, tag = "체인점";
+    cx.font = `700 9px "Noto Sans KR",sans-serif`; const w3 = cx.measureText(tag).width + 8;
+    const tot = w1 + w2 + 6 + w3, sx = bx + (bw - tot)/2;
+    cx.font = `900 17px "Noto Sans KR",sans-serif`; cx.shadowBlur = on ? 18 : 0;
+    cx.shadowColor = "#ff8a2a"; cx.fillStyle = on ? "#ffb347" : "#4a3528"; cx.fillText(t1, sx, top+8);
+    cx.shadowColor = "#ffd65a"; cx.fillStyle = on ? "#ffe07a" : "#4a3f28"; cx.fillText(t2, sx+w1, top+8);
+    cx.shadowBlur = 0; cx.fillStyle = on ? "#f3ead8" : "#3a3a40"; cx.fillRect(sx+w1+w2+6, top+2, w3, 13); cx.fillStyle = "#140c08"; cx.font = `700 9px "Noto Sans KR",sans-serif`; cx.fillText(tag, sx+w1+w2+10, top+9);
     cx.restore();
   },
   fixer(x, y, t){
