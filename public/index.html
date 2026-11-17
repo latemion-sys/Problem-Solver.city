@@ -215,18 +215,17 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 /* 녹아드는 문장 */
 .hv-meltlines{display:flex;flex-direction:column;align-items:center;gap:6px}
 .hv-ov .hv-center.hv-drop-top{position:absolute;top:7vh;left:50%;transform:translateX(-50%)}
-.hv-drop.turning .hv-meltlines{animation:hv-jit .14s steps(2) infinite}
-.hv-drop.frozen .hv-meltlines{animation:none;filter:saturate(.55) brightness(.75);transition:filter 1.2s ease}
-.hv-drop.washed .hv-meltlines{filter:saturate(0) brightness(2.2) blur(7px);opacity:0;transform:translateY(-6px);transition:filter 1.6s ease,opacity 1.8s ease,transform 1.8s ease}
-.hv-ov.hv-drop:not(.hv-gl-on){background:radial-gradient(ellipse at 50% 55%,#0d1424 0%,#020205 70%)}
+.hv-stage{position:absolute;inset:0;z-index:3;pointer-events:none}
+.hv-drop.refuse .hv-meltlines{opacity:0;filter:blur(8px);transition:opacity 1.3s ease .35s,filter 1.3s ease .35s}
+.hv-ov.hv-drop:not(.hv-gl-on){background:radial-gradient(ellipse at 50% 55%,#1c150b 0%,#050403 70%)}
 .hv-title.moon{animation:none;opacity:0;transform:translateY(8px);transition:opacity 1.4s ease,transform 1.4s ease;bottom:11%}
 .hv-drop.named .hv-title.moon{opacity:1;transform:none}
-.hv-title.moon .hv-big{color:#eef3ff;text-shadow:0 0 14px rgba(170,200,255,.75),0 0 40px rgba(120,160,255,.35);font-size:clamp(26px,5vw,46px);letter-spacing:.24em}
+.hv-title.moon .hv-big{color:#fff3d6;text-shadow:0 0 14px rgba(255,214,140,.75),0 0 40px rgba(255,190,90,.35);font-size:clamp(26px,5vw,46px);letter-spacing:.24em}
 .hv-title.moon .hv-big span{letter-spacing:.32em}
-.hv-title.moon.unstable .hv-big{text-shadow:0 0 14px rgba(170,200,255,.65),0 0 40px rgba(120,160,255,.3),2px 0 0 rgba(220,50,60,.55);animation:hv-unst 3.2s steps(1) infinite}
+.hv-title.moon.unstable .hv-big{color:#ffe2c4;text-shadow:0 0 14px rgba(255,190,120,.7),0 0 40px rgba(255,110,50,.4),2px 0 0 rgba(255,96,40,.5);animation:hv-unst 3.2s steps(1) infinite}
 @keyframes hv-unst{0%,91%,100%{filter:none}92%{filter:hue-rotate(-40deg) saturate(1.6)}94%{transform:translateX(2px)}}
-.hv-title.moon .hv-sub{color:#aebbd6}
-.hv-drop .hv-skip{color:#5f6a80}
+.hv-title.moon .hv-sub{color:#cdb894}.hv-title.moon.unstable .hv-sub{color:#e0a27c}
+.hv-drop .hv-skip{color:#7a6a52}
 .hv-mrow{display:flex;justify-content:center}.hv-melt{display:block;max-width:92vw;height:auto!important}
 .hv-twist.turning .hv-meltlines{animation:hv-jit .14s steps(2) infinite}
 .hv-shin .hv-meltlines{gap:10px}.hv-ov.hv-shin:not(.hv-gl-on){background:#050302}
@@ -632,32 +631,32 @@ void main(){
    마음(검은 껍질)의 한가운데로 떨어진다 → 파문이 세 번 번지며 그 자리부터 금이 가고 달빛이 샌다 →
    껍질이 깨져 흩어지고 달빛 꽃잎이 핀다. uA=1이면 불안정 개화(금 몇 줄과 꽃잎 끝이 붉게 떨린다) */
 const DROP=COMMON+`
-const float TF=2.4,TD=4.1,TH=5.0,TB=8.6;
+const float TF=3.9,TD=5.6,TH=6.5,TB=10.1;
 const vec2 C=vec2(0.,-.04);
-vec3 moon(){return vec3(.74,.84,1.);}
+vec3 moon(){return vec3(1.,.88,.62);}   // 달빛을 닮은 황금빛
 // 가벼운 보로노이(3×3 한 번): x=가장 가까운 점까지, y=경계까지(F2-F1), z=세포 값
 vec3 vorC(vec2 x){vec2 n=floor(x),f=fract(x);float d1=8.,d2=8.,id=0.;
  for(int j=-1;j<=1;j++)for(int i=-1;i<=1;i++){vec2 g=vec2(i,j),r=g+hash2(n+g)-f;float d=dot(r,r);if(d<d1){d2=d1;d1=d;id=hash(n+g);}else if(d<d2)d2=d;}
  return vec3(sqrt(d1),(sqrt(d2)-sqrt(d1))*.5,id);}
 float crackReach(float t){return .21*(.28*smoothstep(TH,TH+.8,t)+.32*smoothstep(TH+1.3,TH+2.,t)+.5*smoothstep(TH+2.4,TB,t));}
 float dropY(float t){if(t<TD)return .43;float u=clamp((t-TD)/(TH-TD),0.,1.);return mix(.43,C.y,u*u);}
-float dropR(float t){return mix(.002,.015,smoothstep(2.9,TD,t));}
+float dropR(float t){return mix(.002,.015,smoothstep(4.4,TD,t));}
 vec3 scene(vec2 p,float t){
  vec2 q=p-C;float r=length(q),th=atan(q.y,q.x);
  vec3 c=vec3(.004,.005,.009);
  float tf=min(t,TF);
  vec2 w=p*1.8+vec2(noise(p*1.3+tf*.08),noise(p*1.3-tf*.06+5.));
  float fog=fbm3(w*1.2);
- float redK=smoothstep(0.,1.6,t)*(1.-smoothstep(TF,TF+1.3,t));
- c+=vec3(.55,.06,.05)*fog*redK*smoothstep(1.2,0.,length(p))*1.1;
+ float redK=smoothstep(0.,1.6,t)*(1.-smoothstep(TF-.6,TF+1.,t));
+ c+=vec3(.42,.27,.1)*fog*redK*smoothstep(1.2,0.,length(p))*1.1;
  float cold=smoothstep(TF,TF+1.4,t);
- c+=vec3(.03,.045,.08)*fog*cold*smoothstep(1.3,0.,length(p));
+ c+=vec3(.05,.038,.022)*fog*cold*smoothstep(1.3,0.,length(p));
  float beam=exp(-pow(p.x*9.,2.))*smoothstep(-.1,.5,p.y)*smoothstep(TF,TF+1.5,t)*(1.-smoothstep(TH,TH+1.,t));
  c+=moon()*beam*.09;
  c+=moon()*exp(-length(p-vec2(0.,.64))*3.)*.35*cold*(1.-smoothstep(TB,TB+1.,t));
  float R=.2,s=t-TB;
  if(s<0.){
-  float vis=smoothstep(2.5,3.6,t);
+  float vis=smoothstep(4.,5.1,t);
   float wave=0.,ring=0.;
   for(int i=0;i<3;i++){float pk=TH+(i==0?0.:i==1?1.3:2.4);float d=t-pk;if(d>0.){
    for(int j=0;j<3;j++){float rr=d*(.2-.045*float(j));float amp=exp(-d*1.1)*(1.-.3*float(j));
@@ -666,7 +665,7 @@ vec3 scene(vec2 p,float t){
   float rq=length(qq);
   vec2 vq=qq*7.;vec3 v=vorC(vq);
   float shell=smoothstep(R+.004,R-.004,rq)*vis;
-  vec3 sc=vec3(.025,.028,.04)+vec3(.05,.06,.09)*noise(vq*.9);
+  vec3 sc=vec3(.03,.024,.016)+vec3(.08,.064,.04)*noise(vq*.9);
   sc*=.75+.25*smoothstep(0.,.05,v.y);
   float rim=smoothstep(R-.035,R,rq)*shell;
   sc+=moon()*rim*.35*(.6+.4*smoothstep(-.2,.2,q.y));
@@ -682,13 +681,13 @@ vec3 scene(vec2 p,float t){
   float crack=(1.-smoothstep(0.,wid,v2.y))*step(rr2,reach)*shell*(.55+.45*smoothstep(.2,.8,noise(vc*.7)));
   v=v2;
   float pulse=.75+.25*sin(t*8.);
-  vec3 cc=mix(vec3(.82,.9,1.),vec3(1.,.96,.88),smoothstep(TH+2.,TB,t));
-  cc=mix(cc,vec3(1.,.22,.18),uA*step(.8,v.z)*(.55+.45*sin(t*6.+v.z*20.)));
+  vec3 cc=mix(vec3(1.,.86,.55),vec3(1.,.95,.8),smoothstep(TH+2.,TB,t));
+  cc=mix(cc,vec3(1.,.42,.16),uA*step(.62,v.z)*(.6+.4*sin(t*6.+v.z*20.)));   // 불안정: 주홍빛이 섞인 금
   c+=cc*crack*(1.3+2.2*smoothstep(TH+1.8,TB,t))*pulse;
   float core=exp(-r*r/(.0004+.0035*smoothstep(TH,TB,t)))*smoothstep(TH,TH+.3,t);
-  c+=vec3(.9,.95,1.)*core*(.9+.6*smoothstep(TH,TB,t));
+  c+=vec3(1.,.95,.82)*core*(.9+.6*smoothstep(TH,TB,t));
   float dy=dropY(t),drR=dropR(t);
-  if(t>2.8&&t<TH+.02){
+  if(t>4.3&&t<TH+.02){
    float fall=smoothstep(TD,TH,t);
    vec2 dp=p-vec2(0.,dy);dp.y*=mix(1.,.62,fall);
    float dd=length(dp)-drR;
@@ -700,7 +699,7 @@ vec3 scene(vec2 p,float t){
    c+=moon()*exp(-max(dsd,0.)*90.)*.5;
    c+=moon()*exp(-pow(p.x*160.,2.))*step(dy,p.y)*(1.-smoothstep(dy,dy+.45,p.y))*fall*.3;
   }
-  c+=vec3(.9,.95,1.)*exp(-max(t-TH,0.)*5.)*step(TH,t)*exp(-r*r*30.)*1.4;
+  c+=vec3(1.,.95,.82)*exp(-max(t-TH,0.)*5.)*step(TH,t)*exp(-r*r*30.)*1.4;
  }else{
   float m0=s*.55*(1.-exp(-s*2.2))+s*.06;
   vec2 dir=normalize(q+1e-4);
@@ -712,8 +711,8 @@ vec3 scene(vec2 p,float t){
   float edge=smoothstep(0.,.03,v1.y);
   float fade=1.-smoothstep(.4,1.5,s);
   float tumble=.55+.45*sin(s*(6.+8.*v1.z)+v1.z*6.28);
-  vec3 sh=(vec3(.03,.035,.05)+vec3(.35,.42,.6)*tumble*.35)*edge;
-  sh+=vec3(.8,.88,1.)*(1.-edge)*.9;
+  vec3 sh=(vec3(.045,.035,.02)+vec3(.6,.48,.28)*tumble*.35)*edge;
+  sh+=mix(vec3(1.,.9,.66),vec3(1.,.55,.25),uA*.5)*(1.-edge)*.9;
   c=mix(c,sh,inside*fade);
   float spin=s*.24;
   for(int L=0;L<3;L++){
@@ -729,17 +728,17 @@ vec3 scene(vec2 p,float t){
    float body=smoothstep(.006,-.006,pd)*step(.012,r);
    float vein=.5+.5*cos(a*n*6.);
    float grad=smoothstep(0.,max(pr,1e-3),r);
-   vec3 pc=mix(vec3(1.,.99,.96),mix(vec3(.8,.88,1.),vec3(.42,.52,.85),grad),grad);
+   vec3 pc=mix(vec3(1.,.98,.92),mix(vec3(1.,.88,.6),vec3(.86,.6,.28),grad),grad);
    pc*=.85+.15*vein*grad;
    pc*=1.-.25*fl;
-   pc=mix(pc,vec3(.9,.2,.18),uA*smoothstep(.82,1.,grad)*(.4+.6*sin(t*5.+th*3.+fl))*.32);
+   pc=mix(pc,vec3(1.,.42,.16),uA*smoothstep(.45,1.,grad)*(.55+.45*sin(t*3.+th*3.+fl))*.6);
    c=mix(c,pc,body*(.92-fl*.1));
-   c+=mix(moon(),vec3(1.,.3,.25),uA*.35)*exp(-max(pd,0.)*55.)*.18*k;
+   c+=mix(moon(),vec3(1.,.45,.18),uA*.5)*exp(-max(pd,0.)*55.)*.18*k;
   }
   float ray=pow(fbm3(vec2(th*5.,r*1.6-s*.5)),3.)*3.;
   c+=moon()*ray*smoothstep(.05,.2,r)*exp(-r*1.8)*smoothstep(0.,.6,s)*.42;
-  c+=vec3(.9,.95,1.)*exp(-s*6.)*exp(-r*r*9.)*1.2;
-  c+=vec3(.95,.97,1.)*exp(-r*r/.003)*(1.2+.3*sin(t*6.));
+  c+=vec3(1.,.95,.82)*exp(-s*6.)*exp(-r*r*9.)*1.2;
+  c+=vec3(1.,.96,.86)*exp(-r*r/.003)*(1.2+.3*sin(t*6.));
   c+=moon()*.05*exp(-pow((r-.36-s*.05)*20.,2.))*exp(-s*.6);
  }
  return c;
@@ -751,7 +750,7 @@ void main(){
   float rr=s*1.1,r=length(p-C),band=exp(-pow((r-rr)*18.,2.))*(1.-s/1.6);
   vec2 d=normalize(p-C+1e-4)*band*.035;
   col=scene(p-d,t);                      // 굴절은 한 번만(세 번 그리지 않는다)
-  col+=vec3(.8,.9,1.)*band*.3;
+  col+=vec3(1.,.88,.62)*band*.3;
  }else if(t>TH&&t<TH+.6){
   float e=t-TH,r=length(p-C),band=exp(-pow((r-e*.5)*30.,2.))*(1.-e/.6);
   col=scene(p-normalize(p-C+1e-4)*band*.012,t);
@@ -1090,17 +1089,17 @@ void main(){
    sz=1.4+1.8*aS.y;c=vec3(1.,.95,.84);
   }
  }else if(uKind==5){ // 달빛 한 방울: 멎은 순간 가라앉는 먼지 · 닿을 때 튀어 오르는 물방울 왕관 · 깨질 때 은빛 파편 · 흩날리는 달빛 꽃잎
-  vec2 C=vec2(0.,-.04);float TH=5.,TB=8.6;
-  if(id<.12){float ph=fract(uT*.03*(.5+aS.y)+aS.x);float k=smoothstep(2.4,3.4,uT)*(1.-smoothstep(TB,TB+.6,uT));
-   p=vec2((aS.z*2.-1.)*uRes.x/uRes.y*.45,.5-ph*1.05);a=sin(3.1416*ph)*.35*k;sz=1.2+1.6*aS.y;c=vec3(.75,.85,1.);}
+  vec2 C=vec2(0.,-.04);float TH=6.5,TB=10.1;
+  if(id<.12){float ph=fract(uT*.03*(.5+aS.y)+aS.x);float k=smoothstep(3.9,4.9,uT)*(1.-smoothstep(TB,TB+.6,uT));
+   p=vec2((aS.z*2.-1.)*uRes.x/uRes.y*.45,.5-ph*1.05);a=sin(3.1416*ph)*.35*k;sz=1.2+1.6*aS.y;c=vec3(1.,.88,.62);}
   else if(id<.3){float s=uT-TH;if(s>0.){float an=1.5708+(aS.x-.5)*2.2,sp=.25+.55*aS.y,life=.7+.6*aS.z;
-   p=C+vec2(cos(an),sin(an))*sp*s-vec2(0.,.9*s*s);a=(1.-s/life)*.9;sz=1.6+2.4*aS.z;c=mix(vec3(1.),vec3(.7,.82,1.),s/life);}}
+   p=C+vec2(cos(an),sin(an))*sp*s-vec2(0.,.9*s*s);a=(1.-s/life)*.9;sz=1.6+2.4*aS.z;c=mix(vec3(1.),vec3(1.,.84,.52),s/life);}}
   else if(id<.62){float s=uT-TB;if(s>0.){float an=aS.x*6.2832,sp=.4+1.1*aS.y,life=.6+.9*aS.z;
    p=C+vec2(cos(an),sin(an))*sp*(1.-exp(-2.6*s))/2.6+vec2(0.,-.12*s*s);a=1.-s/life;sz=2.+3.*aS.z;
-   c=mix(vec3(.95,.97,1.),mix(vec3(.55,.68,1.),vec3(1.,.3,.25),uA*step(.75,aS.y)),s/life);}}
+   c=mix(vec3(1.,.96,.85),mix(vec3(1.,.72,.35),vec3(1.,.4,.14),uA*step(.55,aS.y)),s/life);}}
   else{float life=4.5,ph=fract((uT-TB-.3)/life+aS.x);if(uT>TB+.3){float an=aS.y*6.2832;
    p=C+vec2(cos(an),sin(an))*(.05+.55*ph*(.6+.4*aS.z))+vec2(sin(ph*6.+aS.z*9.)*.03,-.25*ph*ph);
-   a=sin(3.1416*ph)*.8;sz=4.+6.*aS.z;c=mix(vec3(.82,.9,1.),vec3(1.,.45,.4),uA*step(.85,aS.x));}}
+   a=sin(3.1416*ph)*.8;sz=4.+6.*aS.z;c=mix(vec3(1.,.9,.65),vec3(1.,.48,.2),uA*step(.6,aS.x));}}
  }else{ // 신: 기억 알갱이가 가슴으로 · 불붙는 순간 파편 · 위로 날리는 불티
   if(id<.3){float st=.9+aS.x*1.5,du=1.1+aS.y*.7,ph=(uT-st)/du;if(ph>0.&&ph<1.){float an=aS.z*6.2832+ph*2.4*(aS.w>.15?1.:-1.),r=(.25+.25*aS.y)*pow(1.-ph,1.5);
     p=vec2(cos(an),sin(an)*.85)*r+vec2(0.,.17);a=sin(3.1416*min(1.,ph*1.2))*.95;sz=2.+2.*aS.y;c=vec3(1.,.95,.8);}}
@@ -3399,21 +3398,28 @@ const HeartFx = (()=>{
   function bloom(f, unstable){
     return new Promise(res=>{
       const o = open("drop"), title = unstable ? "불안정 개화" : "개화";
-      const sub = unstable ? "금이 간 채로 피어났다 — 껍질 안쪽이 아직 붉다" : "달빛 한 방울이 마음에 떨어져, 껍질을 깨고 피어났다";
-      o.innerHTML = `<div class="hv-center hv-drop-top"><div class="hv-lines hv-meltlines"></div></div>
+      const sub = unstable ? "금이 간 채로 피어났다 — 껍질 틈으로 주홍빛이 샌다" : "달빛 한 방울이 마음에 떨어져, 껍질을 깨고 피어났다";
+      o.innerHTML = `<div class="hv-stage"><div class="hv-center hv-drop-top"><div class="hv-lines hv-meltlines"></div></div></div>
         <div class="hv-title moon${unstable ? " unstable" : ""}"><div class="hv-big">${title} <span>E.G.O</span></div><div class="hv-sub">${sub}</div></div><div class="hv-skip">화면을 누르면 넘어간다</div>`;
       glLayer(o, "drop", {a: unstable ? 1 : 0, seed: 7 + (f.id||0)%13, scale:0.42});
-      const box = o.querySelector(".hv-meltlines"), ms = [], say = [`“${ahya(f.name)}.”`, `“${TWIST_MID[f.personality] || "애썼어. 정말로."}”`];
-      say.forEach((t,i)=>at(250 + i*800, ()=>{ const m = melt(t, {size: i===0 ? 22 : 19, dur:1500}); ms.push(m); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); }));
-      at(1850, ()=>{ o.classList.add("turning"); ms.forEach((m,i)=>setTimeout(()=>m.red(1100), i*160)); });
-      at(2400, ()=>{ o.classList.remove("turning"); o.classList.add("frozen"); });
-      at(5000, ()=>{ o.classList.add("washed"); shake(o, "hv-shake", 420); });
-      at(6300, ()=>shake(o, "hv-shake", 380)); at(7400, ()=>shake(o, "hv-shake", 460));
-      at(8600, ()=>shake(o, "hv-shake-hard", 700));
-      at(9500, ()=>o.classList.add("named"));
+      const box = o.querySelector(".hv-meltlines"), say = [`“${ahya(f.name)}.”`, `“${TWIST_MID[f.personality] || "애썼어. 정말로."}”`, `“${pick(TWIST_TALK)}”`];
+      // ① 목소리의 말을 끝까지 듣는다(따스한 빛 그대로 — 붉게 물들이지 않는다)
+      say.forEach((t,i)=>at(250 + i*900, ()=>{ const m = melt(t, {size: i===0 ? 22 : 19, dur:1400}); const d = document.createElement("div"); d.className = "hv-mrow"; d.appendChild(m.el); box.appendChild(d); }));
+      // ② 1인칭으로 고개를 젓는다: 시야가 좌우로 흔들리며 번지고, 말이 시야 밖으로 밀려난다
+      at(3000, ()=>{ const st = o.querySelector(".hv-stage"), gl = o.querySelector(".hv-gl");
+        const k = [{transform:"translateX(0) rotate(0)", filter:"blur(0)"},{transform:"translateX(-7vw) rotate(-1.2deg)", filter:"blur(3px)", offset:.22},{transform:"translateX(6vw) rotate(1deg)", filter:"blur(4px)", offset:.5},
+                   {transform:"translateX(-3vw) rotate(-.5deg)", filter:"blur(2px)", offset:.75},{transform:"translateX(0) rotate(0)", filter:"blur(0)"}];
+        if(st && st.animate) st.animate(k, {duration:1150, easing:"ease-in-out"});
+        if(gl && gl.animate) gl.animate(k.map(x=>Object.assign({}, x, {filter:"none", transform: x.transform + " scale(1.16)"})), {duration:1150, easing:"ease-in-out"});   // 가장자리가 비지 않게 살짝 키운 채로 흔든다
+        o.classList.add("refuse"); });
+      // ③ 멎은 어둠에 달빛(금빛) 한 방울 → 파문 세 번 → 껍질이 깨진다
+      at(6500, ()=>shake(o, "hv-shake", 420));
+      at(7800, ()=>shake(o, "hv-shake", 380)); at(8900, ()=>shake(o, "hv-shake", 460));
+      at(10100, ()=>shake(o, "hv-shake-hard", 700));
+      at(11000, ()=>o.classList.add("named"));
       let done = false; const finish = () => { if(done) return; done = true; fadeOut(res); };
-      at(13800, finish);
-      o.addEventListener("click", ()=>{ if(o.classList.contains("named")) finish(); else { timers.forEach(clearTimeout); timers = []; o.classList.add("frozen","washed","named"); at(2600, finish); } });
+      at(15300, finish);
+      o.addEventListener("click", ()=>{ if(o.classList.contains("named")) finish(); else { timers.forEach(clearTimeout); timers = []; o.classList.add("refuse","named"); at(2600, finish); } });
     });
   }
   /* 녹아드는 문장: 전투에서 사살할 때 몸이 노이즈 문턱으로 재처럼 흩어지던 것을 거꾸로 —
@@ -3668,11 +3674,12 @@ let omenQ = Promise.resolve();
 function showOmen(name, line, tone){
   omenQ = omenQ.then(()=>new Promise(res=>{
     const st = document.querySelector(".stage"); if(!st){ res(); return; }
-    const el = document.createElement("div"); el.className = "omen " + tone;
+    const el = document.createElement("div"); el.className = "omen vermil";
     // 뒤틀림의 목소리와 같은 방식: 문장이 햇살이 비껴 들듯 한쪽부터 녹아들며 맺힌다
     let ghosts = ""; for(let i=0;i<6;i++) ghosts += `<div class="og" style="left:${(12+((i*37)%76))}%;top:${(18+((i*53)%64))}%;--d:${(0.6+i*0.35).toFixed(2)}s;--s:${(0.62+((i*7)%5)*0.06).toFixed(2)}">${esc(line)}</div>`;
     el.innerHTML = `${ghosts}<div class="ol"></div><div class="who">— ${esc(name)}</div>`;
-    const V = tone==="vermil" ? {color:[255,156,112], edge:[255,92,40], glow:"255,96,40"} : {color:[238,236,222], edge:[170,196,255], glow:"170,195,255"};
+    const V = {color:[255,156,112], edge:[255,92,40], glow:"255,96,40"};      // 징조는 모두 따스한 햇살 같은 주홍빛
+    tone = "vermil";
     const m = HeartFx.melt(`“${line}”`, Object.assign({size:20, dur:1900}, V)); el.querySelector(".ol").appendChild(m.el);
     st.appendChild(el); requestAnimationFrame(()=>el.classList.add("on"));
     const dur = 3000 + [...line].length*55;
