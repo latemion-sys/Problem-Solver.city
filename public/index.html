@@ -186,13 +186,14 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .cls{position:fixed;inset:0;z-index:8500;background:#060508;opacity:0;transition:opacity .7s ease;cursor:pointer}
 .cls.on{opacity:1}
 .cls canvas{position:absolute;inset:0;width:100%;height:100%}
-.cls-clock{position:absolute;top:22px;right:28px;font-family:ui-monospace,"D2Coding",Consolas,monospace;font-size:20px;letter-spacing:.12em;color:rgba(235,232,224,.55)}
+.cls-clock{position:absolute;top:calc(4.5vh - 12px);right:28px;z-index:2;font-family:ui-monospace,"D2Coding",Consolas,monospace;font-size:20px;letter-spacing:.12em;color:rgba(235,232,224,.55)}
 .cls-clock.late{color:rgba(255,150,120,.8)}
-.cls-text{position:absolute;left:50%;bottom:12%;transform:translateX(-50%);width:min(88vw,760px);text-align:center;color:#f4f2ee;font:400 clamp(15px,2.1vw,19px)/1.7 "Noto Sans KR",sans-serif;letter-spacing:.02em;word-break:keep-all;text-shadow:0 1px 8px rgba(0,0,0,.8)}
-.cls-cur{display:inline-block;width:.5em;height:1.05em;margin-left:2px;vertical-align:-2px;background:rgba(244,242,238,.75);animation:cls-blink 1s steps(1) infinite}
+.cls-text{position:absolute;z-index:2;left:50%;bottom:calc(9vh + 18px);transform:translateX(-50%);width:min(88vw,760px);text-align:center;color:#f4f2ee;font:400 clamp(15px,2.1vw,19px)/1.7 "Noto Sans KR",sans-serif;letter-spacing:.02em;word-break:keep-all;text-shadow:0 1px 8px rgba(0,0,0,.8)}
+.cls-cur{display:none;width:.5em;height:1.05em;margin-left:2px;vertical-align:-2px;background:rgba(244,242,238,.75);animation:cls-blink 1s steps(1) infinite}
+.cls.writing .cls-cur{display:inline-block}
 .cls.typed .cls-cur{opacity:0;animation:none}
 @keyframes cls-blink{50%{opacity:0}}
-.cls-skip{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:#5d5850}
+.cls-skip{position:absolute;z-index:2;bottom:calc(4.5vh - 8px);left:0;right:0;text-align:center;font-size:12px;color:#5d5850}
 .cls.typed .cls-skip{display:none}
 /* 고유 무기 연출 */
 .fgx{position:fixed;inset:0;z-index:9000;background:radial-gradient(ellipse at 50% 58%,#1a1210 0%,#070606 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;transition:opacity .6s ease;cursor:pointer}
@@ -3854,8 +3855,15 @@ async function endDay(reason){
   S.ending = true;
   try { await endDayInner(reason); } finally { if(S) S.ending = false; }
 }
-/* 하루 마감: 사무소 문 앞. 동료들이 하나둘 돌아가고 → 안쪽 불이 꺼지고 → "영업중" 팻말을 뒤집고 → 셔터를 내리고 → 자물쇠를 채운다.
-   시계는 3시 13분(뒷골목의 밤)을 향해 간다. 마지막에 흰 글씨가 지친 퇴근길처럼 한 글자씩, 쉼표에서 한 번 숨을 고르며 찍힌다 */
+/* 하루 마감 — 짧은 영화처럼 컷을 나눈다(분석적 편집).
+   ① 설정 숏: 비 오는 골목, 불 켜진 사무소 — 책상 스탠드가 꺼지고 형광등이 깜빡이다 꺼진다(천천히 다가감)
+   ② 인서트: 유리문에 맺힌 빗방울, "영업중" 팻말이 뒤집혀 "마감"
+   ─ 딥 투 블랙 ─
+   ③ 낮은 앵글: 셔터가 덜컹거리며 내려와 바닥에 닿는다(물 튐·흔들림)
+   ④ 극근접 인서트: 얕은 심도, 뒤로 번진 네온 — 자물쇠 고리가 딸깍 걸린다
+   ─ 딥 투 블랙 ─
+   ⑤ 재설정 숏: 한 걸음 물러난 골목. 간판이 깜빡이다 꺼지고, 비만 남는다. 흰 글씨가 지친 퇴근길처럼 한 글자씩
+   위아래 레터박스, 필름 그레인, 시계는 3시 13분(뒷골목의 밤)을 향해 간다 */
 const CLOSE_LINE = "3시 13분부터 시작되는 뒷골목의 밤이 오기 전, 문을 닫고 동료 해결사를 돌려보내고 하루를 마친다.";
 function closeShop(){
   return new Promise(res=>{
@@ -3863,56 +3871,142 @@ function closeShop(){
     o.innerHTML = `<canvas></canvas><div class="cls-clock">02:41</div><div class="cls-text"><span class="cls-t"></span><span class="cls-cur"></span></div><div class="cls-skip">화면을 누르면 넘어간다</div>`;
     document.body.appendChild(o); requestAnimationFrame(()=>o.classList.add("on"));
     const cv = o.querySelector("canvas"), c = cv.getContext("2d"), clk = o.querySelector(".cls-clock"), tx = o.querySelector(".cls-t");
-    const mates = S.fixers.filter(f=>!f.isLeader).slice(0,3), office = S.officeName;
-    const T = {mates:500, light:2600, plate:3100, shut:3600, shutEnd:5000, lock:5300, sign:5900, text:6500};
-    const t0 = performance.now(); let live = true, typed = 0, nextType = T.text, done = false, shakeT = -1;
+    const office = S.officeName;
+    const SH = [[0,3200],[3200,4700],[4950,6800],[6800,8400],[8650,99999]], DIP = [[4700,4950],[8400,8650]], TEXT_AT = 9300;
+    const rnd = (i)=>{ const x = Math.sin(i*127.1+311.7)*43758.5453; return x - Math.floor(x); };
+    const rain = Array.from({length:150}, (_,i)=>({x:rnd(i), y:rnd(i+99), v:0.7+rnd(i+7)*0.6, z:0.4+rnd(i+3)*0.6}));
+    const drops = Array.from({length:26}, (_,i)=>({x:rnd(i+300), y:rnd(i+400)*0.8, s:2+rnd(i+500)*5, v:0.00004+rnd(i+600)*0.0001}));
+    const bokeh = Array.from({length:14}, (_,i)=>({x:rnd(i+700), y:0.1+rnd(i+800)*0.55, r:18+rnd(i+900)*46, c:["255,120,170","90,210,255","255,190,90","255,90,90"][i%4]}));
+    const t0 = performance.now(); let live = true, typed = 0, nextType = TEXT_AT, done = false, splash = [], hitT = -1, lockT = -1;
+    const shot = t => SH.findIndex(([a,b])=>t>=a && t<b);
+    // ── 그리기 도우미 ──
+    const wall = (W,H,g)=>{ c.fillStyle = "#0c0b0f"; c.fillRect(0,0,W,H); c.fillStyle = "rgba(255,255,255,0.025)";
+      for(let y=0, r=0; y<g; y+=18, r++){ c.fillRect(0,y,W,1); for(let x=(r%2)*30; x<W; x+=60) c.fillRect(x,y,1,18); } };
+    const ground = (W,H,g)=>{ const gr = c.createLinearGradient(0,g,0,H); gr.addColorStop(0,"#0b0a0e"); gr.addColorStop(1,"#040305"); c.fillStyle = gr; c.fillRect(0,g,W,H-g); };
+    const rainFx = (W,H,a,len)=>{ c.strokeStyle = `rgba(190,200,220,${a})`; c.lineWidth = 1; c.beginPath();
+      rain.forEach(r=>{ r.y += 0.018*r.v; if(r.y>1.05){ r.y = -0.05; r.x = Math.random(); } const x = r.x*W, y = r.y*H, l = len*r.z; c.moveTo(x,y); c.lineTo(x-l*0.12, y+l); }); c.stroke(); };
+    const glowAt = (x,y,r,col,a)=>{ const g2 = c.createRadialGradient(x,y,0,x,y,r); g2.addColorStop(0,`rgba(${col},${a})`); g2.addColorStop(1,`rgba(${col},0)`); c.fillStyle = g2; c.fillRect(x-r,y-r,r*2,r*2); };
+    // 사무소 정면(설정 숏·재설정 숏에서 함께 쓴다). lamp·tube: 0~1 밝기, shut: 0~1 셔터, sign: 간판 밝기
+    const storefront = (cx0, g, fw, fh, st, t)=>{
+      const fx = cx0 - fw/2, fy = g - fh, inner = Math.max(st.lamp*0.55, st.tube);
+      c.fillStyle = "#1b1916"; c.fillRect(fx-fw*0.06, fy-fh*0.1, fw*1.12, fh*1.1);                // 문틀
+      // 안쪽
+      c.fillStyle = "#0c0b0d"; c.fillRect(fx, fy, fw, fh);
+      if(inner > 0){ const ig = c.createLinearGradient(0, fy, 0, g); ig.addColorStop(0, `rgba(235,240,220,${0.5*st.tube})`); ig.addColorStop(1, `rgba(255,190,120,${0.35*inner})`); c.fillStyle = ig; c.fillRect(fx, fy, fw, fh); }
+      c.fillStyle = `rgba(0,0,0,${0.55})`; for(let i=0;i<7;i++) c.fillRect(fx+fw*0.08, fy+fh*(0.12+i*0.045), fw*0.5, fh*0.012);    // 뒷벽 블라인드
+      c.fillStyle = "#08070a"; c.fillRect(fx+fw*0.62, fy+fh*0.38, fw*0.24, fh*0.62); for(let i=1;i<4;i++) c.fillRect(fx+fw*0.62, fy+fh*(0.38+i*0.155), fw*0.24, 2);   // 서류장
+      c.fillStyle = "rgba(255,255,255,0.06)"; for(let i=0;i<4;i++) c.fillRect(fx+fw*0.72, fy+fh*(0.45+i*0.155), fw*0.05, 2);
+      c.fillStyle = "#08070a"; c.fillRect(fx+fw*0.1, fy+fh*0.66, fw*0.42, fh*0.05); c.fillRect(fx+fw*0.13, fy+fh*0.71, fw*0.03, fh*0.29); c.fillRect(fx+fw*0.46, fy+fh*0.71, fw*0.03, fh*0.29);   // 책상
+      c.fillRect(fx+fw*0.88, fy+fh*0.2, 3, fh*0.8); c.beginPath(); c.arc(fx+fw*0.88+1, fy+fh*0.22, fw*0.03, Math.PI, 0); c.fill();   // 옷걸이
+      // 스탠드
+      const lx = fx+fw*0.38, ly = fy+fh*0.6; c.fillStyle = "#08070a"; c.fillRect(lx-1, ly-fh*0.08, 2, fh*0.08); c.beginPath(); c.moveTo(lx-fw*0.03, ly-fh*0.08); c.lineTo(lx+fw*0.03, ly-fh*0.08); c.lineTo(lx+fw*0.015, ly-fh*0.12); c.lineTo(lx-fw*0.015, ly-fh*0.12); c.fill();
+      if(st.lamp > 0) glowAt(lx, ly-fh*0.05, fw*0.25, "255,200,120", 0.5*st.lamp);
+      // 형광등
+      c.fillStyle = st.tube > 0 ? `rgba(240,248,255,${0.4+0.6*st.tube})` : "#1c1b20"; c.fillRect(fx+fw*0.2, fy+fh*0.04, fw*0.6, 3);
+      // 유리 반사와 가운데 문살
+      c.save(); c.globalAlpha = 0.08; c.fillStyle = "#fff"; c.beginPath(); c.moveTo(fx+fw*0.1, fy); c.lineTo(fx+fw*0.22, fy); c.lineTo(fx+fw*0.02, g); c.lineTo(fx-fw*0.1+fw*0.1, g); c.fill(); c.restore();
+      c.fillStyle = "#1b1916"; c.fillRect(cx0-2, fy, 4, fh); c.fillRect(fx, fy+fh*0.5, fw, 3);
+      // 셔터 통과 레일
+      c.fillStyle = "#2a2a30"; c.fillRect(fx-fw*0.08, fy-fh*0.12, fw*1.16, fh*0.07); c.fillStyle = "rgba(255,255,255,0.05)"; c.fillRect(fx-fw*0.08, fy-fh*0.12, fw*1.16, 2);
+      c.fillStyle = "#222227"; c.fillRect(fx-fw*0.05, fy, fw*0.025, fh); c.fillRect(fx+fw*1.025, fy, fw*0.025, fh);
+      if(st.shut > 0){ const sh = fh*st.shut; c.fillStyle = "#3b3b42"; c.fillRect(fx-fw*0.025, fy, fw*1.05, sh); c.fillStyle = "#2b2b31"; for(let y=fy+7; y<fy+sh; y+=8) c.fillRect(fx-fw*0.025, y, fw*1.05, 2);
+        c.fillStyle = "rgba(255,255,255,0.05)"; for(let y=fy+5; y<fy+sh; y+=8) c.fillRect(fx-fw*0.025, y, fw*1.05, 1); c.fillStyle = "#4a4a52"; c.fillRect(fx-fw*0.025, fy+sh-5, fw*1.05, 5);
+        if(st.lock){ c.fillStyle = "#c9b27a"; c.fillRect(cx0-5, g-9, 10, 8); c.strokeStyle = "#b9a46a"; c.lineWidth = 1.6; c.beginPath(); c.arc(cx0, g-9, 3.5, Math.PI, 0); c.stroke(); } }
+      // 간판
+      const sw = fw*1.1, sy = fy - fh*0.34; c.fillStyle = "#111014"; c.fillRect(cx0-sw/2, sy, sw, fh*0.18); c.strokeStyle = st.sign > 0.1 ? `rgba(255,190,110,${0.4+0.5*st.sign})` : "#26231f"; c.lineWidth = 1.5; c.strokeRect(cx0-sw/2, sy, sw, fh*0.18);
+      c.save(); c.font = `700 ${Math.max(12, fh*0.085)|0}px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.shadowColor = "#ffaa55"; c.shadowBlur = 16*st.sign;
+      c.fillStyle = st.sign > 0.1 ? `rgba(255,${200+30*st.sign|0},150,${0.35+0.65*st.sign})` : "#35302a"; c.fillText(office, cx0, sy + fh*0.09); c.restore();
+      if(st.sign > 0.1) glowAt(cx0, sy+fh*0.09, sw*0.7, "255,170,90", 0.12*st.sign);
+      return {fx, fy, inner};
+    };
+    const reflect = (W, g, fx, fw, inner, sign, t)=>{ // 젖은 바닥에 번진 불빛(물결 줄)
+      for(let i=0;i<18;i++){ const y = g + 4 + i*7, wob = Math.sin(t/500 + i*1.3)*6; const a = (1 - i/18);
+        if(inner > 0){ c.fillStyle = `rgba(255,200,140,${0.18*inner*a})`; c.fillRect(fx + wob, y, fw, 2); }
+        if(sign > 0.1){ c.fillStyle = `rgba(255,170,90,${0.12*sign*a})`; c.fillRect(fx - fw*0.05 - wob, y+3, fw*1.1, 1.5); } } };
     const loop = now=>{ if(!live) return; const t = now - t0, d = devicePixelRatio||1, W = innerWidth, H = innerHeight;
       if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
-      c.setTransform(d,0,0,d,0,0);
-      const sh = shakeT>0 && t-shakeT < 180 ? (Math.random()-0.5)*4*(1-(t-shakeT)/180) : 0; c.translate(sh, 0);
-      const g = H*0.72, dw = Math.min(W*0.26, 260), dh = Math.min(H*0.42, 330), dx = W/2 - dw/2, dy = g - dh;
-      // 골목 벽과 젖은 바닥
-      c.fillStyle = "#0b0a0e"; c.fillRect(-10,0,W+20,H); c.fillStyle = "#111016"; for(let yy=0; yy<g; yy+=22) c.fillRect(-10, yy, W+20, 1);
-      c.fillStyle = "#07060a"; c.fillRect(-10, g, W+20, H-g);
-      const lamp = c.createRadialGradient(W*0.18, g-dh*1.1, 0, W*0.18, g-dh*1.1, H*0.75); lamp.addColorStop(0, "rgba(255,210,150,0.16)"); lamp.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = lamp; c.fillRect(0,0,W,H);
-      // 문 안쪽 불빛 → 꺼짐
-      const lightK = t < T.light ? 1 : t < T.light+120 ? 0.3 : t < T.light+200 ? 0.8 : Math.max(0, 1-(t-T.light-200)/200);
-      c.fillStyle = "#1a1714"; c.fillRect(dx-14, dy-14, dw+28, dh+14);
-      const ig = c.createLinearGradient(0, dy, 0, g); ig.addColorStop(0, `rgba(255,214,150,${0.75*lightK})`); ig.addColorStop(1, `rgba(255,180,100,${0.45*lightK})`);
-      c.fillStyle = "#0e0d10"; c.fillRect(dx, dy, dw, dh); c.fillStyle = ig; c.fillRect(dx, dy, dw, dh);
-      c.fillStyle = "#1a1714"; c.fillRect(dx+dw/2-2, dy, 4, dh); c.fillRect(dx, dy+dh*0.45, dw, 4);
-      if(lightK > 0){ const fl = c.createLinearGradient(0, g, 0, g+90); fl.addColorStop(0, `rgba(255,200,130,${0.25*lightK})`); fl.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = fl; c.fillRect(dx-30, g, dw+60, 90); }
-      // 동료들이 문을 나서 골목 양쪽으로 돌아간다(뒷모습)
-      mates.forEach((f,i)=>{ const st = T.mates + i*500, k = clamp((t-st)/1700, 0, 1); if(k<=0 || k>=1) return; const dir = i%2 ? 1 : -1;
-        const x = W/2 + dir*(k*W*0.45), a = k<0.15 ? k/0.15 : k>0.75 ? (1-k)/0.25 : 1; c.save(); c.globalAlpha = a; fig(c, x, g, Math.min(H*0.3, 210)*(1-k*0.15), {side:"ally", face:-dir}); c.restore(); });
-      // 간판(사무소 이름) → 깜빡이다 꺼짐
-      const signOn = t < T.sign ? 1 : (t < T.sign+90 || (t > T.sign+180 && t < T.sign+240)) ? 0.4 : 0;
-      c.font = `700 ${Math.max(14, dw*0.085)|0}px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
-      c.fillStyle = "#121015"; c.fillRect(dx-10, dy-58, dw+20, 34); c.strokeStyle = signOn ? "rgba(255,200,120,0.8)" : "#2a2622"; c.lineWidth = 1.4; c.strokeRect(dx-10, dy-58, dw+20, 34);
-      c.save(); c.shadowColor = "#ffb060"; c.shadowBlur = signOn ? 14 : 0; c.fillStyle = signOn ? `rgba(255,214,150,${0.5+0.5*signOn})` : "#3a342e"; c.fillText(office, W/2, dy-41); c.restore();
-      // 팻말: 영업중 → 마감 (뒤집힘)
-      const pk = clamp((t-T.plate)/380, 0, 1), sx2 = Math.abs(Math.cos(pk*Math.PI)), face = pk < 0.5 ? "영업중" : "마감";
-      c.save(); c.translate(W/2 + dw*0.22, dy + dh*0.25); c.scale(Math.max(0.04, sx2), 1); c.fillStyle = pk < 0.5 ? "#f0e6d0" : "#2a2420"; c.fillRect(-28,-12,56,24);
-      c.fillStyle = pk < 0.5 ? "#7a2e22" : "#d9cdb8"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.fillText(face, 0, 1); c.restore();
-      // 셔터: 위에서 내려온다(살마다 줄), 바닥에 닿으면 살짝 튄다
-      const su = t < T.shut ? 0 : t < T.shutEnd ? Math.pow((t-T.shut)/(T.shutEnd-T.shut), 1.4) : 1, bounce = t > T.shutEnd && t < T.shutEnd+260 ? Math.sin((t-T.shutEnd)/260*Math.PI)*5 : 0;
-      const shH = (dh+4)*su - bounce;
-      c.fillStyle = "#26252b"; c.fillRect(dx-14, dy-14, dw+28, 16);
-      if(shH > 0){ c.fillStyle = "#3a3a40"; c.fillRect(dx-6, dy, dw+12, shH); c.fillStyle = "#2c2c31"; for(let yy=dy+6; yy<dy+shH; yy+=9) c.fillRect(dx-6, yy, dw+12, 2);
-        c.fillStyle = "rgba(255,255,255,0.05)"; c.fillRect(dx-6, dy, dw+12, 3); c.fillStyle = "#4a4a52"; c.fillRect(dx-6, dy+shH-6, dw+12, 6); }
-      // 자물쇠: 떨어져 걸리고, 고리가 딸깍 닫힌다
-      if(t > T.lock){ const k = clamp((t-T.lock)/300, 0, 1), ly = g - 2 + (1-k)*-40, closed = t > T.lock+420; if(closed && shakeT < 0) shakeT = t;
-        c.save(); c.translate(W/2, ly); c.strokeStyle = "#b9a46a"; c.lineWidth = 3; c.beginPath(); c.arc(0, -14 - (closed?0:5), 8, Math.PI, 0); c.stroke();
-        c.fillStyle = "#c9b27a"; c.fillRect(-11, -14, 22, 18); c.fillStyle = "#2a2418"; c.fillRect(-1.5, -8, 3, 7);
-        if(closed && t-shakeT < 500){ c.fillStyle = `rgba(255,250,220,${1-(t-shakeT)/500})`; c.beginPath(); c.arc(8, -16, 3+(t-shakeT)/60, 0, 7); c.fill(); } c.restore(); }
-      // 시계: 3시 13분을 향해
-      const mins = 41 + Math.min(17, Math.floor(t/700)); clk.textContent = `02:${String(mins).padStart(2,"0")}`; clk.classList.toggle("late", mins >= 55);
-      // 글자: 한 글자씩, 쉼표에서 숨 고르기
-      if(t >= nextType && typed < CLOSE_LINE.length){ const ch = CLOSE_LINE[typed]; typed++; tx.textContent = CLOSE_LINE.slice(0, typed); nextType = t + (ch===","||ch==="." ? 520 : ch===" " ? 70 : 58 + Math.random()*30); }
-      if(typed >= CLOSE_LINE.length && !done){ done = true; o.classList.add("typed"); setTimeout(finish, 2600); }
+      c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H);
+      const si = shot(t), [a0,a1] = si>=0 ? SH[si] : [0,1], k = si>=0 ? clamp((t-a0)/Math.min(a1-a0, 6000), 0, 1) : 0;
+      if(si===0){ // ① 설정 숏
+        const z = 1 + 0.07*k; c.save(); c.translate(W/2, H*0.62); c.scale(z, z); c.translate(-W/2, -H*0.62);
+        const g = H*0.74; wall(W,H,g); glowAt(W*0.08, H*0.45, H*0.5, "255,90,150", 0.08); glowAt(W*0.93, H*0.5, H*0.45, "80,200,255", 0.07);
+        const lamp = t < 1300 ? 1 : 0, tube = t < 1900 ? 1 : t < 2050 ? 0.2 : t < 2150 ? 0.9 : t < 2260 ? 0.1 : t < 2330 ? 0.6 : 0;
+        ground(W,H,g); const fw = Math.min(W*0.3, 380), fh = Math.min(H*0.42, 340); const r = storefront(W/2, g, fw, fh, {lamp, tube, shut:0, sign:1}, t);
+        reflect(W, g, r.fx, fw, r.inner, 1, t); c.restore(); rainFx(W,H,0.26,22); }
+      else if(si===1){ // ② 인서트: 유리문과 팻말
+        const g2 = c.createLinearGradient(0,0,0,H); g2.addColorStop(0,"#121620"); g2.addColorStop(1,"#0a0b10"); c.fillStyle = g2; c.fillRect(0,0,W,H);
+        glowAt(W*0.7, H*0.3, H*0.6, "255,170,90", 0.06); c.fillStyle = "#1b1916"; c.fillRect(W*0.5-6, 0, 12, H); c.fillRect(0, H*0.72, W, 14);
+        c.fillStyle = "rgba(255,255,255,0.05)"; c.beginPath(); c.moveTo(W*0.1,0); c.lineTo(W*0.28,0); c.lineTo(W*0.05,H); c.lineTo(-W*0.13,H); c.fill();
+        drops.forEach(dr=>{ dr.y += dr.v*16*(dr.s/5); if(dr.y > 1){ dr.y = -0.05; dr.x = Math.random(); } const x = dr.x*W, y = dr.y*H;
+          c.fillStyle = "rgba(200,215,235,0.10)"; c.fillRect(x-0.5, y-dr.s*6, 1, dr.s*6); c.fillStyle = "rgba(220,230,245,0.35)"; c.beginPath(); c.ellipse(x, y, dr.s*0.6, dr.s*0.8, 0, 0, 7); c.fill();
+          c.fillStyle = "rgba(255,255,255,0.6)"; c.fillRect(x-dr.s*0.2, y-dr.s*0.3, 1.2, 1.2); });
+        const px = W*0.62 + Math.sin(t/900)*4, py = H*0.42, pw = Math.min(W*0.2, 220), ph = pw*0.42, fk = clamp((k-0.35)/0.3, 0, 1), sx2 = Math.cos(fk*Math.PI), front = sx2 > 0;
+        c.strokeStyle = "rgba(200,190,170,0.5)"; c.lineWidth = 1.2; c.beginPath(); c.moveTo(px-pw*0.3, py-ph*0.5); c.lineTo(px, py-ph*1.3); c.lineTo(px+pw*0.3, py-ph*0.5); c.stroke();
+        c.save(); c.translate(px, py); c.rotate(Math.sin(t/700)*0.02 + (fk>0&&fk<1 ? Math.sin(fk*Math.PI)*0.05 : 0)); c.scale(Math.max(0.03, Math.abs(sx2)), 1);
+        c.fillStyle = front ? "#efe5cf" : "#221d19"; c.fillRect(-pw/2, -ph/2, pw, ph); c.strokeStyle = front ? "#b49c78" : "#4a4038"; c.lineWidth = 2; c.strokeRect(-pw/2+4, -ph/2+4, pw-8, ph-8);
+        c.fillStyle = front ? "#8a2c20" : "#e4d8c2"; c.font = `800 ${ph*0.42|0}px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(front ? "영업중" : "마감", 0, 2); c.restore();
+        rainFx(W,H,0.12,30); }
+      else if(si===2){ // ③ 낮은 앵글: 셔터
+        const g = H*0.86; wall(W,H,g); ground(W,H,g); glowAt(W*0.15, H*0.2, H*0.6, "255,190,120", 0.06);
+        const fw = W*0.7, fh = H*0.78, fx = W*0.15, fy = g-fh, p = clamp((t-a0-200)/1300, 0, 1), down = p<1 ? p*p*(3-2*p) : 1;
+        if(down >= 1 && hitT < 0){ hitT = t; for(let i=0;i<34;i++) splash.push({x:fx+Math.random()*fw, y:g, vx:(Math.random()-0.5)*3, vy:-1-Math.random()*3.5, l:1}); }
+        const bob = hitT>0 && t-hitT<300 ? Math.sin((t-hitT)/300*Math.PI*2)*6*(1-(t-hitT)/300) : 0, shake = hitT>0 && t-hitT<220 ? (Math.random()-0.5)*7*(1-(t-hitT)/220) : 0;
+        c.save(); c.translate(shake, shake*0.4);
+        c.fillStyle = "#0c0b0e"; c.fillRect(fx, fy, fw, fh); c.fillStyle = "#26262c"; c.fillRect(fx-28, fy-36, fw+56, 40); c.fillStyle = "rgba(255,255,255,0.06)"; c.fillRect(fx-28, fy-36, fw+56, 3);
+        c.fillStyle = "#1f1f24"; c.fillRect(fx-20, fy, 20, fh); c.fillRect(fx+fw, fy, 20, fh);
+        const sh = fh*down - bob; c.fillStyle = "#3e3e46"; c.fillRect(fx, fy, fw, sh);
+        for(let y=fy+11; y<fy+sh-4; y+=13){ c.fillStyle = "#2a2a30"; c.fillRect(fx, y, fw, 3); c.fillStyle = "rgba(255,255,255,0.07)"; c.fillRect(fx, y-3, fw, 1.5); }
+        const hl = c.createLinearGradient(fx, 0, fx+fw, 0); hl.addColorStop(0,"rgba(255,220,170,0.08)"); hl.addColorStop(0.5,"rgba(255,220,170,0)"); hl.addColorStop(1,"rgba(255,220,170,0.04)"); c.fillStyle = hl; c.fillRect(fx, fy, fw, sh);
+        c.fillStyle = "#55555e"; c.fillRect(fx, fy+sh-10, fw, 10); c.fillStyle = "#1a1a1e"; c.fillRect(fx+fw*0.47, fy+sh-8, fw*0.06, 4);
+        c.restore();
+        splash = splash.filter(s=>{ s.x += s.vx; s.y += s.vy; s.vy += 0.25; s.l -= 0.03; if(s.l<=0) return false; c.fillStyle = `rgba(200,210,230,${s.l*0.7})`; c.fillRect(s.x, s.y, 2, 2); return true; });
+        rainFx(W,H,0.22,26); }
+      else if(si===3){ // ④ 극근접: 자물쇠(얕은 심도)
+        c.fillStyle = "#07070a"; c.fillRect(0,0,W,H);
+        bokeh.forEach(b=>{ const g3 = c.createRadialGradient(b.x*W, b.y*H, b.r*0.6, b.x*W, b.y*H, b.r); g3.addColorStop(0, `rgba(${b.c},0.16)`); g3.addColorStop(0.85, `rgba(${b.c},0.2)`); g3.addColorStop(1, `rgba(${b.c},0)`); c.fillStyle = g3; c.beginPath(); c.arc(b.x*W, b.y*H, b.r, 0, 7); c.fill(); });
+        const by = H*0.5; c.fillStyle = "#3a3a42"; c.fillRect(0, by-H*0.42, W, H*0.36); for(let y=by-H*0.42+14; y<by-H*0.06; y+=18){ c.fillStyle = "#2a2a30"; c.fillRect(0,y,W,4); c.fillStyle = "rgba(255,255,255,0.06)"; c.fillRect(0,y-4,W,2); }
+        c.fillStyle = "#5a5a64"; c.fillRect(0, by-H*0.06, W, H*0.1); c.fillStyle = "rgba(255,255,255,0.1)"; c.fillRect(0, by-H*0.06, W, 3);
+        c.fillStyle = "#0b0a0d"; c.fillRect(0, by+H*0.04, W, H); c.fillStyle = "rgba(255,190,120,0.05)"; c.fillRect(0, by+H*0.04, W, 2);
+        const lk = clamp((t-a0-600)/120, 0, 1); if(lk >= 1 && lockT < 0) lockT = t;
+        const lx = W*0.5, ly = by+H*0.12, L = Math.min(H*0.22, W*0.14), punch = lockT>0 && t-lockT<200 ? 1+0.06*Math.sin((t-lockT)/200*Math.PI) : 1;
+        c.fillStyle = "#3a3a42"; c.fillRect(lx-L*0.55, by-H*0.02, L*1.1, H*0.07); c.fillStyle = "#14141a"; c.beginPath(); c.arc(lx, by+H*0.015, L*0.13, 0, 7); c.fill();   // 걸쇠 고리
+        c.save(); c.translate(lx, ly); c.scale(punch, punch);
+        c.strokeStyle = "#a99460"; c.lineWidth = L*0.12; c.lineCap = "round"; c.beginPath(); c.arc(0, -L*0.32 - (1-lk)*L*0.28, L*0.3, Math.PI, 0); c.stroke();
+        const bg = c.createLinearGradient(-L*0.5, 0, L*0.5, 0); bg.addColorStop(0,"#8a743e"); bg.addColorStop(0.45,"#e2c98a"); bg.addColorStop(1,"#7a6634"); c.fillStyle = bg; c.beginPath(); c.roundRect(-L*0.5, -L*0.32, L, L*0.78, L*0.1); c.fill();
+        c.fillStyle = "#2a2214"; c.beginPath(); c.arc(0, L*0.02, L*0.08, 0, 7); c.fill(); c.fillRect(-L*0.03, L*0.02, L*0.06, L*0.18);
+        c.fillStyle = "rgba(255,255,255,0.25)"; c.fillRect(-L*0.38, -L*0.26, L*0.08, L*0.6);
+        c.restore();
+        if(lockT>0 && t-lockT<600){ const q = (t-lockT)/600; c.save(); c.globalCompositeOperation = "lighter"; c.translate(lx+L*0.32, ly-L*0.5); c.rotate(q*0.6); c.fillStyle = `rgba(255,248,220,${1-q})`;
+          for(let i=0;i<4;i++){ c.rotate(Math.PI/2); c.beginPath(); c.moveTo(0,0); c.lineTo(3, L*0.3*(1-q*0.3)); c.lineTo(-3, L*0.3*(1-q*0.3)); c.fill(); } c.restore(); }
+        rainFx(W,H,0.08,60); }
+      else if(si===4){ // ⑤ 재설정 숏
+        const g = H*0.72; c.save(); const z = 0.86 - 0.04*clamp((t-a0)/6000,0,1); c.translate(W/2, H*0.6); c.scale(z, z); c.translate(-W/2, -H*0.6);
+        c.save(); c.translate(-W*0.15,0); wall(W*1.3,H*1.3,g); ground(W*1.3,H*1.3,g); c.restore(); glowAt(W*0.06, H*0.45, H*0.5, "255,90,150", 0.07); glowAt(W*0.95, H*0.5, H*0.45, "80,200,255", 0.06);
+        const e = t - a0, sign = e < 500 ? 1 : e < 590 ? 0.2 : e < 700 ? 0.85 : e < 760 ? 0.1 : e < 820 ? 0.5 : 0;
+        const fw = Math.min(W*0.3, 380), fh = Math.min(H*0.42, 340), r = storefront(W/2, g, fw, fh, {lamp:0, tube:0, shut:1, sign, lock:true}, t);
+        reflect(W, g, r.fx, fw, 0, sign, t);
+        const lamp2 = 0.8 + 0.2*Math.sin(t/90)*(Math.sin(t/1700)>0.9?1:0); glowAt(W*0.82-34, g-fh*1.05+8, H*0.3, "255,214,160", 0.16*lamp2); const hx = W*0.82-34, hy = g-fh*1.05+6; c.fillStyle = "#08070a"; c.fillRect(W*0.82-2, g-fh*1.05, 4, fh*1.05+4); c.fillRect(hx, g-fh*1.05, 36, 4);
+        c.beginPath(); c.moveTo(hx-10, hy); c.lineTo(hx+10, hy); c.lineTo(hx+6, hy-6); c.lineTo(hx-6, hy-6); c.fill();
+        const cone = c.createLinearGradient(0, hy, 0, g); cone.addColorStop(0, `rgba(255,214,160,${0.16*lamp2})`); cone.addColorStop(1, "rgba(255,214,160,0)");
+        c.fillStyle = cone; c.beginPath(); c.moveTo(hx-8, hy); c.lineTo(hx+8, hy); c.lineTo(hx+fw*0.32, g); c.lineTo(hx-fw*0.32, g); c.fill();
+        c.fillStyle = `rgba(255,236,200,${0.9*lamp2})`; c.fillRect(hx-7, hy, 14, 2); c.fillStyle = `rgba(255,214,160,${0.1*lamp2})`; c.fillRect(hx-fw*0.32, g+2, fw*0.64, 3);
+        c.restore(); rainFx(W,H,0.24,22); }
+      // 딥 투 블랙
+      DIP.forEach(([a,b])=>{ if(t>=a-150 && t<b+150){ const m = (a+b)/2, k2 = 1 - Math.min(1, Math.abs(t-m)/((b-a)/2+150)); c.fillStyle = `rgba(0,0,0,${Math.min(1,k2*1.6)})`; c.fillRect(0,0,W,H); } });
+      if(si<0){ c.fillStyle = "#000"; c.fillRect(0,0,W,H); }
+      // 필름 그레인 + 비네트 + 레터박스
+      c.fillStyle = "rgba(255,255,255,0.025)"; for(let i=0;i<120;i++) c.fillRect(Math.random()*W, Math.random()*H, 1, 1);
+      const vg = c.createRadialGradient(W/2,H/2,H*0.3,W/2,H/2,Math.max(W,H)*0.75); vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.65)"); c.fillStyle = vg; c.fillRect(0,0,W,H);
+      const lb = H*0.09; c.fillStyle = "#000"; c.fillRect(0,0,W,lb); c.fillRect(0,H-lb,W,lb);
+      // 시계
+      const mins = 41 + Math.min(17, Math.floor(t/620)); clk.textContent = `02:${String(mins).padStart(2,"0")}`; clk.classList.toggle("late", mins >= 55);
+      // 글자
+      if(t >= TEXT_AT) o.classList.add("writing");
+      if(t >= nextType && typed < CLOSE_LINE.length){ const ch = CLOSE_LINE[typed]; typed++; tx.textContent = CLOSE_LINE.slice(0, typed); nextType = t + (ch===","||ch==="." ? 560 : ch===" " ? 80 : 62 + Math.random()*34); }
+      if(typed >= CLOSE_LINE.length && !done){ done = true; o.classList.add("typed"); setTimeout(finish, 2800); }
       requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
-    const finish = ()=>{ if(!live) return; live = false; o.classList.remove("on"); setTimeout(()=>{ o.remove(); res(); }, 700); };
+    const finish = ()=>{ if(!live) return; live = false; o.classList.remove("on"); setTimeout(()=>{ o.remove(); res(); }, 800); };
     o.addEventListener("click", ()=>{ if(done) return finish(); if(typed < CLOSE_LINE.length){ typed = CLOSE_LINE.length - 1; nextType = 0; } });
   });
 }
