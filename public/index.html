@@ -35,6 +35,8 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 @keyframes cap-log{0%{opacity:0;transform:translateY(4px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:.0}}
 .stage{cursor:default}
 .fxtest{position:fixed;right:10px;bottom:10px;z-index:60;background:rgba(15,14,18,.95);border:1px solid var(--accent);border-radius:8px;padding:10px;width:250px;font-size:12px}
+.pvbtn{position:fixed;left:10px;bottom:10px;z-index:61;padding:6px 12px;font-size:12px;border:1px solid var(--accent);color:var(--accent);background:rgba(15,14,18,.92);border-radius:8px}
+.fxtest{max-height:calc(100vh - 20px);overflow:auto}.fxtest.hide{display:none}
 .fxtest h4{margin:0 0 6px}.fxtest .g{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.fxtest button{padding:4px 7px;font-size:12px}
 /* layout */
 .main{display:grid;grid-template-columns:1fr 360px;gap:10px;margin-top:10px}
@@ -1785,7 +1787,7 @@ function chooseMode(q, team){
   const lo = clamp(base-25,3,97), fight = games.includes("str") || (games.length===1 && ["agi","escort","search","abno"].includes(games[0]));
   return modal("출동 방식", `<div class="kv">
       <span>기본 성공률</span><b>${base}%</b>
-      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="abno" ? "작업으로 알로 재우거나(통제), 탈출·난동 시 전투로 제압하면 성공. 즉사 기믹이 있는 환상체는 통제에 실패하면 끝이다." : games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : games[0]==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복은 합 전투." : games[0]==="search" ? "찾는 것의 자리를 확정하면 성공, 시간이 다하면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${jo(esc(team[0].name),"이")} 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
+      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="abno" ? "작업으로 알로 재우거나(통제), 폭주하거나 날뛰면 전투로 제압하면 성공. 즉사 기믹이 있는 환상체는 통제에 실패하면 끝이다." : games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : games[0]==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복은 합 전투." : games[0]==="search" ? "찾는 것의 자리를 확정하면 성공, 시간이 다하면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${jo(esc(team[0].name),"이")} 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
       <span>자동 진행</span><b>해결사 등급으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
@@ -3201,7 +3203,7 @@ const ESC_EVENTS = [
    ① 배회: 로보토미식 작업 네 가지 가운데 하나를 고른다. 이 게임의 능력치와는 L사의 작업이 기르던 능력에 맞춰 잇는다
       본능 작업(용기 Fortitude) → 물리 · 통찰 작업(신중 Prudence) → 의지 · 애착 작업(자제 Temperance) → 재주 · 억압 작업(정의 Justice) → 민첩
       맞는 작업이면 기분이 오르고, 기분이 끝까지 차면 환상체는 스스로 알로 잠든다(통제).
-      틀린 작업이면 광폭 카운터(클리포트 카운터)가 줄고 작업한 해결사의 정신력이 깎인다. 0이 되면 탈출 → 전투(제압).
+      틀린 작업이면 광폭 카운터(클리포트 카운터)가 줄고 작업한 해결사의 정신력이 깎인다. 0이 되면 폭주 → 전투(제압).
    ② 날뜀: 곧바로 전투. 즉사 기믹이 있는 환상체는 전투하지 않는다 — 카운터가 다하면 그 환상체의 재앙이 일어나고 의뢰는 실패한다.
    등급: 9~7급은 작은 죄종(림버스 컴퍼니의 죄악 — 분노·색욕·나태·탐식·우울·오만),
          6급 위로는 L사의 위험 등급 ZAYIN(6~5급) → TETH(5~4급) → HE(4~3급) → WAW(2급) → ALEPH(1급·특색).
@@ -3302,25 +3304,25 @@ const ABNOS = [
   {id:"onesin", n:"단 한번의 악과 수백 가지의 선행", risk:"ZAYIN", canon:"L", code:"O-03-03", g:[6,5], look:"가시관으로 묶인 해골과 십자가가 허공에 떠 있다",
    rumor:"폐성당에 떠 있는 해골에게 죄를 고백하면 마음이 가벼워진다는 소문이 돈다. 확인해 달라", pref:PF("tec>wil>str>agi"), ctr:3, noCounter:true,
    noFight:true, doom:{t:"고백을 끝내지 못하고 물러났다", mind:0.06},
-   escape:"탈출하지 않는다. 좋은 작업 결과를 얻으면 작업한 이의 정신을 회복시킨다", story:"사람들이 대화하며 흘리는 '악'을 먹고 사는 해골. 정직한 이에게는 오히려 위안이 된다.",
+   escape:"그 자리를 떠나지 않는다. 좋은 작업 결과를 얻으면 작업한 이의 정신을 회복시킨다", story:"사람들이 대화하며 흘리는 '악'을 먹고 사는 해골. 정직한 이에게는 오히려 위안이 된다.",
    like:"해골이 고요히 고개를 숙인다", dislike:"가시관이 조금 조여든다", rule:"heal",
    gifts:{ctrl:{n:"가시관 한 가닥", mpRed:0.12, bonus:{wil:2}}, sup:null}},
   {id:"wellcheers", n:"뚜껑 따인 웰치어스", risk:"ZAYIN", canon:"L", code:"F-05-52", g:[6,5], look:"번쩍이는 회색 자판기 옆에 새우를 닮은 일꾼 둘이 서 있다",
    rumor:"폐공장 자판기에서 공짜 음료가 나온다. 마신 사람 중 몇이 사라졌다", pref:PF("str=wil>tec=agi"), ctr:1, noCounter:true,
    noFight:true, doom:{t:"나쁜 기분일 때 음료를 마신 동료가 잠들었고, 탄산 파도와 함께 고깃배가 밀려왔다", maim:true, worker:true},
-   escape:"탈출하지 않는다. 기분이 나쁠 때 음료를 마시면 잠들어 어딘가의 고깃배로 끌려간다", story:"멀리서 갈매기 소리가 들린다. 수면제가 든 뚜껑 따인 음료를 마시면 사라진다는 도시 괴담에서 왔다.",
+   escape:"그 자리를 떠나지 않는다. 기분이 나쁠 때 음료를 마시면 잠들어 어딘가의 고깃배로 끌려간다", story:"멀리서 갈매기 소리가 들린다. 수면제가 든 뚜껑 따인 음료를 마시면 사라진다는 도시 괴담에서 왔다.",
    like:"자판기 화면이 반짝인다", dislike:"새우 일꾼들이 이쪽을 빤히 본다",
    gifts:{ctrl:{n:"포도맛 탄산 캔", mpRed:0.08, hpRed:0.04}, sup:null}},
   {id:"donttouch", n:"만지지 마", risk:"ZAYIN", canon:"L", code:"O-05-47", g:[6,5], look:"노란 상자 위에 커다란 빨간 버튼이 달려 있다. '만지지 마시오'",
    rumor:"빈 사무실에 버튼 달린 상자가 놓였다. 직원들이 누르고 싶어 잠을 못 잔다", pref:{str:"좋음", wil:"좋음", tec:"좋음", agi:"좋음"}, ctr:3, noCounter:true, rule:"button",
    noFight:true, doom:{t:"누군가 결국 버튼을 눌렀다. 무슨 일이 일어났는지 아무도 설명하지 못한다", mind:0.4},
-   escape:"탈출하지 않는다. 버튼을 누르지만 않으면 해롭지 않다. 작업할 때마다 누르고 싶은 충동이 이는데, 의지가 약하면 버티지 못한다", story:"누르면 어떻게 되는지 아는 사람은 없다. 버튼 주변엔 '제발 누르지 마'라는 낙서만 가득하다.",
+   escape:"그 자리를 떠나지 않는다. 버튼을 누르지만 않으면 해롭지 않다. 작업할 때마다 누르고 싶은 충동이 이는데, 의지가 약하면 버티지 못한다", story:"누르면 어떻게 되는지 아는 사람은 없다. 버튼 주변엔 '제발 누르지 마'라는 낙서만 가득하다.",
    like:"상자가 조용하다", dislike:"손가락이 버튼 쪽으로 움찔한다",
    gifts:{ctrl:{n:"떼어 낸 경고 스티커", mpRed:0.1, bonus:{wil:2}}, sup:null}},
   {id:"fairy", n:"요정의 축제", risk:"ZAYIN", canon:"L", code:"F-04-83", g:[6,5], look:"네 팔과 두 쌍의 날개를 단 작은 요정들이 무리 지어 반짝인다",
    rumor:"정원에서 작은 빛들이 다친 사람을 낫게 해 준다. 그런데 정원사 하나가 실종됐다", pref:PF("str>tec>wil>agi"), ctr:2, noCounter:true,
    noFight:true, doom:{t:"요정의 보살핌을 받던 동료가 다른 일을 하려 하자 요정들이 달려들었다", maim:true, worker:true},
-   escape:"탈출하지 않는다. 요정의 보살핌을 받는 중에 다른 일을 맡으면 요정들에게 먹힌다", story:"요정들의 축복이 있으면 모든 다툼이 잦아든다. 고기는 신선할 때 먹어야 하니까.",
+   escape:"그 자리를 떠나지 않는다. 요정의 보살핌을 받는 중에 다른 일을 맡으면 요정들에게 먹힌다", story:"요정들의 축복이 있으면 모든 다툼이 잦아든다. 고기는 신선할 때 먹어야 하니까.",
    like:"요정들이 상처를 어루만진다", dislike:"요정들의 눈빛이 굶주려 보인다", rule:"healHp",
    gifts:{ctrl:{n:"요정의 날개 가루", hpRed:0.06, bonus:{tec:1}}, sup:null}},
   {id:"toad", n:"울음 두꺼비", risk:"ZAYIN", canon:"LCB", code:"T-01-23-04", g:[6,5], look:"커다란 두꺼비가 흐느끼며 눈알과 긴 혀를 휘두른다",
@@ -3345,7 +3347,7 @@ const ABNOS = [
   {id:"flatcan", n:"김 빠진 웰치어스", base:"wellcheers", risk:"ZAYIN", g:[6,5], look:"불 꺼진 자판기에서 미지근한 캔만 굴러 나온다",
    rumor:"재개발 구역 자판기 음료를 마시면 그날 하루가 기억나지 않는다", pref:PF("wil>tec>str>agi"), ctr:2,
    noFight:true, doom:{t:"미지근한 음료를 마신 일행이 오늘 무엇을 하러 왔는지 잊어버렸다", mind:0.2},
-   escape:"탈출하지 않는다. 기분이 나쁠 때 음료를 마시면 하루의 기억을 잃는다", story:"바다 냄새를 잃은 자판기. 갈매기 소리 대신 형광등 울리는 소리만 남았다.",
+   escape:"그 자리를 떠나지 않는다. 기분이 나쁠 때 음료를 마시면 하루의 기억을 잃는다", story:"바다 냄새를 잃은 자판기. 갈매기 소리 대신 형광등 울리는 소리만 남았다.",
    like:"자판기 불이 깜빡 켜진다", dislike:"캔이 덜컥 떨어진다",
    gifts:{ctrl:{n:"미지근한 캔", mpRed:0.08, bonus:{wil:1}}, sup:null}},
   {id:"lonefairy", n:"굶주린 작은 요정", base:"fairy", risk:"ZAYIN", g:[6,5], look:"무리에서 떨어진 요정 하나가 바싹 마른 채 맴돈다",
@@ -3357,7 +3359,7 @@ const ABNOS = [
   {id:"lever", n:"당기지 마", base:"donttouch", risk:"ZAYIN", g:[6,5], look:"벽에서 튀어나온 붉은 레버 옆에 '당기지 마시오' 팻말",
    rumor:"지하철 정비 통로에 레버가 생겼다. 당긴 사람은 없는데 열차가 멈췄다", pref:{str:"좋음", wil:"최고", tec:"좋음", agi:"나쁨"}, ctr:2, rule:"button",
    noFight:true, doom:{t:"누군가 레버를 당겼다. 골목 전체의 불이 꺼졌다", mind:0.3},
-   escape:"탈출하지 않는다. 억지로 붙들어 두려 할수록 당기고 싶어진다", story:"버튼 옆에 생긴 동생. 누가 당기든 결과는 아무도 모른다.",
+   escape:"그 자리를 떠나지 않는다. 억지로 붙들어 두려 할수록 당기고 싶어진다", story:"버튼 옆에 생긴 동생. 누가 당기든 결과는 아무도 모른다.",
    like:"레버가 녹슨 소리를 낸다", dislike:"손바닥이 근질거린다",
    gifts:{ctrl:{n:"부러진 레버 손잡이", mpRed:0.1, bonus:{wil:1,str:1}}, sup:null}},
   // ── TETH (5~4급) · 원작 ──
@@ -3369,14 +3371,14 @@ const ABNOS = [
    gifts:{ctrl:{n:"작은 새의 깃털", bonus:{wil:2,agi:1}, mpRed:0.08}, sup:{n:"붉은 부리 조각", bonus:{str:2,agi:2}}}},
   {id:"oldlady", n:"늙은 여인", risk:"TETH", canon:"L", code:"O-01-12", g:[5,4], look:"흔들의자에 앉은 노파가 아무도 없는 쪽으로 이야기를 건넨다",
    rumor:"재개발 구역 빈집에서 밤마다 할머니의 옛날이야기 소리가 들린다", pref:PF("tec>wil>str>agi"), ctr:4,
-   noFight:true, doom:{t:"방 안이 '고독'으로 가득 찼다. 숨이 막혀 모두 뛰쳐나왔다", mind:0.35},
-   escape:"탈출하지 않는다. 카운터가 다하면 방 안이 고독으로 가득 차 들어선 이의 정신을 무너뜨린다",
+   noFight:true, doom:{t:"주변이 '고독'으로 가득 찼다. 숨이 막혀 모두 뛰쳐나왔다", mind:0.35},
+   escape:"그 자리를 떠나지 않는다. 카운터가 다하면 주변이 고독으로 가득 차 곁에 있던 이의 정신을 무너뜨린다",
    story:"그토록 이야기를 좋아하던 사람이었다. 마지막엔 외로움만이 그 이야기를 들어 주었다.",
-   like:"노파가 이야기를 이어 간다", dislike:"방 안 공기가 무겁게 가라앉는다",
+   like:"노파가 이야기를 이어 간다", dislike:"주변 공기가 무겁게 가라앉는다",
    gifts:{ctrl:{n:"낡은 이야기책", mpRed:0.12, bonus:{tec:2}}, sup:null}},
   {id:"scorched", n:"불타버린 소녀", risk:"TETH", canon:"L", code:"F-01-02", g:[5,4], look:"가슴에 불붙은 성냥개비가 박힌 그을린 아이가 서 있다",
    rumor:"성냥 공장 터에서 아이 모양 그을음이 걸어 다닌다", pref:PF("wil>agi=str>tec"), ctr:2,
-   escape:"탈출하면 한 사람을 표적으로 삼아 다가가, 곁에 머문 지 몇 초 만에 터진다",
+   escape:"폭주하면 한 사람을 표적으로 삼아 다가가, 곁에 머문 지 몇 초 만에 터진다",
    story:"성냥을 팔던 아이는 불꽃 속에서 더 나은 삶을 보았다. 이제 그 불꽃으로 모두를 자기처럼 재로 만들러 온다.",
    like:"성냥불이 고요히 탄다", dislike:"불꽃이 거세게 일렁인다",
    cards:[{n:"재로 만드는 손",a:3,b:9},{n:"폭발",a:2,b:12},{n:"그을음",a:3,b:6,def:true}], hp:1,
@@ -3384,28 +3386,28 @@ const ABNOS = [
   {id:"wall", n:"벽을 보는 여인", risk:"TETH", canon:"L", code:"F-01-18", g:[5,4], look:"긴 머리카락으로 뒤덮인 여자가 벽을 향해 서서 흐느낀다",
    rumor:"폐교 복도 끝에서 여자가 벽을 보고 운다. 돌아보게 만들면 안 된다", pref:PF("tec>str>agi>wil"), ctr:2,
    noFight:true, doom:{t:"울음이 비명으로 바뀌었다. 복도에 있던 모두가 귀를 막고 쓰러졌다", mind:0.4},
-   escape:"탈출하지 않는다. 카운터가 다하면 울음이 주변 모두의 정신을 할퀸다",
+   escape:"그 자리를 떠나지 않는다. 카운터가 다하면 울음이 주변 모두의 정신을 할퀸다",
    story:"견딜 수 없던 슬픔은 시간이 흐르며 집착이 되었고, 끝없이 자란 머리카락이 그것을 덮었다.",
    like:"흐느낌이 조금 잦아들었다", dislike:"머리카락이 바닥을 긁는다",
    gifts:{ctrl:{n:"엉킨 머리카락 매듭", mpRed:0.13, bonus:{tec:2}}, sup:null}},
   {id:"spiderbud", n:"거미봉오리", risk:"TETH", canon:"L", code:"T-02-43", g:[5,4], look:"꽃봉오리 같은 거미가 새끼들이 매달린 거미줄 한가운데 앉아 있다",
    rumor:"온실 천장에 거대한 거미줄이 쳐졌다. 청소하러 들어간 인부가 고치가 되어 매달렸다", pref:PF("str>tec>agi>wil"), ctr:2, noCounter:true, rule:"killWork", kill:"wil",
    noFight:true, doom:{t:"새끼를 건드렸다고 여긴 거미가 순식간에 고치를 지었다", maim:true, worker:true},
-   escape:"탈출하지 않는다. 새끼를 해친 자를 고치로 만든다 — 방을 치우는 통찰 작업이 바로 그 실수다",
+   escape:"그 자리를 떠나지 않는다. 새끼를 해친 자를 고치로 만든다 — 주변을 정돈하는 통찰 작업이 바로 그 실수다",
    story:"봉오리 같은 몸으로 새끼들을 지킨다. 그 새끼들에게 손대는 순간 어머니는 망설이지 않는다.",
    like:"거미가 다리를 접는다", dislike:"새끼들이 웅성거린다",
    gifts:{ctrl:{n:"붉은 거미줄 실", hpRed:0.06, bonus:{str:1,tec:1}}, sup:null}},
   {id:"armor", n:"부서져 가는 갑옷", risk:"TETH", canon:"L", code:"O-05-61", g:[5,4], look:"금 간 낡은 갑옷 한 벌이 빈 투구 속에 푸른 불을 품고 서 있다",
    rumor:"골동품 가게 갑옷이 밤마다 움직인다. 가게 주인이 목이 베인 채 발견됐다", pref:PF("agi>str>wil>tec"), ctr:2, noCounter:true, rule:"armor",
    noFight:true, doom:{t:"갑옷이 겁쟁이라 여긴 이의 목을 노리고 칼을 휘둘렀다", maim:true, worker:true},
-   escape:"탈출하지 않는다. 억압 작업을 하면 그 이에게 용기의 불꽃을 주지만, 불꽃을 받은 채 애착 작업을 하는 겁쟁이는 목이 떨어진다",
+   escape:"그 자리를 떠나지 않는다. 억압 작업을 하면 그 이에게 용기의 불꽃을 주지만, 불꽃을 받은 채 애착 작업을 하는 겁쟁이는 목이 떨어진다",
    story:"주인 없이 남은 갑옷은 여전히 용기를 시험한다. 물러서는 자에게 갑옷은 자비가 없다.",
    like:"투구 속 불꽃이 차분해진다", dislike:"갑옷이 삐걱이며 칼자루를 쥔다",
    gifts:{ctrl:{n:"푸른 불꽃의 깃장식", bonus:{str:2,agi:2}}, sup:null}},
   {id:"lantern", n:"고기 초롱", risk:"TETH", canon:"L", code:"O-04-84", g:[5,4], look:"털 뭉치 같은 언덕 위로 꽃 한 송이가 고개를 내밀고 있다",
    rumor:"하수로 입구에 꽃이 피었다. 꽃을 꺾으러 간 아이들이 돌아오지 않는다", pref:PF("wil>str=tec>agi"), ctr:1, rule:"quickDrops",
    noFight:true, doom:{t:"꽃 아래 땅이 열리며 가장 가까이 있던 사람을 삼켰다", maim:true},
-   escape:"작업 결과가 나쁘거나 작업이 너무 빨리 끝나면(능력이 지나치게 높으면) 카운터가 준다. 탈출하면 꽃을 미끼로 다가온 자를 통째로 삼킨다",
+   escape:"작업 결과가 나쁘거나 작업이 너무 빨리 끝나면(능력이 지나치게 높으면) 카운터가 준다. 폭주하면 꽃을 미끼로 다가온 자를 통째로 삼킨다",
    story:"어둠 속에서 빛나는 꽃은 미끼다. 그 아래엔 아주 큰 입이 오래 기다리고 있다.",
    like:"꽃이 느리게 흔들린다", dislike:"땅이 미세하게 들썩인다",
    gifts:{ctrl:{n:"빛나는 꽃잎", mpRed:0.1, bonus:{tec:1,wil:1}}, sup:null}},
@@ -3437,7 +3439,7 @@ const ABNOS = [
   {id:"oldman", n:"이야기 없는 노인", base:"oldlady", risk:"TETH", g:[5,4], look:"빈 벤치에 앉은 노인이 아무 말 없이 입만 달싹인다",
    rumor:"공원 벤치에 노인이 앉아 있다. 옆에 앉은 사람마다 말을 잃는다", pref:PF("wil>tec>agi>str"), ctr:3,
    noFight:true, doom:{t:"침묵이 번져 일행 모두가 한동안 말을 잃었다", mind:0.3},
-   escape:"탈출하지 않는다. 카운터가 다하면 침묵이 번져 곁에 있던 이들의 말을 빼앗는다",
+   escape:"그 자리를 떠나지 않는다. 카운터가 다하면 침묵이 번져 곁에 있던 이들의 말을 빼앗는다",
    story:"평생 아무에게도 이야기를 들려주지 못했다. 들어 줄 사람이 생겼을 땐 이미 할 말을 잊었다.",
    like:"노인이 고개를 끄덕인다", dislike:"공기가 숨 막히게 고요해진다",
    gifts:{ctrl:{n:"빈 녹음테이프", mpRed:0.12, bonus:{wil:2}}, sup:null}},
@@ -3457,14 +3459,14 @@ const ABNOS = [
   {id:"freischutz", n:"마탄의 사수", risk:"HE", canon:"L", code:"F-01-69", g:[4,3], look:"거대한 장총을 든 사수가 어둠 속에서 표적을 고른다",
    rumor:"빌딩 옥상에서 쏜 총알이 벽을 뚫고 엉뚱한 사람을 맞혔다. 사수는 보이지 않았다", pref:PF("agi>str=wil>tec"), ctr:3, rule:"onlyBest", low:"agi",
    noFight:true, doom:{t:"사수가 아무 데로나 탄환을 쐈다. 벽을 뚫고 날아온 마탄이 일행 하나를 꿰뚫었다", maim:true},
-   escape:"탈출하지 않는다. 결과가 최고가 아니거나, 민첩(정의)이 모자란 이가 작업하면 카운터가 준다. 다하면 아무 곳으로나 마탄을 쏜다",
+   escape:"그 자리를 떠나지 않는다. 결과가 최고가 아니거나, 민첩(정의)이 모자란 이가 작업하면 카운터가 준다. 다하면 아무 곳으로나 마탄을 쏜다",
    story:"일곱 발 중 여섯은 원하는 곳을 맞히고, 마지막 한 발은 악마가 원하는 곳을 맞힌다.",
    like:"사수가 총구를 내린다", dislike:"방아쇠에 손가락이 걸린다",
    gifts:{ctrl:{n:"마탄 한 발", bonus:{agi:3,tec:1}}, sup:null}},
   {id:"teddy", n:"행복한 테디", risk:"HE", canon:"L", code:"T-04-06", g:[4,3], look:"낡고 커다란 곰 인형이 두 팔을 벌린 채 앉아 있다",
    rumor:"폐보육원 놀이방의 곰 인형을 안아 준 아이가 다음 날 숨진 채 발견됐다", pref:PF("tec>agi>wil>str"), ctr:3, noCounter:true, rule:"teddy",
-   noFight:true, doom:{t:"같은 사람이 두 번 들어오자 곰 인형이 꼭 끌어안았다. 숨이 막혀 겨우 떼어 냈다", maim:true, worker:true},
-   escape:"탈출하지 않는다. 같은 사람이 연달아 두 번 작업하면 그를 꼭 끌어안아 숨을 막는다 — 작업자를 번갈아 보내야 한다",
+   noFight:true, doom:{t:"같은 사람이 두 번 다가오자 곰 인형이 꼭 끌어안았다. 숨이 막혀 겨우 떼어 냈다", maim:true, worker:true},
+   escape:"그 자리를 떠나지 않는다. 같은 사람이 연달아 두 번 작업하면 그를 꼭 끌어안아 숨을 막는다 — 작업자를 번갈아 보내야 한다",
    story:"주인과 헤어진 곰 인형은 다시 만난 사람을 놓아주지 않는다. 행복했던 그날처럼, 꼭.",
    like:"곰 인형이 고개를 기울인다", dislike:"솜이 비어져 나온다",
    gifts:{ctrl:{n:"낡은 리본", mpRed:0.14, bonus:{tec:2}}, sup:null}},
@@ -3485,7 +3487,7 @@ const ABNOS = [
   // ── HE · 창작 ──
   {id:"carousel", n:"녹슨 회전목마", risk:"HE", g:[4,3], look:"불 꺼진 놀이공원에서 목마들이 혼자 돌아간다",
    rumor:"문 닫은 놀이공원에서 음악이 들린다. 들어간 야간 경비가 목마 위에서 발견됐다", pref:PF("agi>tec>str>wil"), ctr:3,
-   escape:"음악이 끊기면 목마들이 우리를 뛰쳐나와 사람을 태우러 온다",
+   escape:"음악이 끊기면 목마들이 궤도를 벗어나 사람을 태우러 온다",
    story:"한 바퀴만 더 타고 싶다던 아이의 소원. 목마는 아이가 다 자랄 때까지 멈추지 않았다.",
    like:"음악이 느긋하게 이어진다", dislike:"목마의 눈이 이쪽을 돈다",
    cards:[{n:"돌진하는 목마",a:4,b:10},{n:"회전",a:5,b:9},{n:"철제 기둥",a:4,b:7,def:true}], hp:1.15,
@@ -3505,7 +3507,7 @@ const ABNOS = [
   {id:"seventh", n:"일곱 번째 탄피", base:"freischutz", risk:"HE", g:[4,3], look:"아무도 없는 사격장 바닥에 탄피 하나가 저절로 굴러다닌다",
    rumor:"경찰 사격장에서 아무도 쏘지 않았는데 표적이 뚫렸다. 탄피가 하나 늘어 있었다", pref:PF("wil>agi>str>tec"), ctr:2,
    noFight:true, doom:{t:"어디선가 일곱 번째 총성이 울렸다. 일행 하나가 쓰러졌다", maim:true},
-   escape:"탈출하지 않는다. 카운터가 다하면 이미 쏘아진 탄환이 그날의 표적을 찾아온다",
+   escape:"그 자리를 떠나지 않는다. 카운터가 다하면 이미 쏘아진 탄환이 그날의 표적을 찾아온다",
    story:"마지막 한 발은 악마의 몫이었다. 탄피는 그 한 발이 아직 누구에게도 닿지 않았다고 기억한다.",
    like:"탄피가 멈춘다", dislike:"화약 냄새가 짙어진다",
    gifts:{ctrl:{n:"차가운 탄피", bonus:{agi:2,wil:2}}, sup:null}},
@@ -3518,7 +3520,7 @@ const ABNOS = [
   // ── WAW (2급) · 원작 ──
   {id:"knight", n:"절망의 기사", risk:"WAW", canon:"L", code:"O-01-73", g:[2,2], look:"검을 품은 기사가 눈물을 흘리며 누군가를 지키려 한다",
    rumor:"성당 지하 납골당에 칼을 든 기사가 산다. 그 앞에서 기도한 사람이 기사의 축복을 받았다고 한다", pref:PF("tec>wil>agi>str"), ctr:3, noCounter:true, rule:"knight",
-   escape:"카운터 없이 탈출한다. 처음으로 최고의 결과를 낸 이에게 축복을 내리고, 축복받은 이가 쓰러지면 절망에 빠져 탈출한다",
+   escape:"광폭 카운터 없이도 폭주한다. 처음으로 최고의 결과를 낸 이에게 축복을 내리고, 축복받은 이가 쓰러지면 절망에 빠져 폭주한다",
    story:"지키겠다고 맹세한 이들은 모두 떠났다. 기사는 지키지 못한 슬픔을 칼로 바꿔 흘린다.",
    like:"기사가 검을 내린다", dislike:"기사의 눈물이 짙어진다",
    cards:[{n:"절망의 검",a:5,b:13},{n:"쏟아지는 칼날",a:5,b:12},{n:"수호의 맹세",a:6,b:9,def:true}], hp:1.35,
@@ -3532,7 +3534,7 @@ const ABNOS = [
    gifts:{ctrl:{n:"붉은 두건 조각", bonus:{wil:2,agi:2}, mpRed:0.08}, sup:{n:"사냥꾼의 갈고리", bonus:{str:3,agi:3}}}},
   {id:"jbird", n:"심판 새", risk:"WAW", canon:"L", code:"O-02-62", g:[2,2], look:"붕대로 눈을 감은 새가 목에 기운 저울을 매달고 있다",
    rumor:"재판소 폐허에 저울을 단 새가 앉아 있다. 그 아래 지나간 사람이 목을 매달린 채 발견됐다", pref:PF("wil>str>tec>agi"), ctr:2,
-   escape:"카운터가 다하면 곧바로 탈출해 저울로 죄의 무게를 단다 — 기울어진 쪽은 목이 매달린다",
+   escape:"카운터가 다하면 곧바로 폭주해 저울로 죄의 무게를 단다 — 기울어진 쪽은 목이 매달린다",
    story:"모든 죄를 저울에 달겠다던 새. 하지만 그 저울은 처음부터 한쪽으로 기울어 있었다.",
    like:"저울이 잠시 수평을 찾는다", dislike:"저울이 덜컥 기운다",
    cards:[{n:"심판",a:4,b:13},{n:"저울질",a:5,b:11},{n:"깃털 장막",a:5,b:8,def:true}], hp:1.3,
@@ -3593,7 +3595,7 @@ const ABNOS = [
    gifts:{ctrl:{n:"별의 맥박", mpRed:0.2, bonus:{wil:4,agi:2}}, sup:null}},
   {id:"nothing", n:"아무것도 없는", risk:"ALEPH", canon:"L", code:"O-06-20", g:[1,0], look:"방금 전까지 있던 동료의 얼굴을 한 무언가가 이쪽을 보고 웃는다",
    rumor:"실종된 직원이 사무실에 돌아왔다. 동료들은 그가 사람이 아니라고 했다", pref:PF("tec>str>wil>agi"), ctr:1, low:"agi", rule:"badMaim",
-   escape:"정의(민첩)가 낮은 이가 작업을 마치면 카운터가 준다. 나쁜 결과를 낸 이는 그 자리에서 죽어 가죽을 빼앗긴다. 탈출하면 알이 되었다가 더 끔찍한 모습으로 깨어난다",
+   escape:"정의(민첩)가 낮은 이가 작업을 마치면 카운터가 준다. 나쁜 결과를 낸 이는 그 자리에서 죽어 가죽을 빼앗긴다. 폭주하면 알이 되었다가 더 끔찍한 모습으로 깨어난다",
    story:"사람을 흉내 내지만 사람은 아니다. 그 안에는 아무것도 없다.",
    like:"그것이 흉내를 멈춘다", dislike:"그것이 작업자의 목소리로 웃는다",
    cards:[{n:"머리 발톱",a:5,b:13},{n:"뼈 파편",a:6,b:12},{n:"작별 인사",a:4,b:16},{n:"알 껍질",a:6,b:9,def:true}], hp:1.7,
@@ -3620,14 +3622,14 @@ function pickAbno(g){ const risk = abnoRiskFor(g); let pool = ABNOS.filter(a=>a.
   return {id:a.id, variant: vr || false}; }
 // 실제로 만나는 모습(아종이면 이름과 선호가 바뀐다)
 const abnoOf = q => { const a = ABNO_BY[q.abno && q.abno.id]; if(!a) return null; return q.abno.variant ? Object.assign({}, a, {n:`${a.n} (아종: ${a.variant.n})`, pref:a.variant.pref, vid:a.id+"~v"}) : Object.assign({}, a, {vid:a.id}); };
-/* 도감: 같은 환상체를 만날수록 정보가 열린다(이름 → 위험 등급 → 선호 작업 → 탈출·전투 조건 → 이야기). 업적처럼 이 브라우저에 남는다. */
+/* 도감: 같은 환상체를 만날수록 정보가 열린다(이름 → 위험 등급 → 선호 작업 → 폭주·전투 조건 → 이야기). 업적처럼 이 브라우저에 남는다. */
 const CODEX_KEY = "problem-solver-codex-v1";
 function codexLoad(){ try{ return JSON.parse(localStorage.getItem(CODEX_KEY))||{}; }catch(_){ return {}; } }
 function codexSave(d){ try{ localStorage.setItem(CODEX_KEY, JSON.stringify(d)); }catch(_){} }
 function codexSeen(vid){ return (codexLoad()[vid]||{}).seen || 0; }
 function codexMeet(vid){ const d = codexLoad(), e = d[vid] = d[vid] || {seen:0, ctrl:0, sup:0, gifts:[]}; e.seen++; codexSave(d); return e.seen; }
 function codexNote(vid, how, gift){ const d = codexLoad(), e = d[vid] = d[vid] || {seen:0, ctrl:0, sup:0, gifts:[]}; if(how) e[how] = (e[how]||0) + 1; if(gift && !e.gifts.includes(gift)) e.gifts.push(gift); codexSave(d); }
-const CODEX_STEPS = ["이름","위험 등급","선호 작업","탈출 · 전투 조건","이야기"];
+const CODEX_STEPS = ["이름","위험 등급","선호 작업","폭주 · 전투 조건","이야기"];
 /* 기프트: 드물게 환상체에서 나온 물건. 통제(알로 재움)로 얻은 것은 마음을 다스리는 쪽, 제압(전투)으로 얻은 것은 몸을 단련하는 쪽.
    기프트의 급수(만난 의뢰 등급)가 지닌 해결사보다 높으면 정신이 무너질 때 통제 기프트는 개화 쪽으로, 제압 기프트는 뒤틀림 쪽으로 기운다. */
 const GIFT_P = 0.08;
@@ -3646,9 +3648,9 @@ function mgAbno(ctx){
     const seen = codexMeet(a.vid), know = n => seen >= n;
     const shown = know(1) ? a.n : "정체불명의 환상체", riskTxt = know(2) ? a.risk + (a.sin ? ` · ${a.sin}` : "") : "???";
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
-    const m = mgOpen(`환상체 의뢰 · 관측`, `현장에 닿으면 환상체의 상태부터 살핀다. 배회 중이면 작업으로 달래 알로 재우고, 날뛰거나 탈출하면 전투로 제압한다.`, ctx, 300);
+    const m = mgOpen(`환상체 의뢰 · 관측`, `현장에 닿으면 환상체의 상태부터 살핀다. 배회 중이면 작업으로 달래 알로 재우고, 날뛰거나 폭주하면 전투로 제압한다.`, ctx, 300);
     const rampP = a.noFight ? 0 : ({죄종:0.25, ZAYIN:0.12, TETH:0.25, HE:0.3, WAW:0.35, ALEPH:0.35}[a.risk] || 0.25) + (q.hazard ? 0.15 : 0);
-    const G = {mood:20, ctr:a.ctr, max:a.ctr, state: Math.random() < rampP ? "rage" : "calm", log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, flame:{}, blessed:null, embers:0};
+    const G = {mood:20, ctr:a.ctr, max:a.ctr, state: q.__state || (Math.random() < rampP ? "rage" : "calm"), log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, flame:{}, blessed:null, embers:0};
     const W = 720, H = 300, t0 = performance.now(); let raf;
     const best = k => ctx.team.slice().sort((x,y)=>power(y,[k]) - power(x,[k]))[0];
     const workerFor = k => G.pick!=null ? ctx.team.find(f=>f.id===G.pick) || best(k) : best(k);
@@ -3666,7 +3668,7 @@ function mgAbno(ctx){
       if(G.flash > 0){ c.fillStyle = `rgba(255,255,255,${G.flash*0.25})`; c.fillRect(0,0,W,H); G.flash *= 0.9; } G.shake *= 0.88;
       c.font = `700 15px "Noto Sans KR",sans-serif`; c.fillStyle = "#f0e6e0"; c.fillText(shown, 18, 30);
       c.font = `500 12px "Noto Sans KR",sans-serif`; c.fillStyle = know(2) ? (RISK_COL[a.risk] || "#ccc") : "#8a8490"; c.fillText(`위험 등급: ${riskTxt}`, 18, 50);
-      c.fillStyle = "#b9b0b8"; c.fillText(G.state==="rage" ? "상태: 날뛰고 있다" : G.state==="out" ? "상태: 탈출했다" : G.state==="egg" ? "상태: 알로 잠들었다" : "상태: 주변을 살피며 배회한다", 18, 68);
+      c.fillStyle = "#b9b0b8"; c.fillText(G.state==="rage" ? "상태: 날뛰고 있다" : G.state==="out" ? "상태: 폭주했다" : G.state==="egg" ? "상태: 알로 잠들었다" : "상태: 주변을 살피며 배회한다", 18, 68);
       if(a.rule==="ember" && G.embers){ c.fillStyle = "#ff9a5a"; c.fillText(`불씨 ${G.embers}`, 18, 86); }
       c.fillStyle = "#a8a0a8"; c.textAlign = "right"; c.fillText("기분", 502, 30); c.fillText(ctrName, 502, 52); c.textAlign = "left";
       c.fillStyle = "#26222a"; c.fillRect(510, 21, 190, 10); c.fillStyle = G.mood >= 70 ? "#8fd6a0" : G.mood >= 35 ? "#e0c64a" : "#d6493f"; c.fillRect(510, 21, 190*clamp(G.mood/100,0,1), 10);
@@ -3729,7 +3731,7 @@ function mgAbno(ctx){
     async function breach(f){
       if(a.noFight) return doom(f);
       G.state = "out"; G.shake = 18; G.flash = 1; m.ctrl.innerHTML = "";
-      say(`<b style="color:#ff8a7a">${a.rule==="knight" ? "기사가 절망에 빠졌다" : `${a.noCounter ? "참을성이" : "광폭 카운터가"} 다했다`} — ${esc(josa(shown,"이","가"))} 탈출했다!</b>`); await new Promise(r=>setTimeout(r, 1300)); fight();
+      say(`<b style="color:#ff8a7a">${a.rule==="knight" ? "기사가 절망에 빠졌다" : `${a.noCounter ? "참을성이" : "광폭 카운터가"} 다했다`} — ${esc(josa(shown,"이","가"))} 폭주했다!</b>`); await new Promise(r=>setTimeout(r, 1300)); fight();
     }
     async function fight(){
       cancelAnimationFrame(raf); m.bg.style.visibility = "hidden";
@@ -5469,11 +5471,11 @@ async function openAchievements(){
       ${n ? `<div class="d">${esc(e.look)}</div>` : ""}
       <div class="cdx-g"><span>위험 등급</span><div>${L(2) ? `${e.risk}${e.sin ? ` — 작은 ${e.sin} 죄종` : ""}` : lock(2)}</div>
         <span>선호 작업</span><div>${L(3) ? WORKS.map(w=>`${w.n}(${WORK_LBL[w.k]}) <b style="color:${e.pref[w.k]==="최고"?"#8fd6a0":e.pref[w.k]==="좋음"?"#cfe08a":"#ff8a7a"}">${e.pref[w.k]}</b>`).join(" · ") : lock(3)}</div>
-        <span>탈출 조건</span><div>${L(4) ? `${e.noCounter ? `광폭 카운터 없음(이 게임에선 실수 ${e.ctr}번까지)` : `광폭 카운터 ${e.ctr}`} — ${esc(e.escape)}` : lock(4)}</div>
-        <span>전투 조건</span><div>${L(4) ? (e.noFight ? `<span style="color:#ff8a7a">전투 불가</span> — 탈출하지 않거나 즉사 기믹이 있다. 통제에 실패하면 재앙이 일어난다` : "탈출하거나 날뛰면 전투로 제압해 알로 되돌린다") : lock(4)}</div>
+        <span>폭주 조건</span><div>${L(4) ? `${e.noCounter ? `광폭 카운터 없음(이 게임에선 실수 ${e.ctr}번까지)` : `광폭 카운터 ${e.ctr}`} — ${esc(e.escape)}` : lock(4)}</div>
+        <span>전투 조건</span><div>${L(4) ? (e.noFight ? `<span style="color:#ff8a7a">전투 불가</span> — 자리를 떠나지 않거나 즉사 기믹이 있다. 통제에 실패하면 재앙이 일어난다` : "폭주하거나 날뛰면 전투로 제압해 알로 되돌린다") : lock(4)}</div>
         <span>이야기</span><div>${L(5) ? esc(e.story) : lock(5)}</div>
         <span>기프트</span><div>${(c.gifts||[]).length ? c.gifts.map(esc).join(", ") : `<span class="muted">아직 얻지 못했다</span>`}</div></div></div>`; };
-  const cdxBody = met.length ? `<p class="muted" style="margin:0 0 8px">만날수록 이름 → 위험 등급 → 선호 작업 → 탈출·전투 조건 → 이야기 순으로 열린다. 이 브라우저에 남는다.</p>${met.map(row).join("")}`
+  const cdxBody = met.length ? `<p class="muted" style="margin:0 0 8px">도시의 환상체는 저절로 생겨났거나, 뒤틀림이 깊어진 끝에 환상체가 된 것이다. 만날수록 이름 → 위험 등급 → 선호 작업 → 폭주·전투 조건 → 이야기 순으로 열린다. 이 브라우저에 남는다.</p>${met.map(row).join("")}`
     : `<div class="ach-empty"><div class="ach-empty-ic">◇</div><b>아직 마주친 환상체가 없다</b><div class="d">환상체 의뢰에서 만난 환상체가 여기에 기록된다.</div></div>`;
   const body = `<div class="fg-seg" id="achtab" style="margin-bottom:10px"><button class="on" data-tab="a">업적 ${got}/${ACHIEVEMENTS.length}</button><button data-tab="c">환상체 도감 ${met.length}/${entries.length}</button></div><div id="achbody">${achBody}</div>`;
   const p = modal("업적", body, [{t:"닫기"}]);
@@ -7919,17 +7921,29 @@ function drawRumors(now, L){
 }
 
 /* ================= 연출 테스트 패널 (#fxtest) ================= */
+/* 미리보기 사이트에서만 보이는 "새 시스템 미리보기" 버튼 — 본 사이트(workers.dev 등)에서는 숨긴다 */
+const IS_PROD = /workers\.dev$/i.test(location.hostname) || /problem-?solver/i.test(location.hostname);
+function previewButton(){
+  if(IS_PROD || document.getElementById("pvbtn")) return;
+  const b = document.createElement("button"); b.id = "pvbtn"; b.className = "pvbtn"; b.textContent = location.hash==="#fxtest" ? "미리보기 패널 접기" : "새 시스템 미리보기";
+  b.onclick = ()=>{ if(location.hash!=="#fxtest"){ location.hash = "#fxtest"; location.reload(); return; }
+    const p = document.querySelector(".fxtest"); if(p){ p.classList.toggle("hide"); b.textContent = p.classList.contains("hide") ? "미리보기 패널 펼치기" : "미리보기 패널 접기"; } };
+  document.body.appendChild(b);
+}
 function fxTestPanel(){
+  previewButton();
   if(location.hash!=="#fxtest") return;
   if(!S){ newGame("테스트 대표","연출 시험 사무소","테스트 동료"); leaveTitle(); render(); }
   const el=document.createElement("div"); el.className="fxtest";
-  el.innerHTML=`<h4>연출 테스트</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
+  el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>일반 의뢰</b><div class="g">${[["str","물리"],["agi","속도"],["tec","정밀"]].map(([a,l])=>`<button data-fx="일반|${a}|1">${l} 성공</button><button data-fx="일반|${a}|0">${l} 실패</button>`).join("")}</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
-   <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>`;
+   <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
+   <b>환상체</b><div class="g"><select id="fxab" style="max-width:100%">${["죄종","ZAYIN","TETH","HE","WAW","ALEPH"].map(r=>`<optgroup label="${r}">${ABNOS.filter(a=>a.risk===r).map(a=>`<option value="${a.id}">${esc(a.n)}${a.canon?" ·원작":""}</option>${a.variant?`<option value="${a.id}~v">${esc(a.n)} (아종: ${esc(a.variant.n)})</option>`:""}`).join("")}</optgroup>`).join("")}</select>
+     <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="gift">기프트 받기</button><button data-ab="codex">도감 보기</button></div>`;
   document.body.appendChild(el);
   el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
     if(k==="color"){ f.grade = 0; f.title = f.title || randomColorTitle(); f.unique = f.unique || {}; S.officeGrade = 1; render(); toast(`${f.name} → 특색 [${f.title}]`); }
@@ -7944,6 +7958,15 @@ function fxTestPanel(){
     else if(k==="shop") await openShop();
     else if(k==="rig") await openRigGallery();
     else if(k==="slash") await openSlashLab(); });
+  el.addEventListener("click", async e=>{ const k = e.target.dataset.ab; if(!k) return; const v = el.querySelector("#fxab").value, [id, vv] = v.split("~"), A = ABNO_BY[id];
+    const ab = {id, variant: !!vv}, vid = vv ? id+"~v" : id;
+    if(k==="know"){ const d = codexLoad(); d[vid] = Object.assign({seen:0, ctrl:0, sup:0, gifts:[]}, d[vid]||{}); d[vid].seen = Math.max(5, d[vid].seen); codexSave(d); return toast(`${A.n}: 도감 정보를 모두 열었다`); }
+    if(k==="codex") return openAchievements();
+    if(k==="gift"){ const a = abnoOf({abno:ab}); ["ctrl","sup"].forEach(h=>{ const g = makeGift(a, h, A.g[0]); if(g){ S.inventory = S.inventory||[]; S.inventory.push(g); codexNote(vid, null, g.name); toast(`기프트: ${g.name}(${g.gift.kind})`); } }); render(); return; }
+    if(k==="rage" && A.noFight) return toast("이 환상체는 날뛰지 않는다(전투 불가)");
+    const team = S.fixers.slice(0, Math.max(1, +el.querySelector("#fxn").value)).filter(Boolean);
+    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" ? "rage" : "calm";
+    const r = await runMinigames(q, team); toast(r.abno && r.abno.how==="ctrl" ? "통제 성공" : r.abno && r.abno.how==="sup" ? "제압 성공" : "실패"); });
   el.onclick=e=>{ const v=e.target.dataset.fx; if(!v||scene) return; const [k,a,ok]=v.split("|"); const n=+el.querySelector("#fxn").value;
     const wv=el.querySelector("#fxw").value, f0=S.fixers[0], lead = f0.gear.weapon && f0.gear.weapon.unique ? leadGear(f0) : {wtype:wv||null, spec: wv?defaultSpec(wv):null, weaponName: wv?el.querySelector("#fxw").selectedOptions[0].text:null, armor:el.querySelector("#fxa").checked, acc:el.querySelector("#fxc").checked, accColor:"150,230,255"};
     window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),lead,client:"테스트 의뢰인"}); };
