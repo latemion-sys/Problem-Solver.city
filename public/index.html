@@ -3860,7 +3860,14 @@ function pickAbno(g){ const risk = abnoRiskFor(g); let pool = ABNOS.filter(a=>a.
 const abnoOf = q => { const a = ABNO_BY[q.abno && q.abno.id]; if(!a) return null; return q.abno.variant ? Object.assign({}, a, {n:`${a.n} (아종: ${a.variant.n})`, pref:a.variant.pref, vid:a.id+"~v"}) : Object.assign({}, a, {vid:a.id}); };
 /* 도감: 같은 환상체를 만날수록 정보가 열린다(이름 → 위험 등급 → 선호 행동 → 폭주·전투 조건 → 이야기). 업적처럼 이 브라우저에 남는다. */
 const CODEX_KEY = "problem-solver-codex-v1";
-function codexLoad(){ try{ return JSON.parse(localStorage.getItem(CODEX_KEY))||{}; }catch(_){ return {}; } }
+// 저장 파일에서 지금 목록에 없는 예전 기프트를 지운다(보관함 · 착용 중인 장신구 모두)
+function giftOk(g){ if(!g || !g.gift) return true; const A = ABNO_BY[String(g.gift.abno).split("~")[0]]; return !!(A && A.gifts && [A.gifts.a, A.gifts.b].some(x=>x && x.n===g.name)); }
+function pruneOldGifts(d){ d.inventory = (d.inventory||[]).filter(giftOk); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(f.gear && f.gear.acc && !giftOk(f.gear.acc)) f.gear.acc = null; }); }
+// 도감의 기프트 칸에는 지금 그 환상체가 주는 두 기프트만 남긴다(예전 이름은 지운다)
+function codexLoad(){ let d; try{ d = JSON.parse(localStorage.getItem(CODEX_KEY))||{}; }catch(_){ return {}; }
+  Object.keys(d).forEach(v=>{ const e = d[v]; if(!e || !Array.isArray(e.gifts)) return; const A = typeof ABNO_BY!=="undefined" && ABNO_BY[String(v).split("~")[0]];
+    const ok = A && A.gifts ? [A.gifts.a, A.gifts.b].filter(Boolean).map(g=>g.n) : []; e.gifts = e.gifts.filter(n=>ok.includes(n)); });
+  return d; }
 function codexSave(d){ try{ localStorage.setItem(CODEX_KEY, JSON.stringify(d)); }catch(_){} }
 function codexSeen(vid){ return (codexLoad()[vid]||{}).seen || 0; }
 function codexMeet(vid){ const d = codexLoad(), e = d[vid] = d[vid] || {seen:0, ctrl:0, sup:0, gifts:[]}; e.seen++; codexSave(d); return e.seen; }
@@ -6208,9 +6215,10 @@ async function openRecords(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
 const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나무"],["랑가 공방","랑아 공방"],["클라우드 공방","구름 공방"],["아틀리에 로직","로직 아틀리에"]];
-function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); } }catch(_){} return null; }
+function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ pruneOldGifts(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
+}catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
