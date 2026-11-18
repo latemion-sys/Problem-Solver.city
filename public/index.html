@@ -2668,6 +2668,25 @@ function mgCombat(ctx){
     let clock = 0, last = performance.now(); st.ev = []; st.fx = []; st.waves = []; st.pop = [];
     const chestOf = who => who==="foe" ? [POS.foe.x, POS.foe.gy - POS.foe.h*0.52] : [POS.me.x + 6, POS.me.gy - POS.me.h*0.52];
     const addFx = (o, dur, delay=0)=>{ st.fx.push(Object.assign({t0: clock+delay, dur}, o)); };
+    // 환상체의 고유 기술: 환상체 자리에서 기술의 갈래대로 흔적을 남기고, 맞는 순간 기술 이름을 띄운다
+    const AFIG = ()=>[POS.foe.x, POS.foe.gy - POS.foe.h*0.55];
+    function abnoAtk(card, x, y, imp, dmg){
+      const RC = (ABNO_RCOL[AB.risk] || ABNO_RCOL.TETH).map(v=>Math.min(1, v/255*1.15+0.08)), hot = RC.map(v=>Math.min(1, v*0.6+0.45)), kind = abnoSkillKind(card && card.n), [fx0, fy0] = AFIG(), seed = Math.random()*99;
+      const lvl = ABNO_LVL[AB.risk] || 2, R0 = 46 + lvl*8;
+      st.abAtk = {t0: clock, imp};
+      // 기를 모으는 고리
+      addFx({kind:"hit", x:fx0, y:fy0, R:R0*0.9, col:RC}, imp, 0);
+      if(kind==="bite"){ for(const s of [-1,1]) addFx({kind:"arc", x, y: y + s*22, R:44, a0: s<0 ? 0.35 : -2.8, a1: s<0 ? 2.8 : -0.35, w:9, col:hot}, 300, imp-120);
+        addFx({kind:"hit", x, y, R:R0, col:hot}, 380, imp); }
+      else if(kind==="shot"){ [0,70,140,210].slice(0, 2 + Math.min(2, lvl>>1)).forEach((d,i)=>{ addFx({kind:"line", x0:fx0-20, y0:fy0, x1:x+(i-1.5)*10, y1:y+(i%2?8:-8), w:3.5, col:hot}, 170, imp-170+d); addFx({kind:"hit", x:x+(i-1.5)*10, y, R:26, col:hot}, 220, imp+d-30); }); }
+      else if(kind==="fire"){ addFx({kind:"hit", x, y, R:R0*1.4, col:[1,0.62,0.25]}, 520, imp); addFx({kind:"pt", x, y:y+30, n:110, spd:120, dx:0, dy:-1, col:[1,0.55,0.2], seed}, 1100, imp); addFx({kind:"hit", x, y, R:R0*0.7, col:hot}, 300, imp); }
+      else if(kind==="sound"){ for(let i=0;i<4;i++) setTimeout(()=>{ st.waves.push({x:fx0, y:fy0, t0:clock, k:0.5}); }, imp*0.4 + i*110); addFx({kind:"hit", x, y, R:R0, col:RC}, 420, imp); }
+      else if(kind==="ice"){ for(let i=0;i<6;i++){ const ang = -Math.PI/2 + (i-2.5)*0.42; addFx({kind:"line", x0:x, y0:y+40, x1:x+Math.cos(ang)*70, y1:y+40+Math.sin(ang)*90, w:4, col:[0.75,0.92,1]}, 520, imp-40+i*20); } addFx({kind:"pt", x, y, n:60, spd:70, dx:0, dy:0.4, col:[0.8,0.95,1], seed}, 900, imp); }
+      else if(kind==="lash"){ addFx({kind:"line", x0:fx0-30, y0:fy0-30, x1:x-40, y1:y+40, w:8, col:hot}, 260, imp-90); addFx({kind:"arc", x:x+30, y:y+50, R:80, a0:-0.7, a1:-3.0, w:10, col:RC}, 320, imp-80); addFx({kind:"hit", x, y, R:R0*0.9, col:hot}, 340, imp); }
+      else { addFx({kind:"hit", x, y, R:R0*1.2, col:hot}, 460, imp); }
+      addFx({kind:"pt", x, y, n:Math.min(140, 30+dmg*3), spd:110, dx:-1, dy:-0.4, col:hot, seed:seed+1}, 900, imp);
+      if(card && card.n) setTimeout(()=>{ st.pop.push({x: POS.foe.x - 120, y: POS.foe.gy - POS.foe.h - 6, t0: clock, txt: card.n, col: RISK_COL[AB.risk] || "#ffd6c8"}); }, Math.max(0, imp-160));
+    }
     // by: 공격하는 쪽("me" 우리, "foe" 적, "tie" 맞부딪침)
     function attack(by, dmg, card){
       const t0 = clock, big = st.crit ? 1.6 : 1, tmA = by==="tie" ? [200,90,90,360] : timingOf(by==="me" ? party[act].wt : foe.wt), imp = tmA[0]+tmA[1];
@@ -2680,7 +2699,8 @@ function mgCombat(ctx){
         setTimeout(()=>{ st.waves.push({x, y, t0:clock, k:0.6}); st.shake = 6; }, imp); return; }
       const tgt = by==="me" ? "foe" : "me", wt0 = by==="me" ? party[act].wt : foe.wt, wt = wt0==="fist" ? "blunt" : wt0, col = FX_COL[wt0] || FX_COL.none;
       const [x, y] = chestOf(tgt), sc = tgt==="foe" ? 0.75 : 1.15, dir = by==="me" ? 1 : -1;
-      if(SFX){ const spec = by==="me" ? party[act].spec : foe.spec, from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
+      if(AB && !AB.possessed && by==="foe"){ abnoAtk(card, x, y, imp, dmg); }
+      else if(SFX){ const spec = by==="me" ? party[act].spec : foe.spec, from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
         slashAt(SFX, wt0, x, y, (tgt==="foe" ? 76 : 108)*(st.crit?1.15:1), {face:dir, spec, style: st.ev[st.ev.length-1].style, multi: st.ev[st.ev.length-1].multi, groundY: POS[tgt].gy, fromX:from[0], fromY:from[1],
           sparkCol: tgt==="foe" ? [1,0.74,0.42] : [1,0.42,0.36], delay: imp/1000}); }
       else if(wt==="gun"){ const from = by==="me" ? [POS.me.x+70, POS.me.gy-POS.me.h*0.62] : [POS.foe.x-48, POS.foe.gy-POS.foe.h*0.62];
@@ -2690,8 +2710,8 @@ function mgCombat(ctx){
       else if(wt!=="blunt"){ const R = (wt==="great"?96:78)*sc, cx = x - dir*R*0.32, cy = y + R*0.62, a0 = dir>0 ? -2.45 : -0.7, a1 = dir>0 ? -0.15 : -3.0+0.01;
         addFx({kind:"arc", x:cx, y:cy, R, a0, a1, w:(wt==="great"?13:9)*sc, col}, 360, imp-90);
         if(card && card.cleave) addFx({kind:"arc", x:cx+dir*8, y:cy-10, R:R*0.86, a0:a0+0.15*dir, a1:a1+0.15*dir, w:4*sc, col}, 320, imp-50); }
-      if(!SFX) addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
-      if(!SFX) addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
+      if(!SFX && !(AB && !AB.possessed && by==="foe")) addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
+      if(!SFX && !(AB && !AB.possessed && by==="foe")) addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
       setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = clock + (st.crit?140:70);
         foe.shownHp = foe.hp; party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt: tgt==="foe" ? `-${dmg}` : (party[act].hp<=0 ? "쓰러짐" : WOUND[woundOf(party[act].hp)]), col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
     }
@@ -2723,6 +2743,14 @@ function mgCombat(ctx){
         if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; fp.sw = -0.2; } else { frot = 1.3*k; fdim = 0.25*k; } }
       const fcol = hexMix(hexMix(SIDE_COL.foe.fill, "#000000", fdim), "#fff4e8", fp.flash);
       const fworst = foe.shownHp/foe.max;
+      if(AB && !AB.possessed){
+        // 환상체: 관측 화면과 같은 모습. 발판 위에 떠 있고, 공격할 때 부풀며 다가오고, 맞으면 하얗게 번쩍인다
+        const at = st.abAtk ? clock - st.abAtk.t0 : 1e9, ak = at < st.abAtk?.imp + 360 ? (at < st.abAtk.imp ? ease(at/st.abAtk.imp) : 1 - clamp((at-st.abAtk.imp)/360,0,1)) : 0;
+        const egg = outcome==="제압" && st.koAt!=null && clock>st.koAt, rr = 34 + (ABNO_LVL[AB.risk]||2)*1.5;
+        c.save(); if(outcome==="사살" && st.koAt!=null) c.globalAlpha = 1 - clamp((clock-st.koAt)/900,0,1)*0.85;
+        drawAbnoFigure(c, now/1000, POS.foe.x + fp.dx*0.12 - ak*22, POS.foe.gy - POS.foe.h*0.55 + Math.sin(now/600)*4 + fp.dy*0.12 + ak*8, rr, AB.risk, {rage: !egg && (foe.hp < foe.max*0.5 || AB.rage), egg, ent: 1, flash: fp.flash*3, atk: ak, dim: fdim});
+        c.restore();
+      } else
       drawFixer(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, state: outcome==="제압" ? "hurt" : "combat", weapon: outcome ? null : foe.spec, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot, hurt: 1-fworst});
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
@@ -4005,12 +4033,49 @@ const abnoTags = f => { const A = f.ab || {}, t = [];
    badKill(아무것도 없는 — 나쁜 결과 = 죽음, 며칠 뒤 그 얼굴이 문을 두드린다) · rule2 ranged(고기 초롱 — 총잡이가 있어야 싸울 수 있다)
    fx: flame(용기의 불꽃, 몸에 남는다) · bless(기사의 축복) · fairyFeast · prick · possess(빨간 구두 — 홀린 동료와 싸운다) · bullet(마탄 의뢰, 7번째는 아군) · mercenary(붉은 두건 하청) · wings · lamp · absolve
    전투: enrage(맞으면 붉게) · fuse(성냥불 표식, N턴 뒤 폭발) · aoe(N턴마다 심판) — mgCombat에서 처리 */
+/* 환상체의 모습: 위험 등급 빛깔의 가시 다각형 몸통 · 색이 어긋난 잔상 · 서로 반대로 도는 파편 고리 · 텅 빈 구멍 속 세로로 찢어진 눈.
+   관측(통제) 화면과 전투 화면이 같은 그림을 쓴다. o: {rage, egg, ent(등장 0~1), flash(맞음 0~1), atk(공격 0~1), dim(어두움 0~1)} */
+function drawAbnoFigure(c, t, sx, sy, r, risk, o){
+  o = o || {}; const RC = ABNO_RCOL[risk] || ABNO_RCOL.ZAYIN, rage = !!o.rage, egg = !!o.egg, ent = o.ent==null ? 1 : o.ent, k44 = r/44, atk = o.atk||0;
+  const cc0 = egg ? [230,220,190] : rage ? RC.map(v=>Math.min(255, Math.round(v*1.15+20))) : RC, fl = o.flash||0, dm = o.dim||0;
+  const cc = cc0.map(v=>Math.round((v + (255 - v)*fl*0.7)*(1-dm))), col = cc.join(","), N = ABNO_SHARD[risk] || 6, lvl = ABNO_LVL[risk] || 1;
+  const sc = (egg ? 1 : 0.35 + 0.65*Math.min(1, ent*1.6))*(1 + 0.18*atk);
+  const gl = c.createRadialGradient(sx, sy, 4, sx, sy, r*2.6*sc); gl.addColorStop(0, `rgba(${col},${0.32+0.06*lvl+0.25*atk})`); gl.addColorStop(1, `rgba(${col},0)`); c.fillStyle = gl; c.fillRect(sx-r*3, sy-r*3, r*6, r*6);
+  if(egg){ c.fillStyle = `rgba(${col},0.9)`; c.beginPath(); c.ellipse(sx, sy+8*k44, r*0.55, r*0.72, 0, 0, 7); c.fill(); return; }
+  // 떠도는 파편 고리: 서로 반대로 돌며 깜빡인다
+  for(let ring=0; ring<2; ring++){ const rr0 = r*(1.55+ring*0.45)*sc, sp = (ring ? -0.6 : 0.9)*(rage?2.4:1)*(1+atk*2);
+    for(let i=0;i<N;i++){ const ang = i/N*Math.PI*2 + t*sp + ring*0.4, f2 = 0.35 + 0.65*Math.abs(Math.sin(t*3 + i*1.7 + ring));
+      const x = sx + Math.cos(ang)*rr0, y = sy + Math.sin(ang)*rr0*0.82, len = (9 + lvl*2.5)*k44, w2 = (2.5 + lvl*0.6)*k44;
+      c.save(); c.translate(x,y); c.rotate(ang + Math.PI/2 + Math.sin(t*2+i)*0.4); c.fillStyle = `rgba(${col},${0.55*f2})`;
+      c.beginPath(); c.moveTo(0,-len); c.lineTo(w2,len*0.3); c.lineTo(0,len*0.55); c.lineTo(-w2,len*0.3); c.closePath(); c.fill(); c.restore(); } }
+  // 몸통: 들쭉날쭉한 가시 다각형, 색이 어긋난 잔상 두 겹
+  const body = (ox, oy, k, fill) => { c.fillStyle = fill; c.beginPath(); const M = N*4;
+    for(let i=0;i<=M;i++){ const ang = i/M*Math.PI*2 + t*0.15, spike = (i%4===0 ? 0.32 + 0.08*Math.sin(t*4+i) + atk*0.25 : i%2 ? -0.05 : 0.1), wob = 0.07*Math.sin(ang*3 + t*(rage?7:1.4)) + (rage ? 0.06*Math.sin(ang*13+t*19) : 0);
+      const rr = r*sc*k*(1 + spike + wob), x = sx + ox + Math.cos(ang)*rr*0.86, y = sy + oy + Math.sin(ang)*rr; i ? c.lineTo(x,y) : c.moveTo(x,y); } c.fill(); };
+  const jx = ((rage ? 5 : 2.5) + lvl*0.6)*k44;
+  body(-jx, 0, 1.02, `rgba(${cc[0]},${Math.round(cc[1]*0.3)},${Math.round(cc[2]*0.4)},0.35)`);
+  body(jx, k44, 1.02, `rgba(${Math.round(cc[0]*0.4)},${cc[1]},${cc[2]},0.25)`);
+  body(0, 0, 1, `rgba(${col},0.92)`);
+  // 안쪽의 빈 구멍과 세로로 찢어진 눈: 가끔 감았다 뜬다. 공격할 때는 크게 뜬다
+  const blink = atk > 0.2 ? 1 : Math.max(0.08, Math.abs(Math.sin(t*0.9 + Math.sin(t*0.37)*2)));
+  c.fillStyle = "rgba(6,4,10,0.95)"; c.beginPath(); c.ellipse(sx, sy, r*0.42*sc, r*0.5*sc, 0, 0, 7); c.fill();
+  c.fillStyle = `rgba(${Math.min(255,cc[0]+60)},${Math.min(255,cc[1]+60)},${Math.min(255,cc[2]+60)},0.95)`; c.beginPath(); c.ellipse(sx + Math.sin(t*1.3)*4*k44, sy, r*0.07*sc*(1+atk*1.5), r*0.4*sc*blink, 0, 0, 7); c.fill();
+}
+/* 환상체의 고유 기술이 어떤 흔적을 남기는지: 기술 이름의 낱말로 갈래를 정한다 */
+function abnoSkillKind(n){ n = String(n||"");
+  if(/얼음|서리|동결|성에|냉기|눈보라|얼어/.test(n)) return "ice";
+  if(/불|작열|잿|태양|햇살|코로나|아지랑이|폭발|쇳물|타오|화염|열기/.test(n)) return "fire";
+  if(/음|악장|노래|부름|울림|소리|비명|속삭|맥박|이야기|종소리|웃음|말씀|기도|찬송|자장/.test(n)) return "sound";
+  if(/부리|이빨|턱|물기|물어|삼키|발톱|송곳니|가위|아가리|먹|씹/.test(n)) return "bite";
+  if(/총|탄|사격|쏘|뱉|화살|씨앗|침|포자|가루|비늘|깃털/.test(n)) return "shot";
+  if(/칼|검|창|말뚝|도끼|가지|뿌리|채찍|꼬리|낫|칼날|못|실|덩굴|촉수|팔|손/.test(n)) return "lash";
+  return "burst"; }
 /* ALEPH 조우 연출: 어둠 속 작은 칠각별 → 화면을 가득 메울 만큼 덮쳐 옴 → 끊김 → 글자 고리를 두른 문장(紋章)과 일그러진 이름. 화면을 누르면 건너뛴다 */
 function alephIntro(name){
   return new Promise(res=>{
     const cv = document.createElement("canvas"); cv.className = "aleph-fx"; document.body.appendChild(cv);
     const d = Math.min(2, devicePixelRatio||1), W = innerWidth, H = innerHeight; cv.width = W*d; cv.height = H*d; const c = cv.getContext("2d"); c.setTransform(d,0,0,d,0,0);
-    const T = 3.6; let t0 = 0, raf, done = false;
+    const OFF = 1.1, T = 3.6 + OFF, IMP = 0.85; let t0 = 0, raf, done = false;
     const rnd = (a,b) => a + Math.random()*(b-a), cl = (v,a,b) => Math.max(a, Math.min(b, v));
     const mk = (w,h) => { const o = document.createElement("canvas"); o.width = Math.ceil(w); o.height = Math.ceil(h); return [o, o.getContext("2d")]; };
     const finish = () => { if(done) return; done = true; cancelAnimationFrame(raf); cv.style.transition = "opacity .35s"; cv.style.opacity = 0; setTimeout(()=>{ cv.remove(); res(); }, 360); };
@@ -4095,7 +4160,7 @@ function alephIntro(name){
       for(let i=0;i<70;i++){ g.fillStyle = `rgba(0,0,0,${rnd(.6,1)})`; g.fillRect(rnd(0,w), rnd(0,h), rnd(2,fs*.12), rnd(1,fs*.05)); }
       for(let i=0;i<3;i++){ g.fillRect(0, h/2 + rnd(-fs*.4, fs*.4), w, rnd(1,2.2)); }
       g.globalCompositeOperation = "source-over"; return o; })();
-    const SUB = "돌아갈 길은 없다  ·  위험 등급 ALEPH", sfs = Math.max(11, base*.03);
+    const SUB = "날개 하나가 무너지는 재앙  ·  위험 등급 ALEPH", sfs = Math.max(11, base*.03);
     // ── 필름 입자 타일과 비네트
     const [NZ, nz] = mk(256,256); { const id = nz.createImageData(256,256); for(let i=0;i<id.data.length;i+=4){ const v = Math.random(); if(v < .1){ id.data[i] = 120 + Math.random()*120; id.data[i+3] = 30 + Math.random()*40; } else if(v < .45){ id.data[i+3] = 60 + Math.random()*120; } } nz.putImageData(id,0,0); }
     const NP = c.createPattern(NZ, "repeat");
@@ -4133,27 +4198,78 @@ function alephIntro(name){
       else c.drawImage(TT, x - w/2, y - h/2, w, h);
       c.restore(); };
     const sigil = (x, y, size, alpha) => { c.save(); c.globalAlpha = alpha; c.drawImage(SIG, x - size/2, y - size/2, size, size); c.restore(); };
+    // ── 처음 1.1초: 구역의 둥지가 무너진다. 하늘에 문장이 펼쳐지고, 탑의 불이 위에서부터 꺼지고, 충격파에 탑이 꺾여 무너지며 화면이 금 간다
+    const DL = (typeof districtOf === "function" ? districtOf() : {L:"?", name:"이 구역"});
+    const CY = (() => { const R = (a,b) => a + Math.random()*(b-a), bl = []; let x = -10;
+      while(x < W + 10){ const w = R(W*.035, W*.085), h = R(H*.18, H*.44); bl.push({x, w, h, lit:Array.from({length:Math.max(3, Math.floor(w*h/180))}, ()=>[Math.random(), Math.random(), Math.random()]), fall: Math.random() < .55 ? R(.25, 1) : 0, tilt: R(-.25,.25)}); x += w + R(1,4); }
+      const tw = Math.max(60, base*.21), th = H*.86, tx = cx, top = H - th, brk = top + th*.44, dir = Math.random() < .5 ? -1 : 1;
+      const shards = Array.from({length:90}, (_,i)=>({x:tx + R(-tw*.6, tw*.6), y: i < 18 ? top + th*.1 + R(-tw*.2, tw*.2) : R(brk - th*.08, brk + th*.06), vx:R(-320,320), vy:R(-520,-80), s:R(2,8), r:R(0,6), vr:R(-9,9), glow: i < 18}));
+      const px = cx, py = H*.45, cracks = [];
+      for(let i=0;i<12;i++){ let a0 = i/12*Math.PI*2 + R(-.2,.2), x0 = px + R(-6,6), y0 = py + R(-6,6); const pts = [[x0,y0]], L = Math.hypot(W,H)*R(.35,.75);
+        for(let s=0; s<L; ){ const st = R(14,40); a0 += R(-.28,.28); x0 += Math.cos(a0)*st; y0 += Math.sin(a0)*st; s += st; pts.push([x0,y0]);
+          if(Math.random() < .14 && pts.length > 2){ let b0 = a0 + R(-.9,.9), bx = x0, by = y0; const bp = [[bx,by]]; for(let k=0;k<rnd(3,7);k++){ b0 += R(-.3,.3); const s2 = R(10,26); bx += Math.cos(b0)*s2; by += Math.sin(b0)*s2; bp.push([bx,by]); } cracks.push(bp); } }
+        cracks.push(pts); }
+      return {bl, tw, th, tx, top, brk, dir, shards, cracks}; })();
+    const towerPath = () => { const {tw, th, tx, top} = CY; c.beginPath(); c.moveTo(tx - tw/2, H); c.lineTo(tx - tw*.36, top + th*.16); c.lineTo(tx - tw*.13, top + th*.04); c.lineTo(tx + tw*.13, top + th*.04); c.lineTo(tx + tw*.36, top + th*.16); c.lineTo(tx + tw/2, H); c.closePath(); };
+    const towerBody = (t) => { const {tw, th, tx, top} = CY, yb = top + cl((t - .45)/.4, 0, 1)*th;
+      const g = c.createLinearGradient(tx - tw/2, 0, tx + tw/2, 0); g.addColorStop(0,"#0b0c13"); g.addColorStop(.5,"#1d2030"); g.addColorStop(1,"#0b0c13"); c.fillStyle = g; towerPath(); c.fill();
+      for(let i=0;i<30;i++){ const y = top + th*.18 + i*th*.028; if(y > H) break; const k = (y - top)/th, half = tw*(.36 + .14*k); if(y < yb) continue;
+        c.fillStyle = `rgba(160,210,255,${.22 + .1*Math.sin(i*1.7)})`; c.fillRect(tx - half + 3, y, half*2 - 6, 1.4); }
+      c.strokeStyle = "#252838"; c.lineWidth = 2; c.beginPath(); c.moveTo(tx, top + th*.04); c.lineTo(tx, top - H*.03); c.stroke();
+      const by = top + th*.1, br = tw*.22, on = t < .55; if(on){ const hg = c.createRadialGradient(tx, by, 0, tx, by, br*3); hg.addColorStop(0,"rgba(255,214,140,.35)"); hg.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = hg; c.fillRect(tx - br*3, by - br*3, br*6, br*6); }
+      c.strokeStyle = on ? "rgba(255,214,140,.9)" : "rgba(120,100,80,.5)"; c.lineWidth = 1.5; c.beginPath(); c.arc(tx, by, br, 0, 7); c.stroke();
+      c.fillStyle = on ? "rgba(255,226,170,.95)" : "rgba(120,100,80,.6)"; c.font = `800 ${Math.round(br*1.3)}px "Pretendard","Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(DL.L, tx, by + 1); };
+    const city = (t, tt) => { const {bl, tw, th, tx, top, brk, dir, shards} = CY, fall = cl((t - IMP)/.55, 0, 1), fe = fall*fall;
+      const quake = t < IMP ? cl(t/IMP, 0, 1)*2.2 : Math.max(0, 20*(1 - (t - IMP)/.6)) + 2;
+      c.save(); c.globalAlpha = 1 - cl((tt - .3)/.6, 0, 1)*.8; c.translate(rnd(-1,1)*quake, rnd(-1,1)*quake);
+      const sg = c.createLinearGradient(0,0,0,H); sg.addColorStop(0, t < IMP ? "#0d0b14" : "#22050a"); sg.addColorStop(1, "#060508"); c.fillStyle = sg; c.fillRect(-30,-30,W+60,H+60);
+      // 하늘에 펼쳐지는 문장
+      if(t > .22){ const k = ease(cl((t - .22)/.6, 0, 1)), sz = base*(.05 + .5*k), sy = H*.2;
+        const rg = c.createRadialGradient(cx, sy, 0, cx, sy, sz*1.4); rg.addColorStop(0, `rgba(200,10,24,${.35*k})`); rg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = rg; c.fillRect(cx - sz*1.4, sy - sz*1.4, sz*2.8, sz*2.8);
+        c.save(); c.translate(cx, sy); c.rotate(t*.35); c.globalAlpha *= .35 + .6*k; c.drawImage(SIG, -sz/2, -sz/2, sz, sz); c.restore();
+        if(t > .55 && t < IMP + .1){ const bk = cl((t - .55)/.3, 0, 1); c.fillStyle = `rgba(255,40,50,${.25*bk})`; c.fillRect(cx - 3 - bk*6, sy, 6 + bk*12, top + th*.1 - sy); } }
+      // 뒷골목 건물들: 충격 뒤 절반쯤이 기울며 주저앉는다
+      bl.forEach(b=>{ const sink = b.fall*fe*b.h*.9, ang = b.fall*fe*b.tilt; c.save(); c.translate(b.x + b.w/2, H); c.rotate(ang); c.fillStyle = "#121019"; c.fillRect(-b.w/2, -b.h + sink, b.w, b.h); c.fillStyle = "#1a1724"; c.fillRect(-b.w/2, -b.h + sink, b.w, 2);
+        if(t < .45 + (1 - b.h/H)*.4) b.lit.forEach(l=>{ c.fillStyle = `rgba(255,200,120,${.25 + .35*l[2]})`; c.fillRect(-b.w/2 + 3 + l[0]*(b.w - 8), -b.h + sink + 5 + l[1]*(b.h - 12), 2.5, 3.5); }); c.restore(); });
+      // 둥지 탑: 아랫동은 남고, 윗동은 꺾여 떨어진다
+      c.save(); c.beginPath(); c.rect(0, brk, W, H - brk); c.clip(); towerBody(t); c.restore();
+      c.save(); const pv = tx + dir*tw*.3; c.translate(pv, brk + fe*H*.7); c.rotate(dir*fe*.75); c.translate(-pv, -brk); c.beginPath(); c.rect(0, -H, W, brk + H); c.clip(); towerBody(t); c.restore();
+      if(t >= IMP){ const dt = t - IMP;
+        shards.forEach(s=>{ const x = s.x + s.vx*dt, y = s.y + s.vy*dt + 450*dt*dt; if(y > H + 10) return; c.save(); c.translate(x, y); c.rotate(s.r + s.vr*dt);
+          c.fillStyle = s.glow ? `rgba(255,214,140,${Math.max(0, .9 - dt)})` : "#141622"; c.beginPath(); c.moveTo(-s.s, -s.s*.4); c.lineTo(s.s*.8, -s.s*.6); c.lineTo(s.s*.2, s.s); c.closePath(); c.fill(); c.restore(); });
+        // 충격파 고리와 먼지 벽
+        const rr = dt*base*2.4, ra = Math.max(0, 1 - dt/.7); c.strokeStyle = `rgba(255,120,110,${.7*ra})`; c.lineWidth = 3 + 10*ra; c.beginPath(); c.ellipse(cx, H*.45, rr, rr*.55, 0, 0, 7); c.stroke();
+        const dg = c.createLinearGradient(0, H*.55, 0, H); dg.addColorStop(0, "rgba(40,8,10,0)"); dg.addColorStop(1, `rgba(60,14,16,${.65*cl(dt/.5,0,1)})`); c.fillStyle = dg; c.fillRect(-30, H*.55, W+60, H*.45);
+        if(dt < .14){ c.fillStyle = dt < .05 ? "rgba(255,245,240,.85)" : `rgba(220,20,30,${.5*(1 - (dt - .05)/.09)})`; c.fillRect(-30,-30,W+60,H+60); } }
+      // 둥지 신호가 끊긴다
+      if(t > .5 && t < OFF + .4 && Math.sin(t*22) > -.3){ c.fillStyle = "#ff4a4a"; c.font = `700 ${Math.max(11, base*.026)}px ui-monospace,"D2Coding",monospace`; c.textAlign = "left"; c.textBaseline = "top";
+        c.fillText(t < IMP ? `${DL.name} 둥지 — 전력 이상` : `${DL.name} 둥지 — 신호 소실`, 18, 16); }
+      c.restore(); };
+    const cracksFx = (t) => { if(t < IMP) return; const p = cl((t - IMP)/.2, 0, 1), fade = t > T - .55 ? cl((T - t)/.55, 0, 1) : 1;
+      c.save(); c.lineJoin = "round"; CY.cracks.forEach(pts=>{ const n = Math.max(2, Math.floor(pts.length*p)); c.beginPath(); for(let i=0;i<n;i++) i ? c.lineTo(pts[i][0], pts[i][1]) : c.moveTo(pts[i][0], pts[i][1]);
+        c.strokeStyle = `rgba(0,0,0,${.55*fade})`; c.lineWidth = 3; c.stroke(); c.strokeStyle = `rgba(255,232,232,${.42*fade})`; c.lineWidth = 1; c.stroke(); }); c.restore(); };
     function draw(now){
-      if(!t0) t0 = now; const t = (now - t0)/1000; c.fillStyle = "#000"; c.fillRect(0,0,W,H);
+      if(!t0) t0 = now; const t = (now - t0)/1000, tt = t - OFF; c.fillStyle = "#000"; c.fillRect(0,0,W,H);
       const Rr = base*.21, fl = Math.random() < .07 ? .55 : 1;
-      if(t < 0.62){ sigil(cx + rnd(-1,1), cy, base*.3, cl(t/.35, 0, 1)*.42*fl*(t > .5 ? cl((.62 - t)/.12, 0, 1) : 1)); }
-      if(t >= ST - .02 && t < 1.35){ scene(t);
-        const dk = cl((t - 1.0)/.35, 0, 1)*.5; if(dk > 0){ c.fillStyle = `rgba(8,0,0,${dk})`; c.fillRect(0,0,W,H); }
-        if(t > 1.08) condensed("돌아갈 길은 없다", cx + rnd(-2,2), cy + H*.3, base*.075, "#b0161c", (.14 + Math.random()*.12)*cl((t - 1.08)/.12, 0, 1), .8); }
-      else if(t >= 1.35 && t < 1.5){ scene(1.35); c.fillStyle = "rgba(0,0,0,.72)"; c.fillRect(0,0,W,H);
+      if(t < OFF + 1.0) city(t, tt);
+      if(tt >= ST - .02 && tt < 1.35){ scene(tt);
+        const dk = cl((tt - 1.0)/.35, 0, 1)*.5; if(dk > 0){ c.fillStyle = `rgba(8,0,0,${dk})`; c.fillRect(0,0,W,H); }
+        if(tt > 1.08) condensed("돌아갈 길은 없다", cx + rnd(-2,2), cy + H*.3, base*.075, "#b0161c", (.14 + Math.random()*.12)*cl((tt - 1.08)/.12, 0, 1), .8); }
+      else if(tt >= 1.35 && tt < 1.5){ scene(1.35); c.fillStyle = "rgba(0,0,0,.72)"; c.fillRect(0,0,W,H);
         for(let k=0;k<3;k++) if(Math.random() < .5){ c.fillStyle = `rgba(170,0,10,${rnd(.12,.3)})`; c.fillRect(0, rnd(0,H), W, rnd(2,H*.04)); }
         title(cx, cy - Rr*.05, Math.min(1.35, W*.96/TT.width), .9, true); }
-      else if(t >= 1.5){ const e = t - 1.5, fade = t > T - .55 ? cl((T - t)/.55, 0, 1) : 1;
+      else if(tt >= 1.5){ const e = tt - 1.5, fade = t > T - .55 ? cl((T - t)/.55, 0, 1) : 1;
         const rest = cl(1 - e/.4, 0, 1); if(rest > 0){ scene(1.35); c.fillStyle = `rgba(0,0,0,${1 - rest*.28})`; c.fillRect(0,0,W,H); }
         sigil(cx, cy, Rr*2.75, (.55 + .3*cl((t - (T - .95))/.35, 0, 1))*fade*fl*cl(e/.12, 0, 1));
         const tA = fade*cl((T - .62 - t)/.35, 0, 1)*(Math.random() < .04 ? .3 : 1);
         if(tA > 0){ const sc = 1 + Math.pow(cl(1 - e/.3, 0, 1), 2)*(Math.min(1.35, W*.96/TT.width) - 1);
           title(cx, cy - Rr*.05, sc, tA, e < .35 ? Math.random() < .6 : Math.random() < .08);
           condensed(SUB, cx, cy + Rr*.05 + TT.height*.42 + sfs*.6, sfs, "#efc541", tA*cl((e - .12)/.15, 0, 1), .82); } }
+      cracksFx(t);
       // 필름 입자 · 비네트 · 어긋나는 주사선
       c.save(); c.globalAlpha = .55; c.translate(rnd(-128,0), rnd(-128,0)); c.fillStyle = NP; c.fillRect(0,0,W+128,H+128); c.restore();
       c.fillStyle = VG; c.fillRect(0,0,W,H);
-      if(Math.random() < .3){ const y0 = Math.random()*H, hh = 2 + Math.random()*22; c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(cv, 0, y0*d, W*d, hh*d, rnd(-24,24)*d, y0*d, W*d, hh*d); c.restore(); }
+      if(Math.random() < (t > IMP && t < IMP + .6 ? .7 : .3)){ const y0 = Math.random()*H, hh = 2 + Math.random()*22; c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(cv, 0, y0*d, W*d, hh*d, rnd(-24,24)*d*(t > IMP && t < IMP + .6 ? 2.5 : 1), y0*d, W*d, hh*d); c.restore(); }
       if(t >= T) return finish(); raf = requestAnimationFrame(draw); }
     raf = requestAnimationFrame(draw);
   });
@@ -4205,29 +4321,7 @@ function mgAbno(ctx){
           c.strokeStyle = `rgba(${col},${al})`; c.lineWidth = 1.5 + (1-e)*3; c.beginPath();
           for(let i=0;i<=N;i++){ const ang = i/N*Math.PI*2 + k*0.6 + t*(k%2?1:-1), rr = rad*(1 + 0.08*Math.sin(i*3+k)); const x = sx + Math.cos(ang)*rr, y = sy + Math.sin(ang)*rr*0.8; i ? c.lineTo(x,y) : c.moveTo(x,y); } c.stroke(); }
         for(let y=0;y<H;y+=3){ if(Math.random() < (1-ent)*0.35){ c.fillStyle = `rgba(${col},${0.08*(1-ent)})`; c.fillRect(0,y,W,1); } } c.restore(); }
-      const sc = egg ? 1 : 0.35 + 0.65*Math.min(1, ent*1.6);
-      const gl = c.createRadialGradient(sx, sy, 4, sx, sy, r*2.6*sc); gl.addColorStop(0, `rgba(${col},${0.32+0.06*lvl})`); gl.addColorStop(1, `rgba(${col},0)`); c.fillStyle = gl; c.fillRect(sx-r*3, sy-r*3, r*6, r*6);
-      if(egg){ c.fillStyle = `rgba(${col},0.9)`; c.beginPath(); c.ellipse(sx, sy+8, r*0.55, r*0.72, 0, 0, 7); c.fill(); }
-      else {
-        // 떠도는 파편 고리: 서로 반대로 돌며 깜빡인다
-        for(let ring=0; ring<2; ring++){ const rr0 = r*(1.55+ring*0.45)*sc, sp = (ring ? -0.6 : 0.9)*(rage?2.4:1);
-          for(let i=0;i<N;i++){ const ang = i/N*Math.PI*2 + t*sp + ring*0.4, fl = 0.35 + 0.65*Math.abs(Math.sin(t*3 + i*1.7 + ring));
-            const x = sx + Math.cos(ang)*rr0, y = sy + Math.sin(ang)*rr0*0.82, len = 9 + lvl*2.5, w2 = 2.5 + lvl*0.6;
-            c.save(); c.translate(x,y); c.rotate(ang + Math.PI/2 + Math.sin(t*2+i)*0.4); c.fillStyle = `rgba(${col},${0.55*fl})`;
-            c.beginPath(); c.moveTo(0,-len); c.lineTo(w2,len*0.3); c.lineTo(0,len*0.55); c.lineTo(-w2,len*0.3); c.closePath(); c.fill(); c.restore(); } }
-        // 몸통: 매끈한 곡선이 아니라 들쭉날쭉한 가시 다각형. 색이 어긋난 잔상 두 겹
-        const body = (ox, oy, k, fill) => { c.fillStyle = fill; c.beginPath(); const M = N*4;
-          for(let i=0;i<=M;i++){ const ang = i/M*Math.PI*2 + t*0.15, spike = (i%4===0 ? 0.32 + 0.08*Math.sin(t*4+i) : i%2 ? -0.05 : 0.1), wob = 0.07*Math.sin(ang*3 + t*(rage?7:1.4)) + (rage ? 0.06*Math.sin(ang*13+t*19) : 0);
-            const rr = r*sc*k*(1 + spike + wob), x = sx + ox + Math.cos(ang)*rr*0.86, y = sy + oy + Math.sin(ang)*rr; i ? c.lineTo(x,y) : c.moveTo(x,y); } c.fill(); };
-        const jx = (rage ? 5 : 2.5) + lvl*0.6;
-        body(-jx, 0, 1.02, `rgba(${cc[0]},${Math.round(cc[1]*0.3)},${Math.round(cc[2]*0.4)},0.35)`);
-        body(jx, 1, 1.02, `rgba(${Math.round(cc[0]*0.4)},${cc[1]},${cc[2]},0.25)`);
-        body(0, 0, 1, `rgba(${col},0.92)`);
-        // 안쪽의 빈 구멍과 세로로 찢어진 눈: 가끔 감았다 뜬다
-        const blink = Math.max(0.08, Math.abs(Math.sin(t*0.9 + Math.sin(t*0.37)*2)));
-        c.fillStyle = "rgba(6,4,10,0.95)"; c.beginPath(); c.ellipse(sx, sy, r*0.42*sc, r*0.5*sc, 0, 0, 7); c.fill();
-        c.fillStyle = `rgba(${Math.min(255,cc[0]+60)},${Math.min(255,cc[1]+60)},${Math.min(255,cc[2]+60)},0.95)`; c.beginPath(); c.ellipse(sx + Math.sin(t*1.3)*4, sy, r*0.07*sc, r*0.4*sc*blink, 0, 0, 7); c.fill();
-      }
+      drawAbnoFigure(c, t, sx, sy, r, a.risk, {rage, egg, ent});
       // 화면이 어긋나는 잡음: 위험할수록, 날뛸수록 잦다
       if(!egg && Math.random() < 0.02 + lvl*0.012 + (rage ? 0.08 : 0) + (ent<1 ? 0.15 : 0)){ const d = Math.min(2, devicePixelRatio||1), y0 = Math.random()*H, hh = 4 + Math.random()*18, dx = (Math.random()-0.5)*(14 + lvl*6);
         c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(m.cvs, 0, y0*d, W*d, hh*d, dx*d, y0*d, W*d, hh*d); c.restore(); }
@@ -4313,9 +4407,9 @@ function mgAbno(ctx){
       if(a.fx==="flame" && power(f,["str"]) < q.req*0.5){ say(line + `<b style="color:#ff8a7a">용기가 모자란 이가 다가서자 갑옷이 검을 뽑았다</b>`);
         if(killWorker(f, "부서져 가는 갑옷에게 다가갔다가 베였다(근력 부족)")) return; return menu(); }
       // 즉시 재앙 규칙
-      if(a.rule==="teddy" && prev===f.id && a.gentle){ G.ctr--; say(line + `<span style="color:#e0c64a">같은 사람이 연달아 다가왔다 — 곰 인형이 ${esc(jo(f.name,"을"))} 꼭 끌어안았다가 놓아주었다</span> · ${ctrName} -1`);
+      if(a.rule==="teddy" && prev===f.id && freeT().length > 1 && a.gentle){ G.ctr--; say(line + `<span style="color:#e0c64a">같은 사람이 연달아 다가왔다 — 곰 인형이 ${esc(jo(f.name,"을"))} 꼭 끌어안았다가 놓아주었다</span> · ${ctrName} -1`);
         if(G.ctr <= 0) return breach(f); return menu(); }
-      if(a.rule==="teddy" && prev===f.id){
+      if(a.rule==="teddy" && prev===f.id && freeT().length > 1){
         if(a.noFight){ say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다</span>`); return doom(f); }
         maimOf(f); G.ctr--; say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다 — ${esc(jo(f.name,"을"))} 꼭 끌어안았다(중상)</span> · ${ctrName} -1`);
         if(G.ctr <= 0) return breach(f); return menu(); }
@@ -4336,7 +4430,8 @@ function mgAbno(ctx){
         if(gx.length) line += " · " + gx.join(" · ");
         if(nailNow===3 && lv!=="최고" && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">약지의 못 — 졸작이다, 카운터 -1</span>`; }
         if(a.fx==="jade"){ const v = Math.floor(f.mpMax*0.05); f.mp = Math.min(f.mpMax, f.mp + v); G.dream++; line += ` · <span style="color:#9ad0ff">옥이 꿈을 보여 주었다(정신력 +${v}, 꿈 ${G.dream}/3)</span>`;
-          if(G.dream >= 3){ G.dream = 0; G.bench.push(f.id); (G.out.dreamers = G.out.dreamers || []).push(f.id); line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 붉은 누각 속으로 걸어 들어갔다 — 더는 행동할 수 없다</b>`; } }
+          if(G.dream >= 3 && freeT().length <= 1){ G.dream = 0; const v2 = Math.floor(f.mpMax*0.12); f.mp = Math.max(0, f.mp - v2); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; if(G.ctr > 0) G.ctr--; line += ` · <b style="color:#ff8a7a">누각 문턱에서 억지로 깨어났다(정신력 -${v2}, 카운터 -1)</b>`; }
+          else if(G.dream >= 3){ G.dream = 0; G.bench.push(f.id); (G.out.dreamers = G.out.dreamers || []).push(f.id); line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 붉은 누각 속으로 걸어 들어갔다 — 더는 행동할 수 없다</b>`; } }
         if(a.fx==="tower"){ G.floor++; line += ` · 계단을 한 층 올랐다(${G.floor}층)`; }
         if(a.fx==="bari"){ const need = ["str","agi","wil"][G.flowers.length];
           if(k===need){ G.flowers.push(k); G.mood = Math.min(100, G.mood + 8); line += ` · <span style="color:#ffd0e0">${["뼈살이꽃","살살이꽃","피살이꽃"][G.flowers.length-1]}을 얻었다</span>`;
@@ -4382,8 +4477,9 @@ function mgAbno(ctx){
           if(G.frost[f.id] >= 3){ G.bench.push(f.id); (G.out.frozen = G.out.frozen || []).push(f.id); line += ` · <b style="color:#9ad0ff">${esc(jo(f.name,"이"))} 무릎 꿇은 채 얼어붙었다</b>`; } } }
       if(a.fx==="erl" && G.child!=null){ const ch = ctx.team.find(x=>x.id===G.child);
         if(ch){ if(k==="wil" && right && f.id!==G.child){ G.lure = Math.max(0, G.lure - 2); line += ` · <span style="color:#9ad0ff">"얘야, 그건 안개란다." 부름이 옅어졌다(${G.lure}/4)</span>`; }
+          else if(k==="wil" && right && freeT().length===1){ G.lure = Math.max(0, G.lure - 1); line += ` · <span style="color:#9ad0ff">귀를 막고 버텼다. 부름이 조금 옅어졌다(${G.lure}/4)</span>`; }
           else { G.lure += f.id===G.child ? 2 : 1; line += ` · <span style="color:#b9c4d8">${f.id===G.child ? "아이가 직접 다가가자 " : ""}부름이 짙어졌다(${Math.min(4,G.lure)}/4)</span>`; }
-          if(G.lure >= 4){ G.lure = 0; G.child = null; ch.mp = Math.min(ch.mp, Math.floor(ch.mpMax*0.05)); ch.hp = Math.min(ch.hp, Math.max(1, Math.floor(ch.hpMax*0.15))); G.bench.push(ch.id); G.out.erl = ch.id; if(G.ctr > 0) G.ctr--;
+          if(G.lure >= 4){ G.lure = 0; G.child = null; ch.mp = Math.min(ch.mp, Math.floor(ch.mpMax*0.05)); ch.hp = Math.min(ch.hp, Math.max(1, Math.floor(ch.hpMax*0.15))); if(freeT().length > 1) G.bench.push(ch.id); G.out.erl = ch.id; if(G.ctr > 0) G.ctr--;
             line += ` · <b style="color:#ff8a7a">마왕이 ${esc(jo(ch.name,"을"))} 품에 안았다 — 정신을 놓고 쓰러졌다, 카운터 -1</b>`; } } }
       if(a.fx==="pair" && G.pair && G.pair.includes(f.id) && prev===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">한쪽 날개만 퍼덕였다 — 카운터 -1</span>`; }
       if(a.fx==="tower" && G.bearer!=null && G.bearer!==f.id){ const b2 = ctx.team.find(x=>x.id===G.bearer); if(b2){ const v = Math.max(1, Math.floor(b2.hpMax*0.05)); b2.hp = Math.max(1, b2.hp - v); line += ` · ${esc(b2.name)}의 어깨가 짓눌린다(체력 -${v})`; } }
@@ -4393,7 +4489,7 @@ function mgAbno(ctx){
       if(a.fx==="nails") nextNail();
       if(a.fx==="tower" && G.floor >= 3){ const fr = freeT(); if(fr.length > 1) G.babel = pick(fr).id; }
       if(a.low && power(f,[a.low]) < q.req && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">${ATTR_NAME[a.low]}이 모자란 행동하는 이 — 카운터 -1</span>`; }
-      if(a.rule==="knight" && !G.blessed){ G.blessed = f.id; f.ab = f.ab || {}; f.ab.bless = {until: S.day + 1}; line += ` · <span style="color:#9ad0ff">기사가 처음 다가온 ${esc(f.name)}에게 축복을 내렸다 — 다음 날까지 받는 피해 절반, 통제 행동 불가</span>`; }
+      if(a.rule==="knight" && !G.blessed && freeT().length > 1){ G.blessed = f.id; f.ab = f.ab || {}; f.ab.bless = {until: S.day + 1}; line += ` · <span style="color:#9ad0ff">기사가 처음 다가온 ${esc(f.name)}에게 축복을 내렸다 — 다음 날까지 받는 피해 절반, 통제 행동 불가</span>`; }
       if(a.fx==="spiral"){ G.gaze[f.id] = (G.gaze[f.id]||0) + 1; if(G.gaze[f.id] >= 3 && G.ctr > 0){ G.gaze[f.id] = 0; G.ctr--; const v = Math.floor(f.mpMax*0.15); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; line += ` · <b style="color:#ff8a7a">눈을 떼지 못한 ${esc(f.name)}의 시선을 나선이 경멸했다 — 정신력 -${v}, 카운터 -1</b>`; } else line += ` · 시선 ${G.gaze[f.id]}/3`; }
       if(a.fx==="knives"){ const k2 = (f.life && f.life.kill) || 0, v = Math.max(1, Math.floor(f.hpMax*Math.min(0.15, 0.03 + 0.01*k2))); f.hp = Math.max(1, f.hp - v); line += ` · 맨발로 칼날을 밟았다(체력 -${v}${k2 ? ` · 업 ${k2}` : ""})`; }
       if(a.rule==="sameWave"){ if(G.lastK===k && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">같은 물결을 두 번 탔다 — 날치가 물결을 읽었다, 카운터 -1</span>`; } G.lastK = k; }
@@ -4431,10 +4527,12 @@ function mgAbno(ctx){
         if(!settle(f)) menu(); }); }
     function offerAtlas(f){ G.atlasAsked = true; const ok = power(f,["tec"]) >= q.req;
       say(`작은 거인이 ${esc(f.name)}에게 말을 건다. "잠깐만 들어 주겠소. 어깨를 고쳐 메고 오리다."`);
-      offer([{v:"bear", t:"대신 짊어진다", d:"거인이 숨을 돌린다(기분 +30) · 탑에 묶여 더는 행동하지 못하고, 행동이 오갈 때마다 체력이 깎인다"},
+      const solo = freeT().length <= 1;
+      offer([...(solo ? [] : [{v:"bear", t:"대신 짊어진다", d:"거인이 숨을 돌린다(기분 +30) · 탑에 묶여 더는 행동하지 못하고, 행동이 오갈 때마다 체력이 깎인다"}]),
              {v:"trick", t:"꾀를 낸다", d:`"먼저 시범을 보여 주시오" — 재주 ${power(f,["tec"])} / 요구치 ${q.req}${ok ? "" : " · 들통나면 탑이 어깨에 떨어진다"}`},
              {v:"no", t:"거절한다", d:"카운터 -1"}], v=>{
-        if(v==="bear" || (v==="trick" && !ok)){ G.bearer = f.id; G.bench.push(f.id); G.out.bearer = f.id; G.mood = Math.min(100, G.mood + (v==="bear" ? 30 : 0)); if(v==="trick") G.ctr--;
+        if(solo && v==="trick" && !ok){ G.ctr--; f.hp = Math.max(1, Math.floor(f.hp*0.4)); say(`<b style="color:#ff8a7a">꾀가 들통났다. 무너지는 탑을 간신히 밀어내고 굴렀다</b> · 카운터 -1 · 크게 다쳤다`); }
+        else if(v==="bear" || (v==="trick" && !ok)){ G.bearer = f.id; G.bench.push(f.id); G.out.bearer = f.id; G.mood = Math.min(100, G.mood + (v==="bear" ? 30 : 0)); if(v==="trick") G.ctr--;
           say(v==="bear" ? `<span style="color:#e8d27a">${esc(jo(f.name,"이"))} 탑을 받아 짊어졌다. 거인이 처음으로 허리를 폈다.</span> (기분 +30)` : `<b style="color:#ff8a7a">꾀가 들통났다. 탑이 ${esc(f.name)}의 어깨에 떨어졌다</b> · 카운터 -1`); }
         else if(v==="trick"){ G.mood = Math.min(100, G.mood + 12); say(`<span style="color:#8fd6a0">거인이 시범을 보이려 탑을 다시 받아 들었다. 그대로 돌아섰다.</span> (기분 +12)`); }
         else { G.ctr--; say(`<span style="color:#ff8a7a">거인이 고개를 떨군다. 탑이 조금 더 기울었다</span> · 카운터 -1`); }
@@ -4494,7 +4592,7 @@ function mgAbno(ctx){
       const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
     m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
-    const lead = a.risk==="ALEPH" ? 3700 : 0; if(lead) alephIntro(shown);
+    const lead = a.risk==="ALEPH" ? 4800 : 0; if(lead) alephIntro(shown);
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
     if(a.fx==="overture" || a.fx==="pulse"){ const out = []; ctx.team.forEach(f=>{ const v = Math.floor(f.mp*0.3); f.mp -= v; out.push(`${esc(f.name)} 정신력 -${v}`); });
@@ -8953,7 +9051,7 @@ function fxTestPanel(){
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
    <b>환상체</b><div class="g"><select id="fxab" style="max-width:100%">${["죄종","ZAYIN","TETH","HE","WAW","ALEPH"].map(r=>`<optgroup label="${r}">${ABNOS.filter(a=>a.risk===r).map(a=>`<option value="${a.id}">${esc(a.n)}${a.canon?" ·원작":""}</option>${a.variant?`<option value="${a.id}~v">${esc(a.n)} (아종: ${esc(a.variant.n)})</option>`:""}`).join("")}</optgroup>`).join("")}</select>
-     <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">기프트 받기</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
+     <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">모든 기프트를 도감에 추가</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
    <b>원작 환상체 기믹 시험</b><div class="g"><button data-ab="bless">대표에게 기사의 축복</button><button data-ab="despair">축복받은 이 쓰러뜨리기</button><button data-ab="flame">대표에게 용기의 불꽃 +1</button><button data-ab="feast">대표에게 요정의 축제</button><button data-ab="prick">대표가 가시에 찔림</button><button data-ab="solitude">대표에게 고독</button><button data-ab="bullet">마탄 1발(7번째 탄환)</button><button data-ab="skin">가죽 쓴 동료의 방문</button><button data-ab="gun">대표에게 총 쥐여 주기</button><button data-ab="sup5">환상체 제압 수 +5</button><button data-ab="clear">기믹 상태 모두 지우기</button></div>`;
   document.body.appendChild(el);
   el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
@@ -8997,7 +9095,10 @@ function fxTestPanel(){
       if(k==="gun"){ const it = SHOP.find(i=>i.wtype==="gun"); if(!it) return toast("총이 없다"); L.gear.weapon = initDur(JSON.parse(JSON.stringify(it))); save(); render(); return toast(`${L.name}: ${it.name} 장착`); }
       if(k==="clear"){ S.fixers.forEach(f=>{ f.ab = {}; }); S.bullets = []; S.skinVisit = null; save(); render(); return toast("기믹 상태를 모두 지웠다"); } }
     if(k==="sin"){ const ms = S.fixers.filter(f=>f.ab && f.ab.mark); if(!ms.length) return toast("표식 찍힌 해결사가 없다 — 먼저 '단 한번의 고해와 백년의 참회'를 관측하라"); ms.forEach(f=>f.ab.mark.sin = true); await confessLure(S.day); render(); return; }
-    if(k==="gift"){ const a = abnoOf({abno:ab}); ["ctrl","sup"].forEach(h=>{ const g = makeGift(a, h, A.g[0]); if(g){ S.inventory = S.inventory||[]; S.inventory.push(g); codexNote(vid, null, g.name); toast(`기프트: ${g.name}(${g.gift.kind})`); } }); render(); return; }
+    if(k==="gift"){ const d = codexLoad(); let n = 0;
+      ABNOS.forEach(x=>[x.id].concat(x.variant ? [x.id+"~v"] : []).forEach(v=>{ const e = d[v] = Object.assign({seen:0, ctrl:0, sup:0, gifts:[]}, d[v]||{}); e.gifts = e.gifts || [];
+        ["ctrl","sup"].forEach(h=>{ const G = x.gifts && x.gifts[h]; if(G && G.n && !e.gifts.includes(G.n)){ e.gifts.push(G.n); n++; } }); }));
+      codexSave(d); return toast(`기프트 ${n}개를 도감에 추가했다`); }
     if(k==="rage" && A.noFight) return toast(`이 환상체는 날뛰지 않는다(${FIGHT_TXT[fightType(A)][0]})`);
     const team = S.fixers.slice(0, Math.max(1, +el.querySelector("#fxn").value)).filter(Boolean);
     const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" ? "rage" : "calm";
