@@ -34,6 +34,32 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .stage .cap.log .s{font-size:12px;animation:cap-log 5.5s ease forwards}
 @keyframes cap-log{0%{opacity:0;transform:translateY(4px)}8%{opacity:1;transform:none}80%{opacity:1}100%{opacity:.0}}
 .stage{cursor:default}
+.badge.threat{font-weight:700}
+.fx .ctitle{font-weight:700;font-size:12px;letter-spacing:.02em}
+.hana-btn{width:100%;margin:4px 0 2px;font-size:12px}
+.hana-letter{position:relative;background:linear-gradient(180deg,#f3ead6,#e8dcc0);color:#2a2219;border-radius:4px;padding:22px 24px 18px;font-family:"Noto Serif KR","Nanum Myeongjo",serif;box-shadow:0 10px 30px rgba(0,0,0,.45),inset 0 0 40px rgba(120,90,40,.18);overflow:hidden}
+.hana-letter:before{content:"";position:absolute;inset:8px;border:1px solid rgba(90,64,30,.35);border-radius:2px;pointer-events:none}
+.hana-letter .hl-org{font-size:12px;letter-spacing:.5em;color:#6a5434;text-align:center}
+.hana-letter .hl-title{font-size:21px;font-weight:700;text-align:center;margin:8px 0 14px;letter-spacing:.08em}
+.hana-letter .hl-to{font-size:13px;margin-bottom:10px;color:#4a3b28}
+.hana-letter .hl-body{font-size:14px;line-height:1.85}
+.hana-letter .hl-sign{margin-top:16px;text-align:right;font-size:13px;color:#4a3b28}
+.hana-letter .hl-seal{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;margin-left:8px;vertical-align:middle;background:radial-gradient(circle at 40% 35%,#c8423a,#8e1c18 70%);color:#f6d9c8;font-weight:700;font-size:13px;letter-spacing:.05em;box-shadow:0 0 0 3px rgba(142,28,24,.35),inset 0 0 6px rgba(0,0,0,.4);transform:rotate(-8deg)}
+.hana-review .rv-row{display:flex;justify-content:space-between;gap:10px;padding:6px 2px;border-bottom:1px dashed var(--line);opacity:0;transform:translateY(4px);transition:opacity .35s,transform .35s;font-size:13px}
+.hana-review .rv-row.on{opacity:1;transform:none}
+.hana-review .rv-row b{min-width:42px;text-align:right}
+.hana-review .rv-sum{margin-top:10px;font-size:15px;opacity:0;transition:opacity .4s}.hana-review .rv-sum.on{opacity:1}
+.hana-stamp{position:relative;height:150px;display:flex;align-items:center;justify-content:center;margin-top:8px}
+.hana-stamp .st{width:132px;height:132px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;border:5px double currentColor;font-family:"Noto Serif KR",serif;font-weight:800;opacity:0;transform:scale(2.6) rotate(-24deg);filter:blur(2px)}
+.hana-stamp .st small{font-size:11px;letter-spacing:.3em;font-weight:600}
+.hana-stamp .st span{font-size:18px;margin-top:4px;text-align:center;line-height:1.2;padding:0 8px}
+.hana-stamp.go .st{animation:hana-stamp .55s cubic-bezier(.2,1.4,.4,1) forwards}
+.hana-stamp.go:after{content:"";position:absolute;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,currentColor 0,transparent 65%);opacity:0;animation:hana-ink 1s .35s ease-out}
+@keyframes hana-stamp{0%{opacity:0;transform:scale(2.6) rotate(-24deg);filter:blur(2px)}60%{opacity:1;transform:scale(.92) rotate(-9deg);filter:blur(0)}100%{opacity:.92;transform:scale(1) rotate(-10deg);filter:blur(0)}}
+@keyframes hana-ink{0%{opacity:.35;transform:scale(.6)}100%{opacity:0;transform:scale(1.4)}}
+.stage .cap{transition:background .6s}
+.stage.day .cap{bottom:0;padding:26px 0 14px;background:linear-gradient(to top,rgba(6,6,10,.62),rgba(6,6,10,.38) 55%,rgba(6,6,10,0));text-shadow:0 0 10px #000,0 0 3px #000,0 1px 2px #000}
+.stage.day .cap .s{color:#f1ebdf}
 .fxtest{position:fixed;right:10px;bottom:10px;z-index:60;background:rgba(15,14,18,.95);border:1px solid var(--accent);border-radius:8px;padding:10px;width:250px;font-size:12px}
 .pvbtn{position:fixed;left:10px;bottom:10px;z-index:61;padding:6px 12px;font-size:12px;border:1px solid var(--accent);color:var(--accent);background:rgba(15,14,18,.92);border-radius:8px}
 .fxtest{max-height:calc(100vh - 20px);overflow:auto}.fxtest.hide{display:none}
@@ -1243,7 +1269,10 @@ const gName = g => g===0 ? "특색" : g+"급";
 const START_DEBT = 4000000;
 // 의뢰 등급별: 기준 보수, 요구치, 재해 등급
 // [기준 보수, 요구치(권장 인원 팀이 75%가 되는 값), 재해 등급]
-const REQ_BASE = {9:[3000,9,"뜬소문"],8:[6000,14,"도시 괴담"],7:[9000,28,"도시 괴담"],6:[18000,38,"도시 전설"],5:[36000,46,"도시 전설"],4:[72000,70,"도시 질병"],3:[144000,83,"도시 질병"],2:[180000,97,"도시 악몽"],1:[300000,132,"도시 악몽"],0:[675000,145,"도시의 별"]};
+// 재해 등급: 뜬소문(9급) · 도시 괴담(9~8급) · 도시 전설(7~6급) · 도시 질병(5~4급) · 도시 악몽(3~2급) · 도시의 별(1급 이상)
+const REQ_BASE = {9:[3000,9,"뜬소문"],8:[6000,14,"도시 괴담"],7:[9000,28,"도시 전설"],6:[18000,38,"도시 전설"],5:[36000,46,"도시 질병"],4:[72000,70,"도시 질병"],3:[144000,83,"도시 악몽"],2:[180000,97,"도시 악몽"],1:[300000,132,"도시의 별"],0:[675000,145,"도시의 별"]};
+const THREAT_COL = {"뜬소문":"#b4ada3","도시 괴담":"#9cc487","도시 전설":"#7fb0e6","도시 질병":"#e2bf5c","도시 악몽":"#c47ae0","도시의 별":"#ff6a5e"};
+const threatOf = q => q.threat || (REQ_BASE[q.grade]||[])[2] || "뜬소문";
 const RISK = g => g>=8?"ZAYIN":g>=6?"TETH":g>=4?"HE":g>=2?"WAW":"ALEPH";
 // 승급 기준: 현재 등급 -> 다음 등급 필요 총합
 const PROMO = {9:48,8:70,7:95,6:120,5:145,4:170,3:200,2:230};
@@ -1351,9 +1380,25 @@ const SURNAMES = ["김","이","박","최","정","강","조","윤","장","임","�
 const GIVEN = ["민준","서연","도윤","하은","지호","수아","현우","지민","예준","채원","건우","다인","우진","소율","태오","유나","시우","하린","준서","서윤","은호","나연","재원","가온","도현","이안","세아","한결","무진","단비"];
 const FOREIGN = ["올리비에","레오나르","미셸","카를로","이자벨","마르타","에반","루카","오스카","니나","빅토르","엘리안","줄리아","하인츠","아델","로렌츠","세바스티안","클라라","펠릭스","노아","마야","휴고","레나","라울","에디트","테오","실비아","얀","미라","케이"];
 const OFFICE_WORDS = ["새벽","잔돌","등대","모퉁이","회색 우산","녹슨 열쇠","작은 불","늦은 종","외길","빈 상자","철길","가로등","북향","굽은 못"];
-const COLOR_WORDS = ["잿빛","새벽빛","구릿빛","푸른","붉은","은빛","쪽빛","황금빛","달빛","먹빛"];
-const COLOR_NOUNS = ["잔향","안개","서리","칼날","등불","메아리","발자국","서약","그림자","바람","파도","가시"];
-const COLOR_BANNED = ["붉은 안개","푸른 잔향","보라 눈물","검은 침묵"];
+/* 특색 칭호: [○○빛 ○○] 또는 [푸른/붉은/보라/주홍/옥빛/하얀/검은 ○○]. 원작 특색과 같은 이름은 쓸 수 없고,
+   원작 특색의 뒷말(안개·침묵·눈물·잔향·흉터·십자·시선 …)도 피한다 — 검은 요람은 되지만 검은 침묵·검은 잔향은 안 된다 */
+const COLOR_PREFIX = ["푸른","붉은","보라","주홍","옥빛","하얀","검은"];
+const COLOR_HUES = {"푸른":"#6aa2ff","붉은":"#ff5a52","보라":"#b07cff","주홍":"#ff8a3d","옥빛":"#5fd3a6","하얀":"#f4f1ea","검은":"#a7a7b8",
+  "잿빛":"#b3b0aa","새벽빛":"#a9c3ef","구릿빛":"#d48c56","은빛":"#d9dfe8","쪽빛":"#5c7fe0","황금빛":"#f2c94c","달빛":"#efe7c2","먹빛":"#8a8a98","핏빛":"#e0414c","별빛":"#f6eaa8","노을빛":"#ff9a66","물빛":"#82cdea","쇳빛":"#a3aab3","꽃빛":"#ff9ec4","풀빛":"#8fd27a","잉크빛":"#7a8ad0","호박빛":"#f0a640","재빛":"#b3b0aa"};
+const COLOR_WORDS = COLOR_PREFIX.concat(Object.keys(COLOR_HUES).filter(k=>/빛$/.test(k) && !COLOR_PREFIX.includes(k) && k!=="재빛"));
+const COLOR_NOUNS = ["요람","등불","서리","칼날","발자국","서약","그림자","바람","파도","가시","종소리","매듭","날개","비늘","유리","장미","실타래","나침반","저울","꽃잎","굴레","철로","우산","촛대","모래시계","깃발","편지","거울","뿔","이정표","닻","등대"];
+const COLOR_CANON_NOUNS = ["안개","침묵","눈물","잔향","흉터","상흔","십자","십자가","시선","노인"];
+const COLOR_BANNED = ["붉은 안개","검은 침묵","보라 눈물","보랏빛 눈물","푸른 잔향","진홍빛 흉터","진홍 흉터","진홍빛 상흔","주홍 십자","주홍빛 십자가","붉은 시선","쪽빛 노인"];
+function colorTitleCheck(t){ t = String(t||"").trim().replace(/^\[|\]$/g,"").replace(/\s+/g," "); const w = t.split(" ");
+  if(w.length !== 2) return {ok:false, why:"두 낱말로 짓는다 — 예: 검은 요람, 새벽빛 등대"};
+  const [c, n] = w; if(!(COLOR_PREFIX.includes(c) || (/빛$/.test(c) && c.length >= 2 && c.length <= 4))) return {ok:false, why:"앞말은 '○○빛'이거나 푸른·붉은·보라·주홍·옥빛·하얀·검은 가운데 하나여야 한다"};
+  if(!/^[가-힣]{1,6}$/.test(n)) return {ok:false, why:"뒷말은 한글 1~6자로 짓는다"};
+  if(COLOR_BANNED.includes(t) || COLOR_CANON_NOUNS.includes(n)) return {ok:false, why:`'${n}'${jo(n,"은").slice(n.length)} 원작 특색의 이름과 겹친다`};
+  if(S && S.fixers.some(f=>f.title===t)) return {ok:false, why:"이미 같은 칭호를 쓰는 해결사가 있다"};
+  return {ok:true, t}; }
+function colorOfTitle(t){ const c = String(t||"").split(" ")[0]; if(COLOR_HUES[c]) return COLOR_HUES[c];
+  let h = 0; for(const ch of c) h = (h*31 + ch.charCodeAt(0)) % 360; return `hsl(${h},70%,72%)`; }
+const nameCol = f => f.grade===0 && f.title ? (f.tcol || colorOfTitle(f.title)) : null;
 
 const CLIENTS = {
  str:["뒷골목 상인회","국밥집 주인 노씨","폐건물 관리인","고물상 '두 바퀴'","골목 세탁소 사장","하청 공사 현장 반장"],
@@ -1618,7 +1663,9 @@ function makeRequest(grade, opts={}){
     else if(r < P.pW + P.pE + P.pS){ kind="수색"; attrs=["agi","tec"]; }
     else { attrs=[pick(["str","agi","tec"])]; }
   }
-  const [base, req, threat] = REQ_BASE[grade];
+  const [base0, req0, threat0] = REQ_BASE[grade];
+  // 9급 가운데 일부는 뜬소문이 아니라 도시 괴담 — 조금 더 까다롭고 보수도 낫다
+  const kw = grade===9 && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
   const key = attrs[0];
   let text, client, foe = null, chase = null, row;
   const ab = kind==="환상체" ? pickAbno(grade) : null;
@@ -1730,7 +1777,7 @@ function genRequests(){
 const PARTY = {9:[1,2],8:[1,2],7:[2,3],6:[2,3],5:[2,4],4:[3,4],3:[3,5],2:[3,5],1:[4,5],0:[4,5]};
 const partyRec = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][0];
 const partyMax = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][1];
-function gearList(f){ return [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.gear.armor, f.gear.acc].filter(Boolean); }
+function gearList(f){ return [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.ab && f.ab.coatOff && S && S.day <= f.ab.coatOff ? null : f.gear.armor, f.gear.acc].filter(Boolean); }
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
@@ -2327,7 +2374,18 @@ function mgCombat(ctx){
     if(AB && AB.immune) AXN.push(`<span style="color:#ff8a7a">그것의 몸에는 어지간한 물리적 공격이 통하지 않는다 — 1급 이상이 쥔 고유 무기나 개화한 E.G.O. 무기만 상처를 낸다</span>`);
     if(AB && AB.fx==="spiral") AXN.push(`<span style="color:#e8d27a">합을 이길 때마다 시선이 쌓여 피해가 오른다. 7이 되면 경멸받는다. 두 턴마다 누군가를 움켜쥔다</span>`);
     if(AB && AB.fx==="knives") AXN.push(`<span style="color:#ff8a7a">칼날 산 위에서 싸운다 — 턴이 끝날 때마다 모두가 발밑의 칼날에 베인다(사살한 만큼 더 깊이)</span>`);
-    if(AB && AB.possessed) AXN.push(`<span style="color:#ff8a7a">구두에 홀린 동료다. 쓰러뜨려 발목째 구두를 벗겨 내야 한다</span>`);   // E.G.O. 특수 공격이 새기는 상태(화상·출혈·파열)
+    if(AB && AB.possessed) AXN.push(`<span style="color:#ff8a7a">구두에 홀린 동료다. 쓰러뜨려 발목째 구두를 벗겨 내야 한다</span>`);
+    if(AB && AB.fx==="coat") AXN.push(`<span style="color:#ffb35a">햇살이 턴마다 뜨거워진다 — 외투(방어구)를 걸친 이는 갑절로 탄다</span>`);
+    if(AB && AB.fx==="tower") AXN.push(`<span style="color:#e8d27a">두 턴마다 작은 거인이 가장 튼튼한 이에게 탑을 떠넘긴다 — 짊어진 이는 칼끝이 무뎌지고 턴마다 짓눌린다. 합을 이겨 쳐야 되돌려 준다</span>`);
+    if(AB && AB.fx==="apple") AXN.push(`<span style="color:#ff8a7a">맞을 때마다 씨앗이 박힌다 — 세 개가 차면 몸을 뚫고 싹이 튼다</span>`);
+    if(AB && AB.fx==="frost") AXN.push(`<span style="color:#9ad0ff">얼음 위에서 싸운다 — 턴마다 냉기가 모두를 할퀴고, 나선 이의 손이 서리에 굳어 간다</span>`);
+    if(AB && AB.fx==="bari") AXN.push(`<span style="color:#ffd0e0">쓰러뜨려도 세 꽃이 한 번은 되살린다</span>`);
+    if(AB && AB.fx==="pair") AXN.push(`<span style="color:#9ad0ff">반쪽이 크게 다치면 다른 반쪽이 날아와 상처를 메운다</span>`);
+    if(AB && AB.fx==="whale") AXN.push(`<span style="color:#e8d27a">껍데기가 칼날을 튕겨 낸다(세 번 맞기 전까지 받는 피해 감소) — 쓰러져도 한 번은 죽은 척한다</span>`);
+    if(AB && AB.fx==="kin") AXN.push(`<span style="color:#ff8a7a">입힌 상처만큼 피를 마셔 제 몸을 메운다</span>`);
+    if(AB && AB.fx==="jade") AXN.push(`<span style="color:#9ad0ff">처음 두 턴은 꿈속이다 — 칼끝이 반만 닿는다. 깨고 나면 옥에 금이 가 더 아프게 맞는다</span>`);
+    if(AB && AB.fx==="nails") AXN.push(`<span style="color:#ff8a7a">턴마다 손가락이 하나씩 접힌다 — 다섯이 다 접히면 주먹이 내리친다</span>`);
+    if(AB && AB.fx==="erl"){ const ch = party.slice().sort((x,y)=>total(x.f)-total(y.f))[0]; foe.erlChild = ch; AXN.push(`<span style="color:#b9c4d8">마왕이 ${esc(jo(ch.name,"을"))} 아이로 삼아 부른다 — 세 번째 턴이 끝날 때까지 쓰러뜨리지 못하면 품에 안고 데려간다</span>`); }   // E.G.O. 특수 공격이 새기는 상태(화상·출혈·파열)
     const SPN = id => { const x = EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor).find(e=>e.id===id); return x ? x.n : id; };
     const support = ()=> party.filter((p,i)=>i!==act && p.hp>0);
     const supBase = ()=> Math.min(3, support().length), supCp = ()=> support().length>=2 ? 1 : 0;
@@ -2459,7 +2517,11 @@ function mgCombat(ctx){
         if(AB && AB.fx==="spiral"){ if(me.contempt) dmg = Math.round(dmg*0.7); else { me.gaze = (me.gaze||0) + 1; dmg = Math.round(dmg*(1 + 0.1*me.gaze)); abNote.push(`시선 ${me.gaze}(피해 +${me.gaze*10}%)`);
             if(me.gaze >= 7){ me.contempt = true; me.hp = Math.max(1, me.hp - 15); abNote.push(`<b style="color:#ff8a7a">나선이 ${esc(me.name)}의 시선마저 경멸했다 — 출혈, 이후 피해 -30%</b>`); } }
           party.forEach(p=>{ if(p.grasp){ p.grasp = 0; abNote.push(`${esc(p.name)}를 쥔 손아귀가 풀렸다`); } }); }
+        if(AB && AB.fx==="jade"){ if(turn <= 2){ dmg = Math.max(1, Math.round(dmg*0.5)); abNote.push("꿈속이다 — 칼끝이 반만 닿았다"); } else { dmg = Math.round(dmg*1.2); abNote.push("옥에 금이 갔다(피해 +20%)"); } }
+        if(AB && AB.fx==="whale" && (foe.shell||0) < 3){ foe.shell = (foe.shell||0) + 1; dmg = Math.max(1, dmg - 3); abNote.push(foe.shell >= 3 ? "껍데기가 깨져 나갔다" : `껍데기가 칼날을 튕겼다(-3, ${foe.shell}/3)`); }
+        if(me.burden){ dmg = Math.max(1, Math.round(dmg*0.6)); me.burden = false; abNote.push(`<span style="color:#e8d27a">짊어진 탑 탓에 칼끝이 무뎠다 — 그래도 이겨 쳤다. 거인에게 탑을 되돌려 주었다</span>`); }
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
+        if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = Math.round(foe.max*0.25); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
           foe.cards = [{n:"큰 부리로 물기",a:6,b:14},{n:"집어삼키기",a:7,b:12},{n:"붉은 깃 세우기",a:5,b:9,def:true}]; foe.skills = foe.cards.map(c=>skillOf(c));
           abNote.push(`<b style="color:#ff8a7a">맞은 새가 붉게 변했다 — 가슴의 커다란 부리가 열렸다. 이제 물리면 쓰러진다</b>`); } }
@@ -2470,12 +2532,15 @@ function mgCombat(ctx){
         if(T && (T.id==="fleche" || T.id==="charge")){ dmg = Math.round(dmg*1.3); tNote.push(`${T.n} — 무너진 자세로 받아냈다(받는 피해 ×1.3)`); }
         if(AB && AB.enrage && foe.enraged){ dmg = sk.def ? Math.round(me.max*0.5) : me.max; abNote.push(`<b style="color:#ff8a7a">큰 부리 — ${sk.def ? "막았지만 절반이 들어왔다" : "한입에 물렸다"}</b>`); }
         if(me.ember){ dmg += me.ember*2; abNote.push(`불씨가 타올랐다(+${me.ember*2})`); }
+        if(AB && AB.fx==="apple"){ me.seed = (me.seed||0) + 1; if(me.seed >= 3){ me.seed = 0; dmg += 10; abNote.push(`<b style="color:#ff8a7a">박힌 씨앗 셋이 한꺼번에 싹을 틔웠다(+10)</b>`); } else abNote.push(`씨앗이 박혔다(${me.seed}/3)`); }
+        if(AB && AB.fx==="frost"){ me.frost = (me.frost||0) + 1; if(me.frost >= 3){ me.frost = 0; dmg += 6; abNote.push(`<b style="color:#9ad0ff">손이 서리에 굳었다(+6)</b>`); } else abNote.push(`손끝에 서리가 앉았다(${me.frost}/3)`); }
         if(isBlessed(me)){ dmg = Math.round(dmg*0.5); abNote.push("기사의 축복 — 받는 피해 절반"); }
         if(me.sp2==="evade" && Math.random()<0.25){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
         if(dmg && me.shield){ const ab = Math.min(me.shield, dmg); dmg -= ab; me.shield -= ab; egoNote.push(`보호막이 ${jo(ab,"을")} 막았다`); }
         if(me.sp2==="endure" && !me.endured && dmg >= me.hp){ dmg = Math.max(0, me.hp - 1); me.endured = true; egoNote.push("인내 — 쓰러질 공격을 버텼다"); }
         if(me.sp2==="thorns" && dmg>0){ const th = Math.max(1, Math.round(dmg*0.2)); foe.hp = Math.max(0, foe.hp - th); egoNote.push(`가시 — ${foe.name}에게 ${th} 되돌려 줌`); }
-        const w0 = woundOf(me.hp); me.hp = Math.max(0, me.hp - dmg); total = dmg; me.woundUp = woundOf(me.hp) > w0 || me.hp<=0; st.crit = false; attack("foe", Math.max(1,dmg), fk); }
+        const w0 = woundOf(me.hp); me.hp = Math.max(0, me.hp - dmg); total = dmg; me.woundUp = woundOf(me.hp) > w0 || me.hp<=0; st.crit = false; attack("foe", Math.max(1,dmg), fk);
+        if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       await wait(900);
       clash = null;
       lines.push(won ? `남은 코인 위력 ${P} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}`);
@@ -2496,8 +2561,12 @@ function mgCombat(ctx){
       m.info.innerHTML = `<div class="pk-text">${tick ? `<span style="color:#ffb35a">${tick}</span><br>` : ""}${jo(foe.name,"이")} 쓰러졌다. 의뢰 목표는 <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>이다. 어떻게 마무리할까?</div>`;
       m.ctrl.innerHTML = AB && AB.kill ? `<div class="pk-moves"><button data-fin="사살"><b>사살</b><small>죄종은 되돌릴 수 없다 — 숨통을 끊는다</small></button></div>` : AB && AB.possessed ? `<div class="pk-moves"><button data-fin="제압"><b>구두를 벗겨 낸다</b><small>발목째 잘라 내야 구두가 벗겨진다 — 목숨은 건진다</small></button></div>` : AB ? `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>알로 되돌린다 — 환상체는 죽지 않는다</small></button></div>` : `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>숨은 붙여 두고 묶는다</small></button><button data-fin="사살"><b>사살</b><small>숨통을 끊는다</small></button></div>`;
     }
+    function revive(){ if(!(AB && (AB.fx==="bari" || AB.fx==="whale")) || foe.revived) return false; foe.revived = true;
+      if(AB.fx==="bari"){ foe.hp = Math.round(foe.max*0.5); foe.reviveNote = `<b style="color:#ffd0e0">뼈살이 · 살살이 · 피살이 — 쓰러진 몸에 꽃이 피어 다시 일어섰다</b>`; }
+      else { foe.hp = Math.round(foe.max*0.25); const p = party[act]; if(p && p.hp > 0) p.hp = Math.max(0, p.hp - 25); foe.reviveNote = `<b style="color:#ff8a7a">죽은 듯 떠 있던 고래가 되살아나 꼬리로 내리쳤다${p ? `(${esc(p.name)} -25)` : ""}</b>`; }
+      return true; }
     function next(){
-      if(foe.hp<=0) return finishMenu();
+      if(foe.hp<=0 && !revive()) return finishMenu();
       if(party[act].hp<=0){
         const alive = party.findIndex(p=>p.hp>0);
         if(alive<0) return finish("lost");
@@ -2518,6 +2587,16 @@ function mgCombat(ctx){
       party.forEach(p=>{ if(p.ember && p.hp > 0) p.ember++; });
       if(AB && AB.fx==="knives") party.forEach(p=>{ if(p.hp<=0) return; const k2 = (p.f.life && p.f.life.kill) || 0, d = Math.min(12, 2 + k2); p.hp = Math.max(0, p.hp - d); });
       if(AB && AB.fx==="knives") tk.push("발밑의 칼날이 모두를 베었다");
+      if(foe.reviveNote){ tk.push(foe.reviveNote); foe.reviveNote = null; }
+      if(AB && AB.fx==="coat" && foe.hp > 0){ party.forEach(p=>{ if(p.hp<=0) return; const coat = !!p.f.gear.armor && !(p.f.ab && p.f.ab.coatOff && S.day <= p.f.ab.coatOff), d = (1 + turn)*(coat ? 2 : 1); p.hp = Math.max(0, p.hp - d); }); tk.push(`<span style="color:#ffb35a">햇살이 뜨거워진다 — 외투를 걸친 이는 갑절로 탔다</span>`); }
+      if(AB && AB.fx==="frost" && foe.hp > 0){ party.forEach(p=>{ if(p.hp > 0) p.hp = Math.max(0, p.hp - 3); }); tk.push("냉기가 모두를 할퀴었다(-3)"); }
+      if(AB && AB.fx==="tower" && foe.hp > 0){ const b = party.find(p=>p.burden && p.hp > 0);
+        if(b){ b.hp = Math.max(0, b.hp - 8); tk.push(`<span style="color:#e8d27a">탑을 짊어진 ${esc(b.name)}의 어깨가 짓눌린다(-8)</span>`); }
+        else if(turn % 2 === 0){ const t = party.filter(p=>p.hp > 0).sort((x,y)=>y.hp-x.hp)[0]; if(t){ t.burden = true; tk.push(`<span style="color:#e8d27a">"잠깐만 들어 주겠소." 작은 거인이 ${esc(t.name)}에게 탑을 떠넘겼다</span>`); } } }
+      if(AB && AB.fx==="nails" && foe.hp > 0){ const k5 = ((turn - 1) % 5) + 1;
+        if(k5 < 5) tk.push(`<span style="color:#ff8a7a">${["엄지","검지","중지","약지"][k5-1]}가 접혔다(${k5}/5)</span>`);
+        else { party.forEach(p=>{ if(p.hp<=0) return; const d = Math.max(8, Math.round(32*(1-redHP(p.f)))); p.hp = Math.max(0, p.hp - d); }); tk.push(`<b style="color:#ff8a7a">새끼손가락까지 접혔다 — 주먹이 내리쳤다. 모두가 깊은 상처를 입었다</b>`); } }
+      if(AB && AB.fx==="erl" && foe.erlChild && foe.hp > 0 && turn >= 3 && foe.erlChild.hp > 0){ foe.erlChild.hp = 0; foe.erlChild.death = "erl"; tk.push(`<b style="color:#ff8a7a">마왕이 ${esc(jo(foe.erlChild.name,"을"))} 품에 안고 안개 속으로 데려갔다</b>`); foe.erlChild = null; }
       if(AB && AB.fx==="spiral" && foe.hp > 0){ const gp = party.find(p=>p.grasp && p.hp > 0);
         if(gp){ gp.grasp--; if(gp.grasp <= 0){ const d = 50; gp.hp = Math.max(0, gp.hp - d); foe.hp = Math.min(foe.max, foe.hp + Math.round(foe.max*0.15)); tk.push(`<b style="color:#ff8a7a">나선이 ${esc(gp.name)}를 짓눌렀다(-${d}) — 흘린 피로 나선이 아물었다</b>`); } }
         else if(turn % 2 === 0){ const pool = party.filter((p,i)=>p.hp > 0 && i!==act), t = pool.length ? pick(pool) : party[act]; if(t && t.hp > 0){ t.grasp = 2; tk.push(`<span style="color:#ff8a7a">검은 돌손이 ${esc(t.name)}를 움켜쥐었다 — 두 턴 안에 합을 이겨 풀어내지 못하면 짓눌린다</span>`); } } }
@@ -2526,7 +2605,7 @@ function mgCombat(ctx){
         party.forEach(p=>{ if(p===foe.fuseMark && p.hp > 0) p.hp = Math.max(0, p.hp - 80); });
         tick = tk.concat([`<b style="color:#ff8a7a">성냥불이 터졌다 — 소녀가 ${esc(jo(foe.fuseMark.name,"을"))} 끌어안고 폭발했다</b>`]).join(" · "); m.info.innerHTML = `<div class="pk-text">${tick}</div>`; return finish("fuse"); }
       tick = tk.join(" · ");
-      if(foe.hp<=0) return finishMenu();
+      if(foe.hp<=0){ if(revive()){ tick = [tick, foe.reviveNote].filter(Boolean).join(" · "); foe.reviveNote = null; } else return finishMenu(); }
       if(party.every(p=>p.hp<=0)) return finish("lost");
       if(party[act].hp<=0) act = party.findIndex(p=>p.hp>0);
       turn++; if(turn>MAXT) return finish("time"); pickFoeSkill(); skillMenu(); }
@@ -3476,6 +3555,27 @@ const ABNOS = [
    like:"날치가 높이 떠오른다", dislike:"날치가 머리 위에서 맴돈다",
    cards:[{n:"내리꽂기",a:2,b:12},{n:"은빛 비늘",a:3,b:8},{n:"하늘로 솟기",a:4,b:7,def:true}], hp:1.05,
    gifts:{ctrl:{n:"은빛 비늘", mpRed:0.08, bonus:{agi:2}}, sup:{n:"날치의 지느러미", bonus:{agi:3,str:1}}}},
+  {id:"apple", n:"기생 사과", risk:"TETH", code:"T-04-31-08", g:[5,4], fx:"apple", form:"가지째 꺾인 사과나무 한 토막이 바닥에 뿌리를 내렸다. 열매는 하나뿐인데, 반질반질한 붉은 껍질 아래로 가는 뿌리 같은 것이 맥박치듯 꿈틀거린다", look:"꺾인 가지에 매달린 붉은 사과 하나가, 아무도 없는 쪽으로 저절로 몸을 기울인다",
+   rumor:"철거 구역 공터에 사과나무 가지가 꽂혀 있다. 열매를 베어 문 노숙인들 몸에서 잔가지가 돋았다", pref:PF("tec>wil>agi>str"), ctr:3,
+   escape:"맞는 행동을 하면 사과가 한 조각을 떼어 내민다. 먹으면 그 자리에서 체력이 크게 차지만, 몸속에 씨앗이 남아 사흘 밤 동안 체력을 빨아 먹고 자란다 — 사흘째 밤에는 싹이 터 새 기생 사과가 사무소 근처에 열린다. 거절하면 기분이 조금 떨어진다. 폭주하면 맞을 때마다 씨앗이 박히고, 세 개가 차면 몸을 뚫고 싹이 튼다",
+   story:"[재개발 공터 · 아이들이 부르던 줄넘기 노래]\n사과 한 알 따 먹으면 / 배가 불러 좋아라\n사과 두 알 따 먹으면 / 손끝에서 잎이 나\n사과 세 알 따 먹으면 / 발바닥에 뿌리 내려\n엄마가 불러도 못 가요 / 나는 이제 나무예요\n(노래는 원래 여기까지였다. 요즘 공터 아이들은 한 줄을 더 붙여 부른다.)\n네 번째는 누가 먹나 / 너 하나 나 하나 / 줄 걸리면 네 차례\n(공터 한가운데 꽂힌 가지에는 사과가 늘 한 알만 달려 있다. 따 가면 이튿날 또 한 알이 열린다.)",
+   like:"사과가 반질반질 윤이 난다", dislike:"껍질 아래 뿌리가 꿈틀거린다",
+   cards:[{n:"뿌리 채찍",a:3,b:9},{n:"씨앗 뱉기",a:3,b:8},{n:"껍질 굳히기",a:3,b:6,def:true}], hp:1.1,
+   gifts:{ctrl:{n:"사과 꼭지", hpRed:0.06, bonus:{wil:1,tec:1}}, sup:{n:"껍질 부적", bonus:{str:2,tec:1}}}},
+  {id:"frozenbible", n:"얼어붙은 성경", risk:"TETH", code:"T-09-34-02", g:[5,4], fx:"frost", form:"얼음 속에 통째로 갇힌 두꺼운 성경 한 권. 펼쳐진 쪽의 글자만 얼음 밖으로 번져 나와 서리처럼 반짝이고, 가까이 가면 입김이 하얗게 얼어붙는다", look:"얼음덩이 속 펼쳐진 성경에서 하얀 서리가 바닥을 타고 번진다",
+   rumor:"문 닫은 교회 제단 위에 얼음덩이가 놓였다. 그 앞에서 기도하던 신자들이 무릎 꿇은 채 얼어붙었다", pref:PF("wil>tec>agi>str"), ctr:3,
+   escape:"다가가 행동할 때마다 서리가 한 겹 쌓인다(의지 행동은 오히려 한 겹 녹인다). 서리가 세 겹 쌓인 이는 그 자리에 얼어붙어 더는 행동할 수 없고, 의뢰가 끝난 뒤 하루를 녹이며 보낸다. 모두가 얼어붙으면 의뢰 실패. 폭주하면 턴마다 모두가 냉기에 상하고, 나선 이의 손이 서리에 굳어 간다",
+   story:"[성경 여백에 적힌 기도들 · 저마다 필체가 다르다]\n(첫 장) 주님, 이 겨울을 견디게 하소서.\n(시편 옆) 난방비가 석 달째 밀렸습니다. 아이가 밤새 기침을 합니다.\n(욥기 옆, 떨리는 글씨) 따뜻하게 해 달라는 기도가 아니었습니다. 차라리 아무것도 느끼지 않게 해 달라는 기도였습니다.\n(요한복음 옆) 그날 밤 교회 보일러가 꺼졌다. 신자들은 무릎 꿇은 채 아침을 맞았다. 아무도 춥다고 하지 않았다.\n(마지막 장, 성에 낀 글씨) 기도는 들어졌다. 이제 아무도 아프지 않다.",
+   like:"얼음 속 글자가 희미하게 빛난다", dislike:"서리가 발목까지 기어오른다",
+   cards:[{n:"성에 낀 구절",a:3,b:8},{n:"얼음 십자가",a:4,b:9},{n:"동결",a:3,b:6,def:true}], hp:1.1,
+   gifts:{ctrl:{n:"녹지 않는 책갈피", mpRed:0.1, bonus:{wil:2}}, sup:{n:"얼음 묵주", bonus:{str:1,wil:2}}}},
+  {id:"bari", n:"살,피,뼈", risk:"TETH", code:"F-02-29-11", g:[5,4], fx:"bari", form:"서쪽으로 기운 작은 꽃밭 한 뙈기. 흰 뼈살이꽃, 분홍 살살이꽃, 붉은 피살이꽃이 차례로 피어 있고, 꽃밭 가장자리엔 물동이와 장작더미가 놓여 있다", look:"흰 꽃, 분홍 꽃, 붉은 꽃이 차례로 핀 작은 꽃밭이 골목 끝을 서쪽으로 끌어당긴다",
+   rumor:"골목 끝 공터에 철도 아닌 꽃밭이 생겼다. 죽은 줄 알았던 개가 그 꽃밭에서 걸어 나왔다", pref:PF("str>agi=wil>tec"), ctr:3,
+   escape:"뼈를 먼저 잇고, 살을 붙이고, 피를 돌린다 — 근력(뼈살이) → 민첩(살살이) → 의지(피살이) 차례로 맞는 행동을 하면 꽃을 하나씩 얻는다. 차례가 어긋나면 꽃이 시들어 카운터가 준다. 세 꽃을 다 얻으면 꽃밭이 알로 잠들고 일행 모두의 체력이 다시 차오르지만, 마지막 꽃을 꺾은 이는 꽃값을 치르러 사흘 동안 물 긷고 불 때러 간다(출동 불가). 폭주해 쓰러뜨려도 한 번은 꽃으로 되살아난다",
+   story:"[할머니가 손주에게 들려준 바리데기 이야기 · 받아 적은 것]\n버려진 일곱째 딸이 있었단다. 바리라고 했지. 버린 부모가 죽게 되자, 바리는 저승 끝 서천 꽃밭까지 걸어갔어.\n꽃밭지기가 그러더래. 꽃은 거저 못 준다. 삼 년 물 긷고, 삼 년 불 때고, 삼 년 나무해라.\n바리는 아홉 해를 일하고 꽃 세 송이를 얻었어. 뼈살이꽃으로 뼈를 잇고, 살살이꽃으로 살을 붙이고, 피살이꽃으로 피를 돌렸지. 순서가 바뀌면 안 된단다. 피 먼저 돌리면 빈 뼈에 피가 고이거든.\n그 꽃밭이 요새 골목 끝에 핀다더라. 누가 또 누구를 살리려고 아홉 해를 일하나 봐.\n얘야, 거기서 뭘 얻거든 꼭 값을 치르고 오너라.",
+   like:"꽃잎이 바람 없이 흔들린다", dislike:"꽃밭 너머에서 물동이가 엎어진다",
+   cards:[{n:"뼈 잇는 가지",a:3,b:8},{n:"살 붙이는 꽃가루",a:3,b:9},{n:"피 도는 이슬",a:3,b:6,def:true}], hp:1.0,
+   gifts:{ctrl:{n:"피살이꽃잎", hpRed:0.08, bonus:{wil:1}}, sup:{n:"뼈살이꽃 줄기", bonus:{str:2,agi:1}}}},
   // ── HE (4~3급) · 원작 ──
   {id:"ichthys", n:"단수어", risk:"HE", canon:"LCB", code:"O-02-11-26", g:[4,3], rule:"sac", form:"머리가 깨끗이 잘려 등뼈가 드러난 거대한 잿빛 물고기. 넓은 아가미와 높은 등지느러미를 달았고, 가슴부터 배까지 커다란 붉은 물주머니가 부풀어 있다", look:"머리 없는 물고기가 얕은 웅덩이에서 힘차게 몸을 비튼다",
    rumor:"공사장 물웅덩이에 머리 없는 물고기가 산다. 배가 붉게 부풀어 오르고 있다", pref:PF("tec>agi>str>wil"), ctr:3,
@@ -3547,6 +3647,27 @@ const ABNOS = [
    like:"나방 떼가 날개를 접는다", dislike:"나방 가루가 흩날린다",
    cards:[{n:"나방 떼",a:4,b:10},{n:"면사포 감기",a:4,b:11},{n:"하객의 장막",a:5,b:8,def:true}], hp:1.15,
    gifts:{ctrl:{n:"나방 가루 면사포", mpRed:0.14, bonus:{tec:2}}, sup:{n:"죽은 나방의 날개", bonus:{agi:3,str:1}}}},
+  {id:"biik", n:"비익조", risk:"HE", code:"F-02-41-03", g:[4,3], fx:"pair", form:"눈 하나, 날개 하나뿐인 새 두 마리가 옆구리를 맞붙인 채 한 몸처럼 서 있다. 한쪽은 푸르고 한쪽은 붉다. 떨어지면 둘 다 날지 못한다", look:"눈도 날개도 하나뿐인 푸른 새와 붉은 새가 옆구리를 맞대고 서서, 같은 쪽을 바라본다",
+   rumor:"옥상 물탱크 위에 새 두 마리가 붙어 산다. 그 아래서 헤어진 연인들은 이튿날 같은 시각에 각자 숨진 채 발견됐다", pref:PF("agi>wil>tec>str"), ctr:3,
+   escape:"마주친 일행 가운데 둘을 한 쌍으로 묶는다(혼자 왔으면 짝 없는 날개라 카운터가 하나 줄어든 채 시작한다). 묶인 둘이 번갈아 행동하면 두 날개가 맞아 기분이 크게 오르고, 한 사람이 연달아 나서면 한쪽 날개만 퍼덕여 카운터가 준다. 의뢰가 끝난 뒤 사흘 동안 둘은 함께 나가야 한다 — 하나만 출동한 날 밤엔 둘 다 정신력을 잃는다. 폭주하면 반쪽이 다치는 순간 다른 반쪽이 날아와 상처를 메운다",
+   story:"[혼인 서약서]\n신랑 ○○○ · 신부 ○○○\n서약 — 하늘에서는 비익조가 되고, 땅에서는 연리지가 되기를. 한쪽 눈과 한쪽 날개만 가지고 태어나, 서로가 아니면 날지 못하는 새처럼.\n(서약서 뒷면, 작은 글씨) 둘 중 하나가 먼저 떠나면 남은 하나도 날개를 접는다.\n(동사무소 처리 기록) 신랑, 홀로 출장 중 사망. 같은 날 같은 시각, 신부 자택에서 숨진 채 발견. 외상 없음.\n(기록 아래, 누군가의 메모) 옥상 물탱크 위의 새 두 마리는 그날부터 조금 더 꼭 붙어 앉았다.",
+   like:"두 새가 같은 박자로 고개를 끄덕인다", dislike:"한쪽 날개만 거칠게 퍼덕인다",
+   cards:[{n:"두 부리",a:4,b:10},{n:"맞바람",a:4,b:9},{n:"한 몸 웅크리기",a:4,b:7,def:true}], hp:1.25,
+   gifts:{ctrl:{n:"짝 깃털", mpRed:0.12, bonus:{agi:2}}, sup:{n:"반쪽 날개뼈", bonus:{agi:2,str:2}}}},
+  {id:"skel", n:"스켈융어", risk:"HE", code:"F-03-47-06", g:[4,3], fx:"whale", form:"몸통이 온통 따개비와 조개껍데기로 뒤덮인 고래. 물에 잠긴 지하도에 꼿꼿이 선 채 잠들어 머리만 수면 위로 내밀고 있다. 지느러미와 꼬리는 껍데기 아래 감춰져 있다", look:"물에 잠긴 지하도 한가운데, 껍데기로 뒤덮인 고래 머리가 수면 위로 곧게 솟아 있다",
+   rumor:"침수된 지하상가에 섬이 생겼다. 피해 가려던 배달 보트들이 번번이 그 섬에 들이받혀 가라앉았다", pref:PF("wil>str>tec>agi"), ctr:3,
+   escape:"피하려 들수록 앞을 막는다 — 민첩 행동을 하면 카운터가 한 번 더 준다. 같은 길로 곧게 버티는 의지 행동이 가장 잘 먹힌다. 이름을 아는 사람(두 번째 만남부터)이 오면 이름을 불린 듯 깨어나, 카운터가 하나 줄어든 채 시작한다. 폭주하면 껍데기가 칼날을 튕겨 내고(세 번 맞기 전까지 받는 피해 감소), 쓰러뜨려도 한 번은 죽은 척 떠 있다가 되살아나 덮친다. 나쁜 고래들 가운데 유일하게 먹을 수 있다 — 제압하면 일행의 체력이 조금 회복된다",
+   story:"[어부들 사이에 도는 금기 목록]\n하나. 물 위에서 그 이름을 입에 올리지 말 것. 부르면 온다.\n둘. 껍데기 섬을 보거든 뱃머리를 틀지 말 것. 틀면 틀수록 앞을 막는다. 곧게, 천천히 지나갈 것.\n셋. 해를 등지지 말 것. 눈부신 쪽으로 몰면 놈이 눈을 감는다.\n넷. 죽은 것처럼 떠 있어도 다가가지 말 것. 미네르바 호는 그러다 갔다.\n다섯. 나쁜 고래 가운데 놈만은 먹어도 된다. 그래서 다들 한 번쯤 욕심을 낸다.\n(목록 아래, 연필) 이 도시엔 바다가 없는데. 지하도에 물이 찬 뒤로 다들 이 목록을 다시 외운다.",
+   like:"고래가 느리게 숨을 내쉰다", dislike:"껍데기가 갈라지며 몸을 튼다",
+   cards:[{n:"꼬리 내려치기",a:5,b:11},{n:"지느러미 후리기",a:4,b:10},{n:"껍데기 웅크리기",a:5,b:8,def:true}], hp:1.4,
+   gifts:{ctrl:{n:"따개비 귀걸이", mpRed:0.1, bonus:{wil:2}}, sup:{n:"고래 껍데기 조각", hpRed:0.1, bonus:{str:2}}}},
+  {id:"erlking", n:"마왕[馬王]", risk:"HE", code:"F-01-52-09", g:[4,3], fx:"erl", form:"검은 말 머리에 왕관을 쓴 기수. 안개처럼 흩어지는 긴 망토를 둘렀고, 품에 아무것도 없는데도 무언가를 안은 듯 두 팔을 오므리고 있다", look:"안개 속에서 왕관 쓴 말 머리의 기수가, 아이를 안은 듯 팔을 오므린 채 이쪽을 내려다본다",
+   rumor:"새벽 순환도로에서 아이를 태운 오토바이들이 자꾸 사고를 낸다. 살아남은 아이들은 하나같이 왕관 쓴 말이 불렀다고 했다", pref:PF("agi>wil>str>tec"), ctr:3,
+   escape:"마주친 일행 가운데 가장 여린 이(능력치 총합이 가장 낮은 이)를 아이로 삼아 부른다. 행동이 오갈 때마다 부름이 짙어지고(아이가 직접 나서면 더 짙어진다), 다른 이가 의지 행동으로 다독이면 옅어진다. 부름이 네 번 차면 아이는 정신을 놓고 쓰러지고 카운터가 준다. 폭주하면 세 번째 턴이 끝날 때까지 쓰러뜨리지 못하면 아이를 품에 안고 데려간다",
+   story:"[구역 응급실 · 야간 접수 대장]\n02:41 — 오토바이로 내원. 보호자(부) 숨이 턱까지 참. 품에 남아(7세).\n보호자 진술: 오는 내내 아이가 마왕이 안 보이냐고 물었다 함. 안개라고 답했다 함.\n보호자 진술: 아이가 마왕이 속삭인다고 했다 함. 마른 잎이 바람에 스치는 소리라고 답했다 함.\n보호자 진술: 아이가 저기 마왕의 딸들이 서 있다고 했다 함. 오래된 버드나무가 잿빛으로 보인 거라고 답했다 함.\n02:44 — 접수 완료. 아이는 이미 숨진 상태. 외상 없음.\n(대장 여백, 다른 펜) 그 아버지는 오는 내내 한 번도 아이 쪽을 보지 않았다고 했다. 앞만 보고 달렸다고. 그래야 빨리 닿을 줄 알았다고.",
+   like:"말이 고개를 숙이고 숨을 고른다", dislike:"안개 속에서 다정한 목소리가 누군가를 부른다",
+   cards:[{n:"말발굽",a:4,b:10},{n:"달콤한 부름",a:4,b:9},{n:"안개 망토",a:4,b:7,def:true}], hp:1.3,
+   gifts:{ctrl:{n:"금빛 옷자락 실", mpRed:0.12, bonus:{agi:1,wil:1}}, sup:{n:"말 머리 왕관", bonus:{agi:3,str:1}}}},
   // ── WAW (2급) · 원작 ──
   {id:"knight", n:"절망의 기사", risk:"WAW", canon:"L", code:"O-01-73", g:[2,2], fx:"bless", form:"창백한 피부의 소녀. 별자리 무늬가 새겨진 길고 푸른 머리카락과 드레스를 늘어뜨렸고, 가늘고 긴 두 팔은 위팔 중간부터 검게 물들어 있다. 눈물이 검이 되어 곁을 떠돈다", look:"별자리 무늬 드레스를 입은 창백한 소녀가 눈물을 흘리며, 곁을 떠도는 검들 사이에서 누군가를 지키려 한다",
    rumor:"성당 지하 납골당에 칼을 든 기사가 산다. 그 앞에서 기도한 사람이 기사의 축복을 받았다고 한다", pref:PF("tec>agi>wil>str"), ctr:3, noCounter:true, rule:"knight",
@@ -3608,16 +3729,37 @@ const ABNOS = [
   {id:"dosan", n:"도산지옥", risk:"WAW", code:"M-07-25-01", g:[2,2], fx:"knives", form:"거꾸로 꽂힌 칼날로 촘촘한 작은 산. 칼날마다 맨발 자국이 찍혔고, 꼭대기의 빈 판관석에는 먼지 쌓인 붓과 명부가 놓여 있다", look:"칼날이 거꾸로 촘촘히 꽂힌 작은 산이 골목 한가운데 솟아 있다. 꼭대기의 빈 판관석 아래로 맨발 자국과 핏자국이 끝없이 이어진다",
    rumor:"철거 구역 한복판에 하룻밤 사이 칼날로 된 산이 솟았다. 사람을 해친 적 있는 이들이 홀린 듯 맨발로 오르다 내려오지 못했다", pref:PF("str>wil>agi>tec"), ctr:3,
    escape:"자리를 떠나지 않는다. 다가가 행동할 때마다 맨발로 칼날을 밟아 체력이 깎인다 — 지금껏 사살한 사람이 많을수록(업이 무거울수록) 더 깊이 베인다. 폭주하면 칼날 산 위에서 싸우게 되어, 턴이 끝날 때마다 모두가 발밑의 칼날에 베인다. 업이 가벼운 이를 보낼 것",
-   story:"[철거 구역 앞 고물상 · 매입 장부]\n첫날 — 칼날 열두 자루. 날이 위로 선 채 뽑혀 온 것. 근당 시세로 매입.\n둘째 날 — 칼날 서른 자루. 뽑은 자리에 밤새 새 칼날이 솟았다고 함. 칼등마다 맨발 자국.\n넷째 날 — 칼날을 지고 온 박 씨, 산에 오른 적 없다는데 발바닥이 베여 있음. 젊을 때 사람을 둘 죽였다는 소문이 있던 사람.\n닷새째 — 판관석의 붓 한 자루가 들어옴. 매입 거절. 이튿날 장부 맨 뒷장에 모르는 이름들과 숫자가 적혀 있음. 박 씨 옆에는 2.\n이레째 — 매입 중단. 오늘 들어온 칼날에 주인장 이름이 새겨져 있음.\n(맨 뒷장, 붓글씨) 흘리게 한 만큼 오른다. 다 건너면 다음 판관에게 보낸다.",
+   story:"[진오귀굿 사설 한 대목 · 철거촌 무당이 받아 적음]\n이레 되는 날 첫째 대왕 앞에 서니 / 진광대왕 붓을 들어 명부를 펼치시고 / 살아생전 남 흘린 피 한 방울도 빼지 않고 적으신다\n흘린 만큼 칼날 서고 칼날 선 만큼 산이 높아 / 맨발로 넘으라 하니 발바닥이 먼저 운다\n가자 가자 넘어가자 칼산 넘어 초강대왕께로 / 넘지 못한 넋은 칼끝에 걸려 한세상을 또 운다\n— 굿이 끝나고 무당이 덧붙인 말: 요새는 대왕 자리가 비었더라. 그런데도 붓이 저 혼자 적더라. 이 도시엔 진오귀 해 줄 자식도 없으니, 산이 먼저 찾아온 게지.",
    like:"칼날이 조금 눕는다", dislike:"칼날이 일제히 곧추선다",
    cards:[{n:"솟는 칼날",a:5,b:12},{n:"칼날 다리",a:6,b:11},{n:"업의 무게",a:4,b:15},{n:"칼날 숲",a:6,b:9,def:true}], hp:1.45,
    gifts:{ctrl:{n:"빈 판관석의 먼지", mpRed:0.18, bonus:{wil:3,str:1}}, sup:{n:"부러진 칼날 한 자루", bonus:{str:5}, hpRed:0.06}}},
+  {id:"bloodtear", n:"피눈물", risk:"WAW", code:"O-01-70-07", g:[2,2], fx:"kin", form:"녹슨 작은 관람차 꼭대기 칸에, 투구를 쓴 늙은 기사가 말뚝에 꿰인 채 매달려 있다. 투구 틈으로 흘러내린 핏물이 바큇살을 타고 내려와 바닥의 작은 신발 한 켤레를 적신다", look:"멈춘 관람차 꼭대기에 꿰인 늙은 기사가, 투구 틈으로 붉은 눈물을 흘리며 아래를 내려다본다",
+   rumor:"폐놀이공원 관람차가 밤마다 혼자 돈다. 꼭대기 칸에서 얘들아, 밥 먹자 하는 목소리가 들린다", pref:PF("wil>agi>tec>str"), ctr:2,
+   escape:"처음 다가온 이를 자식으로 삼는다. 자식이 맞는 행동을 하면 아비가 웃어 기분이 크게 오르지만, 자식이 틀리면 부모에게 이를 드러낸 금기라 카운터가 둘 준다. 틀린 행동을 한 이는 피를 빨려 체력도 잃는다. 자식은 이틀 동안 밤마다 피를 받아 몸이 낫지만 꿈에 시달린다. 폭주하면 입힌 상처만큼 피를 마셔 제 몸을 메운다",
+   story:"[관람차 매표소 벽에 걸린 가훈 액자]\n하나. 우리는 한 핏줄이다. 피를 나눈 자는 모두 자식이다.\n둘. 자식은 부모에게 이를 드러내지 않는다.\n셋. 배가 고파도 꿈을 먼저 먹는다.\n넷. 꿈을 다 먹으면 아비를 먹지 말고 기다린다.\n(넷째 줄 아래, 손톱으로 긁은 자국) 기다렸다. 이백 년을.\n(액자 뒷면) 아버지는 자식들을 굶기면서 사람과 함께 사는 꿈을 꾸었다. 자식들은 끝내 아버지를 바퀴에 박았다. 아버지는 아직 꿈에서 깨지 않았다. 깨지 않은 채, 자식들을 내려다보며 피눈물을 흘린다.",
+   like:"관람차가 삐걱이며 한 칸 돈다", dislike:"핏방울이 바큇살을 타고 빠르게 흘러내린다",
+   cards:[{n:"말뚝 뽑기",a:5,b:13},{n:"핏줄 당기기",a:5,b:12},{n:"피눈물",a:6,b:11},{n:"녹슨 바퀴",a:5,b:8,def:true}], hp:1.45,
+   gifts:{ctrl:{n:"작은 신발 끈", mpRed:0.15, bonus:{wil:2,agi:2}}, sup:{n:"부러진 말뚝", bonus:{str:4,agi:1}, hpRed:0.05}}},
+  {id:"jade", n:"푸른 보석", risk:"WAW", code:"T-09-63-01", g:[2,2], fx:"jade", form:"참새 알만 한 푸른 옥 한 알. 우윳빛 결 속으로 붉은 누각의 그림자가 비치고, 겉에는 작은 글씨 여덟 자가 새겨져 있다", look:"푸른 옥 한 알이 허공에 떠서, 그 속에 붉은 누각과 꽃 지는 정원을 비춘다",
+   rumor:"전당포에 맡겨진 푸른 옥을 들여다본 주인이 사흘째 깨지 않는다. 자면서 웃고 운다", pref:PF("tec>wil>agi>str"), ctr:2,
+   escape:"맞는 행동을 할 때마다 옥이 꿈을 보여 주어 행동한 이의 정신력이 조금 차오른다. 꿈이 세 번 쌓이면 세 번째 꿈을 본 이는 붉은 누각 속에 빠져 더는 행동하지 못한다. 틀린 행동을 하면 옥을 잃은 듯 넋이 빠져 정신력을 갑절로 잃는다. 통제하면 마지막에 다가간 이가 옥을 지니게 된다 — 사흘 밤 동안 마음이 편하지만, 사흘째 밤 옥이 사라지면 넋이 크게 흔들린다. 폭주하면 처음 두 턴은 꿈속이라 칼끝이 반만 닿고, 깬 뒤로는 옥에 금이 가 더 아프게 맞는다",
+   story:"[옥에 새겨진 여덟 글자와, 그것을 지녔던 이들]\n앞면 — 莫失莫忘 仙壽恒昌. 잃지 말고 잊지 말라, 그러면 길이 창성하리라.\n· 부잣집 막내아들 — 입에 물고 태어났다. 옥을 잃은 날 넋이 나갔고, 되찾은 날 집을 나갔다.\n· 꽃잎을 묻어 주던 아가씨 — 옥을 지닌 이를 위해 평생 울었다. 눈물이 다하자 숨도 다했다.\n· 전당포 주인 — 들여다본 지 사흘째. 아직 꿈속에 있다.\n(뒷면, 아주 작은 글씨) 거짓이 참이 될 때 참 또한 거짓이 되고, 없음이 있음이 될 때 있음 또한 없음이 된다.",
+   like:"옥 속의 누각에 등불이 켜진다", dislike:"옥 속에서 꽃잎이 한꺼번에 진다",
+   cards:[{n:"꽃 묻는 호미",a:5,b:12},{n:"꿈의 누각",a:5,b:13},{n:"눈물빚",a:6,b:11},{n:"옥빛 장막",a:5,b:8,def:true}], hp:1.4,
+   gifts:{ctrl:{n:"여덟 글자 옥", mpRed:0.18, bonus:{tec:2,wil:2}}, sup:{n:"금 간 옥 조각", bonus:{tec:3,agi:2}}}},
+  {id:"nails", n:"다섯 개의 못", risk:"WAW", code:"O-05-55-05", g:[2,2], fx:"nails", form:"손바닥 모양 쇳판 하나가 벽에 박혀 있다. 손가락마다 굵은 못이 하나씩, 모두 다섯. 못대가리에는 저마다 다른 문양이 새겨져 있는데, 그중 하나는 아무리 들여다봐도 문양이 보이지 않는다", look:"손바닥 모양 쇳판에 박힌 못 다섯 개가, 차례로 조금씩 솟았다 가라앉는다",
+   rumor:"뒷골목 담벼락에 쇠로 된 손바닥이 박혔다. 그 앞을 지나간 조직원들이 서로에게 총을 겨눴다", pref:PF("str>wil>tec>agi"), ctr:3,
+   escape:"행동할 때마다 다섯 못 가운데 하나가 솟아 그 손가락의 법이 걸린다. 엄지 — 일행 가운데 가장 높은 등급이 아닌 이가 먼저 나서면 카운터가 준다. 검지 — 지령이 내려온다. 지령대로 행동하면 기분이 크게 오르고, 어기면 카운터가 준다. 중지 — 누군가 다치면 모두가 갚는다: 틀리면 일행 모두가 정신력을 잃는다. 약지 — 최고의 결과가 아니면 졸작이라 카운터가 준다. 새끼 — 누가 엿듣는지 모른다: 반응이 보이지 않고 기분도 절반만 오른다. 폭주하면 턴마다 손가락이 하나씩 접히고, 다섯이 다 접히면 주먹이 내리친다",
+   story:"[약정서]\n갑은 다섯 손가락이 정한 법을 따르고, 을은 갑의 뒷골목에서 목숨을 보전한다.\n제1조(엄지) 윗사람보다 먼저 입을 열지 않는다. 어기면 혀로 갚는다.\n제2조(검지) 지령은 이유를 묻지 않고 따른다. 지령은 언제나 옳았다.\n제3조(중지) 형제가 다치면 모두가 갚는다. 몇 대가 지나도 갚는다.\n제4조(약지) 모든 일은 작품이어야 한다. 졸작은 작가와 함께 치운다.\n제5조(새끼) (비어 있다. 공란 옆에 작은 글씨로) 이 조항을 쓴 사람은 이미 당신 곁에 있다.\n서명란 — 지문 다섯 개가 찍혀 있다. 누구의 것인지는 아무도 모른다.",
+   like:"솟았던 못이 조용히 가라앉는다", dislike:"못대가리가 쇳판을 긁으며 솟는다",
+   cards:[{n:"엄지 누르기",a:5,b:12},{n:"검지 지목",a:5,b:13},{n:"주먹",a:6,b:14},{n:"손바닥 막기",a:5,b:8,def:true}], hp:1.5,
+   gifts:{ctrl:{n:"뽑힌 못 하나", mpRed:0.14, bonus:{wil:2,str:2}}, sup:{n:"쇠 손바닥 조각", bonus:{str:4,tec:1}, hpRed:0.06}}},
   // ── ALEPH (1급 · 특색) · 원작 ──
   {id:"orchestra", n:"고요한 오케스트라", risk:"ALEPH", canon:"L", code:"T-01-31", g:[1,0], fx:"overture", movement:true, form:"팔다리 없는 마네킹이 받침대에 세운 막대에 꽂혀 지휘자의 연미복을 입고 있다. 머리에는 8분음표 무늬가 박혀 있다. 공연이 시작되면 지휘봉을 쥔 두 손과 그림자 연주자들이 나타난다", look:"연미복을 걸친 팔다리 없는 마네킹이 막대 위에서 텅 빈 객석을 향해 서 있다",
    rumor:"구 시민회관에서 아무 소리도 나지 않는 공연이 열린다. 객석의 관객은 모두 숨져 있었다", pref:PF("tec>agi>wil>str"), ctr:2, rule:"goodDrops",
    
    escape:"마주치는 순간 첫 음이 울려 모두의 정신력이 30% 깎이고, 그 뒤 정신력이 절반 아래인 이는 머리가 터져 즉사한다. 행동 결과가 나빠도, 지나치게 좋아도 카운터가 준다. 다하면 공연이 시작된다 — 악장마다 공격·방어·기술 가운데 하나만 지휘자에게 닿는다",
-   story:"[총보 첫 장 · 여백의 지휘 지시]\n지휘자는 틀린 음을 고치는 사람이 아니다. 앙상블의 주도권을 쥐는 사람이다.\n연주자 — 미정. 객석에서 충원할 것.\n제1악장 · 침착하게, 느리게 — 끝을 연주하기 시작한다. 첫 음에 객석의 정신이 깎인다. 절반도 남지 않은 머리는 버티지 못한다.\n제2악장 · 유쾌하게, 빠르게 — 청중은 왜 왔는지 잊는다. 열광이 박자를 앞지르면 옆 사람을 친다.\n제3·4악장 — 악장마다 연주자 하나가 일어선다. 한 악장에는 한 가지 소리만 지휘대에 닿는다.\n피날레 — (빈 마디에 한 줄) 이 음은 당신을 꿰뚫는다.\n(뒷장, 연필) 부서진 것들에게서 가장 아름다운 연주가 시작된다. 박수는 박수 칠 손이 남은 이에게서만.",
+   story:"옛 시민회관에 지휘자가 있었다. 그는 틀린 음을 바로잡는 것이 지휘자의 일이라고 여기지 않았다. 지휘대에 오른 지 오 분이면 악단 전체가 그의 손끝을 따랐다.\n어느 밤, 연주자가 하나도 오지 않았다. 객석만 가득 찼다. 지휘자는 지휘봉을 들었다. 연주자는 객석에서 모으면 된다.\n첫 악장은 침착하고 느렸다. 무대엔 아무도 없었는데 객석 모두가 첫 음을 들었다. 버티지 못한 머리들이 먼저 고개를 떨궜다.\n다음 악장부터는 유쾌하고 빨랐다. 사람들은 왜 왔는지 잊었고, 열광이 광기로 넘어가자 옆 사람을 할퀴었다. 악장이 바뀔 때마다 하나씩 일어나 무대로 올라갔다.\n연주자가 다 모이자, 아무도 들을 수 없지만 모두가 듣는 음악이 시작되었다. 부서진 것들에게서 가장 아름다운 연주가 시작된다는 것을, 지휘자는 처음부터 알았다.\n마지막 마디가 남았다. 그것은 듣는 음악이 아니다. 당신을 꿰뚫는 음악이다.",
    like:"지휘봉이 조용히 내려간다", dislike:"어딘가에서 첫 음이 울릴 듯하다",
    cards:[{n:"제1악장",a:5,b:12},{n:"제2악장",a:6,b:11},{n:"제3악장",a:5,b:14},{n:"정적",a:6,b:9,def:true}], hp:1.6,
    gifts:{ctrl:{n:"지휘봉 끝", mpRed:0.22, bonus:{wil:4,tec:2}}, sup:{n:"끝나지 않은 악보", bonus:{wil:3,tec:3}, mpRed:0.08}}},
@@ -3625,7 +3767,7 @@ const ABNOS = [
    rumor:"도심 하늘에 푸른 별이 떴다. 그 소리를 들은 사람들이 하나둘 별을 향해 걸어갔다", pref:PF("agi>wil>str>tec"), ctr:2, low:"wil", lowStrict:true,
    noFight:true, doom:{t:"별이 울렸다", custom:"bluestar"},
    escape:"마주치는 순간 맥박이 울려 모두의 정신력이 30% 깎이고, 정신이 무너진 이와 마음(의지)이 약한 이는 별에 흡수된다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘에 떠서 다시 맥박을 울린다",
-   story:"[해안 요양병동 7호실 · 침대 시트 밑에서 나온 쪽지]\n끈 자국 아프지. 자꾸 창문 쪽으로 가려 해서 묶어 둔 거래. 믿는 게 그렇게 잘못이야?\n우리는 다 죄인이고, 그런 우리를 받아 주는 곳은 저 푸른 별 하나뿐이야. 거기서 다 씻어. 누구나 언젠가는 그리로 돌아가. 원래 아는 거야.\n가까이 가면 우리를 반기는 노래와 함성이 들려. 맥박이 울리면 마음 약한 사람부터 몸이 가벼워진대.\n죽는 게 아니야. 있던 자리로 돌아가는 거야. 다들 돌아가고 나면 여기엔 별만 남겠지.\n곧 별이 되어서 만나.\n(뒷면, 간호 기록) 7호실 환자, 새벽에 결박 풀림. 옥상에서 위로 떨어졌다는 목격 진술. 별 아래 다리가 두 짝 늘었음. 아직 흔들리는 중.",
+   story:"절망이 가장 깊던 해, 구역 하늘에 푸른 별이 떴다. 스스로 신이라 한 적은 없었다. 사람들이 먼저 무릎을 꿇었다.\n모임이 생겼다. 그들은 서로를 죄인이라 불렀고, 죄인을 받아 주는 곳은 저 별뿐이라 믿었다. 별에 닿는 것은 죽음이 아니라 있어야 할 곳으로 돌아가는 일이라고. 구역은 모임을 금했다. 이 도시에서 신성한 것은 없어야 했다.\n금지는 오래가지 않았다. 별 가까이에선 반기는 노래와 함성이 들렸고, 맥박이 울릴 때마다 마음 약한 이부터 발끝이 땅에서 떨어졌다. 가족들은 그들을 침대에 묶었다. 묶인 이들은 밤새 창문 쪽으로 몸을 틀었다.\n이제 별 아래로 다리들이 매달려 흔들린다. 모임 사람들은 그것을 환영의 손짓이라 부른다. 모두가 돌아가고 나면 이 구역엔 별만 남을 것이다.\n— 뒷면 부록 —\n곧 별이 되어서 만나자.",
    like:"맥박이 느려진다", dislike:"푸른 빛이 맥박친다",
    gifts:{ctrl:{n:"별의 맥박", mpRed:0.2, bonus:{wil:4,agi:2}}, sup:null}},
   {id:"nothing", n:"아무것도 없는", risk:"ALEPH", canon:"L", code:"O-06-20", g:[1,0], fx:"skin", immune:true, form:"피투성이로 짓이겨진 사람 같은 것이 세 다리로 선다. 살갗은 하얗고, 한쪽 다리는 뼈가 드러났으며 뒷다리에는 가죽이 없다. 평소에는 빼앗은 사람의 가죽을 쓰고 그 사람인 척한다", look:"방금 전까지 있던 동료의 얼굴을 한 무언가가 이쪽을 보고 웃는다",
@@ -3636,20 +3778,20 @@ const ABNOS = [
    cards:[{n:"머리 발톱",a:5,b:13},{n:"뼈 파편",a:6,b:12},{n:"작별 인사",a:4,b:16},{n:"알 껍질",a:6,b:9,def:true}], hp:1.7,
    gifts:{ctrl:{n:"아무것도 없는 웃음", mpRed:0.18, bonus:{tec:4,str:2}}, sup:{n:"빼앗긴 가죽", bonus:{str:5,agi:3}, hpRed:0.08}}},
   // ── ALEPH · 창작 ──
-  {id:"sun", n:"일렁이는 태양", base:"bluestar", risk:"ALEPH", code:"O-03-02-04", g:[1,0], fx:"scorch", form:"핏빛 주황의 거대한 태양이 지붕 높이까지 내려와 아지랑이처럼 일렁인다. 맥박치듯 부풀었다 가라앉는다", look:"아지랑이처럼 일렁이는 커다란 태양이 골목 위에 낮게 떠서, 밤을 낮으로 바꿔 놓았다",
-   rumor:"뒷골목의 밤이 오지 않은 구역이 있다. 하늘에 뜬 태양을 올려다본 사람들은 눈을 감지 못한 채 그을려 있었다", pref:PF("agi>tec>wil>str"), ctr:2, low:"wil",
-   escape:"의지가 모자란 이가 올려다보면 카운터가 준다. 만난 일행은 이틀 동안 그을림이 남아 밤마다 체력이 깎인다. 카운터가 다하면 태양이 내려와 바라보는 모두를 태운다",
-   story:"「밤이 무서워요. 불 꺼지면 누가 문 열고 들어올 것 같아요.」\n「다시는 어두워지지 않았으면 좋겠다.」\n「해가 지지 않게 해 주세요. 제발.」\n— 철거된 성당 벽에 붙어 있던 소원 쪽지들\n그 구역에는 지금 밤이 오지 않는다. 지붕 높이까지 내려온 태양이 아지랑이처럼 일렁이며 내내 떠 있다.\n소원을 빈 사람들은 눈을 감지 못한 채 천천히 그을려 갔다. 태양은 소원을 들어주었다. 지는 법을 잊어버린 채로.",
-   like:"일렁임이 잔잔해진다", dislike:"열기가 살갗을 태운다",
-   cards:[{n:"작열",a:5,b:13},{n:"아지랑이",a:6,b:12},{n:"코로나",a:6,b:9,def:true}], hp:1.55,
+  {id:"sun", n:"일렁이는 태양", risk:"ALEPH", code:"O-03-02-04", g:[1,0], fx:"coat", form:"핏빛 주황의 거대한 태양이 지붕 높이까지 내려와 아지랑이처럼 일렁인다. 가장자리에 구름 한 점이 늘 붙어 있는데, 태양이 부풀 때마다 그 구름이 조금씩 타들어 간다", look:"아지랑이처럼 일렁이는 커다란 태양이 골목 위에 낮게 떠서, 지나는 사람들의 외투 깃을 하나하나 들여다본다",
+   rumor:"밤이 오지 않는 구역이 있다. 거기서 발견된 사람들은 하나같이 외투도 신발도 걸치지 않은 채 그을려 있었다", pref:PF("wil>tec>agi>str"), ctr:2,
+   escape:"외투(방어구)를 걸친 이가 다가갈 때마다 햇살이 따뜻해진다. 두 번째에는 외투를 벗고 싶어진다 — 벗으면 태양이 기뻐하지만 이틀 동안 방어구가 소용없고, 여미면 카운터가 준다. 근력으로 거세게 밀어붙이는 건 바람과 구름의 방식이라 태양이 구름 뒤로 숨는다. 만난 일행은 이틀 동안 그을림이 남는다. 폭주하면 턴마다 햇살이 뜨거워지고, 외투를 걸친 이는 갑절로 탄다",
+   story:"[그림책 『구름과 해님』 · 마지막 장이 덧붙은 판본]\n1쪽 — 구름과 해님이 누가 더 센지 내기를 했어요. 길 가는 나그네의 외투를 먼저 벗기는 쪽이 이기기로요.\n2쪽 — 구름이 비바람을 몰아쳤어요. 나그네는 외투를 더 꼭 여몄어요.\n3쪽 — 해님이 따뜻하게 웃었어요. 나그네는 단추를 풀고 외투를 벗었어요. 해님이 이겼어요!\n4쪽 — (원래 판본에는 없는 장. 손으로 그려 붙였다) 해님은 이기는 게 너무 좋았어요. 그래서 멈추지 않았어요. 나그네는 신발을 벗고, 모자를 벗고, 그다음엔 벗을 것이 없었어요.\n5쪽 — 구름은 해님 곁에 붙은 채 조금씩 타들어 갔어요. 이제 그 구역엔 밤이 오지 않아요.",
+   like:"일렁임이 잔잔해지고 햇살이 부드러워진다", dislike:"해가 구름 뒤로 숨었다가 더 뜨겁게 나온다",
+   cards:[{n:"작열",a:5,b:13},{n:"아지랑이",a:6,b:12},{n:"벗겨 내는 햇살",a:5,b:14},{n:"코로나",a:6,b:9,def:true}], hp:1.55,
    gifts:{ctrl:{n:"지지 않는 빛", mpRed:0.2, bonus:{wil:3,tec:2}}, sup:{n:"식은 태양 조각", bonus:{str:4,agi:3}}}},
-  {id:"throne", n:"왕을 죽이는 왕좌", risk:"ALEPH", code:"O-05-16-09", g:[1,0], fx:"king", form:"높은 등받이의 검은 왕좌. 팔걸이마다 칼날이 숨었고, 앉는 자리에는 지워지지 않는 핏자국이 왕관 모양으로 번져 있다", look:"검은 왕좌가 무너진 빌딩 꼭대기에 놓여 있다. 팔걸이마다 칼날이 숨어 있다",
-   rumor:"무너진 날개 본사 꼭대기에 왕좌가 있다. 앉아 본 조직 보스들이 모두 그 자리에서 숨졌다", pref:PF("agi>wil>str>tec"), ctr:2,
-   escape:"일행 중 가장 강한 이(능력치 총합이 가장 높은 이)가 다가가면 왕이 될 자로 알아보고 카운터가 준다. 앉으려 하는 자가 없으면 스스로 일어나 왕이 될 만한 자를 죽이러 내려온다",
-   story:"[모시는 글]\n제33대 왕의 대관식에 귀하를 모십니다.\n일시 — 이 도시에서 가장 강한 분이 정해지는 날\n장소 — 무너진 날개 본사 꼭대기\n복장 — 자유. 무기는 들고 오셔도 됩니다. 쓰실 일은 없을 것입니다.\n왕관 — 따로 마련하지 않습니다. 자리에 이미 배어 있습니다.\n좌석 — 하나뿐입니다.\n회신 — 받지 않습니다. 귀하께서 오지 않으시면 왕좌가 직접 모시러 갑니다.\n※ 선대 서른두 분은 모두 즉위하신 자리에서 일어나지 못하셨습니다. 앉기를 사양하신 분도 끝은 같았습니다.\n※ 팔걸이의 칼날은 장식이 아닙니다. 손을 얹지 마십시오. 아직은.",
-   like:"왕좌가 조용히 비어 있다", dislike:"팔걸이의 칼날이 드러난다",
-   cards:[{n:"왕을 베는 칼",a:5,b:13},{n:"즉위",a:6,b:12},{n:"옥좌의 위엄",a:6,b:9,def:true}], hp:1.6,
-   gifts:{ctrl:{n:"왕좌의 팔걸이 장식", mpRed:0.2, bonus:{wil:4,agi:2}}, sup:{n:"왕을 벤 칼날", bonus:{str:4,agi:3}, hpRed:0.08}}},
+  {id:"eternity", n:"영원을 향하여", risk:"ALEPH", code:"O-05-16-09", g:[1,0], fx:"tower", form:"높이 2미터쯤 되는 쇠 구조물. 금속 계단이 끝없이 나선을 그리며 솟아 한 점에 모이는 탑의 모양이다. 탑 입구에는 작은 거인의 상반신이 새겨져 있는데, 두 팔과 어깨로 탑 전체를 짊어지고 있다", look:"쇠 계단이 나선으로 끝없이 솟은 작은 탑이, 입구에 새겨진 작은 거인의 어깨 위에 얹혀 있다",
+   rumor:"무너진 날개 본사 옥상에 작은 쇠탑이 섰다. 계단을 오른 사람들은 내려와서 아무와도 말이 통하지 않았다", pref:PF("tec>wil>str>agi"), ctr:2,
+   escape:"일행 가운데 가장 강한 이가 다가가면 작은 거인이 '잠깐만 들어 달라'며 탑을 넘기려 한다 — 대신 짊어지면 기분이 크게 오르지만 그는 탑에 묶여 더는 행동하지 못하고, 행동이 오갈 때마다 체력이 깎인다. 꾀를 내면(재주가 요구치에 닿아야) 탑을 거인에게 되돌려 주고, 거절하면 카운터가 준다. 맞는 행동마다 계단을 한 층 오르는데, 세 층부터는 말이 갈라져 고른 사람 대신 아무나 나선다. 폭주하면 두 턴마다 거인이 가장 튼튼한 이에게 탑을 떠넘긴다 — 짊어진 이는 턴마다 상처를 입고 칼끝이 무뎌지며, 합을 이겨 쳐야 탑을 되돌려 줄 수 있다",
+   story:"[탑 입구 받침돌에 새겨진 글]\n하늘에 닿으면 영원이 있다고 했다. 그래서 쌓았다.\n쌓는 동안 하늘은 무거워졌다. 누군가는 들고 있어야 했다. 가장 작은 거인이 어깨를 내밀었다.\n위층에 오른 이들은 아래층의 말을 잊었다. 아래층은 위층에 무엇을 올려 보내는지 몰랐다.\n거인은 지금도 탑을 짊어진 채, 지나가는 가장 강한 이에게 말을 건다. 잠깐만 들어 주겠소. 어깨를 고쳐 메고 오리다.\n그렇게 떠난 이가 돌아오지 않았다는 것은, 거인이 가장 잘 안다.\n(받침돌 맨 아래 줄은 글자끼리 엉켜 있다) 여하향 을원영 · 영원을 향하여 · 원영 여하을향",
+   like:"계단 끝의 한 점이 희미하게 빛난다", dislike:"거인의 어깨가 무게에 짓눌려 삐걱인다",
+   cards:[{n:"하늘의 무게",a:5,b:13},{n:"갈라진 말",a:6,b:12},{n:"나선 계단",a:6,b:13},{n:"짊어진 어깨",a:6,b:9,def:true}], hp:1.6,
+   gifts:{ctrl:{n:"맨 위 계단의 나사", mpRed:0.2, bonus:{wil:4,tec:2}}, sup:{n:"거인의 어깨 조각", bonus:{str:5,agi:2}, hpRed:0.08}}},
 ];
 const ABNO_BY = Object.fromEntries(ABNOS.map(a=>[a.id, a]));
 const abnoRiskFor = g => g >= 7 ? "죄종" : g === 6 ? "ZAYIN" : g === 5 ? pick(["ZAYIN","TETH"]) : g === 4 ? pick(["TETH","HE"]) : g === 3 ? "HE" : g === 2 ? "WAW" : "ALEPH";
@@ -3681,9 +3823,14 @@ function abnoMeetFx(a, team, G){
     out.push(`<span style="color:#e8d27a">두꼬리 고양이가 ${esc(jo(o.name,"을"))} 새 주인으로 골랐다.</span>`); }
   if(a.fx==="mark"){ team.forEach(x=>{ x.ab = x.ab || {}; x.ab.mark = {until: day + 7, sin:false}; }); out.push(`<span style="color:#e8d27a">마주한 모두의 이마에 가시관 모양 표식이 찍혔다(7일).</span>`); }
   if(a.fx==="target"){ const t = pick(team); G.target = t.id; out.push(`<span style="color:#9ad0ff">접수원이 내민 의뢰서에 적힌 사냥감: ${esc(t.name)}</span>`); }
-  if(a.fx==="king"){ const k = team.slice().sort((x,y)=>total(y)-total(x))[0]; G.king = k.id; out.push(`<span class="muted">왕좌가 ${esc(jo(k.name,"을"))} 지그시 바라본다.</span>`); }
+  if(a.fx==="tower"){ const k = team.slice().sort((x,y)=>total(y)-total(x))[0]; G.atlas = k.id; out.push(`<span class="muted">탑을 짊어진 작은 거인이 ${esc(k.name)}의 어깨를 가늠하듯 바라본다.</span>`); }
+  if(a.fx==="erl"){ const k = team.slice().sort((x,y)=>total(x)-total(y))[0]; G.child = k.id; out.push(`<span style="color:#b9c4d8">안개 속에서 다정한 목소리가 ${esc(jo(k.name,"을"))} 부른다 — "얘야, 이리 오렴."</span>`); }
+  if(a.fx==="pair"){ if(team.length >= 2){ const two = team.slice().sort(()=>Math.random()-0.5).slice(0,2); G.pair = two.map(x=>x.id); G.out.pair = G.pair.slice(); out.push(`<span style="color:#9ad0ff">푸른 새와 붉은 새가 ${esc(two[0].name)}·${esc(jo(two[1].name,"을"))} 한 쌍으로 묶었다 — 둘이 번갈아 나서야 날개가 맞는다.</span>`); }
+    else { G.ctr = Math.max(1, G.ctr - 1); out.push(`<span style="color:#ff8a7a">혼자 왔다 — 짝 없는 날개라 새들이 불안해한다(카운터 -1).</span>`); } }
+  if(a.fx==="whale" && codexSeen(a.vid) >= 2){ G.ctr = Math.max(1, G.ctr - 1); out.push(`<span style="color:#ff8a7a">이름을 아는 사람이 왔다 — 이름을 불린 듯 고래가 눈을 떴다(카운터 -1).</span>`); }
+  if(a.fx==="nails"){ out.push(`<span class="muted">다섯 못 가운데 하나가 솟을 때마다 그 손가락의 법이 걸린다.</span>`); }
   if(a.fx==="echoMind"){ const w = team.slice().sort((x,y)=>power(x,["wil"])-power(y,["wil"]))[0]; w.ab = w.ab || {}; w.ab.echo = day + 3; out.push(`<span style="color:#9ab8d8">${esc(w.name)}의 머릿속에 낮은 울림이 남았다(3일).</span>`); }
-  if(a.fx==="scorch"){ team.forEach(x=>{ x.ab = x.ab || {}; x.ab.scorch = day + 2; }); out.push(`<span style="color:#ffb35a">올려다본 모두의 살갗이 그을렸다(2일).</span>`); }
+  if(a.fx==="scorch" || a.fx==="coat"){ team.forEach(x=>{ x.ab = x.ab || {}; x.ab.scorch = day + 2; }); out.push(`<span style="color:#ffb35a">올려다본 모두의 살갗이 그을렸다(2일).</span>`); }
   return out.join("<br>");
 }
 // 인식에서 삭제: 죽음과 달리 기록도, 동료의 기억도 남지 않는다
@@ -3696,7 +3843,7 @@ function eraseFixer(f){
 }
 // 하루 끝: 기믹 정산(정산표에 들어갈 줄을 돌려준다)
 function abnoNightFx(){
-  const lines = [], day = S.day;
+  const lines = [], day = S.day, sprouts = [];
   S.fixers.forEach(f=>{ const A = f.ab; if(!A) return;
     if(A.cat){ if(day < A.cat.tire){ const v = Math.max(1, Math.floor(f.mpMax*0.04)); f.mp = Math.min(f.mpMax, f.mp + v); A.cat.given += v; lines.push(`${esc(f.name)}: 고양이가 곁에서 가르릉거렸다 — 정신력 +${v}`); }
       else { const g = A.cat.given, md = A.cat.mode; delete A.cat;
@@ -3713,7 +3860,20 @@ function abnoNightFx(){
       else { const v = Math.floor(f.mpMax*0.15); f.mp = Math.max(1, f.mp - v); delete A.prick; lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 쾌감이 끊겼다. 금단 — 정신력 -${v}</span>`); } }
     if(A.solitude){ const v = Math.floor(f.mpMax*0.08); f.mp = Math.max(1, f.mp - v); A.solitude.n--; lines.push(`<span style="color:#9ab8d8">${esc(f.name)}: 아무도 없는 방에 혼자 있는 것 같다 — 고독, 정신력 -${v}</span>`); if(A.solitude.n <= 0) delete A.solitude; }
     if(A.bless && day >= A.bless.until){ delete A.bless; lines.push(`${esc(f.name)}: 기사의 축복이 걷혔다`); }
+    if(A.coatOff && day >= A.coatOff){ delete A.coatOff; lines.push(`${esc(f.name)}: 다시 외투를 걸칠 수 있게 되었다`); }
+    if(A.seed){ A.seed.n--; if(A.seed.n > 0){ const v = Math.floor(f.hpMax*0.04); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 몸속의 씨앗이 자란다 — 체력 -${v}</span>`); }
+      else { const v = Math.floor(f.hpMax*0.12); f.hp = Math.max(1, f.hp - v); delete A.seed; sprouts.push(f); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 어깨를 뚫고 싹이 텄다 — 체력 -${v}. 떨어진 열매가 사무소 근처에 뿌리를 내렸다</b>`); } }
+    if(A.erl){ if(day <= A.erl){ const v = Math.floor(f.mpMax*0.05); f.mp = Math.max(1, f.mp - v); lines.push(`${esc(f.name)}: 밤새 다정한 목소리가 불렀다 — 정신력 -${v}`); } if(day >= A.erl) delete A.erl; }
+    if(A.kin){ if(day <= A.kin){ const h = Math.floor(f.hpMax*0.05), v = Math.floor(f.mpMax*0.05); f.hp = Math.min(f.hpMax, f.hp + h); f.mp = Math.max(1, f.mp - v); lines.push(`${esc(f.name)}: 아비가 흘린 피를 받아 마셨다 — 체력 +${h}, 굶주린 꿈에 시달렸다 — 정신력 -${v}`); } if(day >= A.kin) delete A.kin; }
+    if(A.jade){ A.jade.n--; if(A.jade.n > 0){ const v = Math.floor(f.mpMax*0.06); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: 품속의 푸른 옥이 단꿈을 보여 주었다 — 정신력 +${v}`); }
+      else { const v = Math.floor(f.mpMax*0.25); f.mp = Math.max(0, f.mp - v); delete A.jade; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 아침에 눈을 뜨니 옥이 사라졌다. 넋이 빠졌다 — 정신력 -${v}</b>`); } }
+    if(A.wing){ const mate = S.fixers.find(x=>x.id===A.wing.mate);
+      if(!mate || day > A.wing.until) delete A.wing;
+      else if((f.lastDispatch===day) !== (mate.lastDispatch===day)){ const v = Math.floor(f.mpMax*0.08); f.mp = Math.max(1, f.mp - v); lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 짝 없이 하루를 보냈다. 한쪽 날개가 저린다 — 정신력 -${v}</span>`); }
+      else if(f.lastDispatch===day){ const v = Math.floor(f.mpMax*0.04); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: ${esc(mate.name)}와 함께 날았다 — 정신력 +${v}`); } }
   });
+  // 싹이 튼 씨앗: 새 기생 사과가 사무소 근처에 열린다
+  sprouts.forEach(f=>{ const q = makeRequest(5, {kind:"환상체", attrs:["wil"]}); q.abno = {id:"apple", variant:false}; q.risk = "TETH"; q.client = "사무소 근처 주민"; q.text = `${f.name}의 어깨에서 떨어진 열매가 골목에 뿌리를 내렸다. 사과가 하나 열렸다`; S.requests.push(q); });
   return lines;
 }
 /* 원작 환상체가 남기는 일 — 의뢰가 끝난 뒤 해결사에게 옮긴다(출동 정산과 미리보기가 함께 쓴다).
@@ -3733,12 +3893,23 @@ function abnoApply(q, team, R, lines){
       team.forEach(f=>{ if(f.mp < f.mpMax*0.5){ f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 마지막 음이 끝나는 순간 머리가 터졌다</b>`); } }); }
     if(D.custom==="bluestar"){ team.forEach(f=>{ const v = Math.floor(f.mpMax*0.3); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: 별의 맥박 — 정신력 -${v}`); });
       team.forEach(f=>{ if(f.mp<=0 || power(f,["wil"]) < q.req*0.6){ lost.push({f, kind:"실종", why:"푸른 별의 심장으로 끌려 들어갔다"}); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 하늘로 떠올라 푸른 별의 심장으로 끌려 들어갔다</b>`); } }); }
+    if(D.custom==="frostAll"){ team.forEach(f=>{ f.unavailUntil = Math.max(f.unavailUntil||0, S.day + 1); const v = Math.floor(f.hpMax*0.1); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 얼어붙은 몸을 녹이느라 내일은 출동하지 못한다 — 동상, 체력 -${v}</span>`); }); }
     if(D.custom==="shoesSolo"){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || team[0]; if(f){ f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.08))); f.stats.agi = Math.max(1, f.stats.agi - 3); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 춤을 멈추려 스스로 발목을 잘라 냈다 — 체력 ${f.hp} · 민첩 -3(영구)</b>`); } } }
   (R.dead||[]).forEach(d=>{ const f = who(d.id); if(!f) return; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: ${esc(d.why)}</b>`); lost.push({f, kind:d.kind||"사망", why:d.why}); });
   if(R.possess){ const f = who(R.possess.id); if(f){ if(R.possess.win){ f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.1))); f.stats.agi = Math.max(1, f.stats.agi - 3); lines.push(`<span style="color:#ffb35a">${esc(f.name)}: 동료들이 발목째 빨간 구두를 벗겨 냈다 — 목숨은 건졌다. 체력 ${f.hp} · 민첩 -3(영구)</span>`); }
     else { lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 빨간 구두를 신은 채 춤추며 골목 너머로 사라졌다</b>`); lost.push({f, kind:"실종", why:"빨간 구두를 신고 춤추며 사라졌다"}); } } }
-  (R.battle||[]).forEach(b=>{ if(!b.death || !S.fixers.includes(b.f)) return; b.f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(b.f.name)}: ${b.death==="hanged" ? "심판받아 교수대에 매달렸다" : "등불을 따라가 큰 새에게 머리를 잃었다"}</b>`); });
+  (R.battle||[]).forEach(b=>{ if(!b.death || !S.fixers.includes(b.f)) return; b.f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(b.f.name)}: ${b.death==="hanged" ? "심판받아 교수대에 매달렸다" : b.death==="erl" ? "마왕의 품에 안긴 채 숨을 거두었다" : "등불을 따라가 큰 새에게 머리를 잃었다"}</b>`); });
   if(R.skin) S.skinVisit = {name:R.skin.name, day:S.day + 2};
+  const X = R.fxOut || {}, day = S.day, mark = (id, k, v) => { const f = who(id); if(f){ f.ab = f.ab || {}; f.ab[k] = v; } return f; };
+  (X.seed||[]).forEach(id=>{ const f = mark(id, "seed", {n:3}); if(f) lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 삼킨 씨앗이 몸속에서 뿌리를 내린다 — 사흘 밤 동안 체력을 빨아 먹고 자란다</span>`); });
+  (X.frozen||[]).forEach(id=>{ const f = who(id); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + 1); const v = Math.floor(f.hpMax*0.06); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 얼어붙었던 몸을 녹이느라 내일은 출동하지 못한다 — 동상, 체력 -${v}</span>`); } });
+  if(X.bari!=null){ team.forEach(f=>{ if(S.fixers.includes(f)){ const v = f.hpMax - f.hp; f.hp = f.hpMax; if(v) lines.push(`${esc(f.name)}: 세 꽃으로 뼈를 잇고 살을 붙이고 피를 돌렸다 — 체력 +${v}`); } });
+    const f = who(X.bari); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + 3); lines.push(`<span style="color:#ffd0e0">${esc(f.name)}: 꽃값을 치르러 서천 꽃밭에 남았다 — 사흘 동안 물 긷고 불 땐다(출동 불가)</span>`); } }
+  if(X.erl!=null){ const f = mark(X.erl, "erl", day + 2); if(f) lines.push(`<span style="color:#b9c4d8">${esc(f.name)}: 귓가에 아직 다정한 목소리가 남았다 — 이틀 밤 동안 정신력이 깎인다</span>`); }
+  if(X.dreamers) X.dreamers.forEach(id=>{ const f = who(id); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + 1); const v = Math.floor(f.mpMax*0.15); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 붉은 누각의 꿈에서 깨어나지 못했다 — 내일 하루를 자며 보낸다(정신력 +${v})</span>`); } });
+  if(X.bearer!=null){ const f = who(X.bearer); if(f){ const v = Math.floor(f.hpMax*0.1); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 탑을 내려놓았다. 어깨가 한동안 펴지지 않는다 — 체력 -${v}`); } }
+  if(X.pair){ const [p1, p2] = X.pair.map(who); if(p1 && p2){ p1.ab = p1.ab || {}; p2.ab = p2.ab || {}; p1.ab.wing = {mate:p2.id, until:day + 3}; p2.ab.wing = {mate:p1.id, until:day + 3}; lines.push(`<span style="color:#9ad0ff">${esc(p1.name)} · ${esc(p2.name)}: 비익조의 한 쌍이 되었다 — 사흘 동안 함께 나가지 않으면 밤마다 둘 다 정신력을 잃는다</span>`); } }
+  if(X.kin!=null){ const f = mark(X.kin, "kin", day + 2); if(f) lines.push(`<span style="color:#ffb0a0">${esc(f.name)}: 늙은 기사의 자식이 되었다 — 이틀 밤 동안 피를 받아 몸이 낫지만 꿈에 시달린다</span>`); }
   if(R.how==="sup") S.supCount = (S.supCount||0) + 1;   // 붉은 두건의 용병이 늑대 냄새를 맡는다
   return lost;
 }
@@ -3752,8 +3923,10 @@ async function abnoLose(f, kind, why){
 // 통제·제압에 성공한 뒤 남는 일
 async function abnoReward(q, team, R, lines){
   const A = abnoOf(q); if(!A || !R) return; const w = team.find(x=>x.id===R.last) || team[0];
+  if(A.fx==="jade" && R.how==="ctrl" && w){ w.ab = w.ab || {}; w.ab.jade = {n:3}; lines.push(`<span style="color:#9ad0ff">${esc(w.name)}: 잠든 옥을 품에 넣었다 — 사흘 밤 동안 단꿈을 꾼다. 잃지 말고 잊지 말 것</span>`); }
   if(A.fx==="absolve" && R.how==="ctrl") team.forEach(f=>{ const v = Math.floor(f.mpMax*0.1); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: 털어놓은 죄를 가져갔다 — 정신력 +${v}`); });
   if(A.fx==="fairyFeast" && R.how==="ctrl" && w){ w.ab = w.ab || {}; w.ab.feast = S.day + 1; lines.push(`<span style="color:#cfe08a">${esc(w.name)}: 요정들이 따라붙었다 — 내일까지 밤마다 상처를 돌봐 준다. 그동안 다른 의뢰에 나서면 요정들이 그를 먹어 치운다</span>`); }
+  if(A.fx==="whale" && R.how==="sup") team.forEach(f=>{ if(!S.fixers.includes(f)) return; const v = Math.floor(f.hpMax*0.1); f.hp = Math.min(f.hpMax, f.hp + v); lines.push(`${esc(f.name)}: 나쁜 고래 가운데 유일하게 먹을 수 있는 놈이다 — 기름진 고기로 몸을 데웠다(체력 +${v})`); });
   if(A.fx==="wings" && R.how==="sup") team.forEach(f=>{ const v = Math.floor(f.mpMax*0.2); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: 부서진 날개에서 흩어진 빛 — 마음이 가라앉았다(정신력 +${v})`); });
 }
 // 축복받은 이가 쓰러지면 기사가 절망한다
@@ -3787,6 +3960,8 @@ const abnoTags = f => { const A = f.ab || {}, t = [];
   if(A.cat) t.push("고양이의 주인"); if(A.mark && S.day <= A.mark.until) t.push("고해의 표식"); if(A.fairy) t.push("요정의 보살핌"); if(A.echo) t.push("머릿속 울림"); if(A.scorch) t.push("그을림");
   if(A.flame) t.push(`${["푸른","주황","붉은"][A.flame.lv-1]} 용기의 불꽃`); if(A.bless && S.day <= A.bless.until) t.push("기사의 축복"); if(A.feast && S.day <= A.feast) t.push("요정의 축제");
   if(A.prick) t.push(A.prick.n > 0 ? "가시의 쾌감" : "금단"); if(A.solitude) t.push("고독");
+  if(A.coatOff && S.day <= A.coatOff) t.push("외투를 벗음"); if(A.seed) t.push(`몸속의 씨앗(${A.seed.n})`); if(A.erl) t.push("마왕의 부름"); if(A.kin) t.push("피를 나눈 자식");
+  if(A.jade) t.push("푸른 옥"); if(A.wing){ const mt = S.fixers.find(x=>x.id===A.wing.mate); if(mt) t.push(`비익조의 짝: ${mt.name}`); }
   return t.length ? `<div class="title" style="color:#c9b7e8">${t.join(" · ")}</div>` : ""; };
 /* 환상체 의뢰 미니게임 — 관측과 대응. (연출·이펙트는 차후에 따로 다듬는다)
    원작 규칙을 이 게임 방식으로 옮긴 것: rule
@@ -3960,14 +4135,32 @@ function mgAbno(ctx){
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
     const m = mgOpen(`환상체 의뢰 · 관측`, `현장에 닿으면 환상체의 상태부터 살핀다. 배회 중이면 행동으로 달래 알로 재우고, 날뛰거나 폭주하면 전투로 제압한다.`, ctx, 300);
     const rampP = a.noFight ? 0 : ({죄종:0.25, ZAYIN:0.12, TETH:0.25, HE:0.3, WAW:0.35, ALEPH:0.35}[a.risk] || 0.25) + (q.hazard ? 0.15 : 0);
-    const G = {mood:20, ctr:a.ctr, max:a.ctr, state: q.__state || (Math.random() < rampP ? "rage" : "calm"), log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, blessed:null, embers:0, tongue:0, sac:0, dead:[], gaze:{}};
+    const G = {mood:20, ctr:a.ctr, max:a.ctr, state: q.__state || (Math.random() < rampP ? "rage" : "calm"), log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, blessed:null, embers:0, tongue:0, sac:0, dead:[], gaze:{},
+      bench:[], out:{}, heat:{}, coatAsked:{}, frost:{}, flowers:[], lure:0, dream:0, floor:0, babel:null, nailSeq:null, nailPos:0, order:null};
+    const NAILS = ["엄지","검지","중지","약지","새끼"];
+    const nextNail = () => { if(!G.nailSeq || G.nailPos >= 5){ G.nailSeq = [0,1,2,3,4].sort(()=>Math.random()-0.5); G.nailPos = 0; } G.nail = G.nailSeq[G.nailPos++]; G.order = G.nail===1 ? pick(["str","agi","tec","wil"]) : null; };
+    if(a.fx==="nails") nextNail();
     if(a.fx==="mercenary"){ const cut = Math.floor((S.supCount||0)/5); if(cut){ G.ctr = Math.max(1, G.ctr - cut); } }
     const W = 720, H = 300, t0 = performance.now(); let raf;
     // 오래 남는 기믹: 기사의 축복을 받은 이는 행동할 수 없다 · 용기의 불꽃을 지닌 이가 재주 행동을 하면 목이 떨어진다
     const blessedF = f => f.ab && f.ab.bless && S.day <= f.ab.bless.until, flameOf = f => f.ab && f.ab.flame ? f.ab.flame.lv : 0;
-    const best = k => { const ok = ctx.team.filter(f=>!blessedF(f) && !(k==="tec" && flameOf(f)) && !(a.rule==="teddy" && ctx.team.length > 1 && f.id===G.last)), pool = ok.length ? ok : ctx.team.filter(f=>!blessedF(f)).length ? ctx.team.filter(f=>!blessedF(f)) : ctx.team;
+    const benched = f => G.bench.includes(f.id), freeT = () => ctx.team.filter(f=>!benched(f));
+    const best = k => { const T = freeT().length ? freeT() : ctx.team, ok = T.filter(f=>!blessedF(f) && !(k==="tec" && flameOf(f)) && !(a.rule==="teddy" && T.length > 1 && f.id===G.last)), pool = ok.length ? ok : T.filter(f=>!blessedF(f)).length ? T.filter(f=>!blessedF(f)) : T;
       return pool.slice().sort((x,y)=>power(y,[k]) - power(x,[k]))[0]; };
-    const workerFor = k => G.pick!=null ? ctx.team.find(f=>f.id===G.pick) || best(k) : best(k);
+    const workerFor = k => { if(G.babel!=null){ const b = ctx.team.find(f=>f.id===G.babel && !benched(f)); if(b) return b; }
+      const p = G.pick!=null ? ctx.team.find(f=>f.id===G.pick && !benched(f)) : null; return p || best(k); };
+    // 관측 화면 왼쪽 위에 띄우는 기믹 상태
+    const statusTxt = () => { const s = [], nm = id => (ctx.team.find(f=>f.id===id)||{}).name || "?";
+      if(a.fx==="frost"){ const v = ctx.team.map(f=>`${f.name} ${benched(f) ? "얼어붙음" : (G.frost[f.id]||0)+"/3"}`); if(v.length) s.push("서리 " + v.join(" · ")); }
+      if(a.fx==="bari") s.push(`꽃 ${["뼈살이","살살이","피살이"].map((x,i)=>i < G.flowers.length ? x+"✓" : x).join(" → ")}`);
+      if(a.fx==="erl" && G.child!=null) s.push(`마왕의 부름 ${G.lure}/4 → ${nm(G.child)}`);
+      if(a.fx==="pair" && G.pair) s.push(`한 쌍: ${nm(G.pair[0])} · ${nm(G.pair[1])}`);
+      if(a.fx==="kin" && G.child!=null) s.push(`자식: ${nm(G.child)}`);
+      if(a.fx==="jade") s.push(`꿈 ${G.dream}/3`);
+      if(a.fx==="tower") s.push(`계단 ${G.floor}층${G.floor >= 3 ? " · 말이 갈라졌다" : ""}${G.bearer!=null ? ` · 탑을 짊어진 이: ${nm(G.bearer)}` : ""}`);
+      if(a.fx==="coat"){ const v = ctx.team.filter(f=>G.heat[f.id]).map(f=>`${f.name} ${G.heat[f.id]}`); if(v.length) s.push("햇살 " + v.join(" · ")); }
+      if(a.fx==="nails" && G.nail!=null) s.push(`솟은 못: ${NAILS[G.nail]}${G.order ? ` — 지령: ${ATTR_NAME[G.order]} 행동` : ""}`);
+      return s.join("   "); };
     function draw(now){
       const c = m.c, t = (now - t0)/1000; c.clearRect(0,0,W,H);
       const bg = c.createLinearGradient(0,0,0,H); bg.addColorStop(0,"#0d0b12"); bg.addColorStop(1,"#050407"); c.fillStyle = bg; c.fillRect(0,0,W,H);
@@ -4014,6 +4207,7 @@ function mgAbno(ctx){
       if(a.rule==="ember" && G.embers){ c.fillStyle = "#ff9a5a"; c.fillText(`불씨 ${G.embers}`, 18, 86); }
       if(a.rule==="tongue" && G.tongue){ c.fillStyle = "#ff9a5a"; c.fillText(`혀에 맞은 횟수 ${G.tongue}`, 18, 86); }
       if(a.rule==="sac" && G.sac){ c.fillStyle = "#ff7a7a"; c.fillText(`붉은 물주머니 ${G.sac}/3`, 18, 86); }
+      { const stx = statusTxt(); if(stx){ c.fillStyle = "#ffb35a"; c.fillText(stx.length > 70 ? stx.slice(0,70)+"…" : stx, 18, 86); } }
       c.fillStyle = "#a8a0a8"; c.textAlign = "right"; c.fillText("기분", 502, 30); c.fillText(ctrName, 502, 52); c.textAlign = "left";
       c.fillStyle = "#26222a"; c.fillRect(510, 21, 190, 10); c.fillStyle = G.mood >= 70 ? "#8fd6a0" : G.mood >= 35 ? "#e0c64a" : "#d6493f"; c.fillRect(510, 21, 190*clamp(G.mood/100,0,1), 10);
       for(let i=0;i<G.max;i++){ c.fillStyle = i < G.ctr ? (a.noCounter ? "#9ab8d8" : "#e8d27a") : "#2e2a30"; c.beginPath(); c.arc(518 + i*20, 47, 6, 0, 7); c.fill(); }
@@ -4021,26 +4215,27 @@ function mgAbno(ctx){
     }
     raf = requestAnimationFrame(draw);
     const say = s => { G.log.unshift(s); G.log = G.log.slice(0,4); m.info.innerHTML = `<div class="pk-text">${G.log.join("<br>")}</div>`; };
-    const end = (res, text) => { if(G.done) return; G.done = true; m.ctrl.innerHTML = ""; setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, text).then(()=>resolve(res)); }, 900); };
+    const end = (res, text) => { if(G.done) return; G.done = true; m.ctrl.innerHTML = ""; res = Object.assign({}, res, {fxOut:G.out}); setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, text).then(()=>resolve(res)); }, 900); };
     const maimOf = f => { G.hurt[f.id] = true; f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.08))); };
     // 현장에서 잃는 사람(죽음·실종): 정산은 의뢰가 끝난 뒤 한다. 아무도 남지 않으면 의뢰 실패
     const killWorker = (f, why, kind="사망") => { G.dead.push({id:f.id, why, kind}); const i = ctx.team.indexOf(f); if(i>=0) ctx.team.splice(i,1); if(G.pick===f.id) G.pick = null; G.shake = 16; G.flash = 1;
       if(!ctx.team.length){ end({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin}, "아무도 남지 않았다"); return true; } return false; };
     // 행동 성공 확률: 능력치가 요구치에 가까울수록 오른다. 최고 반응이라도 97%를 넘지 않는다
     const actP = (lv, ratio) => lv==="최고" ? clamp(0.35 + 0.55*ratio, 0.05, 0.97) : lv==="좋음" ? clamp(0.25 + 0.55*ratio, 0.05, 0.97) : 0;
-    const tagOf = f => blessedF(f) ? " · 축복(행동 불가)" : flameOf(f) ? ` · ${["푸른","주황","붉은"][flameOf(f)-1]} 불꽃` : "";
+    const tagOf = f => benched(f) ? ` · ${a.fx==="frost" ? "얼어붙음" : a.fx==="tower" ? "탑을 짊어짐" : a.fx==="jade" ? "꿈에 빠짐" : a.fx==="erl" ? "정신을 놓음" : "행동 불가"}` : blessedF(f) ? " · 축복(행동 불가)" : flameOf(f) ? ` · ${["푸른","주황","붉은"][flameOf(f)-1]} 불꽃` : "";
     function menu(){
       const chips = `<div class="pk-who"><span class="muted">행동하는 이</span><button class="${G.pick==null?"on":""}" data-pk="auto">자동(능력치 높은 이)</button>${ctx.team.map(f=>`<button class="${G.pick===f.id?"on":""}" data-pk="${f.id}">${esc(f.name)}${tagOf(f)}</button>`).join("")}</div>`;
       const merc = a.fx==="mercenary" && G.ctr > 0 ? `<button data-merc="list"><b>하청을 맡긴다</b><small>게시판의 물리 의뢰 하나를 보수의 40%를 떼고 대신 처리해 준다<br><span style="color:#ff8a7a">그 대가로 광폭 카운터 -1</span></small></button>` : "";
       const mb = a.fx==="bullet" && !G.bullet ? `<button data-mb="1"><b>마탄을 의뢰한다</b><small>자금의 10%(${won(bulletCost())}) · 다음 전투가 시작될 때 적을 꿰뚫는다<br>지금까지 의뢰한 마탄: ${S.freiShots||0}발</small></button>` : "";
       if(a.rule==="watch"){ const f = workerFor("wil"); m.ctrl.innerHTML = chips + `<div class="pk-moves"><button data-watch="1"><b>손대지 않고 지켜본다</b><small>할 수 있는 일은 이것뿐이다. 의지가 약하면 누르고 싶은 충동을 버티지 못한다<br>${esc(f.name)} · 의지 ${power(f,["wil"])}${tagOf(f)}</small></button></div>`; return; }
-      m.ctrl.innerHTML = chips + `<div class="pk-moves">${WORKS.map(w=>{ const f = workerFor(w.k), lv = know(3) ? a.pref[w.k] : "?";
+      const ntc = a.fx==="nails" && G.nail!=null ? `<div class="muted" style="font-size:12px;margin:4px 0">솟은 못 — <b style="color:#ffb35a">${NAILS[G.nail]}</b> · ${["가장 높은 등급이 먼저 나서야 한다","지령: <b>"+(G.order ? ATTR_NAME[G.order] : "")+" 행동</b>","틀리면 모두가 갚는다","최고가 아니면 졸작이다","누군가 엿듣는다 — 반응이 보이지 않는다"][G.nail]}</div>` : a.fx==="tower" && G.babel!=null ? `<div class="muted" style="font-size:12px;margin:4px 0">말이 갈라졌다 — 고른 사람 대신 <b>${esc((ctx.team.find(f=>f.id===G.babel)||{}).name||"")}</b>${jo((ctx.team.find(f=>f.id===G.babel)||{}).name||"","이").slice(-1)} 나선다</div>` : "";
+      m.ctrl.innerHTML = chips + ntc + `<div class="pk-moves">${WORKS.map(w=>{ const f = workerFor(w.k), lv = know(3) ? a.pref[w.k] : "?";
         const lc = lv==="최고" ? "#8fd6a0" : lv==="좋음" ? "#cfe08a" : lv==="나쁨" ? "#ff8a7a" : "#8a8490", warn = w.k==="tec" && flameOf(f) ? `<br><b style="color:#ff8a7a">용기의 불꽃을 지닌 이 — 재주 행동을 하면 목이 떨어진다</b>` : blessedF(f) ? `<br><b style="color:#9ad0ff">축복받은 이는 행동할 수 없다</b>` : "";
         return `<button data-w="${w.k}"><b>${w.n} 행동</b><small>${w.d}<br>${esc(f.name)} · ${ATTR_NAME[w.k]} ${power(f,[w.k])} · <span style="color:${lc}">반응 ${lv}</span>${know(3) && lv!=="나쁨" ? ` · 성공 ${Math.round(actP(lv, power(f,[w.k])/Math.max(1,q.req))*100)}%` : ""}${warn}</small></button>`; }).join("")}${mb}${merc}</div>`;
     }
     function mercList(){ const cand = (S.requests||[]).filter(r=>r.id!==q.id && r.kind==="일반" && r.attrs[0]==="str");
       if(!cand.length){ say("게시판에 맡길 만한 물리 의뢰가 없다."); return menu(); }
-      m.ctrl.innerHTML = `<div class="pk-moves">${cand.slice(0,4).map(r=>`<button data-merc="${r.id}"><b>${gName(r.grade)} · ${esc(r.text.length>24 ? r.text.slice(0,24)+"…" : r.text)}</b><small>받을 몫 ${won(Math.round(r.reward*0.6/100)*100)}</small></button>`).join("")}<button data-merc="cancel"><b>그만둔다</b></button></div>`; }
+      m.ctrl.innerHTML = `<div class="pk-moves">${cand.slice(0,4).map(r=>`<button data-merc="${r.id}"><b>${threatOf(r)} · ${esc(r.text.length>24 ? r.text.slice(0,24)+"…" : r.text)}</b><small>받을 몫 ${won(Math.round(r.reward*0.6/100)*100)}</small></button>`).join("")}<button data-merc="cancel"><b>그만둔다</b></button></div>`; }
     function mercDo(id){ const r = (S.requests||[]).find(x=>x.id===id); if(!r) return menu(); const pay = Math.round(r.reward*0.6/100)*100;
       S.money += pay; S.todayIncome = (S.todayIncome||0) + pay; S.requests = S.requests.filter(x=>x!==r); addLog(`붉은 두건의 용병 하청: ${r.text} (+${won(pay)})`);
       G.ctr--; say(`<span style="color:#ff9a8a">용병이 갈고리를 챙겨 나갔다가 돌아왔다 — ${esc(r.text)} · +${won(pay)}</span> · <span style="color:#ff8a7a">광폭 카운터 -1</span>`);
@@ -4081,6 +4276,8 @@ function mgAbno(ctx){
       if(blessedF(f)){ G.turn--; say(`${esc(jo(f.name,"은"))} 기사의 축복을 받았다 — 축복받은 이는 행동할 수 없다.`); return menu(); }
       const prev = G.last; G.last = f.id;
       let line = `${G.turn}회차 · ${esc(f.name)}의 ${w.n} 행동 — `;
+      const nailNow = a.fx==="nails" ? G.nail : null, orderNow = G.order, wasBabel = G.babel!=null; G.babel = null;
+      if(wasBabel) line = `<span style="color:#b9c4d8">말이 갈라져 ${esc(jo(f.name,"이"))} 대신 나섰다.</span> ` + line;
       if(k==="tec" && flameOf(f)){ say(line + `<b style="color:#ff8a7a">용기의 불꽃을 지닌 채 재주 행동에 나섰다. 어디선가 갑옷의 검이 내려와 목을 베었다</b>`);
         if(killWorker(f, "용기의 불꽃을 지닌 채 재주 행동을 하다 목이 떨어졌다")) return; return menu(); }
       if(a.fx==="flame" && power(f,["str"]) < q.req*0.5){ say(line + `<b style="color:#ff8a7a">용기가 모자란 이가 다가서자 갑옷이 검을 뽑았다</b>`);
@@ -4097,8 +4294,22 @@ function mgAbno(ctx){
       const likeT = lie ? a.dislike : a.like, dislikeT = lie ? a.like : a.dislike;
       if(a.rule==="pendant" && k==="tec" && !G.pendant){ G.pendant = true; line += `<span style="color:#9ad0ff">펜던트 속 사진을 보여 주었다 — 사수가 잊었던 사람을 떠올렸다</span> · `; }
       if(right){
-        const gain = Math.round(WORK_GAIN[lv] * clamp(0.55 + 0.45*ratio, 0.5, 1.3)); G.mood = Math.min(100, G.mood + gain);
-        line += `<span style="color:${lie ? "#ff8a7a" : "#8fd6a0"}">${esc(likeT)}</span> (기분 +${gain})`;
+        let gain = Math.round(WORK_GAIN[lv] * clamp(0.55 + 0.45*ratio, 0.5, 1.3)); const gx = [];
+        if(a.fx==="pair" && G.pair && G.pair.includes(f.id) && prev!=null && prev!==f.id && G.pair.includes(prev)){ gain = Math.round(gain*1.5); gx.push(`<span style="color:#9ad0ff">두 날개가 맞았다</span>`); }
+        if(a.fx==="kin" && G.child===f.id){ gain = Math.round(gain*1.5); gx.push(`<span style="color:#ffb0a0">자식이 다가오자 아비가 웃었다</span>`); }
+        if(nailNow===4){ gain = Math.round(gain*0.5); }
+        if(a.fx==="bari" && k!==["str","agi","wil"][G.flowers.length]) gain = 0;   // 차례가 어긋난 꽃은 시들 뿐이다
+        G.mood = Math.min(a.fx==="bari" ? 88 : 100, G.mood + gain);
+        line += nailNow===4 ? `<span class="muted">반응을 알 수 없다 — 누군가 엿듣고 있다</span> (기분 +?)` : `<span style="color:${lie ? "#ff8a7a" : "#8fd6a0"}">${esc(likeT)}</span> (기분 +${gain})`;
+        if(gx.length) line += " · " + gx.join(" · ");
+        if(nailNow===3 && lv!=="최고" && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">약지의 못 — 졸작이다, 카운터 -1</span>`; }
+        if(a.fx==="jade"){ const v = Math.floor(f.mpMax*0.05); f.mp = Math.min(f.mpMax, f.mp + v); G.dream++; line += ` · <span style="color:#9ad0ff">옥이 꿈을 보여 주었다(정신력 +${v}, 꿈 ${G.dream}/3)</span>`;
+          if(G.dream >= 3){ G.dream = 0; G.bench.push(f.id); (G.out.dreamers = G.out.dreamers || []).push(f.id); line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 붉은 누각 속으로 걸어 들어갔다 — 더는 행동할 수 없다</b>`; } }
+        if(a.fx==="tower"){ G.floor++; line += ` · 계단을 한 층 올랐다(${G.floor}층)`; }
+        if(a.fx==="bari"){ const need = ["str","agi","wil"][G.flowers.length];
+          if(k===need){ G.flowers.push(k); G.mood = Math.min(100, G.mood + 8); line += ` · <span style="color:#ffd0e0">${["뼈살이꽃","살살이꽃","피살이꽃"][G.flowers.length-1]}을 얻었다</span>`;
+            if(G.flowers.length >= 3){ G.mood = 100; G.out.bari = f.id; line += ` · <b style="color:#e8d27a">뼈가 이어지고, 살이 붙고, 피가 돌았다</b>`; } }
+          else if(G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">차례가 어긋났다 — ${["뼈살이꽃","살살이꽃","피살이꽃"][G.flowers.length]}부터 꺾어야 한다. 꽃이 시들었다, 카운터 -1</span>`; } }
         if(a.rule==="goodDrops" && lv==="최고"){ G.ctr--; line += ` · <span style="color:#ff8a7a">지나치게 좋은 결과 — 카운터 -1</span>`; }
         if(a.rule==="onlyBest" && lv!=="최고"){ G.ctr--; line += ` · <span style="color:#ff8a7a">최고의 결과가 아니었다 — 카운터 -1</span>`; }
         if(a.rule==="goodRaises" && lv==="최고" && G.ctr < G.max){ G.ctr++; line += " · 카운터 +1"; }
@@ -4114,7 +4325,11 @@ function mgAbno(ctx){
         G.ctr--; G.shake = 10; G.flash = 1;
         const pct = Math.round(({죄종:6, ZAYIN:8, TETH:10, HE:12, WAW:15, ALEPH:18}[a.risk] || 8) * (1 - redMP(f)*0.5)), loss = Math.floor(f.mpMax*pct/100);
         f.mp = Math.max(0, f.mp - loss); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + loss;
-        line += `<span style="color:${lie ? "#8fd6a0" : "#ff8a7a"}">${esc(dislikeT)}</span> · ${ctrName} -1 · ${esc(f.name)} 정신력 -${pct}%(${loss})`;
+        line += `${nailNow===4 ? `<span class="muted">반응을 알 수 없다</span>` : `<span style="color:${lie ? "#8fd6a0" : "#ff8a7a"}">${esc(dislikeT)}</span>`} · ${ctrName} -1 · ${esc(f.name)} 정신력 -${pct}%(${loss})`;
+        if(a.fx==="jade"){ const v2 = Math.min(f.mp, loss); f.mp -= v2; G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; line += ` · <span style="color:#ff8a7a">옥을 잃은 듯 넋이 빠졌다(정신력 -${v2} 더)</span>`; }
+        if(a.fx==="kin"){ const v = Math.max(1, Math.floor(f.hpMax*0.06)); f.hp = Math.max(1, f.hp - v); line += ` · 피를 빨렸다(체력 -${v})`;
+          if(G.child===f.id && G.ctr > 0){ G.ctr--; line += ` · <b style="color:#ff8a7a">자식이 부모에게 이를 드러냈다 — 금기, 카운터 -1 더</b>`; } }
+        if(nailNow===2){ ctx.team.forEach(x=>{ const v = Math.floor(x.mpMax*0.05); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; }); line += ` · <span style="color:#ff8a7a">중지의 못 — 형제가 다쳤으니 모두가 갚는다(일행 정신력 -5%)</span>`; }
         if(a.rule==="flesh"){ const v = Math.max(1, Math.floor(f.hpMax*0.06)); f.hp = Math.max(1, f.hp - v); line += ` · <span style="color:#ff8a7a">${esc(f.name)}의 살 1g을 달아 갔다(체력 -${v})</span>`; }
         if(a.rule==="badMaim"){ maimOf(f); line += ` · <span style="color:#ff8a7a">${esc(f.name)} 중상</span>`; }
         if(a.rule==="badKill") G.killNow = f;
@@ -4127,7 +4342,23 @@ function mgAbno(ctx){
       if(a.fx==="protege"){ if(right && lv==="최고" && G.protege==null){ G.protege = f.id; line += ` · <span style="color:#9ad0ff">기수가 ${esc(jo(f.name,"을"))} 지켜야 할 사람으로 삼았다</span>`; }
         else if(!right && G.protege===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">지키던 이가 다쳤다 — 카운터 -1</span>`; } }
       if(a.fx==="target" && G.target===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">의뢰서의 사냥감이 제 발로 왔다 — 카운터 -1</span>`; }
-      if(a.fx==="king" && G.king===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">왕좌가 왕이 될 자를 알아봤다 — 카운터 -1</span>`; }
+      if(a.fx==="kin" && G.child==null){ G.child = f.id; G.out.kin = f.id; line += ` · <span style="color:#ffb0a0">늙은 기사가 ${esc(jo(f.name,"을"))} 자식으로 삼았다</span>`; }
+      if(a.fx==="whale" && k==="agi" && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">피하려 하자 고래가 다시 앞을 막아섰다 — 카운터 -1</span>`; }
+      if(a.fx==="frost"){ if(k==="wil"){ G.frost[f.id] = Math.max(0, (G.frost[f.id]||0) - 1); line += ` · 기도에 서리가 한 겹 녹았다(${G.frost[f.id]}/3)`; }
+        else { G.frost[f.id] = (G.frost[f.id]||0) + 1; line += ` · 서리가 쌓였다(${G.frost[f.id]}/3)`;
+          if(G.frost[f.id] >= 3){ G.bench.push(f.id); (G.out.frozen = G.out.frozen || []).push(f.id); line += ` · <b style="color:#9ad0ff">${esc(jo(f.name,"이"))} 무릎 꿇은 채 얼어붙었다</b>`; } } }
+      if(a.fx==="erl" && G.child!=null){ const ch = ctx.team.find(x=>x.id===G.child);
+        if(ch){ if(k==="wil" && right && f.id!==G.child){ G.lure = Math.max(0, G.lure - 2); line += ` · <span style="color:#9ad0ff">"얘야, 그건 안개란다." 부름이 옅어졌다(${G.lure}/4)</span>`; }
+          else { G.lure += f.id===G.child ? 2 : 1; line += ` · <span style="color:#b9c4d8">${f.id===G.child ? "아이가 직접 다가가자 " : ""}부름이 짙어졌다(${Math.min(4,G.lure)}/4)</span>`; }
+          if(G.lure >= 4){ G.lure = 0; G.child = null; ch.mp = Math.min(ch.mp, Math.floor(ch.mpMax*0.05)); ch.hp = Math.min(ch.hp, Math.max(1, Math.floor(ch.hpMax*0.15))); G.bench.push(ch.id); G.out.erl = ch.id; if(G.ctr > 0) G.ctr--;
+            line += ` · <b style="color:#ff8a7a">마왕이 ${esc(jo(ch.name,"을"))} 품에 안았다 — 정신을 놓고 쓰러졌다, 카운터 -1</b>`; } } }
+      if(a.fx==="pair" && G.pair && G.pair.includes(f.id) && prev===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">한쪽 날개만 퍼덕였다 — 카운터 -1</span>`; }
+      if(a.fx==="tower" && G.bearer!=null && G.bearer!==f.id){ const b2 = ctx.team.find(x=>x.id===G.bearer); if(b2){ const v = Math.max(1, Math.floor(b2.hpMax*0.05)); b2.hp = Math.max(1, b2.hp - v); line += ` · ${esc(b2.name)}의 어깨가 짓눌린다(체력 -${v})`; } }
+      if(a.fx==="coat" && hasCoat(f)){ G.heat[f.id] = (G.heat[f.id]||0) + 1; line += ` · <span style="color:#ffb35a">외투 속이 따뜻해진다(${G.heat[f.id]})</span>`; }
+      if(nailNow===0){ const T2 = freeT().length ? freeT() : ctx.team, top = Math.min(...T2.map(x=>x.grade)); if(f.grade > top && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">엄지의 못 — 윗사람보다 먼저 나섰다, 카운터 -1</span>`; } }
+      if(nailNow===1){ if(k===orderNow){ G.mood = Math.min(100, G.mood + 15); line += ` · <span style="color:#8fd6a0">검지의 못 — 지령을 따랐다(기분 +15)</span>`; } else if(G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">검지의 못 — 지령을 어겼다, 카운터 -1</span>`; } }
+      if(a.fx==="nails") nextNail();
+      if(a.fx==="tower" && G.floor >= 3){ const fr = freeT(); if(fr.length > 1) G.babel = pick(fr).id; }
       if(a.low && power(f,[a.low]) < q.req && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">${ATTR_NAME[a.low]}이 모자란 행동하는 이 — 카운터 -1</span>`; }
       if(a.rule==="knight" && !G.blessed){ G.blessed = f.id; f.ab = f.ab || {}; f.ab.bless = {until: S.day + 1}; line += ` · <span style="color:#9ad0ff">기사가 처음 다가온 ${esc(f.name)}에게 축복을 내렸다 — 다음 날까지 받는 피해 절반, 통제 행동 불가</span>`; }
       if(a.fx==="spiral"){ G.gaze[f.id] = (G.gaze[f.id]||0) + 1; if(G.gaze[f.id] >= 3 && G.ctr > 0){ G.gaze[f.id] = 0; G.ctr--; const v = Math.floor(f.mpMax*0.15); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; line += ` · <b style="color:#ff8a7a">눈을 떼지 못한 ${esc(f.name)}의 시선을 나선이 경멸했다 — 정신력 -${v}, 카운터 -1</b>`; } else line += ` · 시선 ${G.gaze[f.id]}/3`; }
@@ -4142,10 +4373,40 @@ function mgAbno(ctx){
       if(G.ctr > 0 && G.mood >= 100){ G.state = "egg"; G.flash = 1; codexNote(a.vid, "ctrl"); say(`<b style="color:#e8d27a">${esc(josa(shown,"이","가"))} 스스로 알로 잠들었다.</b>`);
         return end({win:true, score:1, how:"ctrl", mpLoss:G.mpLoss, flame:!!G.flameGiven, erased:G.erased, dead:G.dead, skin:G.skin, last:G.last}, "알로 잠재웠다 — 통제 성공"); }
       if(G.ctr <= 0) return breach(f);
+      if(!freeT().length) return doom(f, "모두 움직일 수 없다", {t: a.fx==="frost" ? "남은 이마저 무릎 꿇은 채 얼어붙었다. 서리가 녹을 때까지 아무도 움직이지 못했다" : "아무도 더는 다가갈 수 없었다", custom: a.fx==="frost" ? "frostAll" : null});
+      if(a.fx==="apple" && right && ctx.team.includes(f)) return offerApple(f);
+      if(a.fx==="coat" && (G.heat[f.id]||0) >= 2 && hasCoat(f) && !G.coatAsked[f.id]) return offerCoat(f);
+      if(a.fx==="tower" && G.atlas===f.id && !G.atlasAsked && G.bearer==null) return offerAtlas(f);
       if(a.fx==="cola" && right) return offerDrink(f);
       if(a.rule==="soda" && ctx.team.includes(f)) return offerSoda(f, k, !right);
       menu();
     }
+    const hasCoat = f => !!f.gear.armor && !(f.ab && f.ab.coatOff && S.day <= f.ab.coatOff);
+    function offer(buttons, fn){ G.offerFn = fn; m.ctrl.innerHTML = `<div class="pk-moves">${buttons.map(b=>`<button data-of="${b.v}"><b>${b.t}</b><small>${b.d||""}</small></button>`).join("")}</div>`; }
+    function settle(f){ if(G.ctr > 0 && G.mood >= 100){ G.state = "egg"; G.flash = 1; codexNote(a.vid, "ctrl"); say(`<b style="color:#e8d27a">${esc(josa(shown,"이","가"))} 스스로 알로 잠들었다.</b>`);
+        end({win:true, score:1, how:"ctrl", mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, last:G.last}, "알로 잠재웠다 — 통제 성공"); return true; }
+      if(G.ctr <= 0){ breach(f); return true; } return false; }
+    function offerApple(f){ say(`사과가 제 몸을 한 조각 떼어 ${esc(f.name)}에게 내밀었다. 과즙이 붉게 반짝인다.`);
+      offer([{v:"eat", t:"먹는다", d:"체력이 크게 차오른다 · 몸속에 씨앗이 남는다"},{v:"no", t:"거절한다", d:"사과가 조금 시무룩해진다(기분 -5)"}], v=>{
+        if(v==="eat"){ const h = Math.floor(f.hpMax*0.18); f.hp = Math.min(f.hpMax, f.hp + h); (G.out.seed = G.out.seed || []).push(f.id); say(`<span style="color:#8fd6a0">달다.</span> ${esc(f.name)} 체력 +${h} · <span style="color:#ff8a7a">혀끝에 작고 단단한 씨앗 하나가 걸렸다가 넘어갔다</span>`); }
+        else { G.mood = Math.max(0, G.mood - 5); say(`${esc(jo(f.name,"이"))} 조각을 돌려주었다. (기분 -5)`); }
+        if(!settle(f)) menu(); }); }
+    function offerCoat(f){ G.coatAsked[f.id] = true; say(`햇살이 ${esc(f.name)}의 외투 깃을 다정하게 데운다. 단추를 풀고 싶어진다.`);
+      offer([{v:"off", t:"외투를 벗는다", d:"태양이 기뻐한다(기분 +25) · 이틀 동안 방어구가 소용없다"},{v:"keep", t:"외투를 여민다", d:"카운터 -1 · 땀이 흐른다(정신력 -8%)"}], v=>{
+        if(v==="off"){ f.ab = f.ab || {}; f.ab.coatOff = S.day + 1; G.mood = Math.min(100, G.mood + 25); say(`<span style="color:#ffb35a">${esc(jo(f.name,"이"))} 외투를 벗었다. 해님이 이겼다.</span> (기분 +25 · 이틀 동안 방어구 무효)`); }
+        else { G.ctr--; const v2 = Math.floor(f.mpMax*0.08); f.mp = Math.max(0, f.mp - v2); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; say(`<span style="color:#ff8a7a">${esc(jo(f.name,"이"))} 외투를 더 꼭 여몄다. 해가 더 뜨거워졌다</span> · 카운터 -1 · 정신력 -${v2}`); }
+        if(!settle(f)) menu(); }); }
+    function offerAtlas(f){ G.atlasAsked = true; const ok = power(f,["tec"]) >= q.req;
+      say(`작은 거인이 ${esc(f.name)}에게 말을 건다. "잠깐만 들어 주겠소. 어깨를 고쳐 메고 오리다."`);
+      offer([{v:"bear", t:"대신 짊어진다", d:"거인이 숨을 돌린다(기분 +30) · 탑에 묶여 더는 행동하지 못하고, 행동이 오갈 때마다 체력이 깎인다"},
+             {v:"trick", t:"꾀를 낸다", d:`"먼저 시범을 보여 주시오" — 재주 ${power(f,["tec"])} / 요구치 ${q.req}${ok ? "" : " · 들통나면 탑이 어깨에 떨어진다"}`},
+             {v:"no", t:"거절한다", d:"카운터 -1"}], v=>{
+        if(v==="bear" || (v==="trick" && !ok)){ G.bearer = f.id; G.bench.push(f.id); G.out.bearer = f.id; G.mood = Math.min(100, G.mood + (v==="bear" ? 30 : 0)); if(v==="trick") G.ctr--;
+          say(v==="bear" ? `<span style="color:#e8d27a">${esc(jo(f.name,"이"))} 탑을 받아 짊어졌다. 거인이 처음으로 허리를 폈다.</span> (기분 +30)` : `<b style="color:#ff8a7a">꾀가 들통났다. 탑이 ${esc(f.name)}의 어깨에 떨어졌다</b> · 카운터 -1`); }
+        else if(v==="trick"){ G.mood = Math.min(100, G.mood + 12); say(`<span style="color:#8fd6a0">거인이 시범을 보이려 탑을 다시 받아 들었다. 그대로 돌아섰다.</span> (기분 +12)`); }
+        else { G.ctr--; say(`<span style="color:#ff8a7a">거인이 고개를 떨군다. 탑이 조금 더 기울었다</span> · 카운터 -1`); }
+        if(!freeT().length) return doom(f, "모두 움직일 수 없다");
+        if(!settle(f)) menu(); }); }
     // 검은 탄산: 맞는 행동마다 탄산수 한 잔. 의지가 모자라면 잔 속이 잘 안 보인다
     function offerDrink(f){
       const kind = pick(["clear","clear","clear","yellow","yellow","black"]), sharp = power(f,["wil"]) >= q.req || Math.random() < 0.4;
@@ -4190,15 +4451,16 @@ function mgAbno(ctx){
       const fq = Object.assign({}, q, {goal: a.kill ? "사살" : "제압", attrs:["str"], foe: shown, abnoFoe:AF});
       const r = await mgCombat({q:fq, team:ctx.team, idx:ctx.idx, total:ctx.total});
       m.close(); if(r.win) codexNote(a.vid, "sup");
-      resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin}));
+      resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}));
     }
     m.ctrl.addEventListener("click", e=>{ const dr = e.target.closest("button[data-dr]"); if(dr && G.drink){ drink(dr.dataset.dr==="1"); return; }
+      const of = e.target.closest("button[data-of]"); if(of && G.offerFn){ const fn = G.offerFn; G.offerFn = null; fn(of.dataset.of); return; }
       const sd = e.target.closest("button[data-sd]"); if(sd && G.soda){ drinkSoda(sd.dataset.sd==="1"); return; }
       if(e.target.closest("button[data-watch]")){ watch(); return; }
       const mc = e.target.closest("button[data-merc]"); if(mc){ const v = mc.dataset.merc; if(v==="list") mercList(); else if(v==="cancel") menu(); else mercDo(+v); return; } if(e.target.closest("button[data-mb]")){ orderBullet(); return; }
       const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
-    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin}); };
+    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
     const lead = a.risk==="ALEPH" ? 3700 : 0; if(lead) alephIntro(shown);
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
@@ -4366,6 +4628,7 @@ async function dispatch(qid, fids){
     team.forEach(f=>{
       f.done++;
       if(q.grade===0 && f.grade===1) f.starCleared = true;
+      if(threatOf(q)==="도시의 별" && f.grade===1) f.starDone = (f.starDone||0) + 1;
       // 경험: 관련 능력치 +1, 2회마다 능력치 +1, 상위 등급 의뢰는 2배
       const gain = (q.grade < f.grade || (q.grade===0 && f.grade>0)) ? 2 : 1;
       q.attrs.forEach(a=>{
@@ -4381,7 +4644,7 @@ async function dispatch(qid, fids){
       await abnoReward(q, team, abnoR, lines); }
     if(q.kind==="환상체" && abnoOf(q)){ const A = abnoOf(q), how = abnoR && abnoR.how ? abnoR.how : (A.kill ? "sup" : "ctrl");
       if(Math.random() < GIFT_P*(q.hazard?1.5:1)*(abnoR && abnoR.flame ? 6 : 1) || window.__forceGift){ const g = makeGift(A, how, q.grade);
-        if(g){ S.inventory = S.inventory||[]; S.inventory.push(g); codexNote(A.vid, null, g.name); lines.push(`<span style="color:#e8d27a">기프트</span>: <b>${esc(g.name)}</b>(${g.gift.kind} · ${gName(q.grade)}) 획득 — 관리에서 장신구로 장착`); } } }
+        if(g){ S.inventory = S.inventory||[]; S.inventory.push(g); codexNote(A.vid, null, g.name); lines.push(`<span style="color:#e8d27a">기프트</span>: <b>${esc(g.name)}</b>(${g.gift.kind} · ${threatOf(q)}) 획득 — 관리에서 장신구로 장착`); } } }
     if(q.kind==="특색 심사") await passColor(team[0]);
   } else {
     lines.push(q.kind==="뒤틀림 토벌" ? "토벌에 실패했다. 뒤틀림은 아직 남아 있다." : "의뢰는 다른 곳으로 넘어갔다.");
@@ -4921,18 +5184,81 @@ function removeFixer(f, what, note){
   S.records.push({day:S.day, name:f.name, what, note:`${gName(f.grade)} · ${note}`});
   addLog(`${f.name}: ${note}`);
 }
-async function passColor(f){
-  const title = f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle();
-  f.grade = 0; f.title = title; f.cap = 80;
+async function passColor(f, preset){
+  const title = preset || (f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle());
+  f.grade = 0; f.title = title; f.tcol = colorOfTitle(title); f.cap = 80;
   f.unique = f.unique || {};
   S.records.push({day:S.day, name:f.name, what:"특색 지정", note:title});
   playFx("특색 심사", title, f.name, true); save();
-  const go = await modal("특색 지정", `${jo(esc(f.name),"이")} 특색 <b>[${esc(title)}]</b>${jo(title,"로").slice(title.length)} 지정되었다.<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
+  const go = await modal("특색 지정", `${jo(esc(f.name),"이")} 특색 <b style="color:${f.tcol}">[${esc(title)}]</b>${jo(title,"로").slice(title.length)} 지정되었다.<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
   if(go) await openForge(f, "armor");
 }
 function randomColorTitle(){
-  let t; do { t = pick(COLOR_WORDS)+" "+pick(COLOR_NOUNS); } while(COLOR_BANNED.includes(t) || S.fixers.some(f=>f.title===t));
+  let t, k = 0; do { t = pick(COLOR_WORDS)+" "+pick(COLOR_NOUNS); } while(!colorTitleCheck(t).ok && ++k < 200);
   return t;
+}
+
+/* ================= 특색 심사 ================= */
+/* 1급인 채로 도시의 별 의뢰를 STAR_FOR_COLOR건 이상 해내면 하나 협회의 편지가 상단 무대로 날아온다.
+   출석하면 능력과 지금까지의 행적으로 심사한다. 붙으면 특색 인장과 칭호, 떨어지면 1주일 뒤 재심사를 요청할 수 있다. */
+const STAR_FOR_COLOR = 3, COLOR_PASS = 65;
+async function colorMailCheck(){
+  for(const f of S.fixers.slice()){ if(!S || S.over) return;
+    if(f.grade!==1 || (f.starDone||0) < STAR_FOR_COLOR || f.colorMail || f.colorRetry) continue;
+    f.colorMail = {day:S.day}; S.records.push({day:S.day, name:f.name, what:"하나 협회 서신", note:"특색 심사 출석 요망"}); addLog(`${f.name}: 하나 협회에서 특색 심사 출석 요망 서신이 날아왔다`, "omenlog");
+    await colorAttend(f, false); }
+}
+async function colorLetter(f, retry){
+  window.scrollTo({top:0, behavior:"smooth"}); await new Promise(r=>setTimeout(r, 250));
+  await playScene("편지", {name:f.name, retry});
+  const n = f.starDone||0;
+  return await modal("하나 협회 서신", `<div class="hana-letter"><div class="hl-org">하 나 협 회</div><div class="hl-title">${retry ? "특색 재심사 요청에 대한 회신" : "특색 심사를 위한 출석 요망"}</div>
+    <div class="hl-to">수신 — ${esc(S.officeName)} 소속 1급 해결사 ${esc(f.name)} 귀하</div>
+    <div class="hl-body">${retry ? `귀하의 재심사 요청을 받았습니다. 지난 심사 이후의 행적을 함께 살피겠습니다.` : `귀하가 1급 해결사로서 해낸 도시의 별 등급 의뢰 ${n}건이 본 협회에 보고되었습니다.`}<br>이에 특색 지정 여부를 가리는 심사를 열고자 하오니, 협회 본부로 출석해 주시기 바랍니다.<br>심사는 귀하의 능력과 지금까지의 행적으로 판단합니다.</div>
+    <div class="hl-sign">하나 협회 · 해결사 등급 관리과<span class="hl-seal">하나</span></div></div>`,
+    [{t:"나중에 출석한다", v:false},{t:"출석한다", v:true, primary:true}]);
+}
+async function colorAttend(f, retry){
+  const go0 = await colorLetter(f, retry);
+  if(!go0){ if(retry) f.colorRetry = Math.min(f.colorRetry||S.day, S.day); else f.colorMail = f.colorMail || {day:S.day}; toast(`${f.name}: 해결사 카드에서 언제든 ${retry ? "재심사를 요청" : "출석"}할 수 있다`); save(); render(); return; }
+  if(!canGo(f)){ await modal("출석할 수 없다", `${esc(f.name)}는 오늘 움직일 수 없는 상태다. 해결사 카드의 <b>하나 협회 출석</b>으로 나중에 출석할 수 있다.`, [{t:"확인"}]); f.colorMail = f.colorMail || {day:S.day}; save(); render(); return; }
+  f.lastDispatch = S.day; await colorReview(f);
+}
+function colorScore(f){ const L = f.life || {}, t = total(f), mind = f.mp / Math.max(1, f.mpMax), rows = [];
+  rows.push(["능력치 총합", `${t}`, clamp(Math.round((t - 200)/2), 0, 30)]);
+  rows.push(["1급으로 해낸 도시의 별 의뢰", `${f.starDone||0}건`, Math.min(24, (f.starDone||0)*6)]);
+  rows.push(["지금까지 해낸 의뢰", `${f.done||0}건`, Math.min(14, Math.round((f.done||0)/3))]);
+  rows.push(["환상체 · 뒤틀림 처리", `${(L.abno||0) + (L.hunt||0)}건`, Math.min(10, ((L.abno||0) + (L.hunt||0))*2)]);
+  rows.push(["동료와 의뢰인을 지킨 기록", `${(L.crew||0) + (L.escort||0)}건`, Math.min(6, (L.crew||0) + (L.escort||0))]);
+  const arm = (f.gear.weapon && f.gear.weapon.unique ? 6 : 0) + (f.ego ? (f.ego.unstable ? 5 : 10) : 0);
+  rows.push(["고유 무기 · E.G.O.", `${f.gear.weapon && f.gear.weapon.unique ? "고유 무기" : "없음"}${f.ego ? ` · ${f.ego.unstable ? "불안정 " : ""}개화` : ""}`, arm]);
+  rows.push(["실패한 의뢰", `${L.fail||0}건`, -Math.min(10, L.fail||0)]);
+  rows.push(["심사 당일의 정신", mind >= 0.6 ? "흔들림 없음" : mind >= 0.35 ? "다소 지쳐 있음" : "크게 흔들림", mind >= 0.6 ? 6 : mind >= 0.35 ? 0 : -10]);
+  if(f.colorFails) rows.push(["지난 심사 이후", `${f.colorFails}번째 도전`, Math.min(6, f.colorFails*3)]);
+  const iv = rnd(-6, 6); rows.push(["심사관의 인상", iv >= 3 ? "호의적" : iv <= -3 ? "냉담" : "무난", iv]);
+  return {rows, sum: rows.reduce((s,r)=>s + r[2], 0)}; }
+async function colorReview(f){
+  const R = colorScore(f), pass = R.sum >= COLOR_PASS;
+  playFx("특색 심사", "하나 협회 · 특색 심사", f.name, true);
+  await modal("하나 협회 · 특색 심사", `<div class="hana-review"><p class="muted" style="margin-top:0">협회 본부 심사실. 긴 탁자 너머 심사관 셋이 ${esc(f.name)}의 기록을 넘긴다.</p>
+    ${R.rows.map(r=>`<div class="rv-row"><span>${esc(r[0])} <small class="muted">· ${esc(r[1])}</small></span><b style="color:${r[2] > 0 ? "#8fd6a0" : r[2] < 0 ? "#ff8a7a" : "#a8a0a8"}">${r[2] > 0 ? "+" : ""}${r[2]}</b></div>`).join("")}
+    <div class="rv-sum">총점 <b>${R.sum}</b> / 통과 기준 ${COLOR_PASS} — ${pass ? `<b style="color:#8fd6a0">통과</b>` : `<b style="color:#ff8a7a">보류</b>`}</div></div>`, [{t:"결과를 듣는다", primary:true}], false, root=>{
+      const rows = root.querySelectorAll(".rv-row"), sum = root.querySelector(".rv-sum"), btn = root.querySelector(".mf button"); if(btn) btn.disabled = true;
+      rows.forEach((r,i)=>setTimeout(()=>r.classList.add("on"), 280 + i*360)); setTimeout(()=>{ sum.classList.add("on"); if(btn) btn.disabled = false; }, 400 + rows.length*360); });
+  if(!pass){ f.colorMail = null; f.colorRetry = S.day + 7; f.colorFails = (f.colorFails||0) + 1;
+    S.records.push({day:S.day, name:f.name, what:"특색 심사 보류", note:`${R.sum}점`}); addLog(`${f.name}: 특색 심사 보류(${R.sum}점) — ${S.day + 7}일차부터 재심사를 요청할 수 있다`);
+    await modal("심사 결과", `<div class="hana-stamp" style="color:#9a9aa4"><div class="st"><small>하나 협회</small><span>보류</span></div></div>
+      <p style="text-align:center">아직은 이르다는 판단이다. <b>1주일 뒤(${S.day + 7}일차)</b>부터 해결사 카드에서 재심사를 요청할 수 있다.</p>`, [{t:"확인", primary:true}], false, root=>{ setTimeout(()=>root.querySelector(".hana-stamp").classList.add("go"), 120); });
+    return; }
+  // 통과: 칭호를 정하고 인장을 받는다
+  let title = randomColorTitle();
+  if(f.isLeader){ for(let k=0; k<4; k++){ const v = await promptBox("특색 칭호", `하나 협회가 칭호를 묻는다.<br><span class="muted">[○○빛 ○○] 또는 [푸른/붉은/보라/주홍/옥빛/하얀/검은 ○○]. 원작 특색과 같은 이름은 쓸 수 없다(검은 요람 ○ · 검은 침묵 × · 검은 잔향 ×).</span>`, title);
+      if(!v){ break; } const c = colorTitleCheck(v); if(c.ok){ title = c.t; break; } await modal("칭호를 다시 정한다", esc(c.why), [{t:"다시"}]); } }
+  const col = colorOfTitle(title);
+  f.colorMail = null; f.colorRetry = null;
+  await modal("특색 인장", `<div class="hana-stamp" style="color:${col}"><div class="st"><small>하나 협회 · 특색</small><span>${esc(title)}</span></div></div>
+    <p style="text-align:center">${esc(jo(f.name,"이"))} 특색 <b style="color:${col}">[${esc(title)}]</b>의 인장을 받았다.<br><span class="muted">이름 옆에 칭호가 새겨지고, 이름이 그 빛깔로 물든다.</span></p>`, [{t:"사무소로 돌아간다", primary:true}], false, root=>{ setTimeout(()=>root.querySelector(".hana-stamp").classList.add("go"), 120); });
+  await passColor(f, title);
 }
 
 /* ================= 하루 흐름 ================= */
@@ -5153,6 +5479,7 @@ async function endDayInner(reason){
   S.fixers.forEach(lossByDay); await flushLoss();
   for(const f of S.fixers.slice()){ if(!S || S.over) break; await checkShin(f); }
   if(S && !S.over) S.fixers.forEach(checkOmen);
+  if(S && !S.over) await colorMailCheck();
 }
 async function weekly(){
   await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
@@ -5237,7 +5564,7 @@ async function review(){
   });
   // 특색 심사 지명
   S.fixers.forEach(f=>{
-    if(f.grade===1 && total(f)>COLOR_REQ_TOTAL && f.starCleared && !S.requests.some(q=>q.kind==="특색 심사"&&q.target===f.id) && Math.random()<0.3){
+    if(false){
       const a = pick(ATTRS), b = pick(ATTRS.filter(x=>x!==a));
       S.requests.unshift({id:S.nextId++, kind:"특색 심사", attrs:[a,b], grade:0, threat:"도시의 별", risk:null, client:"하나 협회",
         text:`${f.name}에 대한 특색 심사. 홀로 출동해야 한다.`, reward:REQ_BASE[0][0], req:79, deadline:null, loot:null, special:true, target:f.id});
@@ -5859,11 +6186,11 @@ function render(){
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req ${q.kind==="뒤틀림 토벌"?"distort":q.special?"special":""}" data-q="${q.id}">
       <div class="head"><span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>
-        <span class="badge">${gName(q.grade)} · ${q.threat}</span>${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
+        <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
       <div class="txt">${esc(q.text)}</div>
-      <div class="row"><span>보수 <b>${won(q.reward)}</b></span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
+      <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${q.grade===0 ? "특색" : gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b></span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
       ${q.loot?`<div class="loot">특수 전리품 가능: ${esc(q.loot.name)}</div>`:""}
       <div class="est" id="est-${q.id}"></div>
       <div class="party">출동 인원 <b id="pc-${q.id}">0</b> / 최대 ${partyMax(q)}명 <span class="muted">· 권장 ${partyRec(q)}명</span></div>
@@ -5875,8 +6202,9 @@ function render(){
     const lh=level(f.hp,f.hpMax), lm=level(f.mp,f.mpMax);
     const st = f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? "오늘 출동함" : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
-    return `<div class="fx"><div class="n"><b>${esc(f.name)}${f.isLeader?" ★":""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
-      ${f.title?`<div class="title">[${esc(f.title)}]</div>`:""}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}
+    const nc = nameCol(f);
+    return `<div class="fx"><div class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
+      ${colorBtn(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
@@ -5901,6 +6229,8 @@ function updateCard(qid){
   go.disabled=false;
 }
 let shellBound=false;
+const colorBtn = f => f.grade!==1 ? "" : f.colorMail ? `<button class="primary hana-btn" data-color="${f.id}">하나 협회 출석 — 특색 심사</button>`
+  : f.colorRetry ? (S.day >= f.colorRetry ? `<button class="hana-btn" data-color="${f.id}" data-retry="1">특색 재심사 요청</button>` : `<div class="title muted">특색 재심사 요청까지 ${f.colorRetry - S.day}일</div>`) : "";
 function buildShell(){
   const app = document.getElementById("app");
   app.innerHTML = `<div class="topbar"></div>
@@ -5926,6 +6256,7 @@ function buildShell(){
       }
       updateCard(qid); return;
     }
+    if(d.color){ if(scene || document.querySelector(".modal-bg")) return; const f = S.fixers.find(x=>x.id===+d.color); if(f) (async()=>{ await colorAttend(f, !!d.retry); save(); render(); })(); return; }
     if(d.go){ if(scene || document.querySelector(".modal-bg")) return; const sel = teamSel[d.go]||[]; if(sel.length) dispatch(+d.go, sel.slice()); }
     if(d.nav==="recruit") openRecruit(); if(d.nav==="manage") openManage(); if(d.nav==="shop") openShop(); if(d.nav==="records") openRecords(); if(d.nav==="ach") openAchievements(); if(d.nav==="repay") openRepay();
     if(e.target.id==="endday"){ (async()=>{ if(S.requests.length && S.fixers.some(canGo)){ if(!await confirmBox("하루 끝내기","아직 처리하지 않은 의뢰와 출동 가능한 해결사가 있다. 하루를 끝낼까?")) return; } await endDay("하루를 마쳤다."); })(); }
@@ -6320,24 +6651,28 @@ function stageLog(title, sub, good){
   const t=document.getElementById("capt"), s=document.getElementById("caps");
   if(t){ t.textContent = title; t.style.color = good ? "#cfe3c4" : "#e7a99a"; s.textContent = sub||""; const cap = t.parentNode; cap.classList.remove("log"); void cap.offsetWidth; cap.classList.add("log"); }
 }
-/* 날씨: 매 일차 바뀐다. 시간(낮·밤) × 하늘(맑음 · 흐림 · 비 · 마른 벼락) */
-const WEATHERS = [["clear","맑은"],["cloud","흐린"],["rain","비 내리는"],["thunder","마른 벼락이 치는"]];
-function rollWeather(){ const r = Math.random(), w = r<0.32 ? "clear" : r<0.58 ? "cloud" : r<0.86 ? "rain" : "thunder"; return {w, night: Math.random()<0.5}; }
+/* 날씨: 매 일차 바뀐다. 시간(낮·밤) × 하늘(맑음 · 흐림 · 비 · 안개 · 마른 벼락) */
+const WEATHERS = [["clear","맑은"],["cloud","흐린"],["rain","비 내리는"],["fog","안개 낀"],["thunder","마른 벼락이 치는"]];
+function rollWeather(){ const r = Math.random(), w = r<0.28 ? "clear" : r<0.48 ? "cloud" : r<0.70 ? "rain" : r<0.86 ? "fog" : "thunder"; return {w, night: Math.random()<0.5}; }
 const weatherText = W => !W ? "" : `${WEATHERS.find(x=>x[0]===W.w)[1]} ${W.night ? "밤" : "낮"}`;
-let bolt = null, nextBolt = 0, clouds = [], stars = [];
+let bolt = null, nextBolt = 0, clouds = [], stars = [], mists = [];
 function drawWeather(now, W, H, layer){
   const Wd = (S && S.weather) || {w:"rain", night:true}, d = devicePixelRatio;
   if(layer==="sky"){
     const g = cx.createLinearGradient(0,0,0,H), N = Wd.night, w = Wd.w;
-    const top = N ? (w==="clear" ? "#070a18" : w==="cloud" ? "#0d0d14" : "#08080d") : (w==="clear" ? "#4f6f8f" : w==="cloud" ? "#5a5e66" : w==="rain" ? "#3e434b" : "#34363f");
-    const bot = N ? (w==="clear" ? "#1a1830" : "#16141c") : (w==="clear" ? "#c8b49a" : w==="cloud" ? "#8f9298" : w==="rain" ? "#6a6e75" : "#5b5866");
+    const top = N ? (w==="clear" ? "#070a18" : w==="cloud" ? "#0d0d14" : w==="fog" ? "#12141a" : "#08080d") : (w==="clear" ? "#4f6f8f" : w==="cloud" ? "#5a5e66" : w==="rain" ? "#3e434b" : w==="fog" ? "#7d848b" : "#34363f");
+    const bot = N ? (w==="clear" ? "#1a1830" : w==="fog" ? "#2b2e37" : "#16141c") : (w==="clear" ? "#c8b49a" : w==="cloud" ? "#8f9298" : w==="rain" ? "#6a6e75" : w==="fog" ? "#b9bdbf" : "#5b5866");
     g.addColorStop(0, top); g.addColorStop(1, bot); cx.fillStyle = g; cx.fillRect(0,0,W,H);
     if(w==="clear" && N){ if(!stars.length) for(let i=0;i<70;i++) stars.push([Math.random(), Math.random()*0.6, Math.random()]);
       stars.forEach(s2=>{ cx.fillStyle = `rgba(255,250,235,${0.25+0.5*(0.5+0.5*Math.sin(now/900+s2[2]*30))})`; cx.fillRect(s2[0]*W, s2[1]*H, d, d); });
       const mg = cx.createRadialGradient(W*0.78, H*0.22, 0, W*0.78, H*0.22, H*0.3); mg.addColorStop(0, "rgba(255,240,205,0.35)"); mg.addColorStop(1, "rgba(0,0,0,0)"); cx.fillStyle = mg; cx.fillRect(0,0,W,H);
       cx.fillStyle = "#f3ead2"; cx.beginPath(); cx.arc(W*0.78, H*0.22, H*0.06, 0, 7); cx.fill(); }
     if(w==="clear" && !N){ const sg = cx.createRadialGradient(W*0.22, H*0.2, 0, W*0.22, H*0.2, H*0.7); sg.addColorStop(0, "rgba(255,236,190,0.55)"); sg.addColorStop(1, "rgba(0,0,0,0)"); cx.fillStyle = sg; cx.fillRect(0,0,W,H); }
-    if(w!=="clear"){ if(!clouds.length) for(let i=0;i<9;i++) clouds.push({x:Math.random(), y:Math.random()*0.35, r:0.12+Math.random()*0.18, v:0.000004+Math.random()*0.000008});
+    // 안개: 해나 달이 젖은 종이에 번진 듯 흐릿하게만 비친다
+    if(w==="fog"){ const sx = N ? W*0.76 : W*0.24, sy = H*0.24, hg = cx.createRadialGradient(sx, sy, 0, sx, sy, H*0.55);
+      hg.addColorStop(0, N ? "rgba(215,215,190,0.16)" : "rgba(255,248,226,0.42)"); hg.addColorStop(1, "rgba(0,0,0,0)"); cx.fillStyle = hg; cx.fillRect(0,0,W,H);
+      cx.fillStyle = N ? "rgba(225,222,200,0.12)" : "rgba(255,250,235,0.35)"; cx.beginPath(); cx.arc(sx, sy, H*0.07, 0, 7); cx.fill(); }
+    if(w!=="clear" && w!=="fog"){ if(!clouds.length) for(let i=0;i<9;i++) clouds.push({x:Math.random(), y:Math.random()*0.35, r:0.12+Math.random()*0.18, v:0.000004+Math.random()*0.000008});
       clouds.forEach(c2=>{ c2.x += c2.v*16; if(c2.x > 1.3) c2.x = -0.3; const cxp = c2.x*W, cyp = c2.y*H, R2 = c2.r*W*0.5;
         const cg = cx.createRadialGradient(cxp, cyp, 0, cxp, cyp, R2); const ca = N ? "rgba(40,40,52," : w==="cloud" ? "rgba(150,152,158," : "rgba(90,92,100,";
         cg.addColorStop(0, ca+(N?0.55:0.5)+")"); cg.addColorStop(1, ca+"0)"); cx.fillStyle = cg; cx.fillRect(cxp-R2, cyp-R2, R2*2, R2*2); }); }
@@ -6347,8 +6682,22 @@ function drawWeather(now, W, H, layer){
         cx.fillStyle = `rgba(230,235,255,${0.28*k})`; cx.fillRect(0,0,W,H);
         cx.strokeStyle = `rgba(235,240,255,${k})`; cx.lineWidth = 2*d; cx.shadowColor = "#cfd8ff"; cx.shadowBlur = 14*d; cx.beginPath(); bolt.pts.forEach(([x,y],i)=> i ? cx.lineTo(x,y) : cx.moveTo(x,y)); cx.stroke(); cx.shadowBlur = 0; } } }
   }
-  else if(layer==="building") return Wd.night ? null : (Wd.w==="clear" ? [44,50,60] : [40,42,48]);
+  else if(layer==="building") return Wd.night ? null : (Wd.w==="clear" ? [44,50,60] : Wd.w==="fog" ? [70,74,80] : [40,42,48]);
+  // 안개가 먼 건물부터 지운다: 건물 층을 하나 그릴 때마다 얇은 안개 막을 덮는다
+  else if(layer==="veil"){ if(Wd.w!=="fog") return; const k = [0.42, 0.28, 0.12][arguments[4]||0] || 0;
+    const vg = cx.createLinearGradient(0, H*0.25, 0, H); vg.addColorStop(0, Wd.night ? `rgba(48,52,62,${k*0.6})` : `rgba(196,200,203,${k*0.6})`); vg.addColorStop(1, Wd.night ? `rgba(58,62,72,${k})` : `rgba(206,210,212,${k})`);
+    cx.fillStyle = vg; cx.fillRect(0,0,W,H); }
   else if(layer==="rain"){
+    if(Wd.w==="fog"){
+      // 낮게 깔려 흐르는 안개 띠: 가로로 길게 늘인 흐릿한 덩어리가 천천히 미끄러진다
+      if(!mists.length) for(let i=0;i<14;i++) mists.push({x:Math.random()*1.4-0.2, y:0.45 + Math.random()*0.55, w:0.25 + Math.random()*0.35, h:0.07 + Math.random()*0.09, v:(0.000006 + Math.random()*0.000012)*(Math.random()<0.5?-1:1), a:0.25 + Math.random()*0.3, ph:Math.random()*6});
+      const col = Wd.night ? "70,74,86" : "222,225,226";
+      mists.forEach(m2=>{ m2.x += m2.v*16; if(m2.x > 1.3) m2.x = -0.3; if(m2.x < -0.3) m2.x = 1.3;
+        const mx = m2.x*W, my = m2.y*H + Math.sin(now/3200 + m2.ph)*H*0.015, rw = m2.w*W*0.5, rh = m2.h*H, al = m2.a*(Wd.night ? 0.75 : 1)*(0.8 + 0.2*Math.sin(now/2600 + m2.ph));
+        cx.save(); cx.translate(mx, my); cx.scale(1, rh/rw); const mg = cx.createRadialGradient(0,0,0,0,0,rw); mg.addColorStop(0, `rgba(${col},${al})`); mg.addColorStop(0.6, `rgba(${col},${al*0.45})`); mg.addColorStop(1, `rgba(${col},0)`);
+        cx.fillStyle = mg; cx.fillRect(-rw,-rw,rw*2,rw*2); cx.restore(); });
+      const gf = cx.createLinearGradient(0, H*0.55, 0, H); gf.addColorStop(0, `rgba(${col},0)`); gf.addColorStop(1, `rgba(${col},${Wd.night ? 0.42 : 0.55})`); cx.fillStyle = gf; cx.fillRect(0, H*0.55, W, H*0.45);
+      return; }
     if(Wd.w!=="rain") return;
     cx.strokeStyle = Wd.night ? "rgba(170,180,200,0.22)" : "rgba(210,215,225,0.28)"; cx.lineWidth = 1*d; cx.beginPath();
     rain.forEach(r=>{ r.y+=0.016*r.v; if(r.y>1){r.y=0;r.x=Math.random();} const x=r.x*W,y=r.y*H; cx.moveTo(x,y); cx.lineTo(x-3*d,y+13*d); }); cx.stroke();
@@ -6367,6 +6716,7 @@ function loop(now){
   const W=cv.width,H=cv.height; const age=(now-fx.t)/1000;
   drawWeather(now, W, H, "sky");
   const bday = drawWeather(now, W, H, "building"), NIGHT = !bday;
+  { const stg = cv.parentNode; if(stg && stg.classList.contains("day") === NIGHT) stg.classList.toggle("day", !NIGHT); }
   // 은은한 빛무리
   const glow = Math.max(0, 1-age/3);
   if(glow>0){ const rg=cx.createRadialGradient(W/2,H*0.55,0,W/2,H*0.55,W*0.5); rg.addColorStop(0,fx.color+"55"); rg.addColorStop(1,"transparent"); cx.globalAlpha=glow; cx.fillStyle=rg; cx.fillRect(0,0,W,H); cx.globalAlpha=1; }
@@ -6377,7 +6727,7 @@ function loop(now){
     cx.fillStyle = NIGHT ? `rgb(${shade},${shade},${shade+6})` : `rgb(${bday[0]-b.layer*12},${bday[1]-b.layer*12},${bday[2]-b.layer*10})`;
     cx.fillRect(b.x+off, H-b.h, b.w, b.h);
     b.wins.forEach(w=>{ const fl = 0.5+0.5*Math.sin(now/700+w[2]*40); if(fl<0.15 || (!NIGHT && w[2] > 0.35)) return; cx.fillStyle = NIGHT ? `rgba(232,200,130,${0.25+0.5*fl*b.depth})` : `rgba(200,210,220,${0.15+0.2*fl*b.depth})`; cx.fillRect(b.x+off+w[0], H-b.h+w[1], 3*devicePixelRatio, 4*devicePixelRatio); });
-  }); if(L<2) drawRumors(now, L); }
+  }); drawWeather(now, W, H, "veil", L); if(L<2) drawRumors(now, L); }
   drawWeather(now, W, H, "rain");
   // 뒤틀림: 화면 조각 어긋남
   if(fx.kind==="뒤틀림" && age<2.5){ for(let i=0;i<6;i++){ const y=Math.random()*H, h=6+Math.random()*20; cx.drawImage(cv,0,y,W,h,(Math.random()-0.5)*40*devicePixelRatio,y,W,h);} }
@@ -8204,6 +8554,74 @@ function genInvestigate(c, t, W, H, o, st){
    츠바이 협회의 '방패' 결: 의뢰인의 화물차를 해결사들이 둘러싸고 거리를 지난다.
    지붕에서 그림자들이 덮치면 푸른 육각 방벽이 펼쳐진다.
    성공: 막아 내고 차량이 무사히 빠져나간다 / 실패: 방벽이 깨지고 차량이 멈춰 연기에 싸인다 */
+/* ---- 하나 협회 서신 ----
+   어두운 하늘 저편에서 봉투 한 장이 팔랑이며 날아와 무대 한가운데 내려앉는다. 밀랍 인장이 붉게 빛나고, 날개가 열리며 편지 끝이 고개를 내민다 */
+SCENES["편지"] = {
+  dur: 4.6,
+  init(o){ const R = (a,b)=>a+Math.random()*(b-a), bld = []; let x = -10; while(x < 1400){ const w = R(30,80); bld.push({x, w, h:R(0.25,0.62), lit:Array.from({length:6},()=>[Math.random(),Math.random(),Math.random()])}); x += w + R(0,6); }
+    return {bld, motes:[], dust:Array.from({length:40},()=>({x:Math.random(), y:Math.random(), s:R(0.4,1.4), v:R(0.002,0.008)}))}; },
+  draw(c, t, W, H, o, st){
+    const g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0b0c16"); g.addColorStop(1,"#1d1822"); c.fillStyle = g; c.fillRect(0,0,W,H);
+    // 하늘 저편의 빛과 먼지
+    const glow = c.createRadialGradient(W*0.5, H*0.42, 0, W*0.5, H*0.42, H*1.1); glow.addColorStop(0, `rgba(240,214,160,${0.10 + 0.08*seg(t,1.6,2.4)})`); glow.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = glow; c.fillRect(0,0,W,H);
+    st.dust.forEach(p=>{ p.y -= p.v*0.016*60/60; if(p.y < -0.02) p.y = 1.02; c.fillStyle = `rgba(255,236,200,${0.15 + 0.2*Math.sin(t*2 + p.x*20)**2})`; c.fillRect(p.x*W, p.y*H, p.s, p.s); });
+    // 건물 실루엣
+    st.bld.forEach(b=>{ if(b.x > W) return; const bh = b.h*H; c.fillStyle = "#0a090e"; c.fillRect(b.x, H - bh, b.w, bh);
+      b.lit.forEach(l=>{ if(Math.sin(t*0.8 + l[2]*30) < -0.6) return; c.fillStyle = `rgba(255,200,120,${0.25 + 0.3*l[2]})`; c.fillRect(b.x + 4 + l[0]*(b.w-10), H - bh + 6 + l[1]*(bh-14), 3, 4); }); });
+    // 봉투의 궤적: 오른쪽 위 화면 밖 → 무대 가운데. 날아오는 동안 팔랑이며 뒤집힌다
+    const ew = Math.min(W*0.2, H*0.5), eh = ew*0.62, p = seg(t, 0, 1.7), e = ease(p);
+    const sx = W + ew, sy = -eh*1.2, ex = W*0.5, ey = H*0.5, cxp = W*0.82, cyp = H*0.95;
+    const bx = (1-e)*(1-e)*sx + 2*(1-e)*e*cxp + e*e*ex, by = (1-e)*(1-e)*sy + 2*(1-e)*e*cyp + e*e*ey;
+    const land = seg(t, 1.7, 2.1), bounce = land > 0 && land < 1 ? Math.sin(land*Math.PI)*(1-land)*H*0.05 : 0;
+    const flutter = (1 - p), rot = Math.sin(t*8.5)*0.42*flutter - 0.12*flutter, flip = p < 1 ? Math.cos(t*7.2)*0.55*flutter + (1 - 0.55*flutter) : 1, sc = 0.55 + 0.45*e;
+    if(p < 1 && Math.random() < 0.7) st.motes.push({x:bx + (Math.random()-0.5)*ew*0.3, y:by + (Math.random()-0.5)*eh*0.3, l:1, s:1 + Math.random()*1.6});
+    st.motes.forEach(m=>{ m.l -= 0.025; m.y += 0.15; c.fillStyle = `rgba(255,224,160,${Math.max(0,m.l)*0.7})`; c.beginPath(); c.arc(m.x, m.y, m.s, 0, 7); c.fill(); }); st.motes = st.motes.filter(m=>m.l > 0);
+    // 그림자
+    c.fillStyle = `rgba(0,0,0,${0.35*e})`; c.beginPath(); c.ellipse(ex, ey + eh*0.62 + 8, ew*0.5*sc, eh*0.12, 0, 0, 7); c.fill();
+    c.save(); c.translate(bx, by - bounce); c.rotate(rot); c.scale(sc*Math.abs(flip) + 0.02, sc);
+    const back = flip < 0;
+    // 봉투 몸체
+    const bg2 = c.createLinearGradient(0, -eh/2, 0, eh/2); bg2.addColorStop(0, back ? "#d9cba8" : "#efe4c8"); bg2.addColorStop(1, back ? "#c4b48e" : "#ddcda6");
+    c.shadowColor = "rgba(0,0,0,0.45)"; c.shadowBlur = 12; c.shadowOffsetY = 4; c.fillStyle = bg2; c.fillRect(-ew/2, -eh/2, ew, eh); c.shadowColor = "transparent";
+    c.strokeStyle = "rgba(110,84,44,0.55)"; c.lineWidth = 1; c.strokeRect(-ew/2 + 0.5, -eh/2 + 0.5, ew - 1, eh - 1);
+    if(!back){
+      // 위 날개: 처음엔 닫혀 있다가 위로 젖혀진다. 젖혀진 날개는 편지 뒤에 놓인다
+      const fo = ease(seg(t, 2.35, 2.75));
+      const flap = () => { c.save(); c.translate(0, -eh/2); c.scale(1, 1 - 2*fo);
+        const fg = c.createLinearGradient(0, 0, 0, eh*0.58); fg.addColorStop(0, fo > 0.5 ? "#d4c399" : "#e6d8b6"); fg.addColorStop(1, fo > 0.5 ? "#c8b68a" : "#d6c49c");
+        c.fillStyle = fg; c.beginPath(); c.moveTo(-ew/2, 0); c.lineTo(0, eh*0.58); c.lineTo(ew/2, 0); c.closePath(); c.fill(); c.strokeStyle = "rgba(110,84,44,0.5)"; c.stroke(); c.restore(); };
+      if(fo >= 0.5) flap();
+      // 편지 끝이 고개를 내민다: 안쪽 판 → 편지 → 앞주머니(아래 접힘) 순서로 겹친다
+      const op = seg(t, 2.55, 3.3), up = ease(op)*eh*0.46;
+      if(op > 0){ c.fillStyle = "#c9b791"; c.fillRect(-ew/2 + 1, -eh/2 + 1, ew - 2, eh - 2);
+        c.fillStyle = "#faf4e4"; c.fillRect(-ew*0.42, -eh*0.42 - up, ew*0.84, eh*0.78);
+        c.fillStyle = "rgba(60,44,24,0.78)"; c.font = `700 ${Math.max(8, eh*0.15)}px "Noto Serif KR",serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("출석 요망", 0, -eh*0.25 - up);
+        c.fillStyle = "rgba(60,44,24,0.32)"; for(let i=0;i<3;i++) c.fillRect(-ew*0.3, -eh*0.08 - up + i*eh*0.09, ew*0.6*(i===2 ? 0.6 : 1), 1.2);
+        const pg = c.createLinearGradient(0, -eh/2, 0, eh/2); pg.addColorStop(0, "#efe4c8"); pg.addColorStop(1, "#dccba3"); c.fillStyle = pg;
+        c.beginPath(); c.moveTo(-ew/2, -eh/2 + eh*0.12); c.lineTo(0, eh*0.12); c.lineTo(ew/2, -eh/2 + eh*0.12); c.lineTo(ew/2, eh/2); c.lineTo(-ew/2, eh/2); c.closePath(); c.fill();
+        c.strokeStyle = "rgba(110,84,44,0.45)"; c.stroke(); }
+      // 아래쪽 접힘 선
+      c.strokeStyle = "rgba(120,92,50,0.35)"; c.beginPath(); c.moveTo(-ew/2, eh/2); c.lineTo(0, eh*0.02); c.lineTo(ew/2, eh/2); c.stroke();
+      if(fo < 0.5) flap();
+      // 밀랍 인장
+      if(fo < 0.5){ const pulse = 0.5 + 0.5*Math.sin(t*5), lit = seg(t, 1.9, 2.3);
+        const sr = eh*0.17, sy2 = -eh/2 + eh*0.56;
+        if(lit > 0){ const hg = c.createRadialGradient(0, sy2, 0, 0, sy2, sr*3.2); hg.addColorStop(0, `rgba(255,90,70,${0.35*lit*(0.6 + 0.4*pulse)})`); hg.addColorStop(1, "rgba(255,90,70,0)"); c.fillStyle = hg; c.fillRect(-sr*3.2, sy2 - sr*3.2, sr*6.4, sr*6.4); }
+        c.fillStyle = "#8e1c18"; c.beginPath(); for(let i=0;i<=18;i++){ const a = i/18*Math.PI*2, rr = sr*(1 + 0.08*Math.sin(i*2.7)); i ? c.lineTo(Math.cos(a)*rr, sy2 + Math.sin(a)*rr) : c.moveTo(Math.cos(a)*rr, sy2 + Math.sin(a)*rr); } c.fill();
+        const sg2 = c.createRadialGradient(-sr*0.3, sy2 - sr*0.3, 0, 0, sy2, sr); sg2.addColorStop(0, "#d4544a"); sg2.addColorStop(1, "#9a241e"); c.fillStyle = sg2; c.beginPath(); c.arc(0, sy2, sr*0.82, 0, 7); c.fill();
+        c.fillStyle = "rgba(255,220,200,0.85)"; c.font = `800 ${Math.max(7, sr*0.7)}px "Noto Serif KR",serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText("하나", 0, sy2 + 0.5); }
+      // 우표
+      if(op <= 0){ c.fillStyle = "#3d5a8a"; c.fillRect(ew/2 - ew*0.17, -eh/2 + eh*0.1, ew*0.11, eh*0.2); c.strokeStyle = "rgba(255,255,255,0.6)"; c.setLineDash([1.5,1.5]); c.strokeRect(ew/2 - ew*0.17, -eh/2 + eh*0.1, ew*0.11, eh*0.2); c.setLineDash([]); }
+    } else { c.strokeStyle = "rgba(110,84,44,0.4)"; c.beginPath(); c.moveTo(-ew/2, -eh/2); c.lineTo(0, eh*0.1); c.lineTo(ew/2, -eh/2); c.stroke(); }
+    c.restore();
+    // 글자
+    const ta = seg(t, 2.2, 2.8);
+    if(ta > 0){ c.save(); c.globalAlpha = ta; c.textAlign = "center"; c.textBaseline = "middle"; c.shadowColor = "#000"; c.shadowBlur = 8;
+      c.fillStyle = "#c9b48a"; c.font = `600 ${Math.max(10, H*0.062)}px "Noto Serif KR",serif`; c.fillText("하 나 협 회", W*0.5, H*0.78);
+      c.fillStyle = "#f3e2c4"; c.font = `700 ${Math.max(13, H*0.095)}px "Noto Serif KR",serif`; c.fillText(o.retry ? "재심사 요청에 대한 회신" : "특색 심사를 위한 출석 요망", W*0.5, H*0.87);
+      c.fillStyle = "#b9ad98"; c.font = `500 ${Math.max(10, H*0.058)}px "Noto Sans KR",sans-serif`; c.fillText(`수신 — 1급 해결사 ${o.name}`, W*0.5, H*0.955); c.restore(); }
+  }
+};
 SCENES["호위"] = {
   dur: 4.8,
   init(o){ return { foes: Array.from({length:5},(_,i)=>({side: i%2?1:-1, x: 0.25+i*0.13+Math.random()*0.05, d: 1.35+i*0.09})) }; },
@@ -8382,11 +8800,12 @@ function drawRumors(now, L){
   floats.forEach(f=>{
     if(f.layer!==L || now<f.start) return;
     const p = (now-f.start)/f.dur; if(p>1){ f.dead=true; return; }
-    const size = (f.main?15:(L===0?11:13))*d;
+    const size = (f.main?15:(L===0?12:13))*d;
     cx.save(); cx.font = `${f.main?700:400} ${size}px "Noto Sans KR",sans-serif`; cx.textBaseline="middle";
     const tw = cx.measureText(f.text).width;
     let x, y;
-    const a = Math.sin(Math.PI*Math.min(1,Math.max(0,p)))**0.7 * (f.main?0.95:(L===0?0.32:0.5));
+    const DAY = !!(S && S.weather && !S.weather.night);
+    const a = Math.sin(Math.PI*Math.min(1,Math.max(0,p)))**0.7 * (f.main?0.97:(L===0?(DAY?0.78:0.62):(DAY?0.95:0.86)));
     if(f.path==="diag"){
       // 기울어진 문장의 방향(ux,uy)을 따라 이동. move=1이면 글 읽는 방향으로, -1이면 반대로
       const ux=Math.cos(f.tilt), uy=Math.sin(f.tilt);
@@ -8399,12 +8818,15 @@ function drawRumors(now, L){
       x = f.dir<0 ? W + 40*d - span*p : -tw - 40*d + span*p;
       y = H*(0.16 + f.lane*0.15) + (L===0?-6*d:6*d) + Math.sin(now/1600+f.ph)*3*d;
     }
-    cx.globalAlpha = a; cx.shadowColor="#000"; cx.shadowBlur=8*d;
+    cx.globalAlpha = a; cx.shadowColor="#000"; cx.shadowBlur=8*d; cx.lineJoin = "round";
     if(f.main){
-      cx.fillStyle="#e8d27a"; cx.shadowColor="rgba(232,210,122,0.6)"; cx.shadowBlur=14*d;
       const jit = Math.sin(now/90+f.ph)>0.93 ? (Math.random()-0.5)*4*d : 0;
-      cx.fillText(f.text, x+jit, y);
-    } else { cx.fillStyle = L===0 ? "#9a948a" : "#cfc8bb"; cx.fillText(f.text, x, y); }
+      cx.shadowColor = DAY ? "rgba(0,0,0,0.85)" : "rgba(232,210,122,0.6)"; cx.shadowBlur = (DAY ? 6 : 14)*d;
+      cx.strokeStyle = "rgba(20,16,10,0.9)"; cx.lineWidth = 3.2*d; cx.strokeText(f.text, x+jit, y);
+      cx.shadowBlur = DAY ? 0 : 14*d; cx.fillStyle = "#f2da7e"; cx.fillText(f.text, x+jit, y);
+    } else if(DAY){ cx.font = `600 ${size}px "Noto Sans KR",sans-serif`; cx.shadowColor = "rgba(255,250,240,0.45)"; cx.shadowBlur = 3*d; cx.fillStyle = L===0 ? "#24222b" : "#121016"; cx.fillText(f.text, x, y); }
+    else { cx.shadowColor = "rgba(0,0,0,0.95)"; cx.shadowBlur = 8*d; cx.strokeStyle = "rgba(0,0,0,0.6)"; cx.lineWidth = 2.4*d; cx.strokeText(f.text, x, y);
+      cx.fillStyle = L===0 ? "#bcb6aa" : "#ece6da"; cx.fillText(f.text, x, y); }
     cx.restore();
   });
   if(L===1) floats = floats.filter(f=>!f.dead);
@@ -8431,6 +8853,8 @@ function fxTestPanel(){
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="shield">방벽 막기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="0">도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
+   <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
+   <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
    <b>환상체</b><div class="g"><select id="fxab" style="max-width:100%">${["죄종","ZAYIN","TETH","HE","WAW","ALEPH"].map(r=>`<optgroup label="${r}">${ABNOS.filter(a=>a.risk===r).map(a=>`<option value="${a.id}">${esc(a.n)}${a.canon?" ·원작":""}</option>${a.variant?`<option value="${a.id}~v">${esc(a.n)} (아종: ${esc(a.variant.n)})</option>`:""}`).join("")}</optgroup>`).join("")}</select>
      <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">기프트 받기</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
@@ -8449,6 +8873,15 @@ function fxTestPanel(){
     else if(k==="shop") await openShop();
     else if(k==="rig") await openRigGallery();
     else if(k==="slash") await openSlashLab(); });
+  el.addEventListener("click", async e=>{ const wx = e.target.dataset.wx; if(!wx) return; const [w, n] = wx.split("|"); S.weather = {w, night: n==="1"}; save(); render(); playFx("아침", `${S.day}일차 · ${weatherText(S.weather)}`, "날씨를 바꿨다", true); });
+  el.addEventListener("click", async e=>{ const k = e.target.dataset.cs; if(!k) return; const f = S.fixers[0];
+    const toOne = () => { if(f.grade!==1){ f.grade = 1; f.title = null; } f.starDone = Math.max(STAR_FOR_COLOR, f.starDone||0); };
+    if(k==="star"){ toOne(); f.colorMail = null; f.colorRetry = null; save(); render(); return toast(`${f.name}: 1급 · 도시의 별 의뢰 ${f.starDone}건 — 하루를 끝내면 편지가 날아온다`); }
+    if(k==="mail"){ toOne(); f.colorMail = null; f.colorRetry = null; f.unavailUntil = 0; f.lastDispatch = 0; await colorMailCheck(); save(); render(); return; }
+    if(k==="pass" || k==="fail"){ toOne(); f.unavailUntil = 0; f.lastDispatch = 0; const keep = [f.stats, f.done, f.mp]; if(k==="pass"){ ATTRS.forEach(a=>f.stats[a] = Math.max(f.stats[a], 72)); f.done = Math.max(f.done||0, 45); f.mp = f.mpMax; } else { ATTRS.forEach(a=>f.stats[a] = Math.min(f.stats[a], 52)); f.mp = Math.round(f.mpMax*0.3); }
+      await colorReview(f); save(); render(); return; }
+    if(k==="retry"){ toOne(); f.colorMail = null; f.colorRetry = S.day; save(); render(); return toast("해결사 카드에 '특색 재심사 요청' 버튼이 생겼다"); }
+    if(k==="board"){ const q = makeRequest(1); S.requests.unshift(q); save(); render(); return toast(`${threatOf(q)} 의뢰를 올렸다`); } });
   el.addEventListener("click", async e=>{ const k = e.target.dataset.ab; if(!k) return; const v = el.querySelector("#fxab").value, [id, vv] = v.split("~"), A = ABNO_BY[id];
     const ab = {id, variant: !!vv}, vid = vv ? id+"~v" : id;
     if(k==="know"){ const d = codexLoad(); d[vid] = Object.assign({seen:0, ctrl:0, sup:0, gifts:[]}, d[vid]||{}); d[vid].seen = Math.max(5, d[vid].seen); codexSave(d); return toast(`${A.n}: 도감 정보를 모두 열었다`); }
