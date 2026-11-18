@@ -5241,23 +5241,24 @@ async function colorReview(f){
   const R = colorScore(f), pass = R.sum >= COLOR_PASS;
   playFx("특색 심사", "하나 협회 · 특색 심사", f.name, true);
   await modal("하나 협회 · 특색 심사", `<div class="hana-review"><p class="muted" style="margin-top:0">협회 본부 심사실. 긴 탁자 너머 심사관 셋이 ${esc(f.name)}의 기록을 넘긴다.</p>
-    ${R.rows.map(r=>`<div class="rv-row"><span>${esc(r[0])} <small class="muted">· ${esc(r[1])}</small></span><b style="color:${r[2] > 0 ? "#8fd6a0" : r[2] < 0 ? "#ff8a7a" : "#a8a0a8"}">${r[2] > 0 ? "+" : ""}${r[2]}</b></div>`).join("")}
-    <div class="rv-sum">총점 <b>${R.sum}</b> / 통과 기준 ${COLOR_PASS} — ${pass ? `<b style="color:#8fd6a0">통과</b>` : `<b style="color:#ff8a7a">보류</b>`}</div></div>`, [{t:"결과를 듣는다", primary:true}], false, root=>{
+    ${R.rows.map(r=>{ const v = r[2], say = v >= 12 ? "높이 샀다" : v > 0 ? "고개를 끄덕였다" : v < 0 ? "문제 삼았다" : "말없이 넘겼다";
+      return `<div class="rv-row"><span>${esc(r[0])} <small class="muted">· ${esc(r[1])}</small></span><b style="font-weight:600;color:${v > 0 ? "#8fd6a0" : v < 0 ? "#ff8a7a" : "#a8a0a8"}">${say}</b></div>`; }).join("")}
+    <div class="rv-sum muted">심사관들이 짧게 눈짓을 주고받는다. 가운데 앉은 이가 인장함을 연다.</div></div>`, [{t:"결과를 듣는다", primary:true}], false, root=>{
       const rows = root.querySelectorAll(".rv-row"), sum = root.querySelector(".rv-sum"), btn = root.querySelector(".mf button"); if(btn) btn.disabled = true;
       rows.forEach((r,i)=>setTimeout(()=>r.classList.add("on"), 280 + i*360)); setTimeout(()=>{ sum.classList.add("on"); if(btn) btn.disabled = false; }, 400 + rows.length*360); });
   if(!pass){ f.colorMail = null; f.colorRetry = S.day + 7; f.colorFails = (f.colorFails||0) + 1;
-    S.records.push({day:S.day, name:f.name, what:"특색 심사 보류", note:`${R.sum}점`}); addLog(`${f.name}: 특색 심사 보류(${R.sum}점) — ${S.day + 7}일차부터 재심사를 요청할 수 있다`);
+    S.records.push({day:S.day, name:f.name, what:"특색 심사 보류", note:"재심사 대기"}); addLog(`${f.name}: 특색 심사 보류 — ${S.day + 7}일차부터 재심사를 요청할 수 있다`);
     await modal("심사 결과", `<div class="hana-stamp" style="color:#9a9aa4"><div class="st"><small>하나 협회</small><span>보류</span></div></div>
       <p style="text-align:center">아직은 이르다는 판단이다. <b>1주일 뒤(${S.day + 7}일차)</b>부터 해결사 카드에서 재심사를 요청할 수 있다.</p>`, [{t:"확인", primary:true}], false, root=>{ setTimeout(()=>root.querySelector(".hana-stamp").classList.add("go"), 120); });
     return; }
   // 통과: 칭호를 정하고 인장을 받는다
   let title = randomColorTitle();
-  if(f.isLeader){ for(let k=0; k<4; k++){ const v = await promptBox("특색 칭호", `하나 협회가 칭호를 묻는다.<br><span class="muted">[○○빛 ○○] 또는 [푸른/붉은/보라/주홍/옥빛/하얀/검은 ○○]. 원작 특색과 같은 이름은 쓸 수 없다(검은 요람 ○ · 검은 침묵 × · 검은 잔향 ×).</span>`, title);
-      if(!v){ break; } const c = colorTitleCheck(v); if(c.ok){ title = c.t; break; } await modal("칭호를 다시 정한다", esc(c.why), [{t:"다시"}]); } }
+  if(f.isLeader){ for(let k=0; k<4; k++){ const v = await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다.", title);
+      if(!v){ break; } const c = colorTitleCheck(v); if(c.ok){ title = c.t; break; } await modal("하나 협회", "심사관이 고개를 젓는다. 그 이름으로는 올릴 수 없다고 한다.", [{t:"다시 정한다"}]); } }
   const col = colorOfTitle(title);
   f.colorMail = null; f.colorRetry = null;
   await modal("특색 인장", `<div class="hana-stamp" style="color:${col}"><div class="st"><small>하나 협회 · 특색</small><span>${esc(title)}</span></div></div>
-    <p style="text-align:center">${esc(jo(f.name,"이"))} 특색 <b style="color:${col}">[${esc(title)}]</b>의 인장을 받았다.<br><span class="muted">이름 옆에 칭호가 새겨지고, 이름이 그 빛깔로 물든다.</span></p>`, [{t:"사무소로 돌아간다", primary:true}], false, root=>{ setTimeout(()=>root.querySelector(".hana-stamp").classList.add("go"), 120); });
+    <p style="text-align:center">${esc(jo(f.name,"이"))} 특색 <b style="color:${col}">[${esc(title)}]</b>의 인장을 받았다.</p>`, [{t:"사무소로 돌아간다", primary:true}], false, root=>{ setTimeout(()=>root.querySelector(".hana-stamp").classList.add("go"), 120); });
   await passColor(f, title);
 }
 
