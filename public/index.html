@@ -3804,41 +3804,150 @@ function alephIntro(name){
   return new Promise(res=>{
     const cv = document.createElement("canvas"); cv.className = "aleph-fx"; document.body.appendChild(cv);
     const d = Math.min(2, devicePixelRatio||1), W = innerWidth, H = innerHeight; cv.width = W*d; cv.height = H*d; const c = cv.getContext("2d"); c.setTransform(d,0,0,d,0,0);
-    const T = 3.6, t0 = performance.now(); let raf, done = false;
-    const GLY = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ✠⸸†∴⊹";
-    const ring = Array.from({length:48}, ()=>GLY[Math.floor(Math.random()*GLY.length)]);
+    const T = 3.6; let t0 = 0, raf, done = false;
+    const rnd = (a,b) => a + Math.random()*(b-a), cl = (v,a,b) => Math.max(a, Math.min(b, v));
+    const mk = (w,h) => { const o = document.createElement("canvas"); o.width = Math.ceil(w); o.height = Math.ceil(h); return [o, o.getContext("2d")]; };
     const finish = () => { if(done) return; done = true; cancelAnimationFrame(raf); cv.style.transition = "opacity .35s"; cv.style.opacity = 0; setTimeout(()=>{ cv.remove(); res(); }, 360); };
     cv.onclick = finish;
-    const star = (cx, cy, R, lw, alpha, rough) => {   // 엇갈려 엮인 칠각별 {7/2}
-      const P = Array.from({length:7}, (_,i)=>{ const a = -Math.PI/2 + i*2*Math.PI/7; return [cx + Math.cos(a)*R, cy + Math.sin(a)*R]; });
-      for(let i=0;i<7;i++){ const A = P[i], B = P[(i+2)%7];
-        for(let k=0; k<(rough?3:1); k++){ const j = rough ? (Math.random()-0.5)*lw*0.25 : 0;
-          c.strokeStyle = `rgba(${150+Math.floor(Math.random()*60)},${Math.floor(Math.random()*16)},${Math.floor(Math.random()*16)},${alpha*(k?0.45:1)})`; c.lineWidth = lw*(k?0.55:1); c.lineCap = "butt";
-          c.beginPath(); c.moveTo(A[0]+j, A[1]-j); c.lineTo(B[0]-j, B[1]+j); c.stroke(); }
-        if(rough && lw > 30){ c.fillStyle = `rgba(20,0,0,${alpha*0.5})`; for(let n=0;n<70;n++){ const u = Math.random(); const x = A[0]+(B[0]-A[0])*u, y = A[1]+(B[1]-A[1])*u; c.fillRect(x-lw*0.4+Math.random()*lw*0.8, y-lw*0.4+Math.random()*lw*0.8, 2+Math.random()*lw*0.35, 1+Math.random()*3); } } } };
-    const glitchText = (txt, x, y, size, color, k) => { c.font = `900 ${size}px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle";
-      const w = c.measureText(txt).width; for(let b=0;b<6;b++){ const y0 = y - size*0.6 + b*size*0.2, dx = Math.random() < k ? (Math.random()-0.5)*size*0.5 : 0;
-        c.save(); c.beginPath(); c.rect(x - w, y0, w*2, size*0.2+1); c.clip(); c.fillStyle = color; c.fillText(txt, x + dx, y); c.restore(); } };
+    const cx = W/2, cy = H/2, base = Math.min(W,H);
+    // ── 칠각별 {7/2}: 한 줄로 이어진 닫힌 곡선이라 교차마다 위/아래를 번갈아 엮을 수 있다
+    const V = Array.from({length:7}, (_,i)=>{ const a = -Math.PI/2 + i*2*Math.PI/7; return [Math.cos(a), Math.sin(a)]; });
+    const PATH = [0,2,4,6,1,3,5];                     // 막대 i = V[i] → V[(i+2)%7]
+    const X = [];                                     // 교차점: {a,b,ta,tb,x,y,over}
+    for(let a=0;a<7;a++) for(let b=a+1;b<7;b++){
+      const A0 = V[a], A1 = V[(a+2)%7], B0 = V[b], B1 = V[(b+2)%7];
+      const rx = A1[0]-A0[0], ry = A1[1]-A0[1], sx = B1[0]-B0[0], sy = B1[1]-B0[1], den = rx*sy - ry*sx; if(Math.abs(den) < 1e-9) continue;
+      const qx = B0[0]-A0[0], qy = B0[1]-A0[1], ta = (qx*sy - qy*sx)/den, tb = (qx*ry - qy*rx)/den;
+      if(ta > .01 && ta < .99 && tb > .01 && tb < .99) X.push({a, b, ta, tb, x:A0[0]+rx*ta, y:A0[1]+ry*ta, over:-1}); }
+    let flip = true;
+    PATH.forEach(i => X.filter(x => x.a===i || x.b===i).sort((p,q)=>(p.a===i?p.ta:p.tb)-(q.a===i?q.ta:q.tb))
+      .forEach(x => { if(x.over < 0) x.over = flip ? i : (x.a===i ? x.b : x.a); flip = !flip; }));
+    // ── 판자 질감: 결, 옹이, 긁힌 자국, 그을린 가장자리, 깨진 모서리
+    const plank = () => { const L = 900, B = 110, [o,g] = mk(L,B);
+      let gr = g.createLinearGradient(0,0,0,B); gr.addColorStop(0,"#3a0005"); gr.addColorStop(.2,"#8e0710"); gr.addColorStop(.5,"#b8121e"); gr.addColorStop(.8,"#86060e"); gr.addColorStop(1,"#2a0003");
+      g.fillStyle = gr; g.fillRect(0,0,L,B);
+      for(let i=0;i<7;i++){ const x = rnd(0,L), r = rnd(60,220), rg = g.createRadialGradient(x,B*rnd(.3,.7),0,x,B/2,r);
+        rg.addColorStop(0, Math.random()<.55 ? `rgba(225,25,35,${rnd(.2,.4)})` : `rgba(10,0,0,${rnd(.25,.45)})`); rg.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle = rg; g.fillRect(0,0,L,B); }
+      for(let i=0;i<52;i++){ const y = rnd(3,B-3), amp = rnd(.4,3.2), f = rnd(.003,.02), ph = rnd(0,6), x0 = rnd(-60,L*.5), x1 = x0 + rnd(L*.25, L);
+        g.strokeStyle = Math.random()<.72 ? `rgba(16,0,2,${rnd(.18,.55)})` : `rgba(200,35,45,${rnd(.08,.22)})`; g.lineWidth = rnd(.6,2.4);
+        g.beginPath(); for(let x=x0; x<=x1; x+=10){ const yy = y + Math.sin(x*f+ph)*amp; x===x0 ? g.moveTo(x,yy) : g.lineTo(x,yy); } g.stroke(); }
+      for(let i=0;i<2;i++){ const x = rnd(90,L-90), y = rnd(B*.3,B*.7);
+        for(let r=4;r<24;r+=3.5){ g.strokeStyle = `rgba(18,0,0,${.5-r/60})`; g.lineWidth = 1.3; g.beginPath(); g.ellipse(x,y,r*2.6,r*.7,0,0,7); g.stroke(); }
+        g.fillStyle = "rgba(12,0,0,.75)"; g.beginPath(); g.ellipse(x,y,7,3,0,0,7); g.fill(); }
+      for(let i=0;i<38;i++){ const x = rnd(-20,L), y = Math.random()<.5 ? rnd(0,B*.32) : rnd(B*.55,B), len = rnd(8,110), th = rnd(1.5,7);
+        g.fillStyle = `rgba(0,0,0,${rnd(.55,.92)})`; g.beginPath(); g.moveTo(x,y);
+        for(let s=1;s<=6;s++) g.lineTo(x+len*s/6, y+rnd(-th,th)*.5);
+        for(let s=6;s>=0;s--) g.lineTo(x+len*s/6, y+th*(s===0||s===6?.15:rnd(.5,1.1))); g.closePath(); g.fill(); }
+      g.globalCompositeOperation = "destination-out";
+      for(let i=0;i<30;i++){ const x = rnd(0,L), top = Math.random()<.5, dd = rnd(2,11), w = rnd(6,34); g.beginPath(); g.moveTo(x, top?0:B); g.lineTo(x+w*rnd(.3,.7), top?dd:B-dd); g.lineTo(x+w, top?0:B); g.fill(); }
+      for(const e of [0,L]){ g.beginPath(); g.moveTo(e,0); for(let y=0;y<=B;y+=7) g.lineTo(e + (e?-1:1)*rnd(0,16), y); g.lineTo(e,B); g.fill(); }
+      g.globalCompositeOperation = "source-atop";
+      gr = g.createLinearGradient(0,0,0,B); gr.addColorStop(0,"rgba(0,0,0,.8)"); gr.addColorStop(.13,"rgba(0,0,0,0)"); gr.addColorStop(.87,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.85)"); g.fillStyle = gr; g.fillRect(0,0,L,B);
+      gr = g.createLinearGradient(0,0,L,0); gr.addColorStop(0,"rgba(0,0,0,.65)"); gr.addColorStop(.07,"rgba(0,0,0,0)"); gr.addColorStop(.93,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.65)"); g.fillStyle = gr; g.fillRect(0,0,L,B);
+      for(let i=0;i<2200;i++){ g.fillStyle = Math.random()<.65 ? `rgba(0,0,0,${rnd(.2,.6)})` : `rgba(255,70,70,${rnd(.04,.16)})`; g.fillRect(rnd(0,L), rnd(0,B), rnd(.6,2.2), rnd(.6,1.6)); }
+      g.globalCompositeOperation = "source-over"; return o; };
+    const PL = Array.from({length:7}, plank);
+    // ── 문장(紋章): 이중 고리 + 깨알 글씨 + 고리 위 마디 + 엮인 칠각별, 낡은 인쇄처럼 깎아 낸다
+    const SIG = (() => { const S = 640, o2 = S/2, R0 = S*0.43, [o,g] = mk(S,S); g.translate(o2,o2);
+      g.shadowColor = "rgba(255,20,30,.55)"; g.shadowBlur = 7;
+      const red = "rgba(205,22,30,1)";
+      g.strokeStyle = red; g.lineWidth = 3; g.beginPath(); g.arc(0,0,R0,0,7); g.stroke(); g.lineWidth = 2; g.beginPath(); g.arc(0,0,R0*.86,0,7); g.stroke();
+      g.lineWidth = 1; g.beginPath(); g.arc(0,0,R0*.83,0,7); g.stroke();
+      const TXT = "ALEPH ✠ ᚦᚨᚱᚲ ᛉᛊᛏ ✠ 돌아갈 길은 없다 ✠ ᛗᛚᛜ ᛞᛟᚠ ✠ ";
+      g.fillStyle = red; g.font = `700 ${Math.round(R0*.085)}px "Noto Serif KR",serif`; g.textAlign = "center"; g.textBaseline = "middle";
+      for(let k=0, a=-Math.PI/2; k<220 && a < Math.PI*1.5 - .05; k++){ const ch = TXT[k % TXT.length], w = g.measureText(ch).width + R0*.012;
+        const nodeNear = V.some((_,i)=>{ const na = -Math.PI/2 + (i+.5)*2*Math.PI/7; let df = Math.abs(((a - na) % (Math.PI*2) + Math.PI*3) % (Math.PI*2) - Math.PI); return df < .13; });
+        if(!nodeNear){ g.save(); g.rotate(a + Math.PI/2); g.fillText(ch, 0, -R0*.93); g.restore(); } a += w/(R0*.93); }
+      for(let i=0;i<7;i++){ const a = -Math.PI/2 + (i+.5)*2*Math.PI/7, x = Math.cos(a)*R0*.93, y = Math.sin(a)*R0*.93, r = R0*.105;
+        g.shadowBlur = 0; g.fillStyle = "#000"; g.beginPath(); g.arc(x,y,r*1.05,0,7); g.fill(); g.shadowBlur = 7;
+        g.strokeStyle = red; g.lineWidth = 2.2; g.beginPath(); g.arc(x,y,r,0,7); g.stroke(); g.lineWidth = 1; g.beginPath(); g.arc(x,y,r*.72,0,7); g.stroke();
+        g.save(); g.translate(x,y); g.rotate(a + Math.PI/2); g.font = `700 ${Math.round(r*.8)}px serif`; g.fillText("ᚠᚦᚱᚷᛉᛟ✠"[i], 0, 1); g.restore(); }
+      const Rs = R0*.74, bw = R0*.12, ov = bw*.55;
+      const band = (i, path) => { const A = V[i], B = V[(i+2)%7], ang = Math.atan2(B[1]-A[1], B[0]-A[0]), len = Math.hypot(B[0]-A[0], B[1]-A[1])*Rs + ov*2;
+        g.save(); g.translate((A[0]+B[0])/2*Rs, (A[1]+B[1])/2*Rs); g.rotate(ang); path(len); g.restore(); };
+      const drawBand = i => band(i, len => { g.fillStyle = "#3a0005"; g.fillRect(-len/2,-bw/2,len,bw);
+        g.fillStyle = "rgba(150,10,18,.55)"; g.fillRect(-len/2, -bw*.12, len, bw*.24);
+        g.strokeStyle = red; g.lineWidth = 2.6; g.strokeRect(-len/2,-bw/2,len,bw); });
+      PATH.forEach(drawBand);
+      X.forEach(x => { const u = x.over===x.a ? x.b : x.a; if(PATH.indexOf(x.over) > PATH.indexOf(u)) return;
+        g.save(); band(u, len => { g.beginPath(); g.rect(-len/2, -bw/2-2, len, bw+4); }); g.clip(); drawBand(x.over); g.restore(); });
+      g.setTransform(1,0,0,1,0,0); g.shadowBlur = 0;
+      g.globalCompositeOperation = "destination-out";
+      for(let i=0;i<5200;i++){ g.fillStyle = `rgba(0,0,0,${rnd(.3,1)})`; g.fillRect(rnd(0,S), rnd(0,S), rnd(.6,2.6), rnd(.6,2)); }
+      for(let i=0;i<40;i++){ g.fillStyle = `rgba(0,0,0,${rnd(.3,.7)})`; g.fillRect(rnd(0,S), rnd(0,S), rnd(10,60), rnd(1,2.5)); }
+      g.globalCompositeOperation = "source-over"; return o; })();
+    // ── 제목: 굵고 각진 글자, 위아래로 짙어지는 핏빛, 벗겨진 자국
+    const fs = Math.max(30, Math.min(base*.15, W*.86/Math.max(3.2, name.length*1.02)));
+    const TT = (() => { const [m] = mk(1,1), mg = m.getContext("2d"); const F = `900 ${fs}px "Pretendard","Noto Sans KR",sans-serif`; mg.font = F;
+      const w = mg.measureText(name).width + fs*.5, h = fs*1.5, [o,g] = mk(w,h); g.font = F; g.textAlign = "center"; g.textBaseline = "middle";
+      g.lineJoin = "miter"; g.strokeStyle = "#1a0002"; g.lineWidth = fs*.1; g.strokeText(name, w/2, h/2);
+      const gr = g.createLinearGradient(0, h/2-fs*.5, 0, h/2+fs*.5); gr.addColorStop(0,"#5c0008"); gr.addColorStop(.35,"#c4101c"); gr.addColorStop(.55,"#ff2a2e"); gr.addColorStop(1,"#6a0008");
+      g.fillStyle = gr; g.fillText(name, w/2, h/2);
+      g.globalCompositeOperation = "source-atop";
+      for(let i=0;i<260;i++){ g.fillStyle = `rgba(20,0,0,${rnd(.3,.8)})`; g.fillRect(rnd(0,w), rnd(0,h), rnd(1,fs*.07), rnd(1,fs*.03)); }
+      g.globalCompositeOperation = "destination-out";
+      for(let i=0;i<70;i++){ g.fillStyle = `rgba(0,0,0,${rnd(.6,1)})`; g.fillRect(rnd(0,w), rnd(0,h), rnd(2,fs*.12), rnd(1,fs*.05)); }
+      for(let i=0;i<3;i++){ g.fillRect(0, h/2 + rnd(-fs*.4, fs*.4), w, rnd(1,2.2)); }
+      g.globalCompositeOperation = "source-over"; return o; })();
+    const SUB = "돌아갈 길은 없다  ·  위험 등급 ALEPH", sfs = Math.max(11, base*.03);
+    // ── 필름 입자 타일과 비네트
+    const [NZ, nz] = mk(256,256); { const id = nz.createImageData(256,256); for(let i=0;i<id.data.length;i+=4){ const v = Math.random(); if(v < .1){ id.data[i] = 120 + Math.random()*120; id.data[i+3] = 30 + Math.random()*40; } else if(v < .45){ id.data[i+3] = 60 + Math.random()*120; } } nz.putImageData(id,0,0); }
+    const NP = c.createPattern(NZ, "repeat");
+    const VG = c.createRadialGradient(cx, cy, base*.2, cx, cy, Math.hypot(W,H)*.6); VG.addColorStop(0,"rgba(0,0,0,0)"); VG.addColorStop(1,"rgba(0,0,0,.75)");
+    // ── 판자 장면: 화면을 넘는 거대한 칠각별을 판자들이 하나씩 날아와 엮는다
+    const R = Math.min(H*.78, Math.max(W*.6, H*.42)), BW = R*.3, OV = R*.5, SX = cx, SY = cy + R*.16;
+    const G = Array.from({length:7}, (_,i)=>{ const A = V[i], B = V[(i+2)%7], ax = SX+A[0]*R, ay = SY+A[1]*R, bx = SX+B[0]*R, by = SY+B[1]*R, ang = Math.atan2(by-ay, bx-ax);
+      const sg = (Math.cos(ang) - Math.sin(ang)) >= 0 ? 1 : -1;     // 오른쪽 위 화면 밖에서 날아든다
+      return {mx:(ax+bx)/2, my:(ay+by)/2, ang, len:Math.hypot(bx-ax,by-ay) + OV*2, dir:[Math.cos(ang)*sg, Math.sin(ang)*sg], sg}; });
+    const ORDER = [6,1,4,0,3,5,2], ST = 0.42, GAP = 0.085, DUR = 0.22;
+    const pose = (i, t) => { const k = ORDER.indexOf(i), p = cl((t - ST - k*GAP)/DUR, 0, 1), e = 1 - Math.pow(1-p, 3), g = G[i], far = (W+H)*.95*(1-e);
+      return {p, dx:g.dir[0]*far - g.dir[1]*far*.12, dy:g.dir[1]*far + g.dir[0]*far*.12, dr:(1-e)*.38*g.sg, land: ST + k*GAP + DUR}; };
+    const plankAt = (i, P, a) => { const g = G[i]; c.save(); c.globalAlpha = a; c.translate(g.mx + P.dx, g.my + P.dy); c.rotate(g.ang + P.dr);
+      c.shadowColor = "rgba(0,0,0,.95)"; c.shadowBlur = BW*.45; c.shadowOffsetY = BW*.1; c.fillStyle = "#000"; c.fillRect(-g.len/2+8, -BW/2+5, g.len-16, BW-10);
+      c.shadowColor = "transparent"; c.drawImage(PL[i], -g.len/2, -BW/2, g.len, BW);
+      c.strokeStyle = "rgba(0,0,0,.75)"; c.lineWidth = Math.max(2, BW*.03); c.beginPath(); c.moveTo(-g.len/2+10, -BW/2+1); c.lineTo(g.len/2-10, -BW/2+1); c.moveTo(-g.len/2+10, BW/2-1); c.lineTo(g.len/2-10, BW/2-1); c.stroke(); c.restore(); };
+    const bandClip = (i, P, pad) => { const g = G[i]; c.save(); c.translate(g.mx + P.dx, g.my + P.dy); c.rotate(g.ang + P.dr); c.rect(-g.len/2, -BW/2-pad, g.len, BW+pad*2); c.restore(); };
+    const scene = t => { const z = 1 + Math.max(0, t - ST)*.07; let shake = 0;
+      ORDER.forEach(i => { const q = t - pose(i,t).land; if(q > 0 && q < .16) shake = Math.max(shake, 1 - q/.16); });
+      c.save(); c.translate(SX + rnd(-1,1)*shake*BW*.12, SY + rnd(-1,1)*shake*BW*.12); c.scale(z,z); c.translate(-SX, -SY);
+      ORDER.forEach(i => { const P = pose(i,t); if(P.p <= 0) return;
+        if(P.p < 1) for(let gh=2; gh>=1; gh--){ const Q = pose(i, t - gh*.025); if(Q.p > 0) plankAt(i, Q, .18/gh); }
+        plankAt(i, P, 1); });
+      X.forEach(x => { const u = x.over===x.a ? x.b : x.a, Po = pose(x.over,t), Pu = pose(u,t); if(Po.p < 1 || Pu.p < 1) return;
+        if(ORDER.indexOf(x.over) > ORDER.indexOf(u)) return;
+        const a = cl((t - Math.max(Po.land, Pu.land))/.07, 0, 1); if(a <= 0) return;
+        c.save(); c.beginPath(); bandClip(u, Pu, 2); c.clip(); c.beginPath(); bandClip(x.over, Po, BW*.35); c.clip(); plankAt(x.over, {...Po, dy:Po.dy}, a*.6); plankAt(x.over, Po, a); c.restore(); });
+      c.restore(); };
+    const condensed = (txt, x, y, size, color, alpha, sx) => { c.save(); c.globalAlpha = alpha; c.translate(x,y); c.scale(sx,1); c.font = `800 ${size}px "Pretendard","Noto Sans KR",sans-serif`;
+      c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = color; c.fillText(txt, 0, 0); c.restore(); };
+    const title = (x, y, sc, alpha, glitch) => { const w = TT.width*sc, h = TT.height*sc;
+      if(Math.random() < .45){ c.save(); c.globalAlpha = alpha*rnd(.1,.2); c.drawImage(TT, x - w/2 + rnd(3,8)*(Math.random()<.5?-1:1), y - h/2 + rnd(-1.5,1.5), w, h); c.restore(); }   // 떨리는 잔상
+      c.save(); c.globalAlpha = alpha;
+      if(glitch){ const n = 6; for(let b=0;b<n;b++){ const sy = TT.height*b/n, dx = Math.random() < .5 ? rnd(-.06,.06)*w : 0; c.drawImage(TT, 0, sy, TT.width, TT.height/n, x - w/2 + dx, y - h/2 + h*b/n, w, h/n + .5); } }
+      else c.drawImage(TT, x - w/2, y - h/2, w, h);
+      c.restore(); };
+    const sigil = (x, y, size, alpha) => { c.save(); c.globalAlpha = alpha; c.drawImage(SIG, x - size/2, y - size/2, size, size); c.restore(); };
     function draw(now){
-      const t = (now - t0)/1000; c.fillStyle = "#000"; c.fillRect(0,0,W,H); const cx = W/2, cy = H/2, base = Math.min(W,H);
-      if(t < 0.55){ star(cx + (Math.random()-0.5)*2, cy, base*0.09, 3, clamp(t/0.4,0,1)*0.55, false); }
-      else if(t < 1.35){ const e = (t-0.55)/0.8, z = Math.pow(e, 2.2), Rz = base*(0.09 + z*3.2);
-        // 별의 한 변(두 띠가 엇갈리는 자리)으로 파고들며 화면을 가득 메운다
-        const a0 = -Math.PI/2, a2 = -Math.PI/2 + 4*Math.PI/7, ax = Math.cos(a0) + (Math.cos(a2)-Math.cos(a0))*0.3, ay = Math.sin(a0) + (Math.sin(a2)-Math.sin(a0))*0.3;
-        star(cx - ax*Rz*z + (Math.random()-0.5)*8*z, cy - ay*Rz*z + (Math.random()-0.5)*8*z, Rz, 3 + z*base*0.42, 0.6 + 0.4*e, true); }
-      else if(t < 1.5){ if(Math.random() < 0.5){ c.fillStyle = "rgba(120,0,0,0.35)"; c.fillRect(0,0,W,H); } }
-      else { const e = t - 1.5, fade = t > T-0.55 ? clamp((T - t)/0.55, 0, 1) : 1, Rr = base*0.2, fl = Math.random() < 0.08 ? 0.4 : 1;
-        c.save(); c.globalAlpha = fade*fl; c.shadowColor = "rgba(255,20,20,0.8)"; c.shadowBlur = 18;
-        c.strokeStyle = "rgba(230,30,30,0.9)"; c.lineWidth = 2; c.beginPath(); c.arc(cx, cy, Rr*1.25, 0, 7); c.stroke(); c.beginPath(); c.arc(cx, cy, Rr*1.02, 0, 7); c.stroke();
-        c.fillStyle = "rgba(230,40,40,0.9)"; c.font = `600 ${Math.max(9, Rr*0.11)}px serif`; c.textAlign = "center"; c.textBaseline = "middle";
-        ring.forEach((g,i)=>{ const a = i/ring.length*Math.PI*2 + e*0.25; c.save(); c.translate(cx + Math.cos(a)*Rr*1.135, cy + Math.sin(a)*Rr*1.135); c.rotate(a + Math.PI/2); c.fillText(g, 0, 0); c.restore(); });
-        c.restore(); c.save(); c.globalAlpha = fade*fl; star(cx, cy, Rr*0.98, 4, 0.95, false); c.restore();
-        const showT = e > 0.1 && t < T - 0.45 && Math.random() > 0.05;
-        if(showT){ c.save(); c.globalAlpha = fade; glitchText(name, cx, cy - Rr*0.08, Math.max(28, Math.min(base*0.12, W*0.9/Math.max(4, name.length))), "#ff2a2a", e < 0.4 ? 0.6 : 0.18);
-          c.font = `700 ${Math.max(10, base*0.026)}px "Noto Sans KR",sans-serif`; c.fillStyle = "#f2d36b"; c.textAlign = "center"; c.fillText("돌아갈 길은 없다  ·  위험 등급 ALEPH", cx, cy + Rr*0.22); c.restore(); } }
-      // 거친 입자와 주사선
-      c.fillStyle = "rgba(255,40,40,0.06)"; for(let n=0;n<120;n++) c.fillRect(Math.random()*W, Math.random()*H, 1.5, 1.5);
-      if(Math.random() < 0.25){ const y0 = Math.random()*H, hh = 3 + Math.random()*24; c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(cv, 0, y0*d, W*d, hh*d, (Math.random()-0.5)*40*d, y0*d, W*d, hh*d); c.restore(); }
+      if(!t0) t0 = now; const t = (now - t0)/1000; c.fillStyle = "#000"; c.fillRect(0,0,W,H);
+      const Rr = base*.21, fl = Math.random() < .07 ? .55 : 1;
+      if(t < 0.62){ sigil(cx + rnd(-1,1), cy, base*.3, cl(t/.35, 0, 1)*.42*fl*(t > .5 ? cl((.62 - t)/.12, 0, 1) : 1)); }
+      if(t >= ST - .02 && t < 1.35){ scene(t);
+        const dk = cl((t - 1.0)/.35, 0, 1)*.5; if(dk > 0){ c.fillStyle = `rgba(8,0,0,${dk})`; c.fillRect(0,0,W,H); }
+        if(t > 1.08) condensed("돌아갈 길은 없다", cx + rnd(-2,2), cy + H*.3, base*.075, "#b0161c", (.14 + Math.random()*.12)*cl((t - 1.08)/.12, 0, 1), .8); }
+      else if(t >= 1.35 && t < 1.5){ scene(1.35); c.fillStyle = "rgba(0,0,0,.72)"; c.fillRect(0,0,W,H);
+        for(let k=0;k<3;k++) if(Math.random() < .5){ c.fillStyle = `rgba(170,0,10,${rnd(.12,.3)})`; c.fillRect(0, rnd(0,H), W, rnd(2,H*.04)); }
+        title(cx, cy - Rr*.05, Math.min(1.35, W*.96/TT.width), .9, true); }
+      else if(t >= 1.5){ const e = t - 1.5, fade = t > T - .55 ? cl((T - t)/.55, 0, 1) : 1;
+        const rest = cl(1 - e/.4, 0, 1); if(rest > 0){ scene(1.35); c.fillStyle = `rgba(0,0,0,${1 - rest*.28})`; c.fillRect(0,0,W,H); }
+        sigil(cx, cy, Rr*2.75, (.55 + .3*cl((t - (T - .95))/.35, 0, 1))*fade*fl*cl(e/.12, 0, 1));
+        const tA = fade*cl((T - .62 - t)/.35, 0, 1)*(Math.random() < .04 ? .3 : 1);
+        if(tA > 0){ const sc = 1 + Math.pow(cl(1 - e/.3, 0, 1), 2)*(Math.min(1.35, W*.96/TT.width) - 1);
+          title(cx, cy - Rr*.05, sc, tA, e < .35 ? Math.random() < .6 : Math.random() < .08);
+          condensed(SUB, cx, cy + Rr*.05 + TT.height*.42 + sfs*.6, sfs, "#efc541", tA*cl((e - .12)/.15, 0, 1), .82); } }
+      // 필름 입자 · 비네트 · 어긋나는 주사선
+      c.save(); c.globalAlpha = .55; c.translate(rnd(-128,0), rnd(-128,0)); c.fillStyle = NP; c.fillRect(0,0,W+128,H+128); c.restore();
+      c.fillStyle = VG; c.fillRect(0,0,W,H);
+      if(Math.random() < .3){ const y0 = Math.random()*H, hh = 2 + Math.random()*22; c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(cv, 0, y0*d, W*d, hh*d, rnd(-24,24)*d, y0*d, W*d, hh*d); c.restore(); }
       if(t >= T) return finish(); raf = requestAnimationFrame(draw); }
     raf = requestAnimationFrame(draw);
   });
