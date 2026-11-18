@@ -183,7 +183,30 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .ach-ic{font-size:22px;color:var(--accent);width:28px;text-align:center}
 .ach .d{font-size:12px;color:var(--muted)}
 .ach-cat{margin:0 0 14px}.ach-cat-h{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 6px;padding-bottom:4px;border-bottom:1px solid var(--line)}
-.trio-row{display:flex;gap:8px;justify-content:center;margin:10px 0}.trio-c{border:1px solid;border-radius:8px;padding:8px 12px;text-align:center;display:flex;flex-direction:column;gap:2px}.trio-c span{color:var(--text);font-size:13px}.trio-end p{line-height:1.7}
+.ledger-q{line-height:1.75}
+.fe-opt{display:flex;flex-direction:column;gap:2px;padding:6px 0;border-top:1px solid var(--line)}
+.ledger-fx{position:fixed;inset:0;z-index:120;background:#060504;display:flex;align-items:center;justify-content:center;transition:opacity .7s;cursor:pointer;overflow:hidden}
+.ledger-fx.out{opacity:0}
+.lg-room{position:relative;width:min(640px,92vw);height:min(560px,80vh);display:flex;align-items:center;justify-content:center;transition:opacity 1.4s, filter 1.4s}
+.lg-lamp{position:absolute;left:50%;top:-30%;width:150%;height:140%;transform:translateX(-50%);background:radial-gradient(ellipse at 50% 35%,rgba(255,206,140,.22),rgba(255,180,100,.06) 45%,transparent 70%);animation:lg-flick 5s infinite;pointer-events:none}
+@keyframes lg-flick{0%,100%{opacity:1}47%{opacity:.92}50%{opacity:.78}53%{opacity:.95}}
+.lg-book{position:relative;width:min(470px,86vw);height:min(470px,68vh);perspective:1400px}
+.lg-page{position:absolute;inset:0;background-color:#d4c5a6;border-radius:3px;box-shadow:0 20px 60px rgba(0,0,0,.7),inset 0 0 40px rgba(90,60,20,.35);padding:28px 30px;color:#2c2216;font-family:"Nanum Myeongjo","Noto Serif KR",serif;overflow:hidden;
+  background-image:repeating-linear-gradient(180deg,transparent 0 31px,rgba(80,60,30,.18) 31px 32px),linear-gradient(180deg,#ddd0b4,#c9b896);background-position:0 70px,0 0}
+.lg-head{font-size:13px;letter-spacing:.2em;color:#6b5636;border-bottom:1px solid rgba(80,60,30,.4);padding-bottom:8px;margin-bottom:6px}
+.lg-line{font-size:15px;line-height:32px;opacity:0;transform:translateY(3px);transition:opacity 1.1s, transform 1.1s;clip-path:inset(0 100% 0 0)}
+.lg-line.on{opacity:1;transform:none;clip-path:inset(0 0 0 0);transition:opacity .9s, transform .9s, clip-path 1.1s steps(28)}
+.lg-cover{position:absolute;inset:0;background:linear-gradient(135deg,#3a2a1c,#21170f);border-radius:3px;transform-origin:left center;transform:rotateY(-178deg);backface-visibility:hidden;transition:transform 1.5s cubic-bezier(.6,.05,.3,1);display:flex;align-items:center;justify-content:center;
+  box-shadow:inset 0 0 0 6px rgba(0,0,0,.25),inset 0 0 0 7px rgba(200,170,110,.25)}
+.lg-cover span{color:rgba(210,180,120,.55);font-family:"Noto Serif KR",serif;letter-spacing:.3em;font-size:14px}
+.ledger-fx.closing .lg-cover{transform:rotateY(0deg)}
+.ledger-fx.dark .lg-room{opacity:.12;filter:blur(1px)}
+.lg-knock{position:absolute;left:0;right:0;bottom:16%;text-align:center;color:#d8cfc2;font-family:"Noto Serif KR",serif;pointer-events:none}
+.lg-knock div{opacity:0;transition:opacity 1.6s}
+.lg-knock .k1{font-size:22px;letter-spacing:.3em}
+.lg-knock .k2{margin-top:18px;font-size:16px;color:#bfb4a6}
+.lg-knock .k3{margin-top:26px;font-size:13px;color:#8d8478}
+.ledger-fx.knock .k1{opacity:1}.ledger-fx.knock .k2{opacity:1;transition-delay:1.8s}.ledger-fx.knock .k3{opacity:1;transition-delay:4s}
 .ach-tier{font-size:10px;border:1px solid;border-radius:3px;padding:0 4px;margin-left:4px;vertical-align:1px;font-weight:600}
 .ach-empty{text-align:center;padding:26px 10px}
 .ach-empty-ic{font-size:40px;color:#3a3740;margin-bottom:6px}
@@ -1270,7 +1293,7 @@ const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
 const REQ_TYPE = {str:"물리",agi:"속도",tec:"정밀",wil:"이상"};
 const gName = g => g===0 ? "특색" : g+"급";
-const START_DEBT = 4000000;
+const START_DEBT = 3000000;   // 사무소를 세우느라 진 빚(건물 · 간판 · 협회 등록)
 // 의뢰 등급별: 기준 보수, 요구치, 재해 등급
 // [기준 보수, 요구치(권장 인원 팀이 75%가 되는 값), 재해 등급]
 // 재해 등급: 뜬소문(9급) · 도시 괴담(9~8급) · 도시 전설(7~6급) · 도시 질병(5~4급) · 도시 악몽(3~2급) · 도시의 별(1급 이상)
@@ -1776,7 +1799,7 @@ const REQ_POOL = [
 ];
 const reqTier = g => g>=8 ? 0 : g>=6 ? 1 : g>=4 ? 2 : 3;
 function genRequests(){
-  const n = 12 - S.officeGrade; // 9급 3개, 8급 4개, 7급 5개 ...
+  let n = 12 - S.officeGrade; // 9급 3개, 8급 4개, 7급 5개 ...
   if(S.day<=3){
     // 초반 3일: 각 해결사의 가장 높은 능력치에 맞춘 쉬운 의뢰(성공률 90% 이상)
     for(let i=0;i<n;i++){
@@ -1789,6 +1812,7 @@ function genRequests(){
     }
     return;
   }
+  if(S.gossip && S.gossip >= S.day && n > 1) n--;   // 현장 사건 '소문'을 내버려 두면 그다음 날 의뢰가 하나 줄어든다
   for(let i=0;i<n;i++){
     const r = Math.random();
     const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9);
@@ -4725,7 +4749,7 @@ async function dispatch(qid, fids){
     else if(r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
     else { mgScore = r.score; pr = clamp(Math.round(base - 25 + 25*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
   else { pr = autoRate(team, q); if(hasGame) payMul = 0.8; if(q.kind==="환상체" && abnoOf(q)) codexMeet(abnoOf(q).vid); mgLine = `자동 진행 · 해결사 등급 판정 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
-  const pay = Math.round(q.reward*payMul/100)*100;
+  let pay = Math.round(q.reward*payMul/100)*100;
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
   const success = decisive!=null ? decisive : Math.random()*100 < pr;
   // 이번 주 심사 기록(사무소 · 해결사): 해낸 수, 수행 점수, 성공 비중
@@ -4741,6 +4765,9 @@ async function dispatch(qid, fids){
   const k = dmgFactor(team,q)*shareMul(team.length);
   const names = team.map(f=>f.name).join(", ");
   let lines = [ ...(mgLine?[mgLine]:[]), decisive!=null ? `${team.length}명 출동 → <b>${success?"성공":"실패"}</b>` : `${team.length}명 출동 · 성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`];
+  // 현장 사건: 환상체 의뢰를 뺀 의뢰에서 가끔 — 성공했으면 보수에, 실패했으면 위로금 등으로 남는다
+  { const fe = await fieldEvent(q, team, success, pay); if(!S || S.over) return;
+    if(fe){ lines.push(fe.line); if(success) pay = Math.max(0, Math.round(pay*fe.payMul/100)*100 + fe.payAdd); else if(fe.payAdd){ S.money += fe.payAdd; S.todayIncome = (S.todayIncome||0) + fe.payAdd; lines.push(`받은 돈 +${won(fe.payAdd)}`); } } }
   // 의뢰가 끝나면 체력(정신 의뢰는 정신력)이 최대치의 일정 비율만큼 깎인다.
   // 성공: 부상 단계에 따라 10~25% · 실패: 35~60%. 직접 싸운 사람은 전투 끝의 부상 단계, 아니면 무작위
   const W_NAME = ["안정","경상","중상","치명상"], LOSS = {ok:[LOSS_OK0,15,20,25], fail:[35,43,52,60]}, gentleQ = q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
@@ -5401,62 +5428,115 @@ function colorAscend(name, title, col){
     raf = requestAnimationFrame(draw);
   });
 }
-/* 세 특색이 모인 사무소 — 셋째 특색이 등재되는 순간 고른다: 이야기를 맺거나(전용 엔딩), 사무소를 계속 연다.
-   계속 열면 매주 하나 협회가 직접 지명한 의뢰가 한 건 올라오고, 언제든 기록에서 이야기를 맺을 수 있다. */
+/* 특색 셋 이후 — 장부를 덮을 수 있다.
+   셋째 이름이 협회 장부에 오르면, 조용한 밤에 대표가 사무소의 장부를 펼친다. 내일도 문을 열거나, 장부를 덮는다.
+   계속 열면 매주 하나 협회 지명 의뢰가 올라오고, 기록 화면에서 언제든 장부를 덮을 수 있다.
+   엔딩 「다음 손님」: 장부의 지난 장들이 한 줄씩 넘어가고, 장부가 덮인 어둠 속에서 문 두드리는 소리가 난다. 끝은 열어 둔다. */
 async function trioCheck(){
   if(!S || S.over || S.trio || colorHeld() < COLOR_MAX) return;
-  S.trio = {day:S.day}; S.records.push({day:S.day, name:S.officeName, what:"세 특색", note:S.fixers.filter(f=>f.grade===0).map(f=>`[${f.title}] ${f.name}`).join(" · ")}); save();
-  const cs = S.fixers.filter(f=>f.grade===0);
-  const v = await modal("세 특색이 모인 사무소", `<p>${esc(S.officeName)}의 문패 아래 세 개의 빛깔이 나란히 섰다.</p>
-    <div class="trio-row">${cs.map(f=>`<div class="trio-c" style="border-color:${f.tcol};color:${f.tcol}"><b>[${esc(f.title)}]</b><span>${esc(f.name)}</span></div>`).join("")}</div>
-    <p class="muted">뒷골목에서 시작한 작은 사무소가 여기까지 왔다. 이야기를 여기서 맺을 수도, 문을 계속 열어 둘 수도 있다.<br>계속 열면 매주 하나 협회가 직접 지명한 의뢰가 올라오고, 맺고 싶을 때 <b>기록</b>에서 언제든 맺을 수 있다.</p>`,
-    [{t:"사무소를 계속 연다", v:"go"}, {t:"이야기를 맺는다", v:"end", primary:true}]);
-  if(v==="end") await trioEnding();
+  S.trio = {day:S.day}; save();
+  const v = await modal("장부", `<p class="ledger-q">셋째 이름이 협회의 장부에 오른 날 밤. 모두 돌아가고 사무소에는 대표 혼자 남았다.<br><br>
+    서랍 깊숙한 곳에서 낡은 장부를 꺼낸다. 첫 장에는 사무소를 세우느라 진 빚 <b>${won(START_DEBT)}</b>과 '개업'이라는 두 글자가 적혀 있다.<br><br>
+    여기서 덮어도 되겠다는 생각이 처음으로 든다.</p>
+    <p class="muted" style="font-size:12px">문을 계속 열면 매주 하나 협회가 직접 지명한 의뢰가 올라온다. 장부는 기록 화면에서 언제든 덮을 수 있다.</p>`,
+    [{t:"내일도 문을 연다", v:"go"}, {t:"장부를 덮는다", v:"end", primary:true}]);
+  if(v==="end") await ledgerEnding();
 }
 function trioRequest(){
-  const q = makeRequest(0); q.client = "하나 협회 지명"; q.reward = Math.round(q.reward*1.5/100)*100; q.text = `하나 협회가 세 특색이 있는 사무소를 지명했다 — ${q.text}`; q.trio = true; return q; }
-function trioFinale(cs){
+  const q = makeRequest(0); q.client = "하나 협회 지명"; q.reward = Math.round(q.reward*1.5/100)*100; q.text = `하나 협회의 지명 — ${q.text}`; q.trio = true; return q; }
+// 장부에 남길 줄: 개업 · 처음 · 잃은 사람 · 빛깔을 얻은 사람 · 오늘
+function ledgerLines(){
+  const R = S.records || [], out = [`1일차 — 개업. 빚 ${won(START_DEBT)}. 대표와 해결사 한 명.`];
+  const first = (w) => R.find(r=>r.what===w);
+  const fh = R.find(r=>r.what==="영입" || r.what==="입사"); if(fh) out.push(`${fh.day}일차 — ${fh.name}, 사무소에 들어오다.`);
+  const og = R.filter(r=>r.what==="사무소 승급"); if(og.length) out.push(`${og[og.length-1].day}일차 — 문패를 ${og[og.length-1].note} 사무소로 바꿔 달다.`);
+  R.filter(r=>/사망|실종|뒤틀림|삭제/.test(r.what)).slice(0,3).forEach(r=>out.push(`${r.day}일차 — ${r.name}. ${r.what==="뒤틀림" ? "목소리를 따라갔다." : r.what==="실종" ? "돌아오지 않았다." : "더는 출근하지 않는다."}`));
+  const rp = first("빚 청산"); if(rp) out.push(`${rp.day}일차 — 빚을 다 갚다.`);
+  S.fixers.filter(f=>f.grade===0).forEach(f=>out.push(`— ${f.name}, [${f.title}].`));
+  out.push(`${S.day}일차 — 장부를 덮다.`);
+  return out; }
+function ledgerScene(lines){
   return new Promise(res=>{
-    const cv = document.createElement("canvas"); cv.className = "aleph-fx"; document.body.appendChild(cv);
-    const d = Math.min(2, devicePixelRatio||1), W = innerWidth, H = innerHeight; cv.width = W*d; cv.height = H*d; const c = cv.getContext("2d"); c.setTransform(d,0,0,d,0,0);
-    const T = 7.5; let t0 = 0, raf, done = false; const cl = (v,a,b) => Math.max(a, Math.min(b, v)), eo = x => 1 - Math.pow(1-x, 3), base = Math.min(W,H), GY = H*.9;
-    const finish = () => { if(done) return; done = true; cancelAnimationFrame(raf); cv.style.transition = "opacity .5s"; cv.style.opacity = 0; setTimeout(()=>{ cv.remove(); res(); }, 520); };
-    cv.onclick = finish;
-    const rgb = col => { const h = String(col||"#e0c070").replace("#",""); return h.length===3 ? h.split("").map(x=>parseInt(x+x,16)) : [0,2,4].map(i=>parseInt(h.slice(i,i+2),16)); };
-    const X = [W*.25, W*.5, W*.75], C = cs.map(f=>rgb(f.tcol));
-    let sd = 5; const rr = () => (sd = (sd*16807) % 2147483647) / 2147483647;
-    const CITY = []; { let x = -10; while(x < W + 10){ const w = 18 + rr()*W*.04, h = H*(.06 + rr()*.2); CITY.push({x, w, h}); x += w + 2; } }
-    function draw(now){ if(!t0) t0 = now; const t = (now - t0)/1000, fade = t > T - .6 ? cl((T - t)/.6, 0, 1) : 1;
-      c.fillStyle = "#040405"; c.fillRect(0,0,W,H);
-      // 세 빛깔이 차례로 떨어져 기둥이 된다
-      cs.forEach((f,i)=>{ const t1 = .4 + i*.7, k = cl((t - t1)/.5, 0, 1), up = eo(cl((t - t1 - .5)/.9, 0, 1)), [r,g,b] = C[i];
-        if(k > 0 && k < 1){ c.fillStyle = `rgb(${r},${g},${b})`; c.beginPath(); c.ellipse(X[i], -10 + (GY + 10)*k*k, 4, 9, 0, 0, 7); c.fill(); }
-        if(up > 0){ const w = base*.04, gr = c.createLinearGradient(X[i] - w*3, 0, X[i] + w*3, 0); gr.addColorStop(0,"rgba(0,0,0,0)"); gr.addColorStop(.5, `rgba(${r},${g},${b},${.5*up*fade})`); gr.addColorStop(1,"rgba(0,0,0,0)");
-          c.fillStyle = gr; c.fillRect(X[i] - w*3, GY - GY*up, w*6, GY*up);
-          const halo = c.createRadialGradient(X[i], GY, 0, X[i], GY, base*.35*up); halo.addColorStop(0, `rgba(${r},${g},${b},${.35*fade})`); halo.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = halo; c.fillRect(0,0,W,H);
-          c.save(); c.globalAlpha = up*fade; c.textAlign = "center"; c.fillStyle = `rgb(${r},${g},${b})`; c.shadowColor = `rgb(${r},${g},${b})`; c.shadowBlur = 16; c.font = `900 ${Math.max(16, base*.04)}px "Noto Serif KR",serif`;
-          c.fillText(`[${f.title}]`, X[i], H*.3 + i%2*base*.05); c.shadowBlur = 0; c.fillStyle = "#eee8e0"; c.font = `600 ${Math.max(12, base*.026)}px "Noto Sans KR",sans-serif`; c.fillText(f.name, X[i], H*.3 + i%2*base*.05 + base*.045); c.restore(); } });
-      // 빛이 이어지며 사무소 이름이 남는다
-      const j = eo(cl((t - 3.6)/1.2, 0, 1));
-      if(j > 0){ c.strokeStyle = `rgba(255,240,210,${.4*j*fade})`; c.lineWidth = 1.5; c.beginPath(); c.moveTo(X[0], H*.47); c.lineTo(X[0] + (X[2]-X[0])*j, H*.47); c.stroke();
-        c.save(); c.globalAlpha = j*fade; c.textAlign = "center"; c.fillStyle = "#f3eadb"; c.font = `900 ${Math.min(base*.09, W*.8/Math.max(4, S.officeName.length))}px "Noto Serif KR",serif`; c.fillText(S.officeName, W/2, H*.6);
-        c.fillStyle = "rgba(233,194,74,.9)"; c.font = `600 ${Math.max(13, base*.028)}px "Noto Sans KR",sans-serif`; c.fillText("세 특색이 모인 사무소", W/2, H*.6 + base*.06); c.restore(); }
-      CITY.forEach(b=>{ c.fillStyle = "#08080a"; c.fillRect(b.x, GY - b.h, b.w, b.h); }); c.fillRect(0, GY, W, H - GY);
-      if(t >= T) return finish(); raf = requestAnimationFrame(draw); }
-    raf = requestAnimationFrame(draw); }); }
-async function trioEnding(){
-  const cs = S.fixers.filter(f=>f.grade===0); if(cs.length < 3) return;
-  await trioFinale(cs);
-  ac("end"); ac("trioEnd"); acSet("ending", "세 특색이 모인 사무소");
-  S.records.push({day:S.day, name:S.officeName, what:"엔딩", note:"세 특색이 모인 사무소"}); S.over = true; save(); render();
-  const lines = [
-    `${esc(S.officeName)}의 이름은 그 뒤로 오래 불렸다. 처음 문을 연 날의 빚은 ${S.debt<=0 ? "모두 갚았고" : `${won(S.debt)}이 남아 있었지만 아무도 그것을 먼저 꺼내지 않았고`}, 문패 아래에는 세 개의 빛깔이 남았다.`,
-    `${cs.map(f=>`<b style="color:${f.tcol}">[${esc(f.title)}]</b> ${esc(f.name)}`).join(", ")} — 골목 사람들은 그 셋이 같은 사무소에서 일한다는 걸 신기해했다. 특색은 보통 혼자 다니니까.`,
-    `도시는 바뀌지 않았다. 둥지의 불빛은 여전히 꺼지지 않고, 뒷골목의 밤은 여전히 길다. 다만 그 골목 어귀에 의뢰를 맡길 만한 곳이 하나 있다는 걸, 이제는 모두가 안다.`];
-  await modal("엔딩 — 세 특색이 모인 사무소", `<div class="trio-end">${lines.map(l=>`<p>${l}</p>`).join("")}</div>
+    const el = document.createElement("div"); el.className = "ledger-fx";
+    el.innerHTML = `<div class="lg-room"><div class="lg-lamp"></div><div class="lg-book"><div class="lg-page"><div class="lg-head">${esc(S.officeName)} · 장부</div><div class="lg-lines"></div></div><div class="lg-cover"><span>${esc(S.officeName)}</span></div></div></div>
+      <div class="lg-knock"><div class="k1">똑, 똑.</div><div class="k2">"…여기, 해결사 사무소 맞나요?"</div><div class="k3">대표는 잠시 덮인 장부를 내려다보다가, 일어나 문을 열었다.</div></div>`;
+    document.body.appendChild(el);
+    let done = false; const timers = [], at = (ms, fn) => timers.push(setTimeout(fn, ms));
+    const finish = () => { if(done) return; done = true; timers.forEach(clearTimeout); el.classList.add("out"); setTimeout(()=>{ el.remove(); res(); }, 700); };
+    el.onclick = () => { if(el.classList.contains("knock")) finish(); else { timers.forEach(clearTimeout); timers.length = 0; showAll(); } };
+    const box = el.querySelector(".lg-lines");
+    // 한 줄씩 손으로 적듯 나타나고, 앞줄은 조금씩 바랜다
+    lines.forEach((t,i)=>at(900 + i*1150, ()=>{ const d = document.createElement("div"); d.className = "lg-line"; d.textContent = t; box.appendChild(d); requestAnimationFrame(()=>d.classList.add("on"));
+      [...box.children].forEach((c,j,arr)=>{ c.style.opacity = j === arr.length-1 ? "" : String(Math.max(.35, 1 - (arr.length-1-j)*.12)); }); }));
+    const tClose = 900 + lines.length*1150 + 900;
+    function closeAndKnock(delay){ at(delay, ()=>el.classList.add("closing")); at(delay + 1600, ()=>el.classList.add("dark")); at(delay + 2900, ()=>el.classList.add("knock"));
+      at(delay + 2900 + 7000, finish); }
+    function showAll(){ box.innerHTML = lines.map(t=>`<div class="lg-line on">${esc(t)}</div>`).join(""); closeAndKnock(600); }
+    closeAndKnock(tClose);
+  }); }
+async function ledgerEnding(){
+  if(!S) return;
+  await ledgerScene(ledgerLines());
+  ac("end"); ac("trioEnd"); acSet("ending", "다음 손님");
+  S.records.push({day:S.day, name:S.officeName, what:"엔딩", note:"다음 손님"}); S.over = true; save(); render();
+  await modal("엔딩 — 다음 손님", `<p class="muted" style="line-height:1.7">장부는 거기서 끝난다. 그 뒤로도 그 골목의 불은 한동안 늦게까지 켜져 있었다고 한다.</p>
     <div class="kv"><span>버틴 날</span><b>${S.day}일</b><span>사무소 등급</span><b>${gName(S.officeGrade)} 사무소</b><span>남은 빚</span><b>${won(S.debt)}</b><span>함께한 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"새 게임", primary:true, v:"new"}]);
   clearSave(); S = null; renderStart();
 }
+/* ================= 현장 사건 =================
+   환상체 의뢰를 뺀 의뢰(일반 · 호위 · 수색)에서, 성패가 갈린 뒤 돌아오는 길이나 정산하는 자리에서 가끔 일이 벌어진다.
+   사건마다 고를 거리 둘. 결과는 보수 · 체력 · 정신력 · 게시판에 바로 반영된다. 시작 구역의 이름이 섞여 나온다. */
+const FIELD_P = 0.18;
+const FIELD_EVENTS = [
+  {id:"extra", when:"ok", t:"웃돈", body:q=>`일을 마치자 ${esc(q.client)}이(가) 봉투를 하나 더 내민다. "같은 동네에 한 건 더 있는데… 오늘 안에 봐 줄 수 있겠소?"`,
+   opts:[{t:"맡는다", d:"같은 등급 의뢰가 하나 더 올라온다(보수 +20%, 기한 1일)", run:(c)=>{ const nq = makeRequest(c.q.grade, {kind:"일반", attrs:[pick(["str","agi","tec"])]}); nq.reward = Math.round(nq.reward*1.2/100)*100; nq.deadline = S.day + 1; nq.client = c.q.client; S.requests.unshift(nq); return "게시판에 의뢰가 하나 더 붙었다(보수 +20%)."; }},
+         {t:"오늘은 여기까지", d:"수고비로 보수의 10%를 더 받는다", run:(c)=>{ c.payMul *= 1.1; return "의뢰인이 웃으며 수고비를 얹어 주었다(보수 +10%)."; }}]},
+  {id:"rival", when:"ok", t:"몫 다툼", body:q=>`현장을 정리하는데 다른 사무소 사람들이 들이닥쳤다. "이 건, 우리가 먼저 받은 거야. 몫 좀 나누지?"`,
+   opts:[{t:"몫을 떼어 준다", d:"보수 -20% · 일 없이 끝난다", run:(c)=>{ c.payMul *= 0.8; return "말없이 봉투에서 몇 장을 덜어 주었다(보수 -20%)."; }},
+         {t:"버틴다", d:"가장 센 사람의 근력 판정 — 이기면 보수 +15%, 지면 다친다", run:(c)=>{ const f = c.best("str"), ok = Math.random() < clamp(power(f,["str"])/Math.max(1,c.q.req)*0.6, 0.2, 0.9);
+           if(ok){ c.payMul *= 1.15; return `${esc(jo(f.name,"이"))} 앞으로 나서자 그들이 물러났다. 오히려 사과 값까지 챙겼다(보수 +15%).`; }
+           const v = Math.floor(f.hpMax*0.12); f.hp = Math.max(1, f.hp - v); return `<span style="color:#ff8a7a">주먹다짐이 붙었다. ${esc(f.name)} 체력 -${v}.</span> 보수는 지켰다.`; }}]},
+  {id:"stiff", when:"ok", t:"외상", body:q=>`${esc(q.client)}이(가) 난처한 얼굴로 머리를 긁는다. "지금 가진 게 이것뿐이라… 나머지는 사흘 안에 꼭 드리리다."`,
+   opts:[{t:"믿고 기다린다", d:"지금 보수의 60%만, 사흘 뒤 나머지 60%가 들어온다", run:(c)=>{ const later = Math.round(c.pay*0.6/100)*100; c.payMul *= 0.6; S.pending = (S.pending||[]).concat([{day:S.day+3, amt:later, from:c.q.client}]); return `사흘 뒤 ${won(later)}을 받기로 했다.`; }},
+         {t:"지금 받아 낸다", d:"대표의 의지 판정 — 이기면 전액, 지면 절반만", run:(c)=>{ const L = leader() || c.team[0], ok = Math.random() < clamp(power(L,["wil"])/Math.max(1,c.q.req)*0.6, 0.2, 0.9);
+           if(ok) return "끝까지 눈을 피하지 않자 의뢰인이 숨겨 둔 돈을 꺼냈다(전액)."; c.payMul *= 0.5; return `<span style="color:#ff8a7a">의뢰인이 뒷문으로 달아났다. 절반만 손에 남았다.</span>`; }}]},
+  {id:"patrol", when:"any", t:"순찰대", body:()=>`돌아오는 길, ${esc(districtOf().name)} 둥지 경비대가 길을 막는다. "방금 그 소란, 해결사 쪽이지? 신고서부터 쓰고 가."`,
+   opts:[{t:"서류를 쓴다", d:"출동한 사람 모두 정신력 -5%", run:(c)=>{ c.team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.floor(f.mpMax*0.05)); }); return "끝도 없는 서식을 채우고서야 풀려났다(정신력 -5%)."; }},
+         {t:"찔러 준다", d:"자금에서 보수의 15%를 건넨다", run:(c)=>{ const v = Math.round(c.pay*0.15/100)*100; S.money = Math.max(0, S.money - v); return `경비대원이 봉투를 받아 넣고 길을 비켜 주었다(-${won(v)}).`; }}]},
+  {id:"loot", when:"ok", t:"주인 없는 물건", body:()=>`정리하던 자리 구석에서 쓸 만해 보이는 상자를 찾았다. 주인은 이미 없다.`,
+   opts:[{t:"챙긴다", d:"보수의 25%만큼 값이 나간다 — 다만 정신력 -3%", run:(c)=>{ c.payAdd += Math.round(c.pay*0.25/100)*100; c.team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.floor(f.mpMax*0.03)); }); return "상자를 열어 보니 팔 만한 부품이 들어 있었다. 뒷맛은 조금 씁쓸하다."; }},
+         {t:"그대로 둔다", d:"정신력 +5%", run:(c)=>{ c.team.forEach(f=>{ f.mp = Math.min(f.mpMax, f.mp + Math.floor(f.mpMax*0.05)); }); return "누군가의 것이었을 상자를 그 자리에 두고 나왔다(정신력 +5%)."; }}]},
+  {id:"kid", when:"any", t:"골목 아이", body:()=>`현장부터 내내 따라온 아이가 손을 내민다. "아저씨들 일하는 거 다 봤어. 나 망봐 줬잖아."`,
+   opts:[{t:"동전을 쥐여 준다", d:"-1,000 안 · 정신력 +4%", run:(c)=>{ S.money = Math.max(0, S.money - 1000); c.team.forEach(f=>{ f.mp = Math.min(f.mpMax, f.mp + Math.floor(f.mpMax*0.04)); }); return "아이가 동전을 꼭 쥐고 골목 안으로 뛰어갔다."; }},
+         {t:"모른 척한다", d:"아무 일도 없다", run:()=>"아이는 한참 서 있다가 다른 어른을 따라갔다."}]},
+  {id:"hurt", when:"any", t:"쓰러진 사람", body:()=>`길가에 피를 흘리며 쓰러진 사람이 있다. 아직 숨이 붙어 있다.`,
+   opts:[{t:"돕는다", d:"가장 멀쩡한 사람 체력 -6% · 절반 확률로 그 사람이 나중에 의뢰를 들고 온다", run:(c)=>{ const f = c.team.slice().sort((a,b)=>b.hp/b.hpMax-a.hp/a.hpMax)[0]; f.hp = Math.max(1, f.hp - Math.floor(f.hpMax*0.06));
+           if(Math.random()<0.5){ const nq = makeRequest(clamp(c.q.grade, S.officeGrade, 9)); nq.client = "길에서 구해 준 사람"; nq.reward = Math.round(nq.reward*1.25/100)*100; S.requests.push(nq); return `${esc(f.name)}이(가) 업어서 진료소까지 데려다주었다. 며칠 뒤 그가 의뢰를 들고 찾아왔다(보수 +25%).`; }
+           return `${esc(f.name)}이(가) 업어서 진료소까지 데려다주었다. 이름도 묻지 못했다.`; }},
+         {t:"지나친다", d:"출동한 사람 모두 정신력 -3%", run:(c)=>{ c.team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.floor(f.mpMax*0.03)); }); return "도시에선 흔한 일이다. 그래도 발걸음이 무겁다."; }}]},
+  {id:"retry", when:"fail", t:"한 번 더", body:q=>`${esc(q.client)}이(가) 다른 사무소에 넘기기 전에 묻는다. "…한 번만 더 맡아 줄 수 있겠소? 대신 값은 깎읍시다."`,
+   opts:[{t:"다시 맡는다", d:"같은 의뢰가 보수 -30%로 게시판에 돌아온다", run:(c)=>{ const nq = Object.assign({}, c.q, {id:S.nextId++, reward:Math.round(c.q.reward*0.7/100)*100, deadline: c.q.deadline ? Math.max(c.q.deadline, S.day+1) : S.day+2}); S.requests.unshift(nq); return "같은 의뢰를 다시 받았다(보수 -30%)."; }},
+         {t:"고개를 숙인다", d:"아무 일도 없다", run:()=>"의뢰인은 말없이 돌아섰다."}]},
+  {id:"gossip", when:"fail", t:"소문", body:()=>`실패한 이야기가 벌써 골목에 돌고 있다. "${esc(S.officeName)}? 거기 요즘 손이 무디다던데."`,
+   opts:[{t:"의뢰인을 찾아가 사과한다", d:"자금 -보수의 10% · 소문이 가라앉는다", run:(c)=>{ const v = Math.round(c.q.reward*0.1/100)*100; S.money = Math.max(0, S.money - v); return `작은 선물을 들고 찾아가 고개를 숙였다(-${won(v)}). 소문은 금방 잦아들었다.`; }},
+         {t:"내버려 둔다", d:"내일 게시판의 의뢰가 하나 줄어든다", run:()=>{ S.gossip = S.day + 1; return "소문은 소문일 뿐이다. 다만 내일은 문을 두드리는 사람이 적을지도 모른다."; }}]},
+  {id:"comfort", when:"fail", t:"약값", body:q=>`다친 얼굴을 본 ${esc(q.client)}이(가) 주머니를 뒤진다. "일은 틀어졌어도… 이걸로 약이라도 사시오."`,
+   opts:[{t:"받는다", d:"보수의 15%를 받는다", run:(c)=>{ c.payAdd += Math.round(c.q.reward*0.15/100)*100; return "고맙게 받아 들었다."; }},
+         {t:"사양한다", d:"출동한 사람 모두 정신력 +4%", run:(c)=>{ c.team.forEach(f=>{ f.mp = Math.min(f.mpMax, f.mp + Math.floor(f.mpMax*0.04)); }); return "괜찮다고 손을 저었다. 의뢰인은 몇 번이고 고개를 숙였다."; }}]},
+  {id:"rats", when:"any", t:"뒷골목 쥐", body:()=>`지름길로 들어서자 뒷골목 쥐 몇이 쇠파이프를 끌며 길을 막는다. "가진 거 다 내놓고 가."`,
+   opts:[{t:"싸운다", d:"가장 센 사람의 근력 판정 — 이기면 쥐들의 주머니를, 지면 다친다", run:(c)=>{ const f = c.best("str"), ok = Math.random() < clamp(0.55 + (9 - f.grade)*0.06, 0.4, 0.95);
+           if(ok){ const v = rnd(2,6)*1000; c.payAdd += v; return `${esc(f.name)}이(가) 앞장서 쥐들을 쫓아냈다. 떨어뜨린 지갑을 주웠다(+${won(v)}).`; }
+           const v = Math.floor(f.hpMax*0.1); f.hp = Math.max(1, f.hp - v); return `<span style="color:#ff8a7a">숫자에 밀렸다. ${esc(f.name)} 체력 -${v}.</span>`; }},
+         {t:"돌아간다", d:"출동한 사람 모두 체력 -4%(먼 길)", run:(c)=>{ c.team.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.floor(f.hpMax*0.04)); }); return "먼 길을 돌아서 왔다. 발바닥이 욱신거린다."; }}]},
+];
+async function fieldEvent(q, team, success, pay){
+  if(q.kind==="환상체" || q.trio || q.kind==="뒤틀림 토벌" || q.kind==="지명" || q.kind==="특색 심사") return null;
+  if(!window.__forceField && Math.random() >= FIELD_P) return null;
+  const pool = FIELD_EVENTS.filter(e=>e.when==="any" || (e.when==="ok") === success); const E = window.__forceField && FIELD_EVENTS.find(e=>e.id===window.__forceField) || pick(pool);
+  const c = {q, team, success, pay, payMul:1, payAdd:0, best: a => team.slice().sort((x,y)=>power(y,[a])-power(x,[a]))[0]};
+  const v = await modal(`현장 사건 — ${E.t}`, `<p>${E.body(q)}</p><div class="pk-moves">${E.opts.map((o,i)=>`<div class="fe-opt"><b>${o.t}</b><small class="muted">${o.d}</small></div>`).join("")}</div>`, E.opts.map((o,i)=>({t:o.t, v:i, primary:i===0})));
+  const o = E.opts[typeof v==="number" ? v : 1] || E.opts[1]; const note = o.run(c); ac("field");
+  return {payMul:c.payMul, payAdd:c.payAdd, line:`<span style="color:#d8c9a0">현장 사건 · ${E.t}</span> — ${note}`}; }
 const COLOR_MAX = 3;
 const colorHeld = () => S ? S.fixers.filter(f=>f.grade===0).length : 0;
 async function passColor(f, preset){ if(colorHeld() >= COLOR_MAX && f.grade!==0) return; ac("color");
@@ -5728,7 +5808,9 @@ function closeShop(){
   });
 }
 async function endDayInner(reason){
-  const ended = S.day; ac("days"); S.st = S.st || {}; S.st.days = ended; acSet("weather", S.weather && S.weather.w);
+  const ended = S.day; ac("days");
+  if(S.pending && S.pending.length){ const due = S.pending.filter(p=>p.day <= ended + 1); S.pending = S.pending.filter(p=>p.day > ended + 1);
+    due.forEach(p=>{ S.money += p.amt; addLog(`${p.from}이(가) 미뤄 둔 보수 ${won(p.amt)}을 가져왔다`); }); } S.st = S.st || {}; S.st.days = ended; acSet("weather", S.weather && S.weather.w);
   { const inc = S.todayIncome||0; acMax("dayPayBest", inc); if(S.scars===2 && S.st.edgeDay && ended - S.st.edgeDay >= 7) acMax("edge7", 1); }
   // 회복
   S.fixers.forEach(f=>{ f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*0.2)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*0.2)); });
@@ -5897,7 +5979,7 @@ async function openRecruit(){
       const nm = await promptBox("이름", "이 해결사의 이름을 정한다(그대로 두거나 랜덤).", f.name, true);
       if(nm===null) return;
       f.name = nm || f.name; S.money -= f.cost; f.hiredDay=S.day; delete f.cost;
-      S.fixers.push(f); S.recruitPool = S.recruitPool.filter(x=>x!==f); ac("hire"); f.hiredGrade = f.grade;
+      S.fixers.push(f); S.recruitPool = S.recruitPool.filter(x=>x!==f); ac("hire"); f.hiredGrade = f.grade; S.records.push({day:S.day, name:f.name, what:"영입", note:gName(f.grade)});
       addLog(`${jo(f.name,"을")} 고용했다(${gName(f.grade)}).`);
       root.querySelector("#rlist").innerHTML = draw(); save(); render();
     });
@@ -6396,7 +6478,7 @@ async function openRecords(){
   const rec = S.records.slice().reverse();
   await modal("기록", `<div class="tabs"><button class="on">사무소 인사 기록</button></div>
    ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}
-   ${S.trio && colorHeld() >= COLOR_MAX ? `<h4 style="margin:16px 0 6px">세 특색이 모인 사무소</h4><p class="muted" style="font-size:12px">원할 때 사무소의 이야기를 맺을 수 있다.</p><button class="primary" data-x="trio">이야기를 맺는다</button>` : ""}
+   ${S.trio && colorHeld() >= COLOR_MAX ? `<h4 style="margin:16px 0 6px">장부</h4><p class="muted" style="font-size:12px">서랍 속 낡은 장부. 원할 때 덮을 수 있다.</p><button class="primary" data-x="trio">장부를 덮는다</button>` : ""}
    <h4 style="margin:16px 0 6px">저장 관리</h4>
    <p class="muted" style="font-size:12px">진행 상황은 이 브라우저에 자동 저장된다. 브라우저 저장소는 지워질 수 있으니 가끔 코드를 복사해 두자.</p>
    <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-x="export">저장 코드 복사</button><button data-x="import">저장 코드 불러오기</button><button class="danger" data-x="reset">처음부터 다시</button></div>`, [{t:"닫기"}], false, root=>{
@@ -6404,7 +6486,7 @@ async function openRecords(){
       const x=e.target.dataset.x; if(!x) return;
       if(x==="export"){ ac("export"); const code=btoa(unescape(encodeURIComponent(JSON.stringify(S)))); try{ await navigator.clipboard.writeText(code); e.target.textContent="복사됨"; }catch(_){ await promptBox("저장 코드","아래 코드를 복사해 두자.",code,true);} }
       if(x==="import"){ const code=await promptBox("불러오기","저장 코드를 붙여 넣는다.","",true); if(!code) return; try{ const d=JSON.parse(decodeURIComponent(escape(atob(code.trim())))); if(!d.fixers) throw 0; S=d; save(); closeAll(); render(); }catch(_){ alertBox("불러오기 실패","코드가 올바르지 않다."); } }
-      if(x==="trio"){ if(await confirmBox("이야기를 맺는다", "세 특색이 모인 사무소의 이야기를 여기서 맺는다. 진행은 끝나고 엔딩을 본다.")){ closeAll(); await trioEnding(); } return; }
+      if(x==="trio"){ if(await confirmBox("장부를 덮는다", "사무소의 장부를 덮는다. 진행은 여기서 끝나고 엔딩을 본다.")){ closeAll(); await ledgerEnding(); } return; }
       if(x==="reset"){ if(await confirmBox("처음부터","지금 진행 상황이 사라진다.")){ clearSave(); S=null; closeAll(); renderStart(); } }
     });
   });
@@ -6739,7 +6821,7 @@ const ACH_RAW = [
 [3,"신화","삼천 일","모두 합쳐 3,000일을 보낸다.", X=>X.L.days>=3000],
 [3,"유일","도시의 이야기","다른 업적을 모두 이룬다.", X=>X.achN>=ACHIEVEMENTS.length-1],
 ];
-const ACH_ENDINGS = ["빚 청산","대표 사망","대표 실종","인식에서 삭제","세 번째 흉터","대표의 뒤틀림","세 특색이 모인 사무소"];
+const ACH_ENDINGS = ["빚 청산","대표 사망","대표 실종","인식에서 삭제","세 번째 흉터","대표의 뒤틀림","다음 손님"];
 const ACHIEVEMENTS = ACH_RAW.map((r,i)=>({id:"a"+r[0]+"_"+i, cat:r[0], tier:r[1], name:r[2], desc:r[3], test:r[4], hidden: r[1]==="유일"}));
 const ACH_KEY = "problem-solver-achievements-v1";
 function achLoad(){ try{ return JSON.parse(localStorage.getItem(ACH_KEY))||{}; }catch(_){ return {}; } }
@@ -6835,7 +6917,7 @@ function renderStart(){
     <div class="name-panel" id="np" hidden>
       <div class="np-h">개업 신고서 <span>하나 협회 제출용</span></div>
       <div class="np-body">
-        <p class="muted">빚 ${won(START_DEBT)}을 진 8급 사무소. 대표인 당신과 9급 해결사 한 명으로 시작한다.<br>매주 [남겨진 흉터]가 금고의 35%를 걷어 간다. 흉터가 세 번 새겨지면 끝이다.</p>
+        <p class="muted">사무소를 세우느라 진 빚 ${won(START_DEBT)}. 8급 사무소. 대표인 당신과 9급 해결사 한 명으로 시작한다.<br>매주 [남겨진 흉터]가 금고의 35%를 걷어 간다. 흉터가 세 번 새겨지면 끝이다.</p>
         <div class="field"><label>대표 이름</label><input id="s1" maxlength="16" value="${esc(randomName())}"><button data-r="s1">랜덤</button></div>
         <div class="field"><label>사무소 이름</label><input id="s2" maxlength="20" value="${esc(randomOffice())}"><button data-r="s2">랜덤</button></div>
         <div class="field"><label>동료 이름</label><input id="s3" maxlength="16" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
