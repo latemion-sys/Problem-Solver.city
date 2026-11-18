@@ -3452,13 +3452,13 @@ const ABNOS = [
    noFight:true, doom:{t:"고백을 끝내지 못하고 물러났다. 해골은 아무것도 묻지 않았다", mind:0.02},
    escape:"자리를 떠나지 않는다. 좋은 결과를 얻으면 행동한 이의 정신을 달래 준다. 알로 잠들 때는 그 자리의 모두가 털어놓은 죄를 받아 가, 일행 모두의 정신이 조금 가벼워진다. 실패해도 큰 탈은 없다", story:"[고해소 해골 앞 · 어느 해결사의 음성 메모]\n……그날 의뢰는 제압이었어요. 근데 제가 손을 좀 더 썼어요. 일부러는 아니었다고 하면, 거짓말이겠죠.\n(해골의 눈구멍이 희미하게 밝아진다)\n아, 방금 그것도 거짓말이네요. 일부러였어요.\n(빛이 가라앉는다)\n이상하네. 털어놓으니까 숨이 좀 쉬어져요. 사무소 사람들은 여길 '고해소'라고 불러요. 들어 주기만 하고 아무 말도 안 하니까. 대신 거짓말을 하면… 얘가 그걸 먹는 것 같아요. 아주 맛있게.\n다음에 또 올게요. 아마, 금방.",
    like:"해골이 고요히 고개를 숙인다", dislike:"가시관이 조금 조여든다", rule:"heal",
-   gifts:{ctrl:{n:"가시관 한 가닥", mpRed:0.12, bonus:{wil:2}}, sup:null}},
+   gifts:{ctrl:{n:"참회", mpRed:0.024, selfUp:0.1, canon:1}, sup:null}},
   {id:"wellcheers", gentle:true, n:"뚜껑 따인 웰치어스", risk:"ZAYIN", canon:"L", code:"F-05-52", g:[6,5], form:"'웰치어스! 오션 소다' 광고가 보랏빛 화면에서 번쩍이는 회색 자판기. 겉면은 음료를 권하는 낙서투성이고, 곁에는 작업복과 노란 장화 차림의 사람만 한 새우 일꾼들이 서 있다", look:"번쩍이는 회색 자판기 옆에 새우를 닮은 일꾼 둘이 서 있다",
    rumor:"폐공장 자판기에서 공짜 음료가 나온다. 마신 사람 중 몇이 사라졌다", pref:PF("str=agi>tec=wil"), ctr:3, noCounter:true, rule:"soda",
    noFight:true, doom:{t:"새우 일꾼들이 등을 돌렸다. 자판기 불이 꺼지고 더는 아무것도 내주지 않았다", mind:0.02},
    escape:"자리를 떠나지 않는다. 행동이 끝날 때마다 새우 일꾼이 탄산수를 건넨다 — 근력 행동엔 체리(체력), 민첩 행동엔 오리지널(정신력), 재주·의지 행동엔 포도(둘 다). 기분이 상한 뒤(틀린 행동 직후)에 마시면 탄산 파도 소리에 잠깐 졸다 깬다. 실패해도 자판기 불이 꺼질 뿐 큰 탈은 없다", story:"★ 웰치어스! 오션 소다 ★ 공장 지대 3번 골목 자판기에서 지금 무료로!\n✔ 버튼 안 눌러도 OK! 뚜껑까지 따서 드립니다\n✔ 친절한 일꾼들이 직접 건네 드려요\n✔ 한 모금이면 파도 소리가 들리는 상쾌함!\n* 일꾼들의 기분에 따라 맛이 달라질 수 있습니다.\n* 마신 뒤 졸음이 오면 즉시 귀가하십시오. 바닷가로 가지 마십시오.\n* 이 골목에는 바다가 없습니다. 그래도 갈매기 소리가 들린다면 캔을 내려놓으십시오.\n(전단 뒷면, 볼펜 글씨) 우리 형은 내려놓지 않았다. 그날 밤 뱃고동이 한 번 울렸다.",
    like:"자판기 화면이 반짝인다", dislike:"새우 일꾼들이 이쪽을 빤히 본다",
-   gifts:{ctrl:{n:"포도맛 탄산 캔", mpRed:0.08, hpRed:0.04}, sup:null}},
+   gifts:{ctrl:{n:"소다", hpRed:0.024, canon:1}, sup:null}},
   {id:"donttouch", n:"만지지 마", risk:"ZAYIN", canon:"L", code:"O-05-47", g:[6,5], form:"노란 받침대 위에 커다란 빨간 버튼 하나만 달려 있다. 그 밖에는 아무것도 없다", look:"노란 상자 위에 커다란 빨간 버튼이 달려 있다. '만지지 마시오'",
    rumor:"빈 사무실에 버튼 달린 상자가 놓였다. 직원들이 누르고 싶어 잠을 못 잔다", pref:{str:"좋음", agi:"좋음", tec:"좋음", wil:"좋음"}, ctr:3, noCounter:true, rule:"watch",
    noFight:true, doom:{t:"누군가 결국 버튼을 눌렀다", custom:"button"},
@@ -3470,7 +3470,7 @@ const ABNOS = [
    noFight:true, doom:{t:"요정들이 흥미를 잃고 흩어졌다. 보살핌도, 축제도 끝났다", mind:0.02},
    escape:"자리를 떠나지 않는다. 행동이 맞으면 요정들이 행동한 이를 따라붙어 상처를 돌봐 준다. 그 보살핌이 남아 있는 동안(다음 날까지) 다른 의뢰에 나서면, 요정들은 그를 먹어 치운다. 의뢰에 실패하면 요정들이 흩어질 뿐 큰 탈은 없다", story:"옛날 옛적, 나무가 다 사라진 도시에 작은 요정들이 살았어요.\n요정들은 다친 사람을 보면 그냥 지나치지 못했어요. 쪼르르 날아가 상처를 닦아 주고, 호오 불어 주고, 밤새 곁을 지켜 주었지요. 보살핌을 받은 사람은 금세 나았어요.\n사람들은 고맙다고 인사했어요. 그리고 각자의 집으로 돌아가려 했지요.\n요정들은 고개를 갸웃했어요.\n「어디 가? 우리가 이렇게 정성껏 돌봤는데.」\n「이렇게 통통하게 잘 키웠는데.」\n그날 밤 공원에서는 오랜만에 축제가 열렸어요. 아주, 아주 맛있는 축제였답니다.",
    like:"요정들이 상처를 어루만진다", dislike:"요정들의 눈빛이 굶주려 보인다", rule:"healHp",
-   gifts:{ctrl:{n:"요정의 날개 가루", hpRed:0.06, bonus:{tec:1}}, sup:null}},
+   gifts:{ctrl:{n:"날갯짓", bonus:{tec:1}, canon:1}, sup:null}},
   {id:"toad", n:"울음 두꺼비", risk:"ZAYIN", canon:"LCB", code:"T-01-23-04", g:[6,5], rule:"tongue", form:"잿빛이 도는 새까만 살갗에 오돌토돌한 반점이 박힌, 낮고 둥글게 웅크린 두꺼비. 머리 양옆으로 튀어나온 커다란 파란 눈은 유리처럼 번들거리고, 가운데 세로로 찢어진 동공이 있다. 등줄기의 돌기를 따라 푸른빛이 군데군데 맺혀 있고, 처진 입꼬리에서 파란 눈물 같은 진액이 뚝뚝 떨어진다", look:"새까만 두꺼비가 처진 입꼬리로 파란 진액을 흘리며, 커다란 파란 눈을 끔뻑인다",
    rumor:"저수지에서 밤마다 우는 소리가 난다. 다가간 낚시꾼이 혀에 맞고 기운을 잃었다", pref:PF("tec>agi>wil>str"), ctr:3,
    escape:"틀린 행동마다 혀에 맞는다. 혀에 많이 맞을수록, 울음이 터져 덤빌 때 던지는 눈알이 더 치명적이 된다", story:"아이고, 말도 마. 밤낚시 갔다가 봤다니까. 둑 아래 동굴에서 엉엉 우는 소리가 나길래 사람인 줄 알았지. 누가 빠졌나 싶어 랜턴을 비췄더니, 글쎄 두꺼비야. 사람만 한 게 파란 눈이 이따만 해서는 눈물을 줄줄 흘리고 있더라고.\n뭐가 그렇게 서럽냐고 말을 걸었지. 그랬더니 혀가 쑥 날아와서 뺨을 철썩. 아프진 않았어. 근데 그날부터 사흘을 울었어. 이유도 없이. 마누라가 미쳤냐고 하더라.\n그 뒤로 둑 근처엔 안 가. 근데 가끔 그 울음소리가 생각나. 뭐가 그렇게 슬펐을까. 생각하다 보면, 나도 좀 슬퍼져.\n— 저수지 낚시꾼의 이야기",
@@ -3518,21 +3518,21 @@ const ABNOS = [
    escape:"곁의 누군가가 무너지기 직전이면(정신력 25% 미만인 이가 행동하면) 벌하려 들어 카운터가 준다. 폭주하면 작은 부리로 쪼며 돌아다니고, 4턴이 지나면 스스로 알로 돌아간다. 하지만 한 번이라도 맞으면 붉게 변해 가슴의 큰 부리를 꺼낸다 — 물리면 그대로 쓰러진다. 치지 말고 방어에 전념할 것", story:"[우화집 『검은 숲 이야기』 중에서]\n작은 새가 물었어요. 「사람들은 왜 나쁜 줄 알면서 죄를 지을까?」\n아무도 대답하지 않았어요. 그래서 작은 새는 스스로 벌을 주기로 했어요.\n콕, 콕. 작은 부리로 쪼아도 사람들은 웃기만 했어요. 「간지러워라. 그런 부리로 누굴 벌하겠니?」\n작은 새는 밤새 고민했어요. 그리고 다음 날, 배를 활짝 열어 보였어요. 그 안에는 무엇이든 한입에 삼킬 수 있는 커다란 입이 있었어요.\n이제 아무도 웃지 않아요.\n이 이야기의 교훈:\n(교훈 칸은 비어 있다. 누군가 적었다가 지운 자국만 남아 있다.)",
    like:"새가 부드럽게 지저귄다", dislike:"새가 날카롭게 고개를 꺾는다",
    cards:[{n:"쪼기",a:3,b:8},{n:"징벌의 부리",a:2,b:11},{n:"날갯짓",a:3,b:6,def:true}], hp:1.1,
-   gifts:{ctrl:{n:"작은 새의 깃털", bonus:{wil:2,agi:1}, mpRed:0.08}, sup:{n:"붉은 부리 조각", bonus:{str:2,agi:2}}}},
+   gifts:{ctrl:{n:"부리", bonus:{agi:1}, canon:1}, sup:{n:"부리", bonus:{agi:1}, canon:1}}},
   {id:"oldlady", gentle:true, n:"늙은 여인", risk:"TETH", canon:"L", code:"O-01-12", g:[5,4], rule:"company", fx:"solitude", form:"흰 보닛을 쓰고 보라색 블라우스에 빛바랜 파란 치마를 입은 창백한 노파가 흔들의자에 앉아 있다. 눈은 검게 꺼져 있고, 그림자는 발밑이 아니라 등 뒤 벽에 비친다", look:"흔들의자에 앉은 노파가 아무도 없는 쪽으로 이야기를 건넨다",
    rumor:"재개발 구역 빈집에서 밤마다 할머니의 옛날이야기 소리가 들린다", pref:PF("tec>agi>str>wil"), ctr:4,
    noFight:true, doom:{t:"노파가 이야기를 멈추고 고개를 돌렸다. 방 안이 잠시 쓸쓸해졌을 뿐이다", mind:0.02},
    escape:"자리를 떠나지 않는다. 이야기를 들어 주면(맞는 행동) 카운터가 돌아오고, 외면하면 준다. 다하면 노파가 이야기를 멈추고 돌아앉는다 — 쓸쓸할 뿐 큰 탈은 없다",
    story:"얘야, 얘야. 이야기 하나 들어 보련?\n옛날에 이야기를 아주 좋아하는 할머니가 있었단다. 아이들이 무릎 앞에 모이면 밤새 이야기를 들려줬지. 자장가도, 동시도, 아무도 모르는 이야기도.\n아이들은 자라서 떠났지. 이웃들도 하나둘. 할머니는 그래도 이야기를 멈추지 않았어. 멈추면 방이 너무 조용해지니까.\n그러다 보니 이야기에 이상한 게 섞이기 시작했어. 들으면 숨이 막히는 것. 사람들은 귀를 막고 도망갔지.\n마지막까지 이야기를 들어 준 건… 글쎄, 누구였더라. 아, 저기 벽에 있구나. 할머니 그림자 옆에.\n얘야, 좀 더 가까이 오렴. 이야기는 이제 막 시작인걸.",
    like:"노파가 이야기를 이어 간다", dislike:"주변 공기가 무겁게 가라앉는다",
-   gifts:{ctrl:{n:"낡은 이야기책", mpRed:0.12, bonus:{tec:2}}, sup:null}},
+   gifts:{ctrl:{n:"외로움", bonus:{tec:2}, canon:1}, sup:null}},
   {id:"scorched", n:"불타버린 소녀", risk:"TETH", canon:"L", code:"F-01-02", g:[5,4], fuse:4, form:"숯처럼 새카맣게 탄 소녀. 하얀 눈과 하얗게 벌어진 입, 가는 두 다리, 그을린 꽁지머리를 했고, 불붙은 성냥개비 하나가 몸통을 꿰뚫고 있다", look:"가슴에 불붙은 성냥개비가 박힌 그을린 아이가 서 있다",
    rumor:"성냥 공장 터에서 아이 모양 그을음이 걸어 다닌다", pref:PF("agi>wil=str>tec"), ctr:2,
    escape:"폭주하면 일행 중 아무나 한 사람에게 성냥불 표식을 붙이고 다가간다. 네 번째 턴이 끝나기 전에 쓰러뜨리지 못하면 표식이 붙은 이를 끌어안고 터진다",
    story:"[구역 소식지 · 사건 단신]\n지난밤 상가 거리에서 원인 모를 폭발이 일어나 여러 명이 다쳤다. 현장에서는 다 탄 성냥개비 하나가 나왔을 뿐, 폭발물의 흔적은 없었다.\n노점상 A 씨는 「숯처럼 새카만 여자애가 울면서 걸어왔다」고 말했다. 「사람들이 웃고 떠드는 쪽을 한참 쳐다보더니, 그중 한 사람한테 곧장 걸어갔어요. 다른 사람은 거들떠보지도 않고.」 A 씨는 아이가 무언가를 중얼거렸다고 덧붙였다. 사람들, 웃음, 따뜻해, 추워. 그런 말들이었다고 한다.\n이 구역에는 겨울마다 길에서 성냥을 팔던 아이가 있었다는 이야기가 전해진다. 그 아이를 기억하는 주민은 없다.",
    like:"성냥불이 고요히 탄다", dislike:"불꽃이 거세게 일렁인다",
    cards:[{n:"재로 만드는 손",a:3,b:9},{n:"폭발",a:2,b:12},{n:"그을음",a:3,b:6,def:true}], hp:1,
-   gifts:{ctrl:{n:"네 번째 성냥불", bonus:{wil:2}, mpRed:0.08}, sup:{n:"꺼지지 않는 성냥", bonus:{str:2,tec:2}}}},
+   gifts:{ctrl:{n:"4번째 성냥불", hpRed:0.048, bonus:{str:1}, canon:1}, sup:{n:"4번째 성냥불", hpRed:0.048, bonus:{str:1}, canon:1}}},
   {id:"wall", n:"벽을 보는 여인", risk:"TETH", canon:"L", code:"F-01-18", g:[5,4], rule:"wallLook", form:"창백한 맨몸의 여자가 무릎을 꿇고 두 손을 벽에 댄 채 있다. 긴 검은 머리카락이 얼굴을 완전히 가렸고, 가끔 목이 사람답지 않게 길게 늘어난다", look:"긴 머리카락으로 뒤덮인 여자가 벽을 향해 서서 흐느낀다",
    rumor:"폐교 복도 끝에서 여자가 벽을 보고 운다. 돌아보게 만들면 안 된다", pref:PF("tec>str>wil>agi"), ctr:2,
    noFight:true, doom:{t:"울음이 비명으로 바뀌었다. 복도에 있던 모두가 귀를 막고 쓰러졌다", mind:0.4},
@@ -3546,14 +3546,14 @@ const ABNOS = [
    escape:"그 자리를 떠나지 않는다. 새끼를 해친 자를 고치로 만든다 — 재빨리 주변을 헤집는 민첩 행동이 바로 그 실수다",
    story:"[현장 무전 기록 · 버려진 온실]\n— 2조, 바닥에 뭐가 많다. 새끼 거미 같은데. 조명 비춘다.\n— 천장 확인해. 뭔가 반짝인다.\n— 확인. 주머니 같은 거에 눈이 잔뜩… 크기가 다 달라. 전부 날 보고 있어.\n— 건드리지 말고 빠져. 발밑 조심하고.\n— 알았다, 천천히 나간다. 아, 잠깐. 밟았—\n(바스락거리는 소리. 비명은 녹음되지 않았다.)\n— 2조? 2조 응답해.\n— ……위에 있어. 아직 살아 있어. 살려 줘. 어두워.\n(이후 사흘 밤 같은 주파수에서 같은 목소리가 잡혔다. 고치를 내리러 올라가겠다는 사람은 없었다.)",
    like:"거미가 다리를 접는다", dislike:"새끼들이 웅성거린다",
-   gifts:{ctrl:{n:"붉은 거미줄 실", hpRed:0.06, bonus:{str:1,tec:1}}, sup:null}},
+   gifts:{ctrl:{n:"적안", bonus:{tec:2}, canon:1}, sup:null}},
   {id:"armor", n:"부서져 가는 갑옷", risk:"TETH", canon:"L", code:"O-05-61", g:[5,4], fx:"flame", form:"오래 묵은 일본식 갑옷 한 벌. 투구에 V자 장식이 솟아 있고, 이음매마다 녹슬어 부서져 내린다. 빈 갑옷인데도 안쪽에서 시선이 느껴진다", look:"V자 장식 투구를 쓴 낡은 갑옷 한 벌이 빈 채로 서서, 들어온 사람을 지켜본다",
    rumor:"골동품 가게 갑옷이 밤마다 움직인다. 가게 주인이 목이 베인 채 발견됐다", pref:PF("wil>str>agi>tec"), ctr:2, noCounter:true, rule:"armor",
    noFight:true, doom:{t:"갑옷이 겁쟁이라 여긴 이의 목을 노리고 칼을 휘둘렀다", maim:true, worker:true},
    escape:"자리를 떠나지 않는다. 의지 행동을 한 이에게 용기의 불꽃(장신구가 아니라 몸에 깃든다)을 준다 — 파랑, 주황, 빨강으로 짙어질수록 민첩이 오른다. 그러나 불꽃을 지닌 이가 어느 환상체에게든 재주 행동을 하면 목이 떨어진다. 근력(용기)이 아주 낮은 이는 다가가기만 해도 베인다",
    story:"[어느 무가(武家)의 가보 기록]\n1대 — 이 갑옷을 입고 서른 번 싸워 서른 번 이겼다. 한 번도 물러서지 않았다.\n2대 — 아버지의 갑옷을 물려받았다. 갑옷 안에서 아버지의 시선을 느꼈다고 한다. 마흔 번째 싸움에서 등을 보였고, 그날 목이 떨어졌다. 적은 근처에 없었다.\n3대 — 갑옷을 입지 않겠다고 했다. 가족들은 그를 겁쟁이라 불렀다. 그는 오래 살았다.\n4대 — 갑옷을 다시 꺼냈다. 푸른 불꽃이 깃들어 누구보다 빨라졌다. 기록은 여기서 끊긴다.\n(마지막 장 여백, 다른 필체) 죽음을 두려워하지 않는 것과, 물러설 줄 모르는 것은 다르다. 갑옷은 그 차이를 모른다.",
    like:"투구 속 불꽃이 차분해진다", dislike:"갑옷이 삐걱이며 칼자루를 쥔다",
-   gifts:{ctrl:{n:"푸른 불꽃의 깃장식", bonus:{str:2,agi:2}}, sup:null}},
+   gifts:{ctrl:{n:"만용", hpRed:-0.06, bonus:{str:-1,agi:4}, canon:1}, sup:null}},
   {id:"lantern", n:"고기 초롱", risk:"TETH", canon:"L", code:"O-04-84", g:[5,4], form:"흰 털로 뒤덮인 둔덕 꼭대기에 빛나는 꽃 한 송이가 피어 있다. 꽃은 땅속에 몸을 묻은 거대한 짐승의 미끼다", look:"털 뭉치 같은 언덕 위로 꽃 한 송이가 고개를 내밀고 있다",
    rumor:"하수로 입구에 꽃이 피었다. 꽃을 꺾으러 간 아이들이 돌아오지 않는다", pref:PF("agi>str=tec>wil"), ctr:1, low:"agi",
    rule2:"ranged", doom:{t:"총잡이가 없었다. 다가간 이의 발밑이 열리며 커다란 턱이 그를 삼켰다", maim:true},
@@ -3561,7 +3561,7 @@ const ABNOS = [
    story:"[공터에서 주운 휴대전화 · 음성 메모]\n「야, 저기 봐. 꽃이 빛나.」\n「진짜네. 엄청 예뻐. 꺾어 갈까?」\n「저 털 같은 거 밟고 올라가야 되는데. 이상하지 않아? 털이 따뜻해.」\n「괜찮아, 금방 갔다 올게. 너는 여기 있어.」\n(발소리. 털이 바스락거리는 소리.)\n「거의 다 왔어! 꽃이 엄청 커—」\n(땅이 울리는 소리. 1분 동안 아무 소리 없이 녹음이 이어진다.)\n「……야? 야, 어디 있어?」\n(둔덕 꼭대기의 꽃은 다음 날 밤에도 피어 있었다.)",
    like:"꽃이 느리게 흔들린다", dislike:"땅이 미세하게 들썩인다",
    cards:[{n:"땅속의 턱",a:5,b:11},{n:"흰 털 덫",a:4,b:9},{n:"꽃 오므리기",a:4,b:7,def:true}], hp:1.2,
-   gifts:{ctrl:{n:"빛나는 꽃잎", mpRed:0.1, bonus:{tec:1,wil:1}}, sup:null}},
+   gifts:{ctrl:{n:"초롱", hpRed:0.06, bonus:{str:1}, canon:1}, sup:null}},
   // ── TETH · 창작 ──
   {id:"echo", n:"우주 안의 울림", baseName:"우주의 조각", risk:"TETH", code:"O-03-18-07", g:[5,4], fx:"echoMind", form:"별빛이 박힌 검은 덩어리가 허공에 떠 있다. 표면이 떨릴 때마다 귀가 아니라 머릿속이 울린다", look:"별빛이 박힌 검은 덩어리가 허공에 떠서, 귀가 아니라 머릿속으로 낮게 운다",
    rumor:"천문대 폐건물에서 낮은 울림이 그치지 않는다. 오래 들은 경비원이 제 이름을 잊었다", pref:PF("wil>tec>agi>str"), ctr:2, low:"wil",
@@ -3639,35 +3639,35 @@ const ABNOS = [
    escape:"자리를 떠나지 않는다. 결과가 최고가 아니거나 민첩(정의)이 모자란 이가 행동하면 카운터가 준다. 자금의 10%를 내고 마탄 한 발을 의뢰할 수 있다 — 다음 전투가 시작될 때 적을 고정 피해로 꿰뚫고, 쏠 때마다 위력이 커진다. 하지만 일곱 번째로 쏘는 마탄은 반드시 아군 하나를 꿰뚫어 쓰러뜨린다. 카운터가 다하면 아무 곳으로나 쏜다",
    story:"의뢰라고? 좋아. 값만 맞으면 누구든 맞혀 주지. 이 탄환은 무엇이든 꿰뚫거든.\n옛날 얘기 하나 해 줄까. 어떤 사냥꾼이 악마한테 총을 받았어. 조건은 하나였지. 마지막 탄환은 사냥꾼이 가장 사랑하는 사람의 심장을 꿰뚫는다고.\n사냥꾼은 쐈어. 사랑하는 사람을, 하나씩. 마지막 탄환이 누구에게 갈지 모르니까, 사랑할 사람을 아예 남기지 않기로 한 거야. 그리고 악마한테 말했지. 정말로 누구든 맞히는군.\n마지막 한 발은 결국 자기 심장에 박혔어. 그 뒤로 악마는 더 따라오지 않았어. 따라올 필요가 없었거든.\n…자, 몇 번째 탄환을 원하나? 세는 건 당신 몫이야.",
    like:"사수가 총구를 내린다", dislike:"방아쇠에 손가락이 걸린다",
-   gifts:{ctrl:{n:"마탄 한 발", bonus:{agi:3,tec:1}}, sup:null}},
+   gifts:{ctrl:{n:"마탄", mpRed:-0.072, hpRed:-0.072, bonus:{str:-2,wil:-2,agi:5}, canon:1}, sup:null}},
   {id:"teddy", gentle:true, n:"행복한 테디", risk:"HE", canon:"L", code:"T-04-06", g:[4,3], form:"물어뜯긴 귀, 하나만 남은 흰 단추 눈, 엉킨 갈색 털, 빛바랜 초록 리본을 맨 커다란 곰 인형. 여기저기 터진 솔기로 솜이 비어져 나온다", look:"낡고 커다란 곰 인형이 두 팔을 벌린 채 앉아 있다",
    rumor:"폐보육원 놀이방의 곰 인형을 안아 준 아이가 다음 날 숨진 채 발견됐다", pref:PF("tec>wil>agi>str"), ctr:3, noCounter:true, rule:"teddy",
    noFight:true, doom:{t:"곰 인형이 더는 아무도 안아 주지 않았다. 놀이방에 먼지만 내려앉았다", mind:0.02},
    escape:"그 자리를 떠나지 않는다. 같은 사람이 연달아 두 번 행동하면 그를 꼭 끌어안았다가 숨이 막히기 전에 놓아준다(카운터 -1). 행동하는 이를 번갈아 보내는 편이 좋다. 실패해도 큰 탈은 없다",
    story:"나는 곰돌이야. 일곱 살 생일에 커다란 상자에서 나왔어. 그 애가 나를 꼭 안아 줬어. 그게 내 첫 번째 기억이야.\n우리는 같이 여행도 갔어. 밤이 무서운 날엔 내가 그 애를 지켜 줬어. 그 애는 내 품에서 잠들었어. 매일매일.\n그러다 그 애가 커졌어. 나는 서랍장 밑으로 들어갔어. 나방들이 내 털에 앉았고, 귀가 뜯기고, 눈 하나가 떨어졌어. 그래도 괜찮았어. 그 애가 돌아올 거니까.\n어? 너 아까도 왔지? 두 번이나 와 줬네.\n너구나. 돌아왔구나.\n이번엔 꼭 안을게. 다시는 안 놓칠게. 꼭, 꼭, 꼭.",
    like:"곰 인형이 고개를 기울인다", dislike:"솜이 비어져 나온다",
-   gifts:{ctrl:{n:"낡은 리본", mpRed:0.14, bonus:{tec:2}}, sup:null}},
+   gifts:{ctrl:{n:"곰발바닥", mpRed:0.058, bonus:{wil:1}, canon:1}, sup:null}},
   {id:"porccubus", n:"포큐버스", risk:"HE", canon:"L", code:"O-02-98", g:[4,3], fx:"prick", form:"새빨간 꽃 한 송이가 머리다. 겹겹의 꽃잎 한가운데 작고 까만 눈 두 개와 노란 부리 같은 꽃술이 박혀 있다. 그 아래로 초록 줄기가 초승달처럼 크게 휘어 몸을 이루고, 줄기 곳곳에 끝이 누렇게 바랜 하얀 가시가 사방으로 돋아 있다", look:"새빨간 꽃을 머리로 단 초록 줄기가 공중에 둥글게 휘어 있고, 줄기마다 돋은 하얀 가시 끝에서 달콤한 향이 번진다",
    rumor:"클럽 뒤편 창고에 가시 돋친 빨간 꽃이 산다. 찔린 사람들이 다시 찔리러 찾아간다", pref:PF("str>agi=tec>wil"), ctr:2, rule:"goodRaises", lowBest:"tec",
    escape:"좋은 결과면 카운터가 오르고 나쁜 결과면 준다. 최고의 결과를 낸 이는 가시에 찔려 사흘 동안 밤마다 쾌감에 정신력이 오르지만, 그 뒤엔 금단으로 크게 떨어진다. 재주(자제)가 낮은 이가 최고의 결과를 내면 쾌감을 견디지 못한다",
    story:"[익명 회복 모임 · 발언 기록]\n— 처음엔 '신뢰 게임'이라고 했어요. 조금씩 쓰다듬어서 친해지는 거. 처음 가시가 닿았을 땐 바늘에 찔린 것 같았는데, 그다음엔… 설명을 못 하겠어요. 그냥 행복했어요.\n— 다음 날부터 땀이 나고 토했어요. 벌레가 이 사이를 기어다니는 것 같았어요. 그래서 다시 갔죠.\n— 갈 때마다 더 많이 찔려야 했어요. 나중엔 머리로 피가 몰려서 터질 것 같았는데, 그것도 좋았어요.\n— 같이 다니던 형은 거기서 죽었어요. 웃는 얼굴로요. 다들 그렇대요. 웃으면서 간대요.\n— 저는 오늘로 열이틀째 안 갔어요. (박수)\n— …사실 어제 창고 앞까지는 갔었어요.",
    like:"꽃잎이 살며시 오므라든다", dislike:"줄기의 가시가 일제히 곤두선다",
    cards:[{n:"가시 찌르기",a:4,b:11},{n:"달콤한 독",a:3,b:12},{n:"줄기 감기",a:5,b:8,def:true}], hp:1.15,
-   gifts:{ctrl:{n:"뽑아 둔 분홍 가시", mpRed:0.12, bonus:{str:2}}, sup:{n:"쾌락의 가시", bonus:{str:3,agi:2}}}},
+   gifts:{ctrl:{n:"쾌락", mpRed:0.144, bonus:{wil:3,tec:-4}, canon:1}, sup:{n:"쾌락", mpRed:0.144, bonus:{wil:3,tec:-4}, canon:1}}},
   {id:"redshoes", n:"빨간 구두", risk:"HE", canon:"L", code:"O-04-08", g:[4,3], fx:"possess", form:"광택이 바래지 않는 빨간 에나멜 하이힐 한 켤레. 안쪽에는 신은 발을 물고 놓지 않는 이빨이 숨어 있다는 말이 있다", look:"반짝이는 빨간 구두 한 켤레가 주인 없이 놓여 있다",
    rumor:"구둣방 진열장의 빨간 구두를 신어 본 손님이 미친 듯 춤추며 사람을 해쳤다", pref:PF("str>agi>tec>wil"), ctr:1, low:"tec",
    escape:"재주(자제)가 낮은 이가 행동하면 카운터가 준다. 다하면 일행 중 자제가 가장 약한 이가 홀려 구두를 신는다 — 붉은 도끼를 들고 춤추며 동료에게 덤비고, 남은 이들이 그를 쓰러뜨려 발목째 구두를 벗겨 내야 한다(민첩이 영영 떨어진다). 지면 그는 춤추며 사라진다",
    story:"[골목 구둣방 · 수선 접수 장부]\n2일 — 빨간 에나멜 하이힐. 광택이 무섭다고 광택 제거 요청. → 광택이 안 빠짐. 돌려줌.\n9일 — 같은 구두, 다른 손님. 안쪽에서 뭐가 문다고 함. 살펴봤으나 이상 없음.\n15일 — 같은 구두. 손님 없이 진열장에 놓여 있었음. 누가 두고 갔는지 모름.\n16일 — 단골 아가씨가 진열장 앞에 한참 서 있다 감.\n17일 — 단골 아가씨가 구두를 신어 봄. 벗지 못함. 춤추며 나감. 가게 도끼가 없어짐.\n20일 — 구두가 돌아옴. 발목째.\n21일 — 진열장에 다시 놓음. 다른 데 둘 데가 없어서.\n(장부 맨 뒷장) 저 구두를 볼 때마다 나도 신어 보고 싶어진다. 가게를 닫는다.",
    like:"구두가 얌전히 놓여 있다", dislike:"구두가 저절로 탁, 하고 발을 구른다",
    cards:[{n:"춤추는 칼날",a:4,b:11},{n:"멈추지 않는 스텝",a:5,b:10},{n:"회전",a:4,b:8,def:true}], hp:1.1,
-   gifts:{ctrl:{n:"빨간 구두끈", bonus:{agi:3}, mpRed:0.08}, sup:{n:"부러진 구두 굽", bonus:{agi:2,str:2}}}},
+   gifts:{ctrl:{n:"핏빛 욕망", hpRed:0.058, bonus:{str:1}, canon:1}, sup:{n:"핏빛 욕망", hpRed:0.058, bonus:{str:1}, canon:1}}},
   {id:"grudgeshooter", n:"흉탄의 사수", base:"freischutz", risk:"HE", canon:"LCB", code:"F-01-16-13", g:[4,3], form:"머리가 있어야 할 자리에서 핏빛 불꽃이 머리카락처럼 길게 휘날린다. 해지고 찢긴 잿빛 외투 자락을 망토처럼 늘어뜨리고, 장갑과 높은 군화를 신었다. 손에는 나무 개머리판의 낡은 노리쇠 소총을 들었고, 높이 세운 옷깃 안쪽에 펜던트가 숨겨져 있다", look:"핏빛 불꽃이 머리카락처럼 휘날리는 군인이 찢긴 외투 자락을 끌며 소총을 겨눈다",
    rumor:"옛 전쟁터를 닮은 폐허에서 총소리가 그치지 않는다. 들어간 사람은 한 발에 꿰뚫린 채 발견된다", pref:PF("wil>str>agi>tec"), ctr:3, rule:"pendant",
    escape:"카운터가 다하면 전쟁터를 재현한 곳에서 흉탄을 쏘아 댄다. 펜던트를 떠올리게 만들면(재주 행동) 그는 잊었던 사람을 기억해 버린다",
    story:"[전선에서 부친 편지들, 보낸 순서대로]\n— 사랑하는 마리에게. 총이 이상할 만큼 잘 맞아. 일곱 번째 발만 조심하면 돼. 당신 사진은 펜던트에 넣어 다녀.\n— 사랑하는 ○○에게. 이름을 쓰다 지웠어. 혹시 탄환이 이 편지를 읽을까 봐. 미안해.\n— 사랑하는 당신에게. 오늘은 열두 명. 이상하지, 쏠 때마다 가슴이 뛰어. 무섭지 않아. 좋아.\n— 누구에게. 펜던트 속 사람이 웃고 있어. 누구였더라. 떠올리려 하면 머리가 뜨거워져. 불이 붙은 것처럼.\n— (마지막 편지는 봉투뿐이다. 받는 사람 칸이 불에 그을려 읽을 수 없다.)",
    like:"사수가 총구를 내린다", dislike:"노리쇠가 철컥 당겨진다",
    cards:[{n:"흉탄",a:4,b:12},{n:"연달아 당기는 노리쇠",a:3,b:13},{n:"참호",a:5,b:8,def:true}], hp:1.2,
-   gifts:{ctrl:{n:"사진이 든 펜던트", mpRed:0.15, bonus:{agi:2}}, sup:{n:"그을린 탄피", bonus:{agi:3,str:2}}}},
+   gifts:{ctrl:{n:"흉탄", mpRed:-0.043, bonus:{agi:3}, canon:1}, sup:{n:"흉탄", mpRed:-0.043, bonus:{agi:3}, canon:1}}},
   // ── HE · 창작 ──
   {id:"carousel", n:"가시돋친 목마", risk:"HE", code:"T-05-19-02", g:[4,3], fx:"thorns", form:"회전목마에서 떨어져 나온 커다란 나무 목마. 칠이 벗겨진 몸통 곳곳에 녹슨 가시가 돋았고, 받침대 없이 혼자 흔들린다", look:"몸통 곳곳에 녹슨 가시가 돋은 커다란 나무 목마가 삐걱이며 앞뒤로 흔들린다",
    rumor:"폐놀이공원 한가운데 가시 돋친 목마가 놓였다. 올라탄 아이도, 끌어내리려던 어른도 피투성이가 됐다", pref:PF("wil>tec>str>agi"), ctr:3,
@@ -3725,28 +3725,28 @@ const ABNOS = [
    story:"[희곡 『별빛 기사』 3막 · 무너진 성당]\n(별빛 드레스의 소녀가 검을 들고 서 있다. 그 뒤로 그녀가 지켜 온 사람들이 하나둘 등을 돌려 퇴장한다.)\n소녀: 기다려. 아직 지킬 수 있어.\n(아무도 돌아보지 않는다. 마지막으로 남은 이가 그녀의 등에 칼을 꽂고 퇴장한다.)\n소녀: …괜찮아. 사람은 실수를 하니까.\n(조명이 어두워진다. 소녀의 뺨을 타고 흐른 눈물이 바닥에 닿기 전에 가는 검이 되어 떠오른다. 검은 늘어 간다. 지키지 못한 사람의 수만큼.)\n소녀: 물리칠 악이 없다면, 악이 되면 돼. 그러면 적어도 싸울 수는 있잖아.\n(객석의 누군가가 일어선다. 소녀는 그를 바라보고, 축복을 내린다.)\n(막. 무대에는 검만 남아 있다. 검끝은 모두 소녀가 서 있던 자리를 향한다.)",
    like:"기사가 검을 내린다", dislike:"기사의 눈물이 짙어진다",
    cards:[{n:"절망의 검",a:5,b:13},{n:"쏟아지는 칼날",a:5,b:12},{n:"수호의 맹세",a:6,b:9,def:true}], hp:1.35,
-   gifts:{ctrl:{n:"기사의 축복", hpRed:0.08, mpRed:0.1, bonus:{tec:2}}, sup:{n:"절망의 칼날", bonus:{str:3,agi:3}}}},
+   gifts:{ctrl:{n:"눈물로 벼려낸 검", mpRed:0.034, bonus:{agi:2}, canon:1}, sup:{n:"눈물로 벼려낸 검", mpRed:0.034, bonus:{agi:2}, canon:1}}},
   {id:"littlered", n:"붉은 두건의 용병", risk:"WAW", canon:"L", code:"F-01-57", g:[2,2], fx:"mercenary", form:"검은 옷에 붕대를 감은 용병. 붉은 두건을 깊이 눌러써 눈가를 가렸고, 얼굴 아래쪽은 이빨 모양 마스크로 덮었다. 두건 그늘에서 노란 눈이 빛나고, 짧은 도끼와 총을 쓴다", look:"붉은 두건을 쓴 용병이 짧은 도끼와 총을 손질하며 늑대 냄새를 찾는다",
    rumor:"용병 하나가 의뢰도 없이 골목을 뒤진다. 늑대를 찾는다는데, 마주친 사람들이 다쳤다", pref:PF("agi>str>wil>tec"), ctr:3,
    escape:"광폭 카운터가 남아 있으면 하청을 맡길 수 있다 — 게시판의 물리 의뢰 하나를 보수의 40%를 떼고 대신 처리해 주지만, 그 대가로 카운터가 하나 준다. 사무소가 환상체를 제압할수록 늑대 냄새를 맡고 날이 서 있다(제압 5번마다 카운터 -1로 시작). 카운터가 다하면 처음 본 이를 표적으로 삼아 끝까지 쫓는다",
    story:"[의뢰 게시판 · 용병 공고]\n붉은 두건. 어떤 의뢰든 받음. 값은 일의 크기대로.\n1. 선금 절반.\n2. 얼굴에 대해 묻지 말 것.\n3. 거울 있는 방에서는 일 안 함.\n4. 늑대 정보는 무조건 받음. 보수 필요 없음. 오히려 내가 냄.\n5. 늑대 냄새 나는 놈과는 같이 일 안 함. 냄새가 나면 그놈부터 벤다.\n문의는 골목 끝, 숫돌 가는 소리가 나는 곳으로.\n(공고 하단, 다른 펜) 그 늑대 머리를 침대 위에 걸어 둬야 잠이 온다. 열다섯 이후로 제대로 자 본 적 없음.",
    like:"용병이 무기를 내려놓는다", dislike:"용병이 방아쇠에 손을 얹는다",
    cards:[{n:"갈고리 베기",a:5,b:12},{n:"사냥 사격",a:4,b:13},{n:"구르기",a:5,b:9,def:true}], hp:1.3,
-   gifts:{ctrl:{n:"붉은 두건 조각", bonus:{wil:2,agi:2}, mpRed:0.08}, sup:{n:"사냥꾼의 갈고리", bonus:{str:3,agi:3}}}},
+   gifts:{ctrl:{n:"붉은 흉터", hpRed:0.05, bonus:{agi:2}, canon:1}, sup:{n:"붉은 흉터", hpRed:0.05, bonus:{agi:2}, canon:1}}},
   {id:"moth", n:"홍염나방", risk:"WAW", canon:"LCB", code:"O-01-20-07", g:[2,2], fx:"wings", form:"불꽃이 그대로 나방의 모양을 한 것. 꽃잎처럼 타오르는 날개 주위로 붉은 불씨가 무리 지어 맴돈다", look:"불꽃으로 된 나방이 꽃잎 같은 날개를 펼치고 불씨를 흩뿌린다",
    rumor:"화훼 시장이 밤새 불탔다. 불길 한가운데 거대한 나방이 날고 있었다", pref:PF("agi>tec>wil>str"), ctr:3, rule:"ember",
    escape:"틀린 행동마다 불씨가 쌓이고, 최고의 결과면 불씨가 사라진다. 폭주하면 만난 모두에게 불씨가 옮아 붙는다 — 불씨는 턴마다 커지고, 나방에게 맞을 때마다 그만큼 더 탄다. 날개를 부수면 곁의 이들은 오히려 마음의 안정을 되찾는다(일행 정신력 회복)",
    story:"[어느 곤충 수집가의 표본 노트]\n표본 번호 없음. 채집 실패.\n몸 전체가 불꽃으로 이루어진 나방. 날개는 꽃잎처럼 겹쳐 타오르고, 날갯짓마다 불씨가 꽃가루처럼 흩어진다.\n습성: 빛을 향해 난다. 그것이 전부다. 날개에 불이 붙어도 멈추지 않았고, 그 뒤로는 스스로 빛이 되었다. 다른 날벌레들이 그 빛에 이끌려 날아들고, 그 날개에도 불이 옮겨붙는다.\n채집 시도: 포충망이 타 버렸다. 핀셋이 녹았다. 조수의 소매에 불씨가 옮아 붙었는데, 이상하게 뜨겁지 않았다고 한다.\n비고: 날개가 부서지던 순간 흩어진 빛을 본 조수는, 오랜만에 마음이 편하다며 울었다. 그 빛을 표본으로 남길 방법은 아직 찾지 못했다.",
    like:"불씨가 사그라든다", dislike:"불씨가 하나 더 피어오른다",
    cards:[{n:"불씨 흩뿌리기",a:4,b:12},{n:"타오르는 날개",a:5,b:12},{n:"재의 장막",a:5,b:8,def:true}], hp:1.3,
-   gifts:{ctrl:{n:"식은 불꽃잎", mpRed:0.15, bonus:{wil:3}}, sup:{n:"부서진 날개 조각", bonus:{str:3,agi:2}, mpRed:0.06}}},
+   gifts:{ctrl:{n:"홍염살", hpRed:0.067, bonus:{str:1,tec:2}, canon:1}, sup:{n:"홍염살", hpRed:0.067, bonus:{str:1,tec:2}, canon:1}}},
   {id:"spiral", n:"경멸의 나선", risk:"WAW", canon:"LCB", code:"T-03-20-04", g:[2,2], fx:"spiral", form:"뒤틀린 금빛 가지가 허리 위로는 사람 모양, 아래로는 원뿔처럼 감긴 것. 가지 둘이 날개처럼 뻗었고, 머리의 핏빛 보석 아래 검은 돌손이 피를 받쳐 든다", look:"뒤틀린 금빛 가지가 허리 위로는 사람 모양, 아래로는 원뿔처럼 감겨 있다. 머리 한가운데 핏빛 보석이 박혔고, 위로 받쳐 든 검은 돌손에서 피가 쉼 없이 흘러넘친다",
    rumor:"재개발 구역 깊은 굴착 현장 아래에서 금빛 나선이 파고 올라왔다. 눈이 없는데도 사람들을 내려다본다. 쳐다본 인부들이 한동안 고개를 들지 못했다", pref:PF("wil>tec>str>agi"), ctr:2,
    escape:"눈이 없는데도 이쪽을 본다. 같은 사람이 세 번 눈을 떼지 못하면 나선이 그 시선을 경멸해 정신력을 깎고 카운터가 준다 — 나설 사람을 바꿀 것. 폭주하면 합을 이길 때마다 시선이 쌓여 피해가 오르지만, 7이 되면 그 시선마저 경멸받아 피를 흘리고 약해진다. 두 턴마다 검은 돌손이 누군가를 움켜쥐고, 두 턴 안에 합을 이겨 풀어내지 못하면 짓눌러 그 피로 아문다",
    story:"[재개발 구역 굴착 현장 · 공정 보고]\n지하 40m 지점에서 금빛 가지 덩어리 노출. 위쪽은 사람 상반신과 비슷하고 아래는 원뿔처럼 감겨 내려감. 머리 자리에 핏빛 보석. 위로 받쳐 든 검은 돌손에서 액체가 계속 넘침. 성분은 사람 피와 같음.\n특이 사항: 대상에게는 눈이 없음. 그런데도 현장 인원 전원이 '내려다보이는' 느낌을 호소. 평소 현장에서 무시당하던 인부들일수록 눈을 떼지 못함.\n인부 진술 요약: 대상을 오래 쳐다본 인부 한 명이 갑자기 주저앉아 '벌레 보듯 본다'는 말을 되풀이함. 이후 작업 거부.\n현장 소장 의견: 이 구역 사람들은 오랫동안 위에서 내려다보는 눈빛을 견디며 살았다. 견딘 만큼 삼켰고, 삼킨 것은 아래로 내려갔다. 이 아래로.\n조치: 굴착 중단. 다시 덮으려 했으나 가지가 계속 자라 올라와 실패.",
    like:"소용돌이치던 나선이 느려진다", dislike:"나선이 삐걱이며 이쪽으로 고개를 돌린다",
    cards:[{n:"그것은 꿰뚫으리라",a:5,b:13},{n:"그것은 움켜쥐리라",a:6,b:11},{n:"그것은 모두를 경멸하리라",a:4,b:15},{n:"그것은 외면하리라",a:5,b:9,def:true}], hp:1.4,
-   gifts:{ctrl:{n:"경멸, 경외", mpRed:0.16, bonus:{wil:3,agi:2}}, sup:{n:"핏빛 보석 조각", bonus:{str:4,tec:2}, hpRed:0.06}}},
+   gifts:{ctrl:{n:"경멸, 경외", mpRed:0.101, bonus:{wil:2,agi:2}, canon:1}, sup:{n:"경멸, 경외", mpRed:0.101, bonus:{wil:2,agi:2}, canon:1}}},
   // ── WAW · 창작 ──
   {id:"brokenlance", n:"부러진 창의 기수", base:"knight", risk:"WAW", code:"O-01-24-02", g:[2,2], fx:"protege", form:"검게 그을린 갑옷을 입은 기수. 부러진 창을 꼬나든 채 보이지 않는 말에 올라탄 듯 늘 반쯤 떠 있고, 투구 틈으로 하얀 김이 샌다", look:"부러진 창을 꼬나든 기수가 보이지 않는 말에 올라탄 채 골목을 내달린다",
    rumor:"뒷골목의 밤에도 말발굽 소리가 들린다. 지켜 준다며 따라온 이들이 하나씩 사라졌다", pref:PF("agi>tec>str>wil"), ctr:3,
@@ -3812,21 +3812,21 @@ const ABNOS = [
    story:"옛 시민회관에 지휘자가 있었다. 그는 틀린 음을 바로잡는 것이 지휘자의 일이라고 여기지 않았다. 지휘대에 오른 지 오 분이면 악단 전체가 그의 손끝을 따랐다.\n어느 밤, 연주자가 하나도 오지 않았다. 객석만 가득 찼다. 지휘자는 지휘봉을 들었다. 연주자는 객석에서 모으면 된다.\n첫 악장은 침착하고 느렸다. 무대엔 아무도 없었는데 객석 모두가 첫 음을 들었다. 버티지 못한 머리들이 먼저 고개를 떨궜다.\n다음 악장부터는 유쾌하고 빨랐다. 사람들은 왜 왔는지 잊었고, 열광이 광기로 넘어가자 옆 사람을 할퀴었다. 악장이 바뀔 때마다 하나씩 일어나 무대로 올라갔다.\n연주자가 다 모이자, 아무도 들을 수 없지만 모두가 듣는 음악이 시작되었다. 부서진 것들에게서 가장 아름다운 연주가 시작된다는 것을, 지휘자는 처음부터 알았다.\n마지막 마디가 남았다. 그것은 듣는 음악이 아니다. 당신을 꿰뚫는 음악이다.",
    like:"지휘봉이 조용히 내려간다", dislike:"어딘가에서 첫 음이 울릴 듯하다",
    cards:[{n:"제1악장",a:5,b:12},{n:"제2악장",a:6,b:11},{n:"제3악장",a:5,b:14},{n:"정적",a:6,b:9,def:true}], hp:1.6,
-   gifts:{ctrl:{n:"지휘봉 끝", mpRed:0.22, bonus:{wil:4,tec:2}}, sup:{n:"끝나지 않은 악보", bonus:{wil:3,tec:3}, mpRed:0.08}}},
+   gifts:{ctrl:{n:"다카포", mpRed:0.154, bonus:{wil:3,tec:4}, canon:1}, sup:{n:"다카포", mpRed:0.154, bonus:{wil:3,tec:4}, canon:1}}},
   {id:"bluestar", n:"푸른 별", risk:"ALEPH", canon:"L", code:"O-03-93", g:[1,0], fx:"pulse", form:"하늘에 떠서 맥박치는 커다란 푸른 심장. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다", look:"하늘 높이 푸른 심장 같은 별이 떠서 맥박치듯 울린다",
    rumor:"도심 하늘에 푸른 별이 떴다. 그 소리를 들은 사람들이 하나둘 별을 향해 걸어갔다", pref:PF("agi>wil>str>tec"), ctr:2, low:"wil", lowStrict:true,
    noFight:true, doom:{t:"별이 울렸다", custom:"bluestar"},
    escape:"마주치는 순간 맥박이 울려 모두의 정신력이 30% 깎이고, 정신이 무너진 이와 마음(의지)이 약한 이는 별에 흡수된다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘에 떠서 다시 맥박을 울린다",
    story:"절망이 가장 깊던 해, 구역 하늘에 푸른 별이 떴다. 스스로 신이라 한 적은 없었다. 사람들이 먼저 무릎을 꿇었다.\n모임이 생겼다. 그들은 서로를 죄인이라 불렀고, 죄인을 받아 주는 곳은 저 별뿐이라 믿었다. 별에 닿는 것은 죽음이 아니라 있어야 할 곳으로 돌아가는 일이라고. 구역은 모임을 금했다. 이 도시에서 신성한 것은 없어야 했다.\n금지는 오래가지 않았다. 별 가까이에선 반기는 노래와 함성이 들렸고, 맥박이 울릴 때마다 마음 약한 이부터 발끝이 땅에서 떨어졌다. 가족들은 그들을 침대에 묶었다. 묶인 이들은 밤새 창문 쪽으로 몸을 틀었다.\n이제 별 아래로 다리들이 매달려 흔들린다. 모임 사람들은 그것을 환영의 손짓이라 부른다. 모두가 돌아가고 나면 이 구역엔 별만 남을 것이다.\n— 뒷면 부록 —\n곧 별이 되어서 만나자.",
    like:"맥박이 느려진다", dislike:"푸른 빛이 맥박친다",
-   gifts:{ctrl:{n:"별의 맥박", mpRed:0.2, bonus:{wil:4,agi:2}}, sup:null}},
+   gifts:{ctrl:{n:"별의 소리", bonus:{agi:6}, canon:1}, sup:null}},
   {id:"nothing", n:"아무것도 없는", risk:"ALEPH", canon:"L", code:"O-06-20", g:[1,0], fx:"skin", immune:true, form:"피투성이로 짓이겨진 사람 같은 것이 세 다리로 선다. 살갗은 하얗고, 한쪽 다리는 뼈가 드러났으며 뒷다리에는 가죽이 없다. 평소에는 빼앗은 사람의 가죽을 쓰고 그 사람인 척한다", look:"방금 전까지 있던 동료의 얼굴을 한 무언가가 이쪽을 보고 웃는다",
    rumor:"실종된 직원이 사무실에 돌아왔다. 동료들은 그가 사람이 아니라고 했다", pref:PF("tec>str>agi>wil"), ctr:1, low:"agi", rule:"badKill",
    escape:"정의(민첩)가 낮은 이가 행동을 마치면 카운터가 준다. 나쁜 행동을 한 이(실패 포함)는 그 자리에서 죽고 가죽을 빼앗긴다 — 이틀 뒤 밤, 그 얼굴이 사무소 문을 두드린다. 열면 덮쳐 와 싸워야 하고, 열지 않으면 모두의 정신력이 조금 깎인다. 어지간한 물리적 공격은 거의 통하지 않는다(1급 이상이 쥔 고유 무기나 개화한 E.G.O. 무기만 상처를 낸다) — 싸우지 않는 편이 좋다",
    story:"[사무소 출입 기록]\n21:40 — 실종 처리되었던 해결사 ○○ 귀소. 외상 없음.\n21:41 — 접수 직원: 「○○ 씨? 살아 있었어요? 다들 걱정했는데.」\n○○: 「안녕.」\n접수 직원: 「…어디 다친 데는 없어요?」\n○○: 「안녕. 안녕. 다들, 안녕.」\n21:43 — 동료가 이름을 부름. 대답이 반 박자 늦음.\n21:44 — ○○: 「사랑해.」 (동료 메모: 그는 그런 말을 하는 사람이 아니었다.)\n21:45 — 기록 중단.\n(이 장 이후 출입 기록에는 같은 이름이 밤마다 한 줄씩 적혀 있다. 적은 사람은 없다.)",
    like:"그것이 흉내를 멈춘다", dislike:"그것이 행동하는 이의 목소리로 웃는다",
    cards:[{n:"머리 발톱",a:5,b:13},{n:"뼈 파편",a:6,b:12},{n:"작별 인사",a:4,b:16},{n:"알 껍질",a:6,b:9,def:true}], hp:1.7,
-   gifts:{ctrl:{n:"아무것도 없는 웃음", mpRed:0.18, bonus:{tec:4,str:2}}, sup:{n:"빼앗긴 가죽", bonus:{str:5,agi:3}, hpRed:0.08}}},
+   gifts:{ctrl:{n:"미믹", hpRed:0.192, bonus:{str:4}, canon:1}, sup:{n:"미믹", hpRed:0.192, bonus:{str:4}, canon:1}}},
   // ── ALEPH · 창작 ──
   {id:"sun", hurt:0.55, n:"일렁이는 태양", risk:"ALEPH", code:"O-03-02-04", g:[1,0], fx:"coat", form:"핏빛 주황의 거대한 태양이 지붕 높이까지 내려와 아지랑이처럼 일렁인다. 가장자리에 구름 한 점이 늘 붙어 있는데, 태양이 부풀 때마다 그 구름이 조금씩 타들어 간다", look:"아지랑이처럼 일렁이는 커다란 태양이 골목 위에 낮게 떠서, 지나는 사람들의 외투 깃을 하나하나 들여다본다",
    rumor:"밤이 오지 않는 구역이 있다. 거기서 발견된 사람들은 하나같이 외투도 신발도 걸치지 않은 채 그을려 있었다", pref:PF("wil>tec>agi>str"), ctr:2,
@@ -3870,7 +3870,7 @@ const CODEX_STEPS = ["이름","위험 등급","선호 행동","폭주 · 전투 
    기프트의 급수(만난 의뢰 등급)가 지닌 해결사보다 높으면 정신이 무너질 때 통제 기프트는 개화 쪽으로, 제압 기프트는 뒤틀림 쪽으로 기운다. */
 const GIFT_P = 0.08;
 function makeGift(a, how, grade){ const G = a.gifts && a.gifts[how==="ctrl"?"ctrl":"sup"]; if(!G) return null;
-  return Object.assign({slot:"acc", name:G.n, gift:{abno:a.vid, from:a.n, kind: how==="ctrl" ? "통제" : "제압", grade}}, G.bonus ? {bonus:Object.assign({}, G.bonus)} : {}, G.mpRed ? {mpRed:G.mpRed} : {}, G.hpRed ? {hpRed:G.hpRed} : {}); }
+  return Object.assign({slot:"acc", name:G.n, gift:{abno:a.vid, from:a.n, kind: how==="ctrl" ? "통제" : "제압", grade}}, G.bonus ? {bonus:Object.assign({}, G.bonus)} : {}, G.mpRed ? {mpRed:G.mpRed} : {}, G.hpRed ? {hpRed:G.hpRed} : {}, G.selfUp ? {selfUp:G.selfUp} : {});  }
 const overGift = f => { const g = f.gear && f.gear.acc; return g && g.gift && g.gift.grade < f.grade ? g.gift : null; };
 
 /* 환상체 기믹 — 해결사가 현장에서 겪는 일로 옮긴 것. 오래 남는 효과는 해결사(f.ab)에 붙여 하루 끝에 정산한다 */
@@ -4070,206 +4070,143 @@ function abnoSkillKind(n){ n = String(n||"");
   if(/총|탄|사격|쏘|뱉|화살|씨앗|침|포자|가루|비늘|깃털/.test(n)) return "shot";
   if(/칼|검|창|말뚝|도끼|가지|뿌리|채찍|꼬리|낫|칼날|못|실|덩굴|촉수|팔|손/.test(n)) return "lash";
   return "burst"; }
-/* ALEPH 조우 연출: 어둠 속 작은 칠각별 → 화면을 가득 메울 만큼 덮쳐 옴 → 끊김 → 글자 고리를 두른 문장(紋章)과 일그러진 이름. 화면을 누르면 건너뛴다 */
+/* ALEPH 조우 연출 — "마주한 순간 날개 하나가 무너질 수 있는 것".
+   직접 무너뜨리는 장면 대신 크기와 압력으로 보여 준다.
+   ① 침묵: 관측실의 계측선만 떨린다 · 수치가 치솟다 끊긴다
+   ② 끌림: 먼지와 빛이 한 점으로 빨려 들고, 저 아래 도시의 불빛이 가운데서부터 꺼진다
+   ③ 눈: 화면이 통째로 눈꺼풀이었다 — 도시를 내려다보는 거대한 눈이 뜨인다
+   ④ 응시: 동공이 좁혀지며 이쪽을 본다 — 화면이 찢기고 뒤집힌다
+   ⑤ 이름: 눈이 작은 문장으로 접히고, 일그러진 이름이 남는다. 화면을 누르면 건너뛴다 */
 function alephIntro(name){
   return new Promise(res=>{
     const cv = document.createElement("canvas"); cv.className = "aleph-fx"; document.body.appendChild(cv);
     const d = Math.min(2, devicePixelRatio||1), W = innerWidth, H = innerHeight; cv.width = W*d; cv.height = H*d; const c = cv.getContext("2d"); c.setTransform(d,0,0,d,0,0);
-    const OFF = 1.1, T = 3.6 + OFF, IMP = 0.85; let t0 = 0, raf, done = false;
-    const rnd = (a,b) => a + Math.random()*(b-a), cl = (v,a,b) => Math.max(a, Math.min(b, v));
+    const T = 5.3, A1 = .95, A2 = 2.25, A3 = 3.0, A4 = 3.35;    // 끌림 시작 · 눈 뜸 · 응시(충격) · 이름
+    let t0 = 0, raf, done = false;
+    let seed = 7; const rr = () => (seed = (seed*16807) % 2147483647) / 2147483647, rnd = (a,b) => a + rr()*(b-a), cl = (v,a,b) => Math.max(a, Math.min(b, v));
+    const ease = x => x<.5 ? 4*x*x*x : 1 - Math.pow(-2*x+2, 3)/2, eo = x => 1 - Math.pow(1-x, 3);
     const mk = (w,h) => { const o = document.createElement("canvas"); o.width = Math.ceil(w); o.height = Math.ceil(h); return [o, o.getContext("2d")]; };
-    const finish = () => { if(done) return; done = true; cancelAnimationFrame(raf); cv.style.transition = "opacity .35s"; cv.style.opacity = 0; setTimeout(()=>{ cv.remove(); res(); }, 360); };
+    const finish = () => { if(done) return; done = true; cancelAnimationFrame(raf); cv.style.transition = "opacity .4s"; cv.style.opacity = 0; setTimeout(()=>{ cv.remove(); res(); }, 420); };
     cv.onclick = finish;
-    const cx = W/2, cy = H/2, base = Math.min(W,H);
-    // ── 칠각별 {7/2}: 한 줄로 이어진 닫힌 곡선이라 교차마다 위/아래를 번갈아 엮을 수 있다
-    const V = Array.from({length:7}, (_,i)=>{ const a = -Math.PI/2 + i*2*Math.PI/7; return [Math.cos(a), Math.sin(a)]; });
-    const PATH = [0,2,4,6,1,3,5];                     // 막대 i = V[i] → V[(i+2)%7]
-    const X = [];                                     // 교차점: {a,b,ta,tb,x,y,over}
-    for(let a=0;a<7;a++) for(let b=a+1;b<7;b++){
-      const A0 = V[a], A1 = V[(a+2)%7], B0 = V[b], B1 = V[(b+2)%7];
-      const rx = A1[0]-A0[0], ry = A1[1]-A0[1], sx = B1[0]-B0[0], sy = B1[1]-B0[1], den = rx*sy - ry*sx; if(Math.abs(den) < 1e-9) continue;
-      const qx = B0[0]-A0[0], qy = B0[1]-A0[1], ta = (qx*sy - qy*sx)/den, tb = (qx*ry - qy*rx)/den;
-      if(ta > .01 && ta < .99 && tb > .01 && tb < .99) X.push({a, b, ta, tb, x:A0[0]+rx*ta, y:A0[1]+ry*ta, over:-1}); }
-    let flip = true;
-    PATH.forEach(i => X.filter(x => x.a===i || x.b===i).sort((p,q)=>(p.a===i?p.ta:p.tb)-(q.a===i?q.ta:q.tb))
-      .forEach(x => { if(x.over < 0) x.over = flip ? i : (x.a===i ? x.b : x.a); flip = !flip; }));
-    // ── 판자 질감: 결, 옹이, 긁힌 자국, 그을린 가장자리, 깨진 모서리
-    const plank = () => { const L = 900, B = 110, [o,g] = mk(L,B);
-      let gr = g.createLinearGradient(0,0,0,B); gr.addColorStop(0,"#3a0005"); gr.addColorStop(.2,"#8e0710"); gr.addColorStop(.5,"#b8121e"); gr.addColorStop(.8,"#86060e"); gr.addColorStop(1,"#2a0003");
-      g.fillStyle = gr; g.fillRect(0,0,L,B);
-      for(let i=0;i<7;i++){ const x = rnd(0,L), r = rnd(60,220), rg = g.createRadialGradient(x,B*rnd(.3,.7),0,x,B/2,r);
-        rg.addColorStop(0, Math.random()<.55 ? `rgba(225,25,35,${rnd(.2,.4)})` : `rgba(10,0,0,${rnd(.25,.45)})`); rg.addColorStop(1,"rgba(0,0,0,0)"); g.fillStyle = rg; g.fillRect(0,0,L,B); }
-      for(let i=0;i<52;i++){ const y = rnd(3,B-3), amp = rnd(.4,3.2), f = rnd(.003,.02), ph = rnd(0,6), x0 = rnd(-60,L*.5), x1 = x0 + rnd(L*.25, L);
-        g.strokeStyle = Math.random()<.72 ? `rgba(16,0,2,${rnd(.18,.55)})` : `rgba(200,35,45,${rnd(.08,.22)})`; g.lineWidth = rnd(.6,2.4);
-        g.beginPath(); for(let x=x0; x<=x1; x+=10){ const yy = y + Math.sin(x*f+ph)*amp; x===x0 ? g.moveTo(x,yy) : g.lineTo(x,yy); } g.stroke(); }
-      for(let i=0;i<2;i++){ const x = rnd(90,L-90), y = rnd(B*.3,B*.7);
-        for(let r=4;r<24;r+=3.5){ g.strokeStyle = `rgba(18,0,0,${.5-r/60})`; g.lineWidth = 1.3; g.beginPath(); g.ellipse(x,y,r*2.6,r*.7,0,0,7); g.stroke(); }
-        g.fillStyle = "rgba(12,0,0,.75)"; g.beginPath(); g.ellipse(x,y,7,3,0,0,7); g.fill(); }
-      for(let i=0;i<38;i++){ const x = rnd(-20,L), y = Math.random()<.5 ? rnd(0,B*.32) : rnd(B*.55,B), len = rnd(8,110), th = rnd(1.5,7);
-        g.fillStyle = `rgba(0,0,0,${rnd(.55,.92)})`; g.beginPath(); g.moveTo(x,y);
-        for(let s=1;s<=6;s++) g.lineTo(x+len*s/6, y+rnd(-th,th)*.5);
-        for(let s=6;s>=0;s--) g.lineTo(x+len*s/6, y+th*(s===0||s===6?.15:rnd(.5,1.1))); g.closePath(); g.fill(); }
-      g.globalCompositeOperation = "destination-out";
-      for(let i=0;i<30;i++){ const x = rnd(0,L), top = Math.random()<.5, dd = rnd(2,11), w = rnd(6,34); g.beginPath(); g.moveTo(x, top?0:B); g.lineTo(x+w*rnd(.3,.7), top?dd:B-dd); g.lineTo(x+w, top?0:B); g.fill(); }
-      for(const e of [0,L]){ g.beginPath(); g.moveTo(e,0); for(let y=0;y<=B;y+=7) g.lineTo(e + (e?-1:1)*rnd(0,16), y); g.lineTo(e,B); g.fill(); }
-      g.globalCompositeOperation = "source-atop";
-      gr = g.createLinearGradient(0,0,0,B); gr.addColorStop(0,"rgba(0,0,0,.8)"); gr.addColorStop(.13,"rgba(0,0,0,0)"); gr.addColorStop(.87,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.85)"); g.fillStyle = gr; g.fillRect(0,0,L,B);
-      gr = g.createLinearGradient(0,0,L,0); gr.addColorStop(0,"rgba(0,0,0,.65)"); gr.addColorStop(.07,"rgba(0,0,0,0)"); gr.addColorStop(.93,"rgba(0,0,0,0)"); gr.addColorStop(1,"rgba(0,0,0,.65)"); g.fillStyle = gr; g.fillRect(0,0,L,B);
-      for(let i=0;i<2200;i++){ g.fillStyle = Math.random()<.65 ? `rgba(0,0,0,${rnd(.2,.6)})` : `rgba(255,70,70,${rnd(.04,.16)})`; g.fillRect(rnd(0,L), rnd(0,B), rnd(.6,2.2), rnd(.6,1.6)); }
-      g.globalCompositeOperation = "source-over"; return o; };
-    const PL = Array.from({length:7}, plank);
-    // ── 문장(紋章): 이중 고리 + 깨알 글씨 + 고리 위 마디 + 엮인 칠각별, 낡은 인쇄처럼 깎아 낸다
-    const SIG = (() => { const S = 640, o2 = S/2, R0 = S*0.43, [o,g] = mk(S,S); g.translate(o2,o2);
-      g.shadowColor = "rgba(255,20,30,.55)"; g.shadowBlur = 7;
-      const red = "rgba(205,22,30,1)";
-      g.strokeStyle = red; g.lineWidth = 3; g.beginPath(); g.arc(0,0,R0,0,7); g.stroke(); g.lineWidth = 2; g.beginPath(); g.arc(0,0,R0*.86,0,7); g.stroke();
-      g.lineWidth = 1; g.beginPath(); g.arc(0,0,R0*.83,0,7); g.stroke();
-      const TXT = "ALEPH ✠ ᚦᚨᚱᚲ ᛉᛊᛏ ✠ 돌아갈 길은 없다 ✠ ᛗᛚᛜ ᛞᛟᚠ ✠ ";
-      g.fillStyle = red; g.font = `700 ${Math.round(R0*.085)}px "Noto Serif KR",serif`; g.textAlign = "center"; g.textBaseline = "middle";
-      for(let k=0, a=-Math.PI/2; k<220 && a < Math.PI*1.5 - .05; k++){ const ch = TXT[k % TXT.length], w = g.measureText(ch).width + R0*.012;
-        const nodeNear = V.some((_,i)=>{ const na = -Math.PI/2 + (i+.5)*2*Math.PI/7; let df = Math.abs(((a - na) % (Math.PI*2) + Math.PI*3) % (Math.PI*2) - Math.PI); return df < .13; });
-        if(!nodeNear){ g.save(); g.rotate(a + Math.PI/2); g.fillText(ch, 0, -R0*.93); g.restore(); } a += w/(R0*.93); }
-      for(let i=0;i<7;i++){ const a = -Math.PI/2 + (i+.5)*2*Math.PI/7, x = Math.cos(a)*R0*.93, y = Math.sin(a)*R0*.93, r = R0*.105;
-        g.shadowBlur = 0; g.fillStyle = "#000"; g.beginPath(); g.arc(x,y,r*1.05,0,7); g.fill(); g.shadowBlur = 7;
-        g.strokeStyle = red; g.lineWidth = 2.2; g.beginPath(); g.arc(x,y,r,0,7); g.stroke(); g.lineWidth = 1; g.beginPath(); g.arc(x,y,r*.72,0,7); g.stroke();
-        g.save(); g.translate(x,y); g.rotate(a + Math.PI/2); g.font = `700 ${Math.round(r*.8)}px serif`; g.fillText("ᚠᚦᚱᚷᛉᛟ✠"[i], 0, 1); g.restore(); }
-      const Rs = R0*.74, bw = R0*.12, ov = bw*.55;
-      const band = (i, path) => { const A = V[i], B = V[(i+2)%7], ang = Math.atan2(B[1]-A[1], B[0]-A[0]), len = Math.hypot(B[0]-A[0], B[1]-A[1])*Rs + ov*2;
-        g.save(); g.translate((A[0]+B[0])/2*Rs, (A[1]+B[1])/2*Rs); g.rotate(ang); path(len); g.restore(); };
-      const drawBand = i => band(i, len => { g.fillStyle = "#3a0005"; g.fillRect(-len/2,-bw/2,len,bw);
-        g.fillStyle = "rgba(150,10,18,.55)"; g.fillRect(-len/2, -bw*.12, len, bw*.24);
-        g.strokeStyle = red; g.lineWidth = 2.6; g.strokeRect(-len/2,-bw/2,len,bw); });
-      PATH.forEach(drawBand);
-      X.forEach(x => { const u = x.over===x.a ? x.b : x.a; if(PATH.indexOf(x.over) > PATH.indexOf(u)) return;
-        g.save(); band(u, len => { g.beginPath(); g.rect(-len/2, -bw/2-2, len, bw+4); }); g.clip(); drawBand(x.over); g.restore(); });
-      g.setTransform(1,0,0,1,0,0); g.shadowBlur = 0;
-      g.globalCompositeOperation = "destination-out";
-      for(let i=0;i<5200;i++){ g.fillStyle = `rgba(0,0,0,${rnd(.3,1)})`; g.fillRect(rnd(0,S), rnd(0,S), rnd(.6,2.6), rnd(.6,2)); }
-      for(let i=0;i<40;i++){ g.fillStyle = `rgba(0,0,0,${rnd(.3,.7)})`; g.fillRect(rnd(0,S), rnd(0,S), rnd(10,60), rnd(1,2.5)); }
-      g.globalCompositeOperation = "source-over"; return o; })();
-    // ── 제목: 굵고 각진 글자, 위아래로 짙어지는 핏빛, 벗겨진 자국
-    const fs = Math.max(30, Math.min(base*.15, W*.86/Math.max(3.2, name.length*1.02)));
-    const TT = (() => { const [m] = mk(1,1), mg = m.getContext("2d"); const F = `900 ${fs}px "Pretendard","Noto Sans KR",sans-serif`; mg.font = F;
-      const w = mg.measureText(name).width + fs*.5, h = fs*1.5, [o,g] = mk(w,h); g.font = F; g.textAlign = "center"; g.textBaseline = "middle";
-      g.lineJoin = "miter"; g.strokeStyle = "#1a0002"; g.lineWidth = fs*.1; g.strokeText(name, w/2, h/2);
-      const gr = g.createLinearGradient(0, h/2-fs*.5, 0, h/2+fs*.5); gr.addColorStop(0,"#5c0008"); gr.addColorStop(.35,"#c4101c"); gr.addColorStop(.55,"#ff2a2e"); gr.addColorStop(1,"#6a0008");
-      g.fillStyle = gr; g.fillText(name, w/2, h/2);
-      g.globalCompositeOperation = "source-atop";
-      for(let i=0;i<260;i++){ g.fillStyle = `rgba(20,0,0,${rnd(.3,.8)})`; g.fillRect(rnd(0,w), rnd(0,h), rnd(1,fs*.07), rnd(1,fs*.03)); }
-      g.globalCompositeOperation = "destination-out";
-      for(let i=0;i<70;i++){ g.fillStyle = `rgba(0,0,0,${rnd(.6,1)})`; g.fillRect(rnd(0,w), rnd(0,h), rnd(2,fs*.12), rnd(1,fs*.05)); }
-      for(let i=0;i<3;i++){ g.fillRect(0, h/2 + rnd(-fs*.4, fs*.4), w, rnd(1,2.2)); }
-      g.globalCompositeOperation = "source-over"; return o; })();
-    const SUB = "날개 하나가 무너지는 재앙  ·  위험 등급 ALEPH", sfs = Math.max(11, base*.03);
-    // ── 필름 입자 타일과 비네트
-    const [NZ, nz] = mk(256,256); { const id = nz.createImageData(256,256); for(let i=0;i<id.data.length;i+=4){ const v = Math.random(); if(v < .1){ id.data[i] = 120 + Math.random()*120; id.data[i+3] = 30 + Math.random()*40; } else if(v < .45){ id.data[i+3] = 60 + Math.random()*120; } } nz.putImageData(id,0,0); }
-    const NP = c.createPattern(NZ, "repeat");
-    const VG = c.createRadialGradient(cx, cy, base*.2, cx, cy, Math.hypot(W,H)*.6); VG.addColorStop(0,"rgba(0,0,0,0)"); VG.addColorStop(1,"rgba(0,0,0,.75)");
-    // ── 판자 장면: 화면을 넘는 거대한 칠각별을 판자들이 하나씩 날아와 엮는다
-    const R = Math.min(H*.78, Math.max(W*.6, H*.42)), BW = R*.3, OV = R*.5, SX = cx, SY = cy + R*.16;
-    const G = Array.from({length:7}, (_,i)=>{ const A = V[i], B = V[(i+2)%7], ax = SX+A[0]*R, ay = SY+A[1]*R, bx = SX+B[0]*R, by = SY+B[1]*R, ang = Math.atan2(by-ay, bx-ax);
-      const sg = (Math.cos(ang) - Math.sin(ang)) >= 0 ? 1 : -1;     // 오른쪽 위 화면 밖에서 날아든다
-      return {mx:(ax+bx)/2, my:(ay+by)/2, ang, len:Math.hypot(bx-ax,by-ay) + OV*2, dir:[Math.cos(ang)*sg, Math.sin(ang)*sg], sg}; });
-    const ORDER = [6,1,4,0,3,5,2], ST = 0.42, GAP = 0.085, DUR = 0.22;
-    const pose = (i, t) => { const k = ORDER.indexOf(i), p = cl((t - ST - k*GAP)/DUR, 0, 1), e = 1 - Math.pow(1-p, 3), g = G[i], far = (W+H)*.95*(1-e);
-      return {p, dx:g.dir[0]*far - g.dir[1]*far*.12, dy:g.dir[1]*far + g.dir[0]*far*.12, dr:(1-e)*.38*g.sg, land: ST + k*GAP + DUR}; };
-    const plankAt = (i, P, a) => { const g = G[i]; c.save(); c.globalAlpha = a; c.translate(g.mx + P.dx, g.my + P.dy); c.rotate(g.ang + P.dr);
-      c.shadowColor = "rgba(0,0,0,.95)"; c.shadowBlur = BW*.45; c.shadowOffsetY = BW*.1; c.fillStyle = "#000"; c.fillRect(-g.len/2+8, -BW/2+5, g.len-16, BW-10);
-      c.shadowColor = "transparent"; c.drawImage(PL[i], -g.len/2, -BW/2, g.len, BW);
-      c.strokeStyle = "rgba(0,0,0,.75)"; c.lineWidth = Math.max(2, BW*.03); c.beginPath(); c.moveTo(-g.len/2+10, -BW/2+1); c.lineTo(g.len/2-10, -BW/2+1); c.moveTo(-g.len/2+10, BW/2-1); c.lineTo(g.len/2-10, BW/2-1); c.stroke(); c.restore(); };
-    const bandClip = (i, P, pad) => { const g = G[i]; c.save(); c.translate(g.mx + P.dx, g.my + P.dy); c.rotate(g.ang + P.dr); c.rect(-g.len/2, -BW/2-pad, g.len, BW+pad*2); c.restore(); };
-    const scene = t => { const z = 1 + Math.max(0, t - ST)*.07; let shake = 0;
-      ORDER.forEach(i => { const q = t - pose(i,t).land; if(q > 0 && q < .16) shake = Math.max(shake, 1 - q/.16); });
-      c.save(); c.translate(SX + rnd(-1,1)*shake*BW*.12, SY + rnd(-1,1)*shake*BW*.12); c.scale(z,z); c.translate(-SX, -SY);
-      ORDER.forEach(i => { const P = pose(i,t); if(P.p <= 0) return;
-        if(P.p < 1) for(let gh=2; gh>=1; gh--){ const Q = pose(i, t - gh*.025); if(Q.p > 0) plankAt(i, Q, .18/gh); }
-        plankAt(i, P, 1); });
-      X.forEach(x => { const u = x.over===x.a ? x.b : x.a, Po = pose(x.over,t), Pu = pose(u,t); if(Po.p < 1 || Pu.p < 1) return;
-        if(ORDER.indexOf(x.over) > ORDER.indexOf(u)) return;
-        const a = cl((t - Math.max(Po.land, Pu.land))/.07, 0, 1); if(a <= 0) return;
-        c.save(); c.beginPath(); bandClip(u, Pu, 2); c.clip(); c.beginPath(); bandClip(x.over, Po, BW*.35); c.clip(); plankAt(x.over, {...Po, dy:Po.dy}, a*.6); plankAt(x.over, Po, a); c.restore(); });
-      c.restore(); };
-    const condensed = (txt, x, y, size, color, alpha, sx) => { c.save(); c.globalAlpha = alpha; c.translate(x,y); c.scale(sx,1); c.font = `800 ${size}px "Pretendard","Noto Sans KR",sans-serif`;
-      c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = color; c.fillText(txt, 0, 0); c.restore(); };
-    const title = (x, y, sc, alpha, glitch) => { const w = TT.width*sc, h = TT.height*sc;
-      if(Math.random() < .45){ c.save(); c.globalAlpha = alpha*rnd(.1,.2); c.drawImage(TT, x - w/2 + rnd(3,8)*(Math.random()<.5?-1:1), y - h/2 + rnd(-1.5,1.5), w, h); c.restore(); }   // 떨리는 잔상
-      c.save(); c.globalAlpha = alpha;
-      if(glitch){ const n = 6; for(let b=0;b<n;b++){ const sy = TT.height*b/n, dx = Math.random() < .5 ? rnd(-.06,.06)*w : 0; c.drawImage(TT, 0, sy, TT.width, TT.height/n, x - w/2 + dx, y - h/2 + h*b/n, w, h/n + .5); } }
-      else c.drawImage(TT, x - w/2, y - h/2, w, h);
-      c.restore(); };
-    const sigil = (x, y, size, alpha) => { c.save(); c.globalAlpha = alpha; c.drawImage(SIG, x - size/2, y - size/2, size, size); c.restore(); };
-    // ── 처음 1.1초: 구역의 둥지가 무너진다. 하늘에 문장이 펼쳐지고, 탑의 불이 위에서부터 꺼지고, 충격파에 탑이 꺾여 무너지며 화면이 금 간다
-    const DL = (typeof districtOf === "function" ? districtOf() : {L:"?", name:"이 구역"});
-    const CY = (() => { const R = (a,b) => a + Math.random()*(b-a), bl = []; let x = -10;
-      while(x < W + 10){ const w = R(W*.035, W*.085), h = R(H*.18, H*.44); bl.push({x, w, h, lit:Array.from({length:Math.max(3, Math.floor(w*h/180))}, ()=>[Math.random(), Math.random(), Math.random()]), fall: Math.random() < .55 ? R(.25, 1) : 0, tilt: R(-.25,.25)}); x += w + R(1,4); }
-      const tw = Math.max(60, base*.21), th = H*.86, tx = cx, top = H - th, brk = top + th*.44, dir = Math.random() < .5 ? -1 : 1;
-      const shards = Array.from({length:90}, (_,i)=>({x:tx + R(-tw*.6, tw*.6), y: i < 18 ? top + th*.1 + R(-tw*.2, tw*.2) : R(brk - th*.08, brk + th*.06), vx:R(-320,320), vy:R(-520,-80), s:R(2,8), r:R(0,6), vr:R(-9,9), glow: i < 18}));
-      const px = cx, py = H*.45, cracks = [];
-      for(let i=0;i<12;i++){ let a0 = i/12*Math.PI*2 + R(-.2,.2), x0 = px + R(-6,6), y0 = py + R(-6,6); const pts = [[x0,y0]], L = Math.hypot(W,H)*R(.35,.75);
-        for(let s=0; s<L; ){ const st = R(14,40); a0 += R(-.28,.28); x0 += Math.cos(a0)*st; y0 += Math.sin(a0)*st; s += st; pts.push([x0,y0]);
-          if(Math.random() < .14 && pts.length > 2){ let b0 = a0 + R(-.9,.9), bx = x0, by = y0; const bp = [[bx,by]]; for(let k=0;k<rnd(3,7);k++){ b0 += R(-.3,.3); const s2 = R(10,26); bx += Math.cos(b0)*s2; by += Math.sin(b0)*s2; bp.push([bx,by]); } cracks.push(bp); } }
-        cracks.push(pts); }
-      return {bl, tw, th, tx, top, brk, dir, shards, cracks}; })();
-    const towerPath = () => { const {tw, th, tx, top} = CY; c.beginPath(); c.moveTo(tx - tw/2, H); c.lineTo(tx - tw*.36, top + th*.16); c.lineTo(tx - tw*.13, top + th*.04); c.lineTo(tx + tw*.13, top + th*.04); c.lineTo(tx + tw*.36, top + th*.16); c.lineTo(tx + tw/2, H); c.closePath(); };
-    const towerBody = (t) => { const {tw, th, tx, top} = CY, yb = top + cl((t - .45)/.4, 0, 1)*th;
-      const g = c.createLinearGradient(tx - tw/2, 0, tx + tw/2, 0); g.addColorStop(0,"#0b0c13"); g.addColorStop(.5,"#1d2030"); g.addColorStop(1,"#0b0c13"); c.fillStyle = g; towerPath(); c.fill();
-      for(let i=0;i<30;i++){ const y = top + th*.18 + i*th*.028; if(y > H) break; const k = (y - top)/th, half = tw*(.36 + .14*k); if(y < yb) continue;
-        c.fillStyle = `rgba(160,210,255,${.22 + .1*Math.sin(i*1.7)})`; c.fillRect(tx - half + 3, y, half*2 - 6, 1.4); }
-      c.strokeStyle = "#252838"; c.lineWidth = 2; c.beginPath(); c.moveTo(tx, top + th*.04); c.lineTo(tx, top - H*.03); c.stroke();
-      const by = top + th*.1, br = tw*.22, on = t < .55; if(on){ const hg = c.createRadialGradient(tx, by, 0, tx, by, br*3); hg.addColorStop(0,"rgba(255,214,140,.35)"); hg.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = hg; c.fillRect(tx - br*3, by - br*3, br*6, br*6); }
-      c.strokeStyle = on ? "rgba(255,214,140,.9)" : "rgba(120,100,80,.5)"; c.lineWidth = 1.5; c.beginPath(); c.arc(tx, by, br, 0, 7); c.stroke();
-      c.fillStyle = on ? "rgba(255,226,170,.95)" : "rgba(120,100,80,.6)"; c.font = `800 ${Math.round(br*1.3)}px "Pretendard","Noto Sans KR",sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(DL.L, tx, by + 1); };
-    const city = (t, tt) => { const {bl, tw, th, tx, top, brk, dir, shards} = CY, fall = cl((t - IMP)/.55, 0, 1), fe = fall*fall;
-      const quake = t < IMP ? cl(t/IMP, 0, 1)*2.2 : Math.max(0, 20*(1 - (t - IMP)/.6)) + 2;
-      c.save(); c.globalAlpha = 1 - cl((tt - .3)/.6, 0, 1)*.8; c.translate(rnd(-1,1)*quake, rnd(-1,1)*quake);
-      const sg = c.createLinearGradient(0,0,0,H); sg.addColorStop(0, t < IMP ? "#0d0b14" : "#22050a"); sg.addColorStop(1, "#060508"); c.fillStyle = sg; c.fillRect(-30,-30,W+60,H+60);
-      // 하늘에 펼쳐지는 문장
-      if(t > .22){ const k = ease(cl((t - .22)/.6, 0, 1)), sz = base*(.05 + .5*k), sy = H*.2;
-        const rg = c.createRadialGradient(cx, sy, 0, cx, sy, sz*1.4); rg.addColorStop(0, `rgba(200,10,24,${.35*k})`); rg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = rg; c.fillRect(cx - sz*1.4, sy - sz*1.4, sz*2.8, sz*2.8);
-        c.save(); c.translate(cx, sy); c.rotate(t*.35); c.globalAlpha *= .35 + .6*k; c.drawImage(SIG, -sz/2, -sz/2, sz, sz); c.restore();
-        if(t > .55 && t < IMP + .1){ const bk = cl((t - .55)/.3, 0, 1); c.fillStyle = `rgba(255,40,50,${.25*bk})`; c.fillRect(cx - 3 - bk*6, sy, 6 + bk*12, top + th*.1 - sy); } }
-      // 뒷골목 건물들: 충격 뒤 절반쯤이 기울며 주저앉는다
-      bl.forEach(b=>{ const sink = b.fall*fe*b.h*.9, ang = b.fall*fe*b.tilt; c.save(); c.translate(b.x + b.w/2, H); c.rotate(ang); c.fillStyle = "#121019"; c.fillRect(-b.w/2, -b.h + sink, b.w, b.h); c.fillStyle = "#1a1724"; c.fillRect(-b.w/2, -b.h + sink, b.w, 2);
-        if(t < .45 + (1 - b.h/H)*.4) b.lit.forEach(l=>{ c.fillStyle = `rgba(255,200,120,${.25 + .35*l[2]})`; c.fillRect(-b.w/2 + 3 + l[0]*(b.w - 8), -b.h + sink + 5 + l[1]*(b.h - 12), 2.5, 3.5); }); c.restore(); });
-      // 둥지 탑: 아랫동은 남고, 윗동은 꺾여 떨어진다
-      c.save(); c.beginPath(); c.rect(0, brk, W, H - brk); c.clip(); towerBody(t); c.restore();
-      c.save(); const pv = tx + dir*tw*.3; c.translate(pv, brk + fe*H*.7); c.rotate(dir*fe*.75); c.translate(-pv, -brk); c.beginPath(); c.rect(0, -H, W, brk + H); c.clip(); towerBody(t); c.restore();
-      if(t >= IMP){ const dt = t - IMP;
-        shards.forEach(s=>{ const x = s.x + s.vx*dt, y = s.y + s.vy*dt + 450*dt*dt; if(y > H + 10) return; c.save(); c.translate(x, y); c.rotate(s.r + s.vr*dt);
-          c.fillStyle = s.glow ? `rgba(255,214,140,${Math.max(0, .9 - dt)})` : "#141622"; c.beginPath(); c.moveTo(-s.s, -s.s*.4); c.lineTo(s.s*.8, -s.s*.6); c.lineTo(s.s*.2, s.s); c.closePath(); c.fill(); c.restore(); });
-        // 충격파 고리와 먼지 벽
-        const rr = dt*base*2.4, ra = Math.max(0, 1 - dt/.7); c.strokeStyle = `rgba(255,120,110,${.7*ra})`; c.lineWidth = 3 + 10*ra; c.beginPath(); c.ellipse(cx, H*.45, rr, rr*.55, 0, 0, 7); c.stroke();
-        const dg = c.createLinearGradient(0, H*.55, 0, H); dg.addColorStop(0, "rgba(40,8,10,0)"); dg.addColorStop(1, `rgba(60,14,16,${.65*cl(dt/.5,0,1)})`); c.fillStyle = dg; c.fillRect(-30, H*.55, W+60, H*.45);
-        if(dt < .14){ c.fillStyle = dt < .05 ? "rgba(255,245,240,.85)" : `rgba(220,20,30,${.5*(1 - (dt - .05)/.09)})`; c.fillRect(-30,-30,W+60,H+60); } }
-      // 둥지 신호가 끊긴다
-      if(t > .5 && t < OFF + .4 && Math.sin(t*22) > -.3){ c.fillStyle = "#ff4a4a"; c.font = `700 ${Math.max(11, base*.026)}px ui-monospace,"D2Coding",monospace`; c.textAlign = "left"; c.textBaseline = "top";
-        c.fillText(t < IMP ? `${DL.name} 둥지 — 전력 이상` : `${DL.name} 둥지 — 신호 소실`, 18, 16); }
-      c.restore(); };
-    const cracksFx = (t) => { if(t < IMP) return; const p = cl((t - IMP)/.2, 0, 1), fade = t > T - .55 ? cl((T - t)/.55, 0, 1) : 1;
-      c.save(); c.lineJoin = "round"; CY.cracks.forEach(pts=>{ const n = Math.max(2, Math.floor(pts.length*p)); c.beginPath(); for(let i=0;i<n;i++) i ? c.lineTo(pts[i][0], pts[i][1]) : c.moveTo(pts[i][0], pts[i][1]);
-        c.strokeStyle = `rgba(0,0,0,${.55*fade})`; c.lineWidth = 3; c.stroke(); c.strokeStyle = `rgba(255,232,232,${.42*fade})`; c.lineWidth = 1; c.stroke(); }); c.restore(); };
+    const cx = W/2, cy = H*.42, base = Math.min(W,H), big = Math.max(W,H);
+    // ── 필름 입자, 비네트
+    const [NP0, ng] = mk(160,160); { const id = ng.createImageData(160,160); for(let i=0;i<id.data.length;i+=4){ const v = rr()*255; id.data[i]=id.data[i+1]=id.data[i+2]=v; id.data[i+3]=rr()<.5?14:0; } ng.putImageData(id,0,0); }
+    const NP = c.createPattern(NP0, "repeat");
+    const VG = c.createRadialGradient(cx, cy, base*.2, cx, cy, big*.78); VG.addColorStop(0,"rgba(0,0,0,0)"); VG.addColorStop(1,"rgba(0,0,0,.85)");
+    // ── 저 아래 도시: 낮고 촘촘한 실루엣과 창 불빛(가운데에서 먼 순서로 꺼진다)
+    const CITY = []; { let x = -10; while(x < W + 10){ const w = rnd(W*.012, W*.045), h = rnd(H*.03, H*.11)*(1 + .5*Math.exp(-Math.pow((x-cx)/(W*.25),2))), lit = [];
+        for(let yy = 4; yy < h - 4; yy += 6) for(let xx = 3; xx < w - 3; xx += 5) if(rr() < .32) lit.push([xx, yy, rr()]);
+        CITY.push({x, w, h, lit, dist: Math.abs(x + w/2 - cx)/(W/2)}); x += w + rnd(0, 3); } }
+    const GY = H*.985;
+    // ── 먼지: 처음엔 천천히 내려앉다가 가운데로 빨려 든다
+    const DUST = Array.from({length:260}, () => ({x:rnd(0,W), y:rnd(0,H), z:rnd(.3,1), ph:rnd(0,6)}));
+    // ── 눈: 홍채 결 · 흰자위 핏줄을 미리 그려 둔다
+    const RI = Math.min(H*.36, W*.3);
+    const [IRIS, ig] = mk(RI*2, RI*2); { const o = RI;
+      let g = ig.createRadialGradient(o,o,RI*.05,o,o,RI); g.addColorStop(0,"#ff6a4a"); g.addColorStop(.18,"#e0212b"); g.addColorStop(.55,"#8a0610"); g.addColorStop(.86,"#3a0006"); g.addColorStop(1,"#140003");
+      ig.fillStyle = g; ig.beginPath(); ig.arc(o,o,RI,0,7); ig.fill();
+      for(let i=0;i<900;i++){ const a = rnd(0, Math.PI*2), r0 = RI*rnd(.12,.5), r1 = r0 + RI*rnd(.15,.55), wob = rnd(-.08,.08);
+        ig.strokeStyle = rr()<.6 ? `rgba(255,${Math.round(rnd(60,140))},${Math.round(rnd(40,90))},${rnd(.05,.22)})` : `rgba(10,0,2,${rnd(.12,.35)})`; ig.lineWidth = rnd(.6,2.6);
+        ig.beginPath(); ig.moveTo(o + Math.cos(a)*r0, o + Math.sin(a)*r0); ig.quadraticCurveTo(o + Math.cos(a+wob)*(r0+r1)/2, o + Math.sin(a+wob)*(r0+r1)/2, o + Math.cos(a+wob*2)*r1, o + Math.sin(a+wob*2)*r1); ig.stroke(); }
+      for(let k=0;k<3;k++){ ig.strokeStyle = `rgba(20,0,3,${.35 - k*.08})`; ig.lineWidth = RI*.012; ig.beginPath(); ig.arc(o,o,RI*(.62 + k*.11),0,7); ig.stroke(); }
+      g = ig.createRadialGradient(o,o,RI*.8,o,o,RI); g.addColorStop(0,"rgba(0,0,0,0)"); g.addColorStop(1,"rgba(0,0,0,.85)"); ig.fillStyle = g; ig.beginPath(); ig.arc(o,o,RI,0,7); ig.fill(); }
+    const EW = Math.min(W*.56, Math.max(RI*1.9, W*.42)), EH = RI*1.02;    // 눈꺼풀 반폭 · 최대 반높이
+    const [SCL, sg] = mk(EW*2, EH*2); { sg.fillStyle = "#16060a"; sg.fillRect(0,0,EW*2,EH*2);
+      const g = sg.createRadialGradient(EW, EH, EH*.3, EW, EH, EW); g.addColorStop(0,"#3a1016"); g.addColorStop(1,"#0a0204"); sg.fillStyle = g; sg.fillRect(0,0,EW*2,EH*2);
+      for(let i=0;i<70;i++){ let x = rr()<.5 ? rnd(0, EW*.25) : rnd(EW*1.75, EW*2), y = rnd(EH*.3, EH*1.7), a = x < EW ? rnd(-.4,.4) : Math.PI + rnd(-.4,.4);
+        sg.strokeStyle = `rgba(${Math.round(rnd(120,200))},10,20,${rnd(.15,.45)})`; sg.lineWidth = rnd(.6,2.2); sg.beginPath(); sg.moveTo(x,y);
+        for(let s=0;s<rnd(6,14);s++){ a += rnd(-.5,.5); x += Math.cos(a)*rnd(8,22); y += Math.sin(a)*rnd(8,22); sg.lineTo(x,y); } sg.stroke(); } }
+    const lid = (open) => { const h = EH*open; c.beginPath(); const N = 64;
+      for(let i=0;i<=N;i++){ const u = -1 + 2*i/N, x = cx + u*EW, y = cy - h*Math.pow(1 - u*u, .75); i ? c.lineTo(x,y) : c.moveTo(x,y); }
+      for(let i=N;i>=0;i--){ const u = -1 + 2*i/N, x = cx + u*EW, y = cy + h*.92*Math.pow(1 - u*u, .8); c.lineTo(x,y); } c.closePath(); };
+    // 일곱 조각의 고리(관측 화면의 환상체와 같은 표식)
+    const shards = (x, y, R, rot, a, n=7, len=R*.22) => { for(let i=0;i<n;i++){ const ang = rot + i/n*Math.PI*2, px = x + Math.cos(ang)*R, py = y + Math.sin(ang)*R*.86, w2 = len*.26;
+        c.save(); c.translate(px,py); c.rotate(ang + Math.PI/2); c.fillStyle = `rgba(200,16,30,${a})`; c.beginPath(); c.moveTo(0,-len); c.lineTo(w2,len*.3); c.lineTo(0,len*.55); c.lineTo(-w2,len*.3); c.closePath(); c.fill(); c.restore(); } };
+    // 이름: 글자마다 따로 흔들린다
+    const fs = Math.min(base*.13, W*.92/Math.max(4, name.length*1.05)), sfs = Math.max(12, base*.026);
+    const drawName = (x, y, a, jit) => { c.save(); c.font = `900 ${fs}px "Noto Serif KR","Noto Sans KR",serif`; c.textBaseline = "middle"; c.textAlign = "left";
+      const ch = [...name], ws = ch.map(s=>c.measureText(s).width), tw = ws.reduce((p,v)=>p+v,0) + fs*.06*(ch.length-1); let px = x - tw/2;
+      ch.forEach((s,i)=>{ const j = jit && Math.random() < .35 ? 1 : 0, ox = j*rnd(-fs*.08,fs*.08), oy = j*rnd(-fs*.12,fs*.12);
+        c.globalAlpha = a*.55; c.fillStyle = "#3cf"; c.fillText(s, px + ox - fs*.025, y + oy);
+        c.globalAlpha = a; c.fillStyle = "#c4101c"; c.fillText(s, px + ox + fs*.02, y + oy);
+        c.globalAlpha = a*.9; c.fillStyle = "#f1e6e2"; c.fillText(s, px + ox, y + oy);
+        px += ws[i] + fs*.06; }); c.restore(); };
+    let readout = 0;
     function draw(now){
-      if(!t0) t0 = now; const t = (now - t0)/1000, tt = t - OFF; c.fillStyle = "#000"; c.fillRect(0,0,W,H);
-      const Rr = base*.21, fl = Math.random() < .07 ? .55 : 1;
-      if(t < OFF + 1.0) city(t, tt);
-      if(tt >= ST - .02 && tt < 1.35){ scene(tt);
-        const dk = cl((tt - 1.0)/.35, 0, 1)*.5; if(dk > 0){ c.fillStyle = `rgba(8,0,0,${dk})`; c.fillRect(0,0,W,H); }
-        if(tt > 1.08) condensed("돌아갈 길은 없다", cx + rnd(-2,2), cy + H*.3, base*.075, "#b0161c", (.14 + Math.random()*.12)*cl((tt - 1.08)/.12, 0, 1), .8); }
-      else if(tt >= 1.35 && tt < 1.5){ scene(1.35); c.fillStyle = "rgba(0,0,0,.72)"; c.fillRect(0,0,W,H);
-        for(let k=0;k<3;k++) if(Math.random() < .5){ c.fillStyle = `rgba(170,0,10,${rnd(.12,.3)})`; c.fillRect(0, rnd(0,H), W, rnd(2,H*.04)); }
-        title(cx, cy - Rr*.05, Math.min(1.35, W*.96/TT.width), .9, true); }
-      else if(tt >= 1.5){ const e = tt - 1.5, fade = t > T - .55 ? cl((T - t)/.55, 0, 1) : 1;
-        const rest = cl(1 - e/.4, 0, 1); if(rest > 0){ scene(1.35); c.fillStyle = `rgba(0,0,0,${1 - rest*.28})`; c.fillRect(0,0,W,H); }
-        sigil(cx, cy, Rr*2.75, (.55 + .3*cl((t - (T - .95))/.35, 0, 1))*fade*fl*cl(e/.12, 0, 1));
-        const tA = fade*cl((T - .62 - t)/.35, 0, 1)*(Math.random() < .04 ? .3 : 1);
-        if(tA > 0){ const sc = 1 + Math.pow(cl(1 - e/.3, 0, 1), 2)*(Math.min(1.35, W*.96/TT.width) - 1);
-          title(cx, cy - Rr*.05, sc, tA, e < .35 ? Math.random() < .6 : Math.random() < .08);
-          condensed(SUB, cx, cy + Rr*.05 + TT.height*.42 + sfs*.6, sfs, "#efc541", tA*cl((e - .12)/.15, 0, 1), .82); } }
-      cracksFx(t);
+      if(!t0) t0 = now; const t = (now - t0)/1000;
+      const pull = cl((t - A1)/(A2 - A1), 0, 1), open = t < A2 ? 0 : t < A3 ? eo(cl((t - A2)/.5, 0, 1)) : t < A4 + .5 ? 1 : 1 - ease(cl((t - A4 - .5)/.45, 0, 1));
+      const hit = t >= A3 ? Math.max(0, 1 - (t - A3)/.45) : 0, fade = t > T - .5 ? cl((T - t)/.5, 0, 1) : 1;
+      const shake = (pull*pull*6 + hit*hit*26)*(t < A4 + .5 ? 1 : 0);
+      c.save(); c.fillStyle = "#020102"; c.fillRect(0,0,W,H); c.translate(rnd(-shake,shake), rnd(-shake,shake));
+      // 공기: 위에서 아주 희미한 붉은 기운이 짙어진다
+      const sky = c.createLinearGradient(0,0,0,H); sky.addColorStop(0, `rgba(${30+60*pull},0,6,${.25+.5*pull})`); sky.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = sky; c.fillRect(-40,-40,W+80,H+80);
+      // ── 계측선: 관측실의 바늘이 떨리다가 치솟고 끊긴다
+      if(t < A2 + .1){ const la = t < A2 - .1 ? 1 : cl((A2 + .1 - t)/.2, 0, 1); c.strokeStyle = `rgba(255,70,70,${.55*la})`; c.lineWidth = 1.4; c.beginPath();
+        for(let x=0;x<=W;x+=4){ const k = Math.exp(-Math.pow((x - cx)/(W*.18),2)), amp = (2 + pull*pull*H*.32)*k + 1.2, y = cy + Math.sin(x*.09 + t*40)*amp*Math.sin(x*.013 + t*7) + (pull > .85 && Math.random()<.2 ? rnd(-H*.2,H*.2)*k : 0); x ? c.lineTo(x,y) : c.moveTo(x,y); } c.stroke();
+        readout = t < A1 ? t/A1*36 : 36 + Math.pow(pull, 3)*9e4;
+        c.font = `600 ${Math.max(10, base*.022)}px ui-monospace,"D2Coding",monospace`; c.textBaseline = "top"; c.textAlign = "left"; c.fillStyle = `rgba(255,90,90,${.8*la})`;
+        c.fillText(pull > .9 ? (Math.sin(t*30) > 0 ? "측정 불가" : "") : `관측 수치 ${readout.toFixed(readout < 100 ? 1 : 0)}`, 18, 16); }
+      // ── 먼지와 빛줄기: 가운데로 빨려 든다(충격 순간엔 거꾸로 흩어진다)
+      DUST.forEach(p=>{ const dx = cx - p.x, dy = cy - p.y, dist = Math.hypot(dx,dy) || 1;
+        let vx = Math.sin(t*.7 + p.ph)*.15, vy = .25*p.z;
+        const g = pull*pull*(14 + 900/dist)*p.z; vx += dx/dist*g; vy += dy/dist*g;
+        if(t >= A3 && t < A4 + .6){ const k = 34*hit*p.z; vx = -dx/dist*k; vy = -dy/dist*k; }
+        p.x += vx; p.y += vy; if(dist < 14 || p.x < -60 || p.x > W+60 || p.y < -60 || p.y > H+60){ const a = rnd(0,Math.PI*2); p.x = cx + Math.cos(a)*big*.6; p.y = cy + Math.sin(a)*big*.6; }
+        const sp = Math.hypot(vx,vy), al = (.25 + .5*p.z)*(t < A4 + .6 ? 1 : .3);
+        c.strokeStyle = `rgba(${200+55*pull},${170 - 120*pull},${160 - 120*pull},${al})`; c.lineWidth = .6 + p.z; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - vx*Math.min(6, 1 + sp*.4), p.y - vy*Math.min(6, 1 + sp*.4)); c.stroke(); });
+      // ── 한 점: 빛을 삼키는 어둠과 휘어진 고리
+      if(pull > 0 && t < A2 + .3){ const R0 = base*(.004 + .1*Math.pow(pull, 2.2))*(t > A2 ? 1 + (t - A2)*6 : 1);
+        for(let k=0;k<5;k++){ c.strokeStyle = `rgba(255,${60+k*25},${50+k*20},${.18*pull*(1 - k/5)})`; c.lineWidth = 2 + k*3; c.beginPath(); c.ellipse(cx, cy, R0*(1.4 + k*.5), R0*(1.4 + k*.5)*.3, Math.sin(t*.5)*.08, 0, 7); c.stroke(); }
+        c.fillStyle = "#000"; c.beginPath(); c.arc(cx, cy, R0, 0, 7); c.fill();
+        c.strokeStyle = `rgba(255,40,50,${.7*pull})`; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cy, R0, 0, 7); c.stroke(); }
+      // ── 눈: 화면 전체가 눈꺼풀이었다
+      if(open > 0){ const focus = t < A3 ? ease(cl((t - A2 - .35)/(A3 - A2 - .35), 0, 1)) : 1, look = t < A3 ? Math.sin(t*1.7)*RI*.06*(1 - focus) : 0;
+        c.save(); lid(open); c.clip();
+        c.drawImage(SCL, cx - EW, cy - EH);
+        const ix = cx + look, iy = cy + RI*.04, isc = 1 + hit*.08; c.drawImage(IRIS, ix - RI*isc, iy - RI*isc, RI*2*isc, RI*2*isc);
+        // 홍채 위로 도는 일곱 조각(그림자)
+        shards(ix, iy, RI*.86, t*.35, .28*open, 7, RI*.1);
+        // 세로로 찢어진 동공: 응시할수록 가늘어진다
+        const pw = RI*(.16 - .11*focus)*(1 + hit*.6), ph = RI*.9;
+        const pg = c.createRadialGradient(ix, iy, 0, ix, iy, ph); pg.addColorStop(0,"#000"); pg.addColorStop(.8,"#020001"); pg.addColorStop(1,"rgba(0,0,0,0)");
+        c.fillStyle = "rgba(255,90,60,.35)"; c.beginPath(); c.ellipse(ix, iy, pw*1.6, ph*1.02, 0, 0, 7); c.fill();
+        c.fillStyle = pg; c.beginPath(); c.ellipse(ix, iy, pw, ph, 0, 0, 7); c.fill();
+        // 젖은 빛 한 점
+        c.fillStyle = `rgba(255,236,230,${.55*open})`; c.beginPath(); c.ellipse(ix - RI*.28, iy - RI*.32, RI*.05, RI*.028, -.5, 0, 7); c.fill();
+        // 눈꺼풀 그림자
+        const sh = c.createLinearGradient(0, cy - EH*open, 0, cy + EH*open); sh.addColorStop(0,"rgba(0,0,0,.85)"); sh.addColorStop(.28,"rgba(0,0,0,0)"); sh.addColorStop(.8,"rgba(0,0,0,0)"); sh.addColorStop(1,"rgba(0,0,0,.7)"); c.fillStyle = sh; c.fillRect(cx - EW, cy - EH, EW*2, EH*2);
+        c.restore();
+        lid(open); c.strokeStyle = "#000"; c.lineWidth = 10; c.stroke(); c.strokeStyle = `rgba(230,40,50,${.55*open})`; c.lineWidth = 1.5; c.stroke();
+        // 눈가에 번지는 붉은 기운
+        const halo = c.createRadialGradient(cx, cy, EH*.6, cx, cy, EW*1.15); halo.addColorStop(0, `rgba(150,10,20,${.22*open})`); halo.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = halo; c.fillRect(-60,-60,W+120,H+120); }
+      // ── 도시: 눈 아래, 아주 작다(눈보다 앞에 그려 크기가 드러나게). 끌림이 커질수록 가운데서부터 불이 꺼진다
+      if(t < A4 + .6){ const ca = t < A4 ? 1 : 1 - cl((t - A4)/.6, 0, 1);
+        CITY.forEach(b=>{ const tilt = hit*(b.x + b.w/2 - cx)/W*.08; c.save(); c.globalAlpha = ca; c.translate(b.x + b.w/2, GY); c.rotate(tilt); c.fillStyle = "#010001"; c.fillRect(-b.w/2, -b.h, b.w, b.h); c.fillStyle = `rgba(255,60,60,${.18 + .3*pull})`; c.fillRect(-b.w/2, -b.h, b.w, 1);
+          const off = pull > 0 && b.dist < pull*1.15;
+          b.lit.forEach(([xx,yy,r])=>{ if(off && r < .96) return; c.fillStyle = r < .5 ? "rgba(255,196,120,.75)" : "rgba(150,210,255,.6)"; c.fillRect(-b.w/2 + xx, -b.h + yy, 2, 2); }); c.restore(); });
+        const hz = c.createLinearGradient(0, GY - H*.14, 0, GY); hz.addColorStop(0,"rgba(0,0,0,0)"); hz.addColorStop(1, `rgba(120,20,26,${.18*(1-pull)*ca})`); c.fillStyle = hz; c.fillRect(0, GY - H*.14, W, H*.14); }
+      // ── 응시: 뒤집히고 찢긴다
+      if(t >= A3 && t < A3 + .09){ c.save(); c.globalCompositeOperation = "difference"; c.fillStyle = "#fff"; c.fillRect(-60,-60,W+120,H+120); c.restore(); }
+      else if(t >= A3 + .09 && t < A3 + .2){ c.fillStyle = `rgba(200,10,22,${.55*(1 - (t - A3 - .09)/.11)})`; c.fillRect(-60,-60,W+120,H+120); }
+      if(hit > 0){ const R1 = (1 - hit)*big*1.1; c.strokeStyle = `rgba(255,140,130,${.6*hit})`; c.lineWidth = 2 + 16*hit; c.beginPath(); c.ellipse(cx, cy, R1, R1*.62, 0, 0, 7); c.stroke(); }
+      c.restore();
+      // ── 이름: 눈이 작은 문장으로 접힌다
+      if(t > A4 + .85){ const e = t - A4 - .85, a = cl(e/.3, 0, 1)*fade, Rm = base*(.085 + .02*eo(cl(e/.5,0,1)));
+        c.save(); c.globalAlpha = a; const my = cy - base*.08;
+        c.strokeStyle = "rgba(200,16,30,.55)"; c.lineWidth = 1; c.beginPath(); c.arc(cx, my, Rm*1.55, 0, 7); c.stroke();
+        for(let i=0;i<56;i++){ const an = i/56*Math.PI*2 + t*.05, l = i%7 ? 3 : 9; c.beginPath(); c.moveTo(cx + Math.cos(an)*Rm*1.55, my + Math.sin(an)*Rm*1.55); c.lineTo(cx + Math.cos(an)*(Rm*1.55 - l), my + Math.sin(an)*(Rm*1.55 - l)); c.stroke(); }
+        shards(cx, my, Rm*1.12, -t*.4, .85, 7, Rm*.32);
+        c.fillStyle = "#0a0002"; c.beginPath(); c.ellipse(cx, my, Rm*.62, Rm*.72, 0, 0, 7); c.fill(); c.strokeStyle = "rgba(200,16,30,.9)"; c.lineWidth = 2; c.stroke();
+        const bl = Math.max(.1, Math.abs(Math.sin(t*1.1 + 1.3)));
+        c.fillStyle = "#ff4a3a"; c.beginPath(); c.ellipse(cx, my, Rm*.08, Rm*.58*bl, 0, 0, 7); c.fill(); c.restore();
+        drawName(cx, my + Rm*1.55 + fs*.75, a, e < .35 || Math.random() < .07);
+        c.save(); c.globalAlpha = a*cl((e - .2)/.3, 0, 1); c.font = `600 ${sfs}px "Noto Sans KR",sans-serif`; c.fillStyle = "#e9c24a"; c.textAlign = "center"; c.textBaseline = "top";
+        c.fillText("위험 등급  ALEPH", cx, my + Rm*1.55 + fs*1.35); c.restore(); }
       // 필름 입자 · 비네트 · 어긋나는 주사선
-      c.save(); c.globalAlpha = .55; c.translate(rnd(-128,0), rnd(-128,0)); c.fillStyle = NP; c.fillRect(0,0,W+128,H+128); c.restore();
+      c.save(); c.globalAlpha = .6; c.translate(rnd(-160,0), rnd(-160,0)); c.fillStyle = NP; c.fillRect(0,0,W+160,H+160); c.restore();
       c.fillStyle = VG; c.fillRect(0,0,W,H);
-      if(Math.random() < (t > IMP && t < IMP + .6 ? .7 : .3)){ const y0 = Math.random()*H, hh = 2 + Math.random()*22; c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(cv, 0, y0*d, W*d, hh*d, rnd(-24,24)*d*(t > IMP && t < IMP + .6 ? 2.5 : 1), y0*d, W*d, hh*d); c.restore(); }
+      const tear = t >= A3 && t < A3 + .5 ? 1 : 0;
+      for(let k=0;k<(tear ? 6 : 1);k++) if(tear || Math.random() < .12 + pull*.3){ const y0 = Math.random()*H, hh = 2 + Math.random()*(tear ? H*.08 : 18); c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(cv, 0, y0*d, W*d, hh*d, rnd(-1,1)*(tear ? W*.08 : 18)*d, y0*d, W*d, hh*d); c.restore(); }
       if(t >= T) return finish(); raf = requestAnimationFrame(draw); }
     raf = requestAnimationFrame(draw);
   });
@@ -4414,7 +4351,7 @@ function mgAbno(ctx){
         maimOf(f); G.ctr--; say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다 — ${esc(jo(f.name,"을"))} 꼭 끌어안았다(중상)</span> · ${ctrName} -1`);
         if(G.ctr <= 0) return breach(f); return menu(); }
       if(a.rule==="killWork" && k===a.killK){ say(line + `<span style="color:#ff8a7a">${esc(a.dislike)}</span>`); return doom(f); }
-      const liked = lv==="최고" || lv==="좋음", sp = actP(lv, ratio), slip = liked && Math.random() >= sp;
+      const liked = lv==="최고" || lv==="좋음", selfG = (()=>{ const g = f.gear && f.gear.acc; return g && g.selfUp && g.gift && String(g.gift.abno).split("~")[0]===a.id ? g.selfUp : 0; })(), sp = liked ? Math.min(0.97, actP(lv, ratio) + selfG) : 0, slip = liked && Math.random() >= sp;
       const right = liked && !slip, lie = a.rule==="liar" && Math.random() < 0.5;
       if(slip) line += `<span style="color:#ff8a7a">좋아하는 행동이었지만 서툴렀다(성공 ${Math.round(sp*100)}%)</span> — `;   // 양치기 소년: 반응의 반은 거짓말(기분 막대만 진짜)
       const likeT = lie ? a.dislike : a.like, dislikeT = lie ? a.like : a.dislike;
@@ -4592,7 +4529,7 @@ function mgAbno(ctx){
       const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
     m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
-    const lead = a.risk==="ALEPH" ? 4800 : 0; if(lead) alephIntro(shown);
+    const lead = a.risk==="ALEPH" ? 5300 : 0; if(lead) alephIntro(shown);
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
     if(a.fx==="overture" || a.fx==="pulse"){ const out = []; ctx.team.forEach(f=>{ const v = Math.floor(f.mp*0.3); f.mp -= v; out.push(`${esc(f.name)} 정신력 -${v}`); });
@@ -5841,8 +5778,10 @@ async function openManage(){
   });
 }
 function gearDesc(g){
-  const p=[]; if(g.bonus) Object.entries(g.bonus).forEach(([k,v])=>p.push(`${ATTR_NAME[k]}+${v}`));
-  if(g.hpRed) p.push(`체력 피해 -${Math.round(g.hpRed*100)}%`); if(g.mpRed) p.push(`정신력 피해 -${Math.round(g.mpRed*100)}%`);
+  const p=[]; if(g.bonus) Object.entries(g.bonus).forEach(([k,v])=>p.push(`${ATTR_NAME[k]}${v>=0?"+":""}${v}`));
+  const pc = (lab, v) => p.push(`${lab} 피해 ${v>0?"-":"+"}${Math.abs(Math.round(v*100))}%`);
+  if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed);
+  if(g.selfUp && g.gift) p.push(`${g.gift.from.replace(/ \(아종:.*\)$/,"")} 관측 시 행동 성공률 +${Math.round(g.selfUp*100)}%p`);
   if(g.slot==="weapon" && g.unique){ p.push("고유 무기 · 닳지 않음"); const w = wspOf(g); if(w) p.push(`[${w.n}] ${w.d}`); } else if(durText(g)) p.push(durText(g));
   return p.join(" · ");
 }
