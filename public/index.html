@@ -1626,10 +1626,11 @@ function makeRequest(grade, opts={}){
   else if(kind==="환상체"){ row = pick(P.wil); }
   else if(P[key]){ row = pick(P[key]); }
   if(row){ text = row[0]; client = row[1]; if(key==="str") foe = row[2] || null; else chase = row[2] || null; }
-  if(ab){ const A = ABNO_BY[ab.id]; text = `${A.rumor}. 확인하고 처리해 달라`; }
+  if(ab){ const A = ABNO_BY[ab.id]; text = A.kill ? A.rumor : `${A.rumor}. 확인하고 처리해 달라`; }
   else { text = pick(TEXTS[key] || TEXTS.str); client = pick(CLIENTS[key] || CLIENTS.str); }
   // 물리 일반 의뢰는 제압 / 사살로 나뉜다(낮은 등급은 대부분 제압)
   let goal = null;
+  if(ab && ABNO_BY[ab.id].kill) goal = "사살";
   if(kind==="일반" && key==="str"){ goal = Math.random()<P.kill ? "사살" : "제압"; if(goal==="사살"){ const k2 = pick(P.str_kill); text = k2[0]; client = k2[1]; foe = k2[2]; } }
   const lootChance = kind==="수색"?0.07:kind==="환상체"?0.05:0.03;
   // 환상체 의뢰 일부는 고위험(75% 기준을 넘김)
@@ -2461,7 +2462,7 @@ function mgCombat(ctx){
     function finishMenu(){
       phase = "finish"; downed = true;
       m.info.innerHTML = `<div class="pk-text">${tick ? `<span style="color:#ffb35a">${tick}</span><br>` : ""}${jo(foe.name,"이")} 쓰러졌다. 의뢰 목표는 <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>이다. 어떻게 마무리할까?</div>`;
-      m.ctrl.innerHTML = AB ? `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>알로 되돌린다 — 환상체는 죽지 않는다</small></button></div>` : `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>숨은 붙여 두고 묶는다</small></button><button data-fin="사살"><b>사살</b><small>숨통을 끊는다</small></button></div>`;
+      m.ctrl.innerHTML = AB && AB.kill ? `<div class="pk-moves"><button data-fin="사살"><b>사살</b><small>죄종은 되돌릴 수 없다 — 숨통을 끊는다</small></button></div>` : AB ? `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>알로 되돌린다 — 환상체는 죽지 않는다</small></button></div>` : `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>숨은 붙여 두고 묶는다</small></button><button data-fin="사살"><b>사살</b><small>숨통을 끊는다</small></button></div>`;
     }
     function next(){
       if(foe.hp<=0) return finishMenu();
@@ -2485,7 +2486,7 @@ function mgCombat(ctx){
       if(done) return; done = true;
       const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0), prog = 1 - foe.hp/foe.max;
       let win = false, score, text;
-      if(outcome===goal){ win = true; score = 0.6 + 0.4*rest; text = AB ? "알로 되돌렸다 — 제압 성공" : goal==="사살" ? "목표를 사살했다 — 의뢰 성공" : "목표를 제압했다 — 의뢰 성공"; }
+      if(outcome===goal){ win = true; score = 0.6 + 0.4*rest; text = AB && AB.kill ? "죄종을 사살했다 — 의뢰 성공" : AB ? "알로 되돌렸다 — 제압 성공" : goal==="사살" ? "목표를 사살했다 — 의뢰 성공" : "목표를 제압했다 — 의뢰 성공"; }
       else if(outcome){ score = 0.3; text = goal==="제압" ? "과잉 진압 — 죽여 버렸다. 의뢰 실패" : "제압만 했다 — 사살 의뢰였다. 의뢰 실패"; }
       else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다 — 의뢰 실패"; }
       else { score = 0.4*prog; text = "시간이 다 됐다 — 놓쳤다. 의뢰 실패"; }
@@ -2647,7 +2648,7 @@ function mgCombat(ctx){
     }
     raf = requestAnimationFrame(draw);
     pickFoeSkill();
-    m.info.innerHTML = `<div class="pk-text">${AB ? `${jo(foe.name,"이")} 덮쳐 온다. 쓰러뜨려 알로 되돌려야 한다.` : `${jo(foe.name,"이")} 앞을 막아섰다. ${esc(foeArmsText(foe))}. `}${AB ? "" : foe.aug ? `<b style="color:#ffb35a">${foe.aug.n}</b> — ${foe.aug.desc}.` : "개조하지 않은 몸이다."}</div>`;
+    m.info.innerHTML = `<div class="pk-text">${AB ? `${jo(foe.name,"이")} 덮쳐 온다. ${AB.kill ? "죄종은 숨통을 끊어야 멈춘다." : "쓰러뜨려 알로 되돌려야 한다."}` : `${jo(foe.name,"이")} 앞을 막아섰다. ${esc(foeArmsText(foe))}. `}${AB ? "" : foe.aug ? `<b style="color:#ffb35a">${foe.aug.n}</b> — ${foe.aug.desc}.` : "개조하지 않은 몸이다."}</div>`;
     setTimeout(skillMenu, 1400);
   });
 }
@@ -3223,83 +3224,44 @@ const RISK_COL = {죄종:"#b9a4d8", ZAYIN:"#4fae6a", TETH:"#4f8fd6", HE:"#e0c64a
 // 원작의 선호 작업 순서("최고>…>최악", 같으면 =)를 반응으로 옮긴다: 첫 묶음 최고, 첫 묶음이 하나뿐이면 둘째 묶음 좋음, 나머지 나쁨
 function PF(order){ const g = order.split(">").map(x=>x.split("=")), r = {}; g.forEach((grp,i)=>grp.forEach(k=>{ r[k] = i===0 ? "최고" : (i===1 && g[0].length===1) ? "좋음" : "나쁨"; })); return r; }
 const ABNOS = [
-  // ── 작은 죄종 (9~7급) · 창작 ──
-  {id:"horn", n:"깨진 경적", risk:"죄종", sin:"분노", g:[9,7], look:"찌그러진 금속 덩어리가 쉰 소리로 울어 댄다",
-   rumor:"골목에서 밤새 경적 소리가 그치지 않는다. 소리 나는 쪽엔 차가 없다", pref:{agi:"최고", str:"좋음", tec:"나쁨", wil:"나쁨"}, ctr:2,
-   escape:"참을성이 바닥나면 소리가 비명이 되어 사방을 찢는다", story:"누군가 막힌 길 위에서 끝없이 눌러 대던 경적. 아무도 비켜 주지 않던 날의 분이 고철 속에 남았다.",
-   like:"울음이 잦아들었다", dislike:"경적이 귀를 찢는다",
-   cards:[{n:"찢는 울음",a:3,b:7},{n:"들이받기",a:3,b:8},{n:"웅크림",a:2,b:5,def:true}], hp:1,
-   gifts:{ctrl:{n:"깨진 경적 조각", bonus:{agi:2}, mpRed:0.05}, sup:{n:"찌그러진 경적 손잡이", bonus:{str:2,agi:1}}},
-   variant:{n:"사이렌", pref:{str:"최고", agi:"좋음", tec:"나쁨", wil:"나쁨"}}},
-  {id:"lips", n:"번진 립스틱 자국", risk:"죄종", sin:"색욕", g:[9,7], look:"붉은 입술 모양 얼룩이 벽을 기어 다닌다",
-   rumor:"모텔 복도 벽마다 입술 자국이 늘어난다. 닦아도 다음 날 또 생긴다", pref:{tec:"최고", wil:"좋음", str:"나쁨", agi:"나쁨"}, ctr:3,
-   escape:"외면당하면 자국이 사람의 얼굴로 옮겨 간다", story:"받지 못한 입맞춤이 거울 앞에서 번져 나갔다. 누구의 것이든 상관없었다.",
-   like:"자국이 부드럽게 웃는 것 같다", dislike:"얼룩이 손등으로 달라붙는다",
-   cards:[{n:"달라붙기",a:2,b:7},{n:"끈적한 입맞춤",a:3,b:7},{n:"번지기",a:2,b:5,def:true}], hp:0.9,
-   gifts:{ctrl:{n:"붉은 입술 손거울", bonus:{tec:2}, mpRed:0.06}, sup:{n:"말라붙은 립스틱", bonus:{tec:1,agi:2}}}},
-  {id:"sofa", n:"늘어진 소파", risk:"죄종", sin:"나태", g:[9,7], look:"솜이 터진 소파가 길 한가운데서 천천히 숨 쉰다",
-   rumor:"버려진 소파에 앉은 사람들이 일어나지 않는다. 벌써 사흘째다", pref:{str:"최고", agi:"좋음", tec:"나쁨", wil:"나쁨"}, ctr:3,
-   escape:"성가시게 굴면 쿠션 사이로 사람을 끌어당긴다", story:"하루만 쉬자던 사람이 영영 일어나지 않았다. 그 무게만큼 소파가 꺼졌다.",
-   like:"소파가 기지개 켜듯 들썩인다", dislike:"쿠션 사이로 손이 빨려 든다",
-   cards:[{n:"끌어당기기",a:2,b:8},{n:"짓눌러 재우기",a:3,b:7},{n:"푹신한 몸",a:3,b:6,def:true}], hp:1.15,
-   gifts:{ctrl:{n:"터진 쿠션 솜", mpRed:0.08, bonus:{wil:1}}, sup:{n:"부러진 소파 다리", bonus:{str:3}}},
-   variant:{n:"꺼진 침대", pref:{agi:"최고", str:"좋음", tec:"나쁨", wil:"나쁨"}}},
-  {id:"lunch", n:"빈 도시락통", risk:"죄종", sin:"탐식", g:[9,7], look:"뚜껑이 들썩이는 양철 도시락통이 이빨 소리를 낸다",
-   rumor:"공장 탈의실 사물함에서 음식이 사라지고, 어젯밤엔 고양이가 사라졌다", pref:{str:"최고", tec:"좋음", wil:"나쁨", agi:"나쁨"}, ctr:2,
-   escape:"배가 고프면 가장 가까운 것부터 삼킨다", story:"한 번도 다 채워진 적 없는 도시락. 비어 있던 시간만큼 이빨이 자랐다.",
-   like:"뚜껑이 만족스럽게 닫혔다", dislike:"뚜껑이 손가락을 노리고 덜컥인다",
-   cards:[{n:"덥석 물기",a:3,b:8},{n:"삼키기",a:2,b:9},{n:"뚜껑 닫기",a:3,b:5,def:true}], hp:1,
-   gifts:{ctrl:{n:"반질반질한 수저", bonus:{str:1,tec:1}, hpRed:0.03}, sup:{n:"이빨 박힌 뚜껑", bonus:{str:2,agi:1}}}},
-  {id:"umbrella", n:"젖은 우산", risk:"죄종", sin:"우울", g:[9,7], look:"아무도 들지 않은 우산 아래로만 비가 내린다",
-   rumor:"버스 정류장에 우산이 하나 서 있다. 그 아래 선 사람은 울다가 돌아간다", pref:{tec:"최고", wil:"좋음", agi:"나쁨", str:"나쁨"}, ctr:3,
-   escape:"혼자 남겨지면 비가 골목 전체로 번진다", story:"누군가를 기다리며 펼쳐 둔 우산. 기다리던 사람은 오지 않았고 비는 그치지 않았다.",
-   like:"빗줄기가 가늘어졌다", dislike:"차가운 비가 마음까지 스민다",
-   cards:[{n:"찬비",a:2,b:7},{n:"우산살 찌르기",a:3,b:7},{n:"접어 막기",a:3,b:6,def:true}], hp:0.95,
-   gifts:{ctrl:{n:"마르지 않는 손수건", mpRed:0.1}, sup:{n:"꺾인 우산살", bonus:{agi:2,tec:1}}},
-   variant:{n:"뒤집힌 우산", pref:{wil:"최고", tec:"좋음", agi:"나쁨", str:"나쁨"}}},
-  {id:"crown", n:"금 간 왕관 비둘기", risk:"죄종", sin:"오만", g:[9,7], look:"종이 왕관을 쓴 비둘기가 사람을 내려다본다",
-   rumor:"광장 동상 위 비둘기에게 고개를 숙이지 않으면 다친다는 소문이 돈다", pref:{wil:"최고", agi:"좋음", str:"나쁨", tec:"나쁨"}, ctr:2,
-   escape:"무시당하면 왕관이 날카로운 깃이 되어 쏟아진다", story:"광장의 동상은 오래전에 철거됐다. 그 자리를 내려다보던 새만 아직 내려오지 않았다.",
-   like:"비둘기가 거만하게 고개를 끄덕인다", dislike:"깃털이 칼날처럼 곤두선다",
-   cards:[{n:"깃 쏟기",a:3,b:7},{n:"부리 찍기",a:3,b:8},{n:"날개 펼치기",a:2,b:6,def:true}], hp:0.9,
-   gifts:{ctrl:{n:"구겨진 종이 왕관", bonus:{wil:2}, mpRed:0.04}, sup:{n:"칼깃 한 자루", bonus:{agi:2,str:1}}}},
-  // ── 원작 죄종 1형 (림버스 컴퍼니 · 9~7급) ──
-  {id:"pc_irae", n:"죄종 - 분노 1형", risk:"죄종", sin:"분노", canon:"LCB", code:"Peccatulum Irae", g:[9,7], look:"사람 크기의 붉은 살덩이가 불씨를 튀기며 몸을 웅크렸다 편다",
-   rumor:"뒷골목에 붉게 달아오른 무언가가 나타나 닥치는 대로 들이받는다", pref:PF("agi>str>wil>tec"), ctr:2,
-   escape:"참지 못하면 몸을 불태우듯 달려든다", story:"도시 사람들의 죄가 짐승의 모습으로 굳어진 것, 죄종. 분노 죄종은 한 번 타오르면 다 태울 때까지 멈추지 않는 불 같은 화를 닮았다.",
-   like:"불씨가 사그라든다", dislike:"살갗 아래로 불꽃이 번진다",
-   cards:[{n:"들이받기",a:3,b:7},{n:"불씨 튀기기",a:2,b:8},{n:"웅크리기",a:2,b:5,def:true}], hp:0.9,
-   gifts:{ctrl:{n:"식은 불씨", bonus:{agi:2}, mpRed:0.04}, sup:{n:"그을린 살점 부적", bonus:{str:2,agi:1}}}},
-  {id:"pc_lux", n:"죄종 - 색욕 1형", risk:"죄종", sin:"색욕", canon:"LCB", code:"Peccatulum Luxuriae", g:[9,7], look:"주홍빛 실 같은 것이 얽힌 살덩이가 무언가를 퍼뜨리려 꿈틀댄다",
-   rumor:"하수구 근처에서 주홍빛 덩굴이 사람을 휘감았다는 신고가 들어왔다", pref:PF("tec>wil>agi>str"), ctr:2,
-   escape:"외면당하면 실을 뻗어 가까운 이에게 자신을 옮긴다", story:"자신을 이루는 무언가를 남에게 퍼뜨리고 싶어 하는 마음. 색욕 죄종은 그 번식욕이 실과 살로 엉긴 것이다.",
-   like:"꿈틀거림이 느려진다", dislike:"실이 피부를 파고든다",
-   cards:[{n:"꿰뚫기",a:3,b:7},{n:"실 감기",a:2,b:8},{n:"엉겨 막기",a:2,b:5,def:true}], hp:0.9,
-   gifts:{ctrl:{n:"주홍 실타래", bonus:{tec:2}, mpRed:0.04}, sup:{n:"끊어진 살 실", bonus:{tec:1,agi:2}}}},
-  {id:"pc_pig", n:"죄종 - 나태 1형", risk:"죄종", sin:"나태", canon:"LCB", code:"Peccatulum Pigritiae", g:[9,7], look:"누런 바위 같은 몸이 길을 막은 채 꿈쩍도 하지 않는다",
-   rumor:"골목 한가운데 누런 덩어리가 박혀 길을 막았다. 밀어낸 사람이 깔렸다", pref:PF("str>agi>tec>wil"), ctr:3,
-   escape:"억지로 깨우면 온몸으로 짓누른다", story:"누군가 굴려 주기 전까지 그 자리를 벗어나지 못하는 바위. 나태 죄종은 관성에 붙들린 마음이 굳은 것이다.",
-   like:"몸이 아주 조금 굴렀다", dislike:"무게가 발끝을 짓누른다",
-   cards:[{n:"짓누르기",a:3,b:8},{n:"굴러 오기",a:2,b:8},{n:"바위 몸",a:3,b:6,def:true}], hp:1.15,
-   gifts:{ctrl:{n:"누런 조약돌", mpRed:0.06, bonus:{wil:1}}, sup:{n:"깨진 바위 껍질", bonus:{str:2}, hpRed:0.03}}},
-  {id:"pc_gula", n:"죄종 - 탐식 1형", risk:"죄종", sin:"탐식", canon:"LCB", code:"Peccatulum Gulae", g:[9,7], look:"잎사귀 같은 초록 살갗 사이로 커다란 입이 벌어졌다 닫힌다",
-   rumor:"공원 화단의 흙이 파헤쳐지고 개 한 마리가 사라졌다. 초록색 무언가가 있었다고 한다", pref:PF("str>tec>agi>wil"), ctr:2,
-   escape:"굶주리면 뿌리처럼 입을 뻗어 닥치는 대로 삼킨다", story:"양분을 먹고도 만족하지 못해 뿌리를 더 넓히는 식물. 탐식 죄종은 채워지지 않는 허기가 자란 것이다.",
-   like:"입이 만족스럽게 다물린다", dislike:"이빨이 손끝을 노린다",
-   cards:[{n:"물어뜯기",a:3,b:8},{n:"삼키기",a:2,b:9},{n:"잎 덮기",a:2,b:5,def:true}], hp:1,
-   gifts:{ctrl:{n:"초록 잎맥", bonus:{str:1,tec:1}, hpRed:0.03}, sup:{n:"부러진 이빨", bonus:{str:2,agi:1}}}},
-  {id:"pc_moro", n:"죄종 - 우울 1형", risk:"죄종", sin:"우울", canon:"LCB", code:"Peccatulum Morositatis", g:[9,7], look:"하늘빛 물기를 머금은 덩어리가 축 늘어진 채 흐느끼듯 떤다",
-   rumor:"지하도에서 파란 물웅덩이가 사람을 따라온다. 그 옆을 지난 사람은 하루 종일 운다", pref:PF("tec>wil>str>agi"), ctr:3,
-   escape:"혼자 남겨지면 주변을 차가운 물기로 적신다", story:"가라앉고 또 가라앉는 마음. 우울 죄종은 무엇을 해도 나아지지 않으리라는 확신이 물처럼 고인 것이다.",
-   like:"떨림이 잦아든다", dislike:"차가운 물기가 마음까지 스민다",
-   cards:[{n:"적시기",a:2,b:7},{n:"끌어내리기",a:3,b:7},{n:"늘어지기",a:3,b:6,def:true}], hp:0.95,
-   gifts:{ctrl:{n:"마르지 않는 물방울", mpRed:0.07}, sup:{n:"푸른 껍질 조각", bonus:{agi:2,tec:1}}}},
-  {id:"pc_sup", n:"죄종 - 오만 1형", risk:"죄종", sin:"오만", canon:"LCB", code:"Peccatulum Superbiae", g:[9,7], look:"남빛 칼날 같은 몸이 바퀴처럼 멈추지 않고 구른다",
-   rumor:"고가도로 밑에서 남색 칼날이 굴러다니며 사람을 갈아 버린다", pref:PF("wil>agi>tec>str"), ctr:2,
-   escape:"가로막히면 더 빨리 굴러 모든 것을 갈아 버린다", story:"어떤 대가를 치르든 잡아 본 적 없는 완벽을 좇아 끝없이 구르는 바퀴. 오만 죄종은 그 집착이 날이 된 것이다.",
-   like:"구르는 속도가 느려진다", dislike:"칼날이 날카롭게 번뜩인다",
-   cards:[{n:"갈아 버리기",a:3,b:8},{n:"굴러 베기",a:3,b:7},{n:"날 세우기",a:2,b:6,def:true}], hp:0.9,
-   gifts:{ctrl:{n:"남빛 바퀴살", bonus:{wil:2}, mpRed:0.04}, sup:{n:"이 빠진 칼날", bonus:{agi:2,str:1}}}},
+  // ── 죄종 1형 (림버스 컴퍼니 · 9~7급) — 관리하지 않는다. 발견 즉시 사살 ──
+  // 죄종: 사람에게서 비롯된 짐승 같은 존재. 뒤틀림과 달리 원래 사람의 개성을 지워 버리고, 남는 것은 그가 품었던 죄의 갈래뿐이다. 실패한 뒤틀림의 부산물로 여겨진다
+  {id:"pc_irae", n:"분노 죄종 1형", risk:"죄종", sin:"분노", canon:"LCB", code:"Peccatulum Irae · S-08-04-02", g:[9,7], kill:true,
+   look:"나뭇가지를 엮은 듯 앙상한 검은 몸 곳곳이 붉게 갈라져 빛난다. 앞쪽 가지 둘이 손처럼 땅을 짚고, 긴 부리 같은 주둥이에 커다란 붉은 눈 하나와 쉴 새 없이 떨리는 빛나는 더듬이 둘이 달렸다",
+   rumor:"뒷골목에 붉게 갈라진 가지 덩어리가 나타나 지나가는 사람을 찌른다. 발견 즉시 사살해 달라", pref:{str:"나쁨",wil:"나쁨",tec:"나쁨",agi:"나쁨"}, ctr:0,
+   escape:"관리할 수 없다. 사람을 보면 곧장 달려든다", story:"한 번 타오르면 모든 것을 태울 때까지 멈추지 않는 불 같은 화. 그 화만 남기고 사람이었던 모든 것이 지워졌다.",
+   like:"", dislike:"", cards:[{n:"꿰뚫는 가지",a:3,b:7},{n:"부리 찌르기",a:2,b:8},{n:"가지 웅크림",a:2,b:5,def:true}], hp:0.9,
+   gifts:{ctrl:null, sup:{n:"식지 않는 가지 조각", bonus:{str:2,agi:1}}}},
+  {id:"pc_lux", n:"색욕 죄종 1형", risk:"죄종", sin:"색욕", canon:"LCB", code:"Peccatulum Luxuriae", g:[9,7], kill:true,
+   look:"핏줄 무늬가 비치는 창백한 살덩이가 네 다리로 기고, 도롱뇽 같은 납작한 꼬리를 끈다. 등뼈의 혹은 머리로 갈수록 커지고, 방패처럼 갈라진 주름투성이 머리 한쪽에 충혈된 주황빛 눈 하나가 박혀 있다",
+   rumor:"하수로에서 창백한 네발 짐승이 기어 나왔다. 머리에서 꼬인 살 손이 튀어나와 사람을 붙잡았다. 발견 즉시 사살해 달라", pref:{str:"나쁨",wil:"나쁨",tec:"나쁨",agi:"나쁨"}, ctr:0,
+   escape:"관리할 수 없다. 머리에서 이중 나선처럼 꼬인 살 손 두 개를 뻗어 덮친다", story:"자신을 이루는 무언가를 남에게 퍼뜨리고 싶은 마음. 그 마음만 남기고 사람이었던 모든 것이 지워졌다.",
+   like:"", dislike:"", cards:[{n:"꼬인 살 손",a:3,b:7},{n:"짓눌러 꿰기",a:2,b:8},{n:"주름 방패",a:2,b:5,def:true}], hp:0.95,
+   gifts:{ctrl:null, sup:{n:"꼬인 살 매듭", bonus:{tec:1,agi:2}}}},
+  {id:"pc_pig", n:"나태 죄종 1형", risk:"죄종", sin:"나태", canon:"LCB", code:"Peccatulum Pigritiae", g:[9,7], kill:true,
+   look:"둥근 바위 덩어리에 붉은 금이 크게 나 있고, 금이 모이는 한가운데 누런 눈알 하나가 박혀 있다",
+   rumor:"골목 한가운데 금 간 바위가 박혀 길을 막았다. 치우려던 인부가 갈라진 틈에서 나온 팔에 맞았다. 발견 즉시 사살해 달라", pref:{str:"나쁨",wil:"나쁨",tec:"나쁨",agi:"나쁨"}, ctr:0,
+   escape:"관리할 수 없다. 갈라진 틈에서 붉은 사람 팔을 뻗어 후려친다", story:"누군가 굴려 주기 전까지 그 자리를 벗어나지 못하는 바위. 그 관성만 남기고 사람이었던 모든 것이 지워졌다.",
+   like:"", dislike:"", cards:[{n:"틈새 주먹",a:3,b:8},{n:"내리찍기",a:2,b:8},{n:"바위 몸",a:3,b:6,def:true}], hp:1.15,
+   gifts:{ctrl:null, sup:{n:"붉은 금 간 돌", bonus:{str:2}, hpRed:0.03}}},
+  {id:"pc_gula", n:"탐식 죄종 1형", risk:"죄종", sin:"탐식", canon:"LCB", code:"Peccatulum Gulae", g:[9,7], kill:true,
+   look:"짙은 초록 줄기에 잿빛 꽃이 빽빽하게 엉겼다. 꽃마다 한가운데에 거머리 입 같은 이빨이 소용돌이치고, 위쪽 줄기에는 초록 눈알 몇 개가 매달려 있다",
+   rumor:"공원 화단에 잿빛 꽃무더기가 피더니 산책하던 개가 사라졌다. 발견 즉시 사살해 달라", pref:{str:"나쁨",wil:"나쁨",tec:"나쁨",agi:"나쁨"}, ctr:0,
+   escape:"관리할 수 없다. 앞으로 뻗은 잎을 떨다가 닿는 것을 이빨 꽃으로 문다", story:"양분을 먹고도 만족하지 못해 뿌리를 더 넓히는 식물. 그 허기만 남기고 사람이었던 모든 것이 지워졌다.",
+   like:"", dislike:"", cards:[{n:"이빨 꽃",a:3,b:8},{n:"잎 채찍",a:2,b:8},{n:"꽃무더기",a:2,b:5,def:true}], hp:1,
+   gifts:{ctrl:null, sup:{n:"말라 버린 이빨 꽃", bonus:{str:2,agi:1}}}},
+  {id:"pc_moro", n:"우울 죄종 1형", risk:"죄종", sin:"우울", canon:"LCB", code:"Peccatulum Morositatis", g:[9,7], kill:true,
+   look:"푸른 액체로 찬 투명한 젤리 몸이 떠다닌다. 아래쪽이 부풀어 분홍 장기 덩어리가 비치고, 꼭대기의 하늘빛 눈이 가는 줄로 장기에 이어져 있다",
+   rumor:"지하도에 투명한 덩어리가 떠다닌다. 말린 팔에 맞은 사람이 하루 종일 울었다. 발견 즉시 사살해 달라", pref:{str:"나쁨",wil:"나쁨",tec:"나쁨",agi:"나쁨"}, ctr:0,
+   escape:"관리할 수 없다. 머리와 몸 사이로 뻗은 두 팔을 나선처럼 말았다가 후려친다", story:"가라앉고 또 가라앉는 마음. 그 무게만 남기고 사람이었던 모든 것이 지워졌다.",
+   like:"", dislike:"", cards:[{n:"나선 팔",a:2,b:8},{n:"가라앉히기",a:3,b:7},{n:"젤리 몸",a:3,b:6,def:true}], hp:0.95,
+   gifts:{ctrl:null, sup:{n:"푸른 젤리 조각", bonus:{agi:2,tec:1}, mpRed:0.03}}},
+  {id:"pc_sup", n:"오만 죄종 1형", risk:"죄종", sin:"오만", canon:"LCB", code:"Peccatulum Superbiae", g:[9,7], kill:true,
+   look:"가장자리에 가시가 돋은 커다란 남빛 바퀴. 바퀴살마다 붉은 살점 조각이 묶여 있고, 한가운데에 짙은 남색 눈 하나가 박혀 있다",
+   rumor:"고가도로 밑에서 가시 바퀴가 굴러다니며 사람을 갈아 버린다. 발견 즉시 사살해 달라", pref:{str:"나쁨",wil:"나쁨",tec:"나쁨",agi:"나쁨"}, ctr:0,
+   escape:"관리할 수 없다. 가시 바퀴로 굴러와 갈아 버린다", story:"어떤 대가를 치르든 잡아 본 적 없는 완벽을 좇아 끝없이 구르는 바퀴. 그 집착만 남기고 사람이었던 모든 것이 지워졌다.",
+   like:"", dislike:"", cards:[{n:"갈아 버리기",a:3,b:8},{n:"굴러 베기",a:3,b:7},{n:"가시 테",a:2,b:6,def:true}], hp:0.9,
+   gifts:{ctrl:null, sup:{n:"부러진 바퀴 가시", bonus:{agi:2,str:1}}}},
   // ── ZAYIN (6~5급) · 원작 ──
   {id:"onesin", n:"단 한번의 악과 수백 가지의 선행", risk:"ZAYIN", canon:"L", code:"O-03-03", g:[6,5], look:"가시관으로 묶인 해골과 십자가가 허공에 떠 있다",
    rumor:"폐성당에 떠 있는 해골에게 죄를 고백하면 마음이 가벼워진다는 소문이 돈다. 확인해 달라", pref:PF("tec>wil>str>agi"), ctr:3, noCounter:true,
@@ -3332,36 +3294,40 @@ const ABNOS = [
    cards:[{n:"혀 채찍",a:3,b:8},{n:"눈알 던지기",a:3,b:9},{n:"웅크린 울음",a:4,b:6,def:true}], hp:1.1,
    gifts:{ctrl:{n:"마른 눈물 자국", mpRed:0.1, bonus:{tec:1}}, sup:{n:"두꺼비 혀 채찍", bonus:{agi:2,str:1}}}},
   // ── ZAYIN · 창작 ──
-  {id:"postbox", n:"빈 우체통", risk:"ZAYIN", g:[6,5], look:"입구가 테이프로 막힌 빨간 우체통이 편지를 기다린다",
-   rumor:"폐우체국 앞 우체통에 편지를 넣으면 답장이 온다. 답장을 받은 사람은 잠을 못 잔다", pref:{tec:"최고", wil:"좋음", str:"나쁨", agi:"나쁨"}, ctr:2,
-   escape:"오래 비워 두면 주변 사람의 기억을 편지로 뜯어 간다", story:"부치지 못한 편지만 모이는 우체통. 받는 사람의 이름은 모두 지워져 있다.",
-   like:"우체통 안에서 종이 넘기는 소리가 난다", dislike:"입구가 이빨처럼 덜컥인다",
-   cards:[{n:"편지 칼날",a:3,b:8},{n:"삼키는 입구",a:3,b:9},{n:"쇠 몸통",a:4,b:6,def:true}], hp:1.1,
-   gifts:{ctrl:{n:"답장 없는 우표", mpRed:0.12, bonus:{wil:2}}, sup:{n:"우체통 자물쇠", bonus:{str:2}, hpRed:0.05}}},
-  {id:"alarm", n:"잠든 자명종", risk:"ZAYIN", g:[6,5], look:"바늘이 멈춘 자명종 곁에서 모두가 꾸벅 존다",
-   rumor:"하숙집 사람들이 출근 시간을 놓친다. 방마다 같은 시계가 놓여 있었다", pref:{agi:"최고", str:"좋음", wil:"나쁨", tec:"나쁨"}, ctr:2,
-   escape:"억지로 깨우려 들면 주변 사람들을 영영 재운다", story:"한 번만 더 자고 싶다는 소원이 태엽에 감겼다. 시계는 그 소원을 들어주는 법만 안다.",
-   like:"째깍, 바늘이 한 칸 움직였다", dislike:"눈꺼풀이 무겁게 내려앉는다",
-   cards:[{n:"태엽 휘두르기",a:3,b:8},{n:"자장 종소리",a:2,b:9},{n:"유리 덮개",a:4,b:6,def:true}], hp:1,
-   gifts:{ctrl:{n:"멈춘 태엽 열쇠", mpRed:0.1, bonus:{agi:1}}, sup:{n:"자명종 망치", bonus:{agi:2,str:1}}}},
-  {id:"flatcan", n:"김 빠진 웰치어스", base:"wellcheers", risk:"ZAYIN", g:[6,5], look:"불 꺼진 자판기에서 미지근한 캔만 굴러 나온다",
-   rumor:"재개발 구역 자판기 음료를 마시면 그날 하루가 기억나지 않는다", pref:PF("wil>tec>str>agi"), ctr:2,
-   noFight:true, doom:{t:"미지근한 음료를 마신 일행이 오늘 무엇을 하러 왔는지 잊어버렸다", mind:0.2},
-   escape:"그 자리를 떠나지 않는다. 기분이 나쁠 때 음료를 마시면 하루의 기억을 잃는다", story:"바다 냄새를 잃은 자판기. 갈매기 소리 대신 형광등 울리는 소리만 남았다.",
-   like:"자판기 불이 깜빡 켜진다", dislike:"캔이 덜컥 떨어진다",
-   gifts:{ctrl:{n:"미지근한 캔", mpRed:0.08, bonus:{wil:1}}, sup:null}},
+  {id:"tornmail", n:"뜯겨진 우편", risk:"ZAYIN", g:[6,5], look:"봉투가 죄다 뜯긴 편지 다발이 바람도 없이 펄럭이며 골목을 떠돈다",
+   rumor:"우편함마다 남의 편지가 뜯긴 채 꽂혀 있다. 그걸 읽은 사람은 모르는 이의 사연을 제 일처럼 떠올린다", pref:PF("tec>wil>str>agi"), ctr:2,
+   noFight:true, doom:{t:"편지 다발이 한꺼번에 펼쳐졌다. 남의 사연이 머릿속으로 쏟아져 들어왔다", mind:0.15},
+   escape:"자리를 떠나지 않는다. 함부로 다루면 뜯긴 편지들이 한꺼번에 펼쳐져, 읽은 이의 머릿속에 남의 사연을 쏟아붓는다",
+   story:"끝내 부치지 못한 편지와, 받고도 뜯어보지 않은 편지. 누군가 그 봉투를 모조리 뜯었고, 갈 곳을 잃은 말들이 바람을 탔다.",
+   like:"편지 한 장이 조용히 접힌다", dislike:"뜯긴 봉투들이 사납게 펄럭인다",
+   gifts:{ctrl:{n:"다시 붙인 봉투", mpRed:0.1, bonus:{tec:2}}, sup:null}},
+  {id:"twotail", n:"두꼬리 고양이", risk:"ZAYIN", g:[6,5], look:"꼬리가 둘로 갈라진 늙은 검은 고양이가 담장 위에서 사람 목소리로 하품한다",
+   rumor:"고양이 한 마리가 죽은 집주인의 목소리로 이웃을 부른다. 대답한 사람은 밤새 고양이를 쫓아다녔다", pref:PF("str>tec>agi>wil"), ctr:3,
+   escape:"성가시게 굴면 죽은 주인의 목소리로 홀려 끝없이 술래잡기를 시킨다. 그래도 지치지 않으면 발톱을 세운다",
+   story:"주인보다 오래 살아남은 고양이는 꼬리가 둘로 갈라졌다. 이제 주인의 목소리를 흉내 내며, 아직 함께 사는 척을 한다.",
+   like:"고양이가 가르릉거린다", dislike:"두 꼬리가 바짝 선다",
+   cards:[{n:"할퀴기",a:3,b:8},{n:"주인의 목소리",a:2,b:9},{n:"담장 뛰기",a:4,b:6,def:true}], hp:0.95,
+   gifts:{ctrl:{n:"갈라진 꼬리털", mpRed:0.08, bonus:{agi:2}}, sup:{n:"늙은 고양이의 발톱", bonus:{agi:2,str:1}}}},
+  {id:"blackwater", n:"검은 물 점성체", base:"wellcheers", risk:"ZAYIN", g:[6,5], look:"끈적한 검은 액체가 거품을 터뜨리며 쏟아진 캔 주위에 고여 있다. 달콤한 탄산 냄새가 난다",
+   rumor:"폐업한 매점 바닥에 검은 물이 고여 빠지지 않는다. 한 모금 마셔 본 아이가 일주일째 잠만 잔다", pref:PF("str>tec>wil>agi"), ctr:2, rule:"badMaim",
+   noFight:true, doom:{t:"검은 물이 거품을 내며 일어나 작업자의 목구멍으로 차올랐다", maim:true, worker:true},
+   escape:"자리를 떠나지 않는다. 작업이 어긋날 때마다 끈적한 물이 작업자에게 달라붙고, 끝내 목구멍으로 차오른다",
+   story:"바다 대신 설탕과 탄산을 품은 물. 뚜껑 따인 캔에서 흘러나온 것들이 모여 스스로 고이고, 마셔 줄 사람을 기다린다.",
+   like:"거품이 잔잔하게 가라앉는다", dislike:"검은 물이 발목을 끈적하게 감는다",
+   gifts:{ctrl:{n:"김 빠지지 않는 병뚜껑", mpRed:0.06, hpRed:0.05}, sup:null}},
   {id:"lonefairy", n:"굶주린 작은 요정", base:"fairy", risk:"ZAYIN", g:[6,5], look:"무리에서 떨어진 요정 하나가 바싹 마른 채 맴돈다",
    rumor:"병원 옥상에 빛나는 벌레가 산다. 간병인을 따라다니다 사람을 문다", pref:PF("tec>str>agi>wil"), ctr:2,
    escape:"너무 굶주리면 보살피던 이를 깨문다", story:"축제에서 낙오된 요정. 보살필 사람도, 먹을 것도 없이 혼자 남았다.",
    like:"요정이 어깨에 내려앉는다", dislike:"작은 이빨이 반짝인다",
    cards:[{n:"깨물기",a:3,b:8},{n:"날갯짓",a:3,b:7},{n:"빛 숨기",a:4,b:6,def:true}], hp:0.9,
    gifts:{ctrl:{n:"작은 요정의 등불", hpRed:0.05, bonus:{tec:1,wil:1}}, sup:{n:"말라붙은 날개", bonus:{agi:3}}}},
-  {id:"lever", n:"당기지 마", base:"donttouch", risk:"ZAYIN", g:[6,5], look:"벽에서 튀어나온 붉은 레버 옆에 '당기지 마시오' 팻말",
-   rumor:"지하철 정비 통로에 레버가 생겼다. 당긴 사람은 없는데 열차가 멈췄다", pref:{str:"좋음", wil:"최고", tec:"좋음", agi:"나쁨"}, ctr:2, rule:"button",
-   noFight:true, doom:{t:"누군가 레버를 당겼다. 골목 전체의 불이 꺼졌다", mind:0.3},
-   escape:"그 자리를 떠나지 않는다. 억지로 붙들어 두려 할수록 당기고 싶어진다", story:"버튼 옆에 생긴 동생. 누가 당기든 결과는 아무도 모른다.",
-   like:"레버가 녹슨 소리를 낸다", dislike:"손바닥이 근질거린다",
-   gifts:{ctrl:{n:"부러진 레버 손잡이", mpRed:0.1, bonus:{wil:1,str:1}}, sup:null}},
+  {id:"confession", n:"단 한번의 고해와 백년의 참회", base:"onesin", risk:"ZAYIN", g:[6,5], look:"가시관을 쓴 해골이 무릎 꿇은 자세로 굳어, 같은 기도를 끝없이 되뇐다",
+   rumor:"무너진 성당 바닥에 무릎 꿇은 해골이 있다. 그 앞에서 고해한 사람은 마음이 가벼워지지만, 한 번 더 찾으면 몇 날 며칠을 무릎 꿇고 일어나지 못한다", pref:PF("wil>tec>agi>str"), ctr:3, noCounter:true, rule:"heal",
+   noFight:true, doom:{t:"고해가 참회로 바뀌었다. 일행은 해골 앞에 무릎 꿇은 채 한참을 일어나지 못했다", mind:0.12},
+   escape:"자리를 떠나지 않는다. 좋은 결과면 작업자의 정신을 달래 주지만, 어긋난 고해가 쌓이면 듣는 이를 끝없는 참회에 붙잡아 둔다",
+   story:"단 한 번 털어놓은 죄를 백 년 동안 뉘우친다. 해골은 용서받는 법을 잊었고, 이제 남의 고해까지 대신 참회한다.",
+   like:"기도 소리가 낮아진다", dislike:"가시관이 바닥을 긁는다",
+   gifts:{ctrl:{n:"닳아 버린 묵주", mpRed:0.12, bonus:{wil:2}}, sup:null}},
   // ── TETH (5~4급) · 원작 ──
   {id:"pbird", n:"징벌 새", risk:"TETH", canon:"L", code:"O-02-56", g:[5,4], look:"작은 새가 가슴의 커다란 부리를 숨긴 채 사람들을 지켜본다",
    rumor:"작은 새가 거짓말한 사람만 골라 쫀다는 동네가 있다", pref:PF("wil>tec>str>agi"), ctr:4,
@@ -3391,7 +3357,7 @@ const ABNOS = [
    like:"흐느낌이 조금 잦아들었다", dislike:"머리카락이 바닥을 긁는다",
    gifts:{ctrl:{n:"엉킨 머리카락 매듭", mpRed:0.13, bonus:{tec:2}}, sup:null}},
   {id:"spiderbud", n:"거미봉오리", risk:"TETH", canon:"L", code:"T-02-43", g:[5,4], look:"꽃봉오리 같은 거미가 새끼들이 매달린 거미줄 한가운데 앉아 있다",
-   rumor:"온실 천장에 거대한 거미줄이 쳐졌다. 청소하러 들어간 인부가 고치가 되어 매달렸다", pref:PF("str>tec>agi>wil"), ctr:2, noCounter:true, rule:"killWork", kill:"wil",
+   rumor:"온실 천장에 거대한 거미줄이 쳐졌다. 청소하러 들어간 인부가 고치가 되어 매달렸다", pref:PF("str>tec>agi>wil"), ctr:2, noCounter:true, rule:"killWork", killK:"wil",
    noFight:true, doom:{t:"새끼를 건드렸다고 여긴 거미가 순식간에 고치를 지었다", maim:true, worker:true},
    escape:"그 자리를 떠나지 않는다. 새끼를 해친 자를 고치로 만든다 — 주변을 정돈하는 통찰 작업이 바로 그 실수다",
    story:"봉오리 같은 몸으로 새끼들을 지킨다. 그 새끼들에게 손대는 순간 어머니는 망설이지 않는다.",
@@ -3412,43 +3378,48 @@ const ABNOS = [
    like:"꽃이 느리게 흔들린다", dislike:"땅이 미세하게 들썩인다",
    gifts:{ctrl:{n:"빛나는 꽃잎", mpRed:0.1, bonus:{tec:1,wil:1}}, sup:null}},
   // ── TETH · 창작 ──
-  {id:"baldbird", n:"깃털 빠진 징벌 새", base:"pbird", risk:"TETH", g:[5,4], look:"깃털이 다 빠진 작은 새가 가슴의 부리를 감추지도 못한 채 떨고 있다",
-   rumor:"재판소 처마에 깃털 없는 새가 산다. 증언을 번복한 증인이 쪼여 죽을 뻔했다", pref:PF("tec>wil>agi>str"), ctr:3,
-   escape:"벌할 죄를 찾지 못하면 아무나 죄인으로 삼아 쫓는다", story:"너무 많은 죄를 벌하느라 깃털이 다 빠졌다. 이제 새는 누가 죄인인지 헷갈린다.",
-   like:"새가 몸을 웅크린다", dislike:"맨살 가슴의 부리가 벌어진다",
-   cards:[{n:"마구 쪼기",a:3,b:9},{n:"벌어진 부리",a:2,b:11},{n:"맨살 웅크림",a:3,b:6,def:true}], hp:1,
-   gifts:{ctrl:{n:"마지막 깃털", mpRed:0.09, bonus:{tec:2}}, sup:{n:"맨부리 조각", bonus:{str:2,agi:2}}}},
-  {id:"wetmatch", n:"젖은 성냥팔이", base:"scorched", risk:"TETH", g:[5,4], look:"비에 젖은 아이가 불이 붙지 않는 성냥을 하염없이 긋는다",
-   rumor:"빗길 모퉁이에서 아이가 성냥을 판다. 사 주지 않으면 그 집에 불이 난다", pref:PF("tec>wil>str>agi"), ctr:2,
-   escape:"끝내 불이 붙으면 그동안 젖어 있던 만큼 크게 타오른다", story:"비 오는 밤엔 성냥이 켜지지 않았다. 따뜻한 환상조차 보지 못한 아이는 여전히 성냥을 긋는다.",
-   like:"아이가 젖은 성냥을 내려놓는다", dislike:"치익, 성냥 머리에 불꽃이 튄다",
-   cards:[{n:"축축한 불씨",a:3,b:8},{n:"한꺼번에 타오름",a:2,b:12},{n:"젖은 외투",a:4,b:6,def:true}], hp:1,
-   gifts:{ctrl:{n:"젖은 성냥갑", mpRed:0.1, bonus:{wil:1}}, sup:{n:"그을린 성냥 다발", bonus:{str:2,tec:1}}}},
-  {id:"cutweb", n:"실 끊긴 거미봉오리", base:"spiderbud", risk:"TETH", g:[5,4], look:"새끼를 모두 잃은 봉오리 거미가 찢어진 거미줄을 다시 잇고 있다",
-   rumor:"지하 주차장에 거미줄이 가득하다. 차를 빼러 간 사람이 줄에 걸려 끌려갔다", pref:PF("tec>agi>str>wil"), ctr:2,
-   escape:"새끼를 찾아 거미줄을 끊고 나와, 마주치는 이를 고치로 감는다", story:"지킬 새끼가 없는 어미는 무엇을 지켜야 할지 모른다. 그래서 모든 것을 고치로 감싼다.",
-   like:"거미가 줄 잇기를 멈춘다", dislike:"끊긴 줄이 팽팽하게 당겨진다",
-   cards:[{n:"고치 감기",a:3,b:9},{n:"독니",a:3,b:8},{n:"거미줄 장막",a:4,b:6,def:true}], hp:1.05,
-   gifts:{ctrl:{n:"다시 이은 거미줄", hpRed:0.06, bonus:{tec:2}}, sup:{n:"봉오리 거미의 다리", bonus:{agi:2,str:2}}}},
-  {id:"rusthelm", n:"녹슨 투구", base:"armor", risk:"TETH", g:[5,4], look:"녹슨 투구 하나가 바닥에 굴러다니며 쓸 머리를 찾는다",
-   rumor:"고물상 투구를 쓴 직원이 겁 없이 싸우다 다쳤다. 투구는 벗겨지지 않았다", pref:PF("str>agi>wil>tec"), ctr:3,
-   escape:"쓸 사람을 찾지 못하면 아무 머리에나 씌워져 끝까지 싸우게 만든다", story:"갑옷은 부서졌고 투구만 남았다. 투구는 아직 싸움이 끝나지 않았다고 믿는다.",
-   like:"투구가 조용히 굴러 멈춘다", dislike:"투구 안에서 쇳소리가 울린다",
-   cards:[{n:"박치기",a:3,b:9},{n:"쇳소리",a:3,b:8},{n:"녹슨 방패",a:4,b:7,def:true}], hp:1.15,
-   gifts:{ctrl:{n:"녹슨 턱끈", bonus:{str:2}, hpRed:0.05}, sup:{n:"찌그러진 투구 장식", bonus:{str:2,agi:2}}}},
-  {id:"oldman", n:"이야기 없는 노인", base:"oldlady", risk:"TETH", g:[5,4], look:"빈 벤치에 앉은 노인이 아무 말 없이 입만 달싹인다",
-   rumor:"공원 벤치에 노인이 앉아 있다. 옆에 앉은 사람마다 말을 잃는다", pref:PF("wil>tec>agi>str"), ctr:3,
-   noFight:true, doom:{t:"침묵이 번져 일행 모두가 한동안 말을 잃었다", mind:0.3},
-   escape:"그 자리를 떠나지 않는다. 카운터가 다하면 침묵이 번져 곁에 있던 이들의 말을 빼앗는다",
-   story:"평생 아무에게도 이야기를 들려주지 못했다. 들어 줄 사람이 생겼을 땐 이미 할 말을 잊었다.",
-   like:"노인이 고개를 끄덕인다", dislike:"공기가 숨 막히게 고요해진다",
-   gifts:{ctrl:{n:"빈 녹음테이프", mpRed:0.12, bonus:{wil:2}}, sup:null}},
-  {id:"alleylamp", n:"골목 초롱", base:"lantern", risk:"TETH", g:[5,4], look:"골목 끝 가로등 대신 매달린 초롱 아래 맨홀 뚜껑이 들썩인다",
-   rumor:"가로등이 나간 골목에 초롱이 하나 켜졌다. 그 불빛을 따라간 취객이 사라졌다", pref:PF("str>wil>tec>agi"), ctr:2,
-   escape:"빛에 이끌린 자가 가까이 오면 맨홀 아래에서 입이 열린다", story:"뒷골목의 밤이 오기 전, 갈 곳 없는 이들을 부르는 불빛. 그 불빛만은 아침까지 꺼지지 않는다.",
-   like:"초롱 불빛이 흐려진다", dislike:"맨홀 뚜껑이 덜컹인다",
-   cards:[{n:"아래서 삼키기",a:2,b:12},{n:"끌어당기는 빛",a:3,b:8},{n:"맨홀 뚜껑",a:4,b:7,def:true}], hp:1.1,
-   gifts:{ctrl:{n:"꺼지지 않는 심지", mpRed:0.1, bonus:{wil:1,tec:1}}, sup:{n:"이빨 박힌 맨홀 조각", bonus:{str:3}}}},
+  {id:"echo", n:"우주 안의 울림", baseName:"우주의 조각", risk:"TETH", g:[5,4], look:"별빛이 박힌 검은 덩어리가 허공에 떠서, 귀가 아니라 머릿속으로 낮게 운다",
+   rumor:"천문대 폐건물에서 낮은 울림이 그치지 않는다. 오래 들은 경비원이 제 이름을 잊었다", pref:PF("agi>tec>wil>str"), ctr:2, low:"wil",
+   escape:"의지가 모자란 이가 곁에 머물면 카운터가 준다. 다하면 울림이 커져 주변 모두의 머릿속을 흔든다",
+   story:"우주에서 떨어진 조각은 혼자가 싫었다. 그래서 울었고, 그 울림은 듣는 이의 머릿속에 빈자리를 만들어 그곳에 머문다.",
+   like:"울림이 잦아든다", dislike:"머릿속이 웅웅 울린다",
+   cards:[{n:"울림",a:3,b:9},{n:"별빛 가시",a:3,b:8},{n:"검은 막",a:4,b:6,def:true}], hp:1.05,
+   gifts:{ctrl:{n:"작은 별 부스러기", mpRed:0.1, bonus:{wil:2}}, sup:{n:"울림이 멎은 파편", bonus:{agi:2,tec:2}}}},
+  {id:"lavaingot", n:"용암 철괴", base:"scorched", risk:"TETH", g:[5,4], look:"아이 키만 한 쇳덩이가 시뻘겋게 달아올라, 바닥을 녹이며 천천히 굴러간다",
+   rumor:"문 닫은 주물 공장 용광로에서 쇳덩이가 기어 나왔다. 지나간 자리마다 아스팔트가 녹아 있다", pref:PF("str>wil>agi>tec"), ctr:2,
+   escape:"식지 못하면 점점 달아오르다, 가장 가까운 이에게 굴러가 함께 녹아 붙는다",
+   story:"부어 놓고 아무도 꺼내 가지 않은 쇳물. 굳지도 식지도 못한 채, 따뜻하게 안아 줄 누군가를 찾아 굴러다닌다.",
+   like:"붉은빛이 조금 어두워진다", dislike:"쇳물이 끓어 넘친다",
+   cards:[{n:"녹여 붙기",a:3,b:9},{n:"쇳물 튀기기",a:2,b:11},{n:"달군 껍질",a:4,b:6,def:true}], hp:1.1,
+   gifts:{ctrl:{n:"식은 쇠 조각", hpRed:0.06, bonus:{wil:1}}, sup:{n:"달군 주물 망치 머리", bonus:{str:3,tec:1}}}},
+  {id:"headlessmantis", n:"머리 없는 사마귀", base:"spiderbud", risk:"TETH", g:[5,4], look:"머리가 없는 커다란 사마귀가 알집 위에 웅크린 채, 낫 같은 앞다리를 모으고 있다",
+   rumor:"재개발 현장 철근 사이에 거대한 알집이 붙었다. 떼어 내려던 인부의 팔이 잘렸다", pref:PF("tec>str>wil>agi"), ctr:2, noCounter:true, rule:"killWork", killK:"agi",
+   noFight:true, doom:{t:"알집을 위협한 순간, 머리 없는 사마귀의 낫이 작업자를 베었다", maim:true, worker:true},
+   escape:"자리를 떠나지 않는다. 알집을 위협하는 억압 작업을 하는 순간, 머리가 없어도 정확히 그 사람을 벤다",
+   story:"짝의 머리를 먹고 알을 낳은 어미는 제 머리마저 내주었다. 이제 남은 것은 알을 지키는 낫뿐이다.",
+   like:"앞다리가 천천히 접힌다", dislike:"알집이 꿈틀거린다",
+   gifts:{ctrl:{n:"빈 알집 껍질", hpRed:0.06, bonus:{tec:2}}, sup:null}},
+  {id:"creed", n:"부러지지 않는 신념", base:"armor", risk:"TETH", g:[5,4], look:"이가 다 빠진 검 한 자루가 바닥에 꽂힌 채, 녹슬지도 부러지지도 않고 서 있다",
+   rumor:"광장 기념비 앞에 검이 꽂혔다. 뽑으려던 사람들은 손을 다쳤고, 손을 놓은 사람들은 이유 없이 부끄러워졌다", pref:PF("str>agi>wil>tec"), ctr:3, rule:"armor",
+   escape:"억압 작업을 한 이에게 신념의 불꽃을 주지만, 불꽃을 받은 채 애착 작업으로 물러서면 검이 그를 벤다. 시험을 견디지 못하는 이가 늘면 스스로 뽑혀 나온다",
+   story:"검을 쥔 사람은 오래전에 쓰러졌다. 검은 아직 그 사람의 신념을 기억하고, 그만한 각오가 없는 손에는 쥐어지지 않는다.",
+   like:"검날이 낮게 울린다", dislike:"검이 바닥에서 조금 솟는다",
+   cards:[{n:"신념의 일격",a:3,b:10},{n:"물러서지 않는 검",a:4,b:8},{n:"꺾이지 않음",a:4,b:7,def:true}], hp:1.15,
+   gifts:{ctrl:{n:"신념의 불꽃", bonus:{str:2,wil:2}}, sup:{n:"이 빠진 검날", bonus:{str:3,agi:1}}}},
+  {id:"shepherd", n:"양치기 소년", base:"oldlady", risk:"TETH", g:[5,4], look:"지팡이를 든 소년이 아무도 없는 언덕을 가리키며 \"늑대다!\" 하고 웃는다",
+   rumor:"재개발 구역 공터에서 소년이 늑대가 나타났다고 외친다. 아무도 믿지 않았는데, 그날 밤 경비원 셋이 물려 죽었다", pref:PF("tec>wil>str>agi"), ctr:3, rule:"liar",
+   noFight:true, doom:{t:"\"이번엔 진짜야!\" 아무도 믿지 않은 그 순간, 늑대 울음이 사방에서 들렸다", mind:0.3},
+   escape:"자리를 떠나지 않는다. 소년의 반응은 반쯤 거짓말이라 믿을 수 없다 — 기분만이 진짜다. 카운터가 다하면 진짜 늑대가 온다",
+   story:"거짓말은 외로움을 달래 주었다. 사람들이 달려와 주었으니까. 마지막으로 진실을 말했을 때, 아무도 오지 않았다.",
+   like:"소년이 히죽 웃는다", dislike:"소년이 언덕 너머를 가리킨다",
+   gifts:{ctrl:{n:"양치기의 피리", mpRed:0.12, bonus:{tec:2}}, sup:null}},
+  {id:"flyingfish", n:"하늘 날치", base:"lantern", risk:"TETH", g:[5,4], look:"비늘이 은빛으로 반짝이는 커다란 물고기가 골목 위 허공을 헤엄치듯 뛰어오른다",
+   rumor:"비 그친 밤, 골목 하늘에서 물고기가 뛰어오른다. 올려다보던 아이가 사라지고 신발만 남았다", pref:PF("agi>wil>str>tec"), ctr:2, rule:"quickDrops",
+   escape:"작업을 너무 서둘러 끝내도 카운터가 준다. 다하면 은빛 비늘로 시선을 홀린 뒤 위에서 내리꽂아 통째로 삼킨다",
+   story:"물 밖으로 뛰어오르던 물고기는 내려갈 물을 잃었다. 그 뒤로 하늘을 헤엄치며, 저를 올려다보는 이를 먹이로 삼는다.",
+   like:"날치가 높이 떠오른다", dislike:"날치가 머리 위에서 맴돈다",
+   cards:[{n:"내리꽂기",a:2,b:12},{n:"은빛 비늘",a:3,b:8},{n:"하늘로 솟기",a:4,b:7,def:true}], hp:1.05,
+   gifts:{ctrl:{n:"은빛 비늘", mpRed:0.08, bonus:{agi:2}}, sup:{n:"날치의 지느러미", bonus:{agi:3,str:1}}}},
   // ── HE (4~3급) · 원작 ──
   {id:"ichthys", n:"단수어", risk:"HE", canon:"LCB", code:"O-02-11-26", g:[4,3], look:"머리 없는 물고기가 얕은 웅덩이에서 힘차게 몸을 비튼다",
    rumor:"공사장 물웅덩이에 머리 없는 물고기가 산다. 배가 붉게 부풀어 오르고 있다", pref:PF("tec>wil>str>agi"), ctr:3,
@@ -3484,39 +3455,42 @@ const ABNOS = [
    like:"구두가 얌전히 놓여 있다", dislike:"구두가 저절로 탁, 하고 발을 구른다",
    cards:[{n:"춤추는 칼날",a:4,b:11},{n:"멈추지 않는 스텝",a:5,b:10},{n:"회전",a:4,b:8,def:true}], hp:1.1,
    gifts:{ctrl:{n:"빨간 구두끈", bonus:{agi:3}, mpRed:0.08}, sup:{n:"부러진 구두 굽", bonus:{agi:2,str:2}}}},
+  {id:"grudgeshooter", n:"흉탄의 사수", base:"freischutz", risk:"HE", canon:"LCB", code:"F-01-16-13", g:[4,3], look:"붉은 불꽃이 머리처럼 타오르는 군인이 산탄총을 장전한다. 목에는 낡은 펜던트가 걸려 있다",
+   rumor:"옛 전쟁터를 닮은 폐허에서 산탄총 소리가 그치지 않는다. 들어간 사람은 산산조각 난 채 발견된다", pref:PF("agi>str>wil>tec"), ctr:3, rule:"pendant",
+   escape:"카운터가 다하면 전쟁터를 재현한 곳에서 흉탄을 쏘아 댄다. 펜던트를 떠올리게 만들면(애착 작업) 그는 잊었던 사람을 기억해 버린다",
+   story:"사랑하는 사람을 지키려 악마의 총을 받고 전쟁에 나갔다. 마지막 탄환이 그 사람에게 향하지 않도록 그는 그 사람을 잊었고, 잊은 채 죽이는 일에 희열을 느끼게 되었다.",
+   like:"사수가 총구를 내린다", dislike:"산탄총이 철컥 장전된다",
+   cards:[{n:"흉탄",a:4,b:12},{n:"산탄 세례",a:3,b:13},{n:"참호",a:5,b:8,def:true}], hp:1.2,
+   gifts:{ctrl:{n:"사진이 든 펜던트", mpRed:0.15, bonus:{agi:2}}, sup:{n:"그을린 산탄", bonus:{agi:3,str:2}}}},
   // ── HE · 창작 ──
-  {id:"carousel", n:"녹슨 회전목마", risk:"HE", g:[4,3], look:"불 꺼진 놀이공원에서 목마들이 혼자 돌아간다",
-   rumor:"문 닫은 놀이공원에서 음악이 들린다. 들어간 야간 경비가 목마 위에서 발견됐다", pref:PF("agi>tec>str>wil"), ctr:3,
-   escape:"음악이 끊기면 목마들이 궤도를 벗어나 사람을 태우러 온다",
-   story:"한 바퀴만 더 타고 싶다던 아이의 소원. 목마는 아이가 다 자랄 때까지 멈추지 않았다.",
-   like:"음악이 느긋하게 이어진다", dislike:"목마의 눈이 이쪽을 돈다",
-   cards:[{n:"돌진하는 목마",a:4,b:10},{n:"회전",a:5,b:9},{n:"철제 기둥",a:4,b:7,def:true}], hp:1.15,
-   gifts:{ctrl:{n:"멈춘 오르골 태엽", mpRed:0.14, bonus:{agi:2}}, sup:{n:"목마의 쇠말굽", bonus:{str:3,agi:2}, hpRed:0.05}}},
-  {id:"balletshoe", n:"닳은 발레 슈즈", base:"redshoes", risk:"HE", g:[4,3], look:"끈이 다 해진 분홍 발레 슈즈가 무대 위에서 발끝으로 선다",
-   rumor:"폐극장 무대에서 아무도 없는데 발소리가 난다. 리허설하던 단원이 다리를 잃었다", pref:PF("tec>agi>wil>str"), ctr:2, low:"agi",
-   escape:"민첩이 모자란 이가 다가가면 끈이 발목을 감아 무대로 끌어올린다", story:"주연이 되지 못한 무용수의 신발. 무대가 끝나지 않는 한 쉬지 못한다.",
-   like:"슈즈가 발끝을 내린다", dislike:"해진 끈이 꿈틀거린다",
-   cards:[{n:"발끝 찌르기",a:4,b:10},{n:"끈 휘감기",a:4,b:10},{n:"피루엣",a:5,b:8,def:true}], hp:1.05,
-   gifts:{ctrl:{n:"해진 슈즈 끈", bonus:{agi:2,tec:1}, mpRed:0.08}, sup:{n:"깨진 토슈즈 앞코", bonus:{agi:3,str:1}}}},
-  {id:"stitchbear", n:"실밥 터진 곰 인형", base:"teddy", risk:"HE", g:[4,3], look:"배가 갈라진 곰 인형이 비어 버린 품을 채울 것을 찾는다",
-   rumor:"헌 옷 수거함 옆 곰 인형을 주워 간 집의 아이가 밤마다 숨이 막혀 깬다", pref:PF("wil>tec>str>agi"), ctr:3,
-   escape:"품이 너무 비면 가장 가까운 이를 끌어안아 채운다", story:"너무 오래 안아 준 탓에 실밥이 터졌다. 비어 버린 자리는 아무리 안아도 채워지지 않는다.",
+  {id:"carousel", n:"가시돋친 목마", risk:"HE", g:[4,3], look:"몸통 곳곳에 녹슨 가시가 돋은 커다란 나무 목마가 삐걱이며 앞뒤로 흔들린다",
+   rumor:"폐놀이공원 한가운데 가시 돋친 목마가 놓였다. 올라탄 아이도, 끌어내리려던 어른도 피투성이가 됐다", pref:PF("agi>tec>str>wil"), ctr:3,
+   escape:"흔들림이 멈추지 않으면 가시를 세운 채 달려와 닿는 것을 모두 꿰뚫는다",
+   story:"누구나 한 번쯤 타고 싶어 했던 목마. 아무도 내리지 않으려 하자, 목마는 아무도 내리지 못하게 가시를 길렀다.",
+   like:"흔들림이 느려진다", dislike:"가시가 삐걱이며 솟는다",
+   cards:[{n:"가시 돌진",a:4,b:10},{n:"흔들어 꿰기",a:5,b:9},{n:"가시 갑피",a:4,b:7,def:true}], hp:1.15,
+   gifts:{ctrl:{n:"뽑아 둔 목마 가시", mpRed:0.12, bonus:{agi:2}}, sup:{n:"목마의 나무 갈기", bonus:{str:3,agi:2}, hpRed:0.05}}},
+  {id:"greenboots", n:"초록 장화", base:"redshoes", risk:"HE", g:[4,3], look:"진흙투성이 초록 장화 한 켤레가 발맞춰 행진하듯 제자리를 구른다",
+   rumor:"공사장 인부 휴게실의 장화를 신은 사람이 쉬지 않고 걸었다. 사흘 뒤 다리가 부러진 채 발견됐다", pref:PF("wil>str>agi>tec"), ctr:2, low:"agi",
+   escape:"민첩이 모자란 이가 다가가면 발이 저절로 장화 속으로 들어간다. 장화를 신은 이는 쓰러질 때까지 행진하며 앞을 막는 것을 짓밟는다",
+   story:"쉬는 날 없이 일하던 사람의 장화. 주인이 쓰러진 뒤에도 장화는 멈추는 법을 배우지 못했다.",
+   like:"장화가 발을 멈춘다", dislike:"장화가 쿵, 하고 발을 구른다",
+   cards:[{n:"짓밟기",a:4,b:11},{n:"멈추지 않는 행진",a:5,b:10},{n:"진흙 차기",a:4,b:8,def:true}], hp:1.1,
+   gifts:{ctrl:{n:"말린 장화 끈", bonus:{agi:2,wil:1}, mpRed:0.08}, sup:{n:"닳은 장화 굽", bonus:{str:2,agi:2}}}},
+  {id:"stitchbear", n:"실밥 터진 테디", base:"teddy", risk:"HE", g:[4,3], look:"배가 갈라진 곰 인형이 터진 솜을 흘리며, 비어 버린 품을 채울 것을 찾는다",
+   rumor:"헌 옷 수거함 옆 곰 인형을 주워 간 집의 아이가 밤마다 숨이 막혀 깬다", pref:PF("wil>tec>str>agi"), ctr:3, rule:"teddy",
+   escape:"같은 사람이 연달아 다가가면 그를 끌어안아 터진 품을 채우려 한다. 카운터가 다하면 가장 가까운 이를 끌어안으러 온다",
+   story:"너무 오래, 너무 꼭 안아 준 탓에 실밥이 터졌다. 비어 버린 자리는 아무리 안아도 채워지지 않는다.",
    like:"곰 인형이 팔을 내린다", dislike:"터진 배에서 솜이 쏟아진다",
    cards:[{n:"끌어안기",a:3,b:12},{n:"솜 쏟기",a:4,b:9},{n:"폭신한 몸",a:5,b:8,def:true}], hp:1.2,
    gifts:{ctrl:{n:"새 실밥", mpRed:0.12, bonus:{wil:2}}, sup:{n:"뜯긴 곰 귀", bonus:{str:3,tec:1}}}},
-  {id:"seventh", n:"일곱 번째 탄피", base:"freischutz", risk:"HE", g:[4,3], look:"아무도 없는 사격장 바닥에 탄피 하나가 저절로 굴러다닌다",
-   rumor:"경찰 사격장에서 아무도 쏘지 않았는데 표적이 뚫렸다. 탄피가 하나 늘어 있었다", pref:PF("wil>agi>str>tec"), ctr:2,
-   noFight:true, doom:{t:"어디선가 일곱 번째 총성이 울렸다. 일행 하나가 쓰러졌다", maim:true},
-   escape:"그 자리를 떠나지 않는다. 카운터가 다하면 이미 쏘아진 탄환이 그날의 표적을 찾아온다",
-   story:"마지막 한 발은 악마의 몫이었다. 탄피는 그 한 발이 아직 누구에게도 닿지 않았다고 기억한다.",
-   like:"탄피가 멈춘다", dislike:"화약 냄새가 짙어진다",
-   gifts:{ctrl:{n:"차가운 탄피", bonus:{agi:2,wil:2}}, sup:null}},
-  {id:"dryfish", n:"말라붙은 단수어", base:"ichthys", risk:"HE", g:[4,3], look:"물이 마른 웅덩이에서 머리 없는 물고기가 갈라진 바닥을 두드린다",
-   rumor:"가뭄 든 저수지 바닥에 물고기가 퍼덕인다. 다가간 사람의 몸에서 물기가 빠져나갔다", pref:PF("str>tec>wil>agi"), ctr:3,
-   escape:"목이 마르면 주변 생물의 물기를 빨아들인다", story:"웅덩이가 말라도 단수어는 헤엄치기를 멈추지 않는다. 이제 그것이 헤엄치는 곳은 사람의 몸속이다.",
-   like:"물고기가 잠잠해진다", dislike:"입술이 바싹 마른다",
-   cards:[{n:"물기 빨기",a:4,b:10},{n:"마른 꼬리",a:4,b:11},{n:"갈라진 비늘",a:5,b:7,def:true}], hp:1.15,
-   gifts:{ctrl:{n:"한 모금의 물", mpRed:0.12, hpRed:0.04}, sup:{n:"말라붙은 지느러미", bonus:{str:2,agi:2}}}},
+  {id:"mothwedding", n:"죽은 나방들의 결혼", baseName:"죽은 나비의 장례", risk:"HE", g:[4,3], look:"면사포를 쓴 관 하나를 죽은 나방 떼가 들어 올려, 아무도 없는 식장으로 행진한다",
+   rumor:"문 닫은 예식장에서 매일 밤 결혼식이 열린다. 하객석에 앉았던 사람들은 나방 가루를 뒤집어쓴 채 잠들어 있었다", pref:PF("tec>wil>agi>str"), ctr:3, high:"str",
+   escape:"힘으로 다루려는 이(근력이 지나치게 높은 이)가 작업하면 카운터가 준다. 다하면 나방 떼가 하객을 데려가려 날아오른다",
+   story:"장례를 치른 나비들과 달리, 나방들은 빛을 향해 날다 죽었다. 그래서 끝을 슬퍼하는 대신 결혼식을 올린다. 하객이 모자라면 데려온다.",
+   like:"나방 떼가 날개를 접는다", dislike:"나방 가루가 흩날린다",
+   cards:[{n:"나방 떼",a:4,b:10},{n:"면사포 감기",a:4,b:11},{n:"하객의 장막",a:5,b:8,def:true}], hp:1.15,
+   gifts:{ctrl:{n:"나방 가루 면사포", mpRed:0.14, bonus:{tec:2}}, sup:{n:"죽은 나방의 날개", bonus:{agi:3,str:1}}}},
   // ── WAW (2급) · 원작 ──
   {id:"knight", n:"절망의 기사", risk:"WAW", canon:"L", code:"O-01-73", g:[2,2], look:"검을 품은 기사가 눈물을 흘리며 누군가를 지키려 한다",
    rumor:"성당 지하 납골당에 칼을 든 기사가 산다. 그 앞에서 기도한 사람이 기사의 축복을 받았다고 한다", pref:PF("tec>wil>agi>str"), ctr:3, noCounter:true, rule:"knight",
@@ -3554,27 +3528,31 @@ const ABNOS = [
    cards:[{n:"홀리는 등불",a:4,b:11},{n:"삼키기",a:3,b:13},{n:"깃털 벽",a:5,b:8,def:true}], hp:1.35,
    gifts:{ctrl:{n:"꺼지지 않는 등불", mpRed:0.18, bonus:{tec:3}}, sup:{n:"큰 새의 눈", bonus:{str:3,wil:3}, hpRed:0.06}}},
   // ── WAW · 창작 ──
-  {id:"brokenlance", n:"부러진 창의 기사", base:"knight", risk:"WAW", g:[2,2], look:"부러진 창을 짚은 기사가 지킬 사람을 찾아 골목을 헤맨다",
-   rumor:"뒷골목의 밤에도 쓰러지지 않는 기사가 있다. 지켜 준다며 따라온 이들이 하나씩 사라졌다", pref:PF("wil>tec>str>agi"), ctr:3,
-   escape:"지키던 이를 또 잃으면 부러진 창으로 모든 것을 찌른다", story:"맹세는 지켰지만 창은 부러졌다. 기사는 이제 무엇으로 지켜야 할지 모른다.",
-   like:"기사가 창을 내려놓는다", dislike:"부러진 창끝이 떨린다",
-   cards:[{n:"부러진 창",a:5,b:12},{n:"절망의 돌진",a:4,b:14},{n:"방패 없는 수호",a:6,b:9,def:true}], hp:1.3,
+  {id:"brokenlance", n:"부러진 창의 기수", base:"knight", risk:"WAW", g:[2,2], look:"부러진 창을 꼬나든 기수가 보이지 않는 말에 올라탄 채 골목을 내달린다",
+   rumor:"뒷골목의 밤에도 말발굽 소리가 들린다. 지켜 준다며 따라온 이들이 하나씩 사라졌다", pref:PF("wil>tec>str>agi"), ctr:3,
+   escape:"지키던 이를 또 잃으면 부러진 창을 앞세우고 돌진해 모든 것을 꿰뚫는다",
+   story:"맹세를 지키느라 말도 창도 잃었다. 기수는 아직 달리고 있다고 믿으며, 보이지 않는 말 위에서 내려오지 않는다.",
+   like:"기수가 고삐를 늦춘다", dislike:"부러진 창끝이 이쪽을 향한다",
+   cards:[{n:"부러진 창",a:5,b:12},{n:"돌격",a:4,b:14},{n:"방패 없는 수호",a:6,b:9,def:true}], hp:1.3,
    gifts:{ctrl:{n:"맹세의 리본", hpRed:0.08, bonus:{wil:3}}, sup:{n:"부러진 창날", bonus:{str:4,agi:2}}}},
-  {id:"oldred", n:"은퇴한 붉은 두건", base:"littlered", risk:"WAW", g:[2,2], look:"빛바랜 두건을 쓴 노병이 녹슨 갈고리를 닦으며 옛 사냥을 중얼거린다",
-   rumor:"양로원에 들어온 노인이 밤마다 늑대 사냥을 나간다. 간병인이 갈고리에 다쳤다", pref:PF("tec>wil>str>agi"), ctr:3,
-   escape:"옛 사냥감의 기척을 느끼면 갈고리를 들고 일어선다", story:"늑대는 오래전에 죽었다. 그래도 노병은 사냥을 멈춘 적이 없다.",
-   like:"노병이 꾸벅 졸기 시작한다", dislike:"갈고리 끝이 번뜩인다",
-   cards:[{n:"녹슨 갈고리",a:5,b:12},{n:"마지막 한 발",a:4,b:14},{n:"노련한 회피",a:6,b:9,def:true}], hp:1.25,
-   gifts:{ctrl:{n:"빛바랜 두건", mpRed:0.14, bonus:{tec:2,wil:1}}, sup:{n:"녹슨 사냥 갈고리", bonus:{str:3,agi:3}}}},
-  {id:"blindscale", n:"눈먼 저울", base:"jbird", risk:"WAW", g:[2,2], look:"새는 사라지고 저울만 허공에 매달려 혼자 기운다",
-   rumor:"법원 계단에 저울 하나가 떠 있다. 그 앞에서 거짓말한 변호사가 목을 매었다", pref:PF("agi>wil>tec>str"), ctr:2,
-   escape:"카운터가 다하면 주변 모든 이의 죄를 한꺼번에 단다", story:"심판하던 새는 떠났고 저울만 남았다. 이제는 누구의 죄인지 묻지도 않고 기운다.",
-   like:"저울이 흔들림을 멈춘다", dislike:"저울 접시가 아래로 처진다",
-   cards:[{n:"죄의 무게",a:4,b:13},{n:"목줄",a:5,b:11},{n:"기운 접시",a:6,b:8,def:true}], hp:1.25,
-   gifts:{ctrl:{n:"눈먼 추", mpRed:0.15, bonus:{agi:2,wil:1}}, sup:{n:"끊어진 저울 줄", bonus:{agi:3,str:3}}}},
-  {id:"ashmoth", n:"재가 된 나방", base:"moth", risk:"WAW", g:[2,2], look:"다 타 버린 날개를 단 나방이 꺼진 불씨 위를 맴돈다",
-   rumor:"화재 현장 잿더미에서 나방이 날아올랐다. 재를 마신 소방관들이 열에 시달린다", pref:PF("str>agi>tec>wil"), ctr:3,
-   escape:"꺼진 불을 다시 지피려 날개의 재를 흩뿌린다", story:"불꽃을 향해 날던 나방은 끝내 타 버렸다. 남은 재는 아직도 불꽃을 찾는다.",
+  {id:"onegram", n:"상인의 1g", base:"jbird", risk:"WAW", g:[2,2], look:"금화가 쌓인 저울 한쪽 접시가 비어 있고, 은빛 칼이 그 위에 놓여 있다. 정확히 1g을 기다린다",
+   rumor:"사채업자 사무실에 저울이 생겼다. 빚을 못 갚은 사람마다 몸에서 살점이 1g씩 사라진다", pref:PF("agi>wil>tec>str"), ctr:2, rule:"flesh",
+   escape:"어긋난 작업마다 작업자의 살을 정확히 1g씩 달아 간다. 카운터가 다하면 계약서에 적힌 대로 모두의 살을 단다 — 피 한 방울도 더 흘리지 않고",
+   story:"살 1파운드를 떼어 가라는 계약은 피를 흘리지 말라는 판결에 막혔다. 저울은 그 뒤로 더 작게, 더 정확하게 재는 법을 익혔다.",
+   like:"저울이 수평을 찾는다", dislike:"빈 접시 위의 칼이 미끄러진다",
+   cards:[{n:"1g을 떼다",a:4,b:13},{n:"계약 집행",a:5,b:11},{n:"정확한 저울",a:6,b:8,def:true}], hp:1.25,
+   gifts:{ctrl:{n:"1g짜리 추", mpRed:0.15, bonus:{agi:2,wil:1}}, sup:{n:"은빛 계약 칼", bonus:{agi:3,str:3}}}},
+  {id:"bluereception", n:"푸른 접수원", base:"littlered", risk:"WAW", g:[2,2], look:"푸른 두건을 쓴 접수원이 피 묻은 접수대 뒤에서 미소 지으며 의뢰서를 내민다",
+   rumor:"폐업한 용병 사무소에 아직 접수원이 앉아 있다. 의뢰서를 받아 든 사람은 사냥감이 되어 돌아오지 않았다", pref:PF("tec>wil>str>agi"), ctr:3,
+   escape:"카운터가 다하면 접수대에서 일어나, 의뢰서에 적힌 사냥감을 직접 처리하러 나선다. 의뢰서에는 늘 눈앞의 이름이 적혀 있다",
+   story:"붉은 두건의 용병이 받아 오던 의뢰는 모두 이 접수대를 거쳤다. 용병이 돌아오지 않자, 접수원은 사냥까지 맡기로 했다.",
+   like:"접수원이 의뢰서를 서랍에 넣는다", dislike:"도장이 쾅, 찍힌다",
+   cards:[{n:"접수 완료",a:5,b:12},{n:"사냥 개시",a:4,b:14},{n:"접수대 뒤로",a:6,b:9,def:true}], hp:1.25,
+   gifts:{ctrl:{n:"반려된 의뢰서", mpRed:0.14, bonus:{tec:2,wil:1}}, sup:{n:"피 묻은 접수 도장", bonus:{str:3,agi:3}}}},
+  {id:"ashfly", n:"잿나비", base:"moth", risk:"WAW", g:[2,2], look:"재로 빚은 나비가 날갯짓할 때마다 잿가루가 꽃잎처럼 흩날린다",
+   rumor:"화재 현장 잿더미에서 나비 떼가 날아올랐다. 재를 마신 소방관들이 열에 시달린다", pref:PF("str>agi>tec>wil"), ctr:3, rule:"ember",
+   escape:"어긋난 작업마다 불씨가 쌓이고, 최고의 결과면 불씨가 사라진다. 카운터가 다하면 재 속 불씨를 한꺼번에 피워 올린다",
+   story:"불꽃 속에서 피어나던 꽃을 좇던 나방은 다 타 버렸다. 남은 재가 나비의 모양을 하고, 다시 불꽃을 찾아 난다.",
    like:"재가 가라앉는다", dislike:"재 속에서 불씨가 깜빡인다",
    cards:[{n:"재 흩뿌리기",a:4,b:12},{n:"다시 붙는 불",a:5,b:12},{n:"잿빛 날개",a:5,b:8,def:true}], hp:1.25,
    gifts:{ctrl:{n:"잿빛 비늘가루", mpRed:0.14, bonus:{str:2}}, sup:{n:"타다 남은 날개", bonus:{str:3,agi:3}}}},
@@ -3601,19 +3579,20 @@ const ABNOS = [
    cards:[{n:"머리 발톱",a:5,b:13},{n:"뼈 파편",a:6,b:12},{n:"작별 인사",a:4,b:16},{n:"알 껍질",a:6,b:9,def:true}], hp:1.7,
    gifts:{ctrl:{n:"아무것도 없는 웃음", mpRed:0.18, bonus:{tec:4,str:2}}, sup:{n:"빼앗긴 가죽", bonus:{str:5,agi:3}, hpRed:0.08}}},
   // ── ALEPH · 창작 ──
-  {id:"fadedstar", n:"빛바랜 푸른 별", base:"bluestar", risk:"ALEPH", g:[1,0], look:"빛이 다 바랜 별이 낮게 떠서 아무도 부르지 않는다",
-   rumor:"폭격 맞은 둥지 위에 빛 없는 별이 떠 있다. 그 아래 사람들은 아무것도 바라지 않게 되었다", pref:PF("tec>wil>str>agi"), ctr:2,
-   escape:"아무도 바라봐 주지 않으면 마지막 빛을 터뜨려 주변의 소원을 모두 지운다", story:"모두를 부르던 별은 아무에게도 닿지 못했다. 이제 별은 누구도 바라지 않기를 바란다.",
-   like:"별이 희미하게 깜빡인다", dislike:"남은 빛이 날카롭게 떨린다",
-   cards:[{n:"꺼지는 맥박",a:5,b:13},{n:"소원 지우기",a:6,b:12},{n:"바랜 껍질",a:6,b:9,def:true}], hp:1.55,
-   gifts:{ctrl:{n:"바랜 별빛", mpRed:0.2, bonus:{tec:3,wil:2}}, sup:{n:"식은 별 조각", bonus:{str:4,agi:3}}}},
-  {id:"throne", n:"빈 왕좌의 그림자", risk:"ALEPH", g:[1,0], look:"아무도 앉지 않은 왕좌의 그림자만 혼자 일어선다",
-   rumor:"무너진 날개 본사 꼭대기에서 그림자 하나가 도시를 내려다본다", pref:{wil:"최고", agi:"좋음", str:"나쁨", tec:"나쁨"}, ctr:2,
-   escape:"아무도 왕좌를 지키지 않으면 그림자가 왕관을 찾아 도시로 내려온다",
-   story:"왕좌의 주인은 오래전에 떠났다. 그림자만 남아 아직 자신이 왕이라고 믿는다.",
-   like:"그림자가 왕좌로 돌아간다", dislike:"그림자가 손을 뻗는다",
-   cards:[{n:"왕의 일격",a:5,b:13},{n:"그림자 칼날",a:6,b:11},{n:"옥좌의 위엄",a:6,b:9,def:true}], hp:1.6,
-   gifts:{ctrl:{n:"그림자 왕관", mpRed:0.2, bonus:{wil:4,agi:2}}, sup:{n:"부러진 홀", bonus:{str:4,agi:3}, hpRed:0.08}}},
+  {id:"sun", n:"일렁이는 태양", base:"bluestar", risk:"ALEPH", g:[1,0], look:"아지랑이처럼 일렁이는 커다란 태양이 골목 위에 낮게 떠서, 밤을 낮으로 바꿔 놓았다",
+   rumor:"뒷골목의 밤이 오지 않은 구역이 있다. 하늘에 뜬 태양을 올려다본 사람들은 눈을 감지 못한 채 그을려 있었다", pref:PF("wil>tec>agi>str"), ctr:2, low:"wil",
+   escape:"의지가 모자란 이가 올려다보면 카운터가 준다. 다하면 태양이 더 낮게 내려와 바라보는 모두를 태운다",
+   story:"밤이 두려운 사람들이 빌었다. 다시는 어두워지지 않게 해 달라고. 태양은 그 소원을 들어주었고, 지는 법을 잊었다.",
+   like:"일렁임이 잔잔해진다", dislike:"열기가 살갗을 태운다",
+   cards:[{n:"작열",a:5,b:13},{n:"아지랑이",a:6,b:12},{n:"코로나",a:6,b:9,def:true}], hp:1.55,
+   gifts:{ctrl:{n:"지지 않는 빛", mpRed:0.2, bonus:{wil:3,tec:2}}, sup:{n:"식은 태양 조각", bonus:{str:4,agi:3}}}},
+  {id:"throne", n:"왕을 죽이는 왕좌", risk:"ALEPH", g:[1,0], look:"검은 왕좌가 무너진 빌딩 꼭대기에 놓여 있다. 팔걸이마다 칼날이 숨어 있다",
+   rumor:"무너진 날개 본사 꼭대기에 왕좌가 있다. 앉아 본 조직 보스들이 모두 그 자리에서 숨졌다", pref:PF("wil>agi>str>tec"), ctr:2,
+   escape:"앉으려 하는 자가 없으면 스스로 일어나, 왕이 될 만한 자를 찾아 죽이러 내려온다",
+   story:"왕좌는 왕을 섬기지 않는다. 앉는 순간 그 사람은 왕이 되고, 왕이 된 순간 죽는다. 그렇게 왕좌만이 영원히 남는다.",
+   like:"왕좌가 조용히 비어 있다", dislike:"팔걸이의 칼날이 드러난다",
+   cards:[{n:"왕을 베는 칼",a:5,b:13},{n:"즉위",a:6,b:12},{n:"옥좌의 위엄",a:6,b:9,def:true}], hp:1.6,
+   gifts:{ctrl:{n:"왕좌의 팔걸이 장식", mpRed:0.2, bonus:{wil:4,agi:2}}, sup:{n:"왕을 벤 칼날", bonus:{str:4,agi:3}, hpRed:0.08}}},
 ];
 const ABNO_BY = Object.fromEntries(ABNOS.map(a=>[a.id, a]));
 const abnoRiskFor = g => g >= 7 ? "죄종" : g === 6 ? "ZAYIN" : g === 5 ? pick(["ZAYIN","TETH"]) : g === 4 ? pick(["TETH","HE"]) : g === 3 ? "HE" : g === 2 ? "WAW" : "ALEPH";
@@ -3694,15 +3673,20 @@ function mgAbno(ctx){
       const prev = G.last; G.last = f.id;
       let line = `${G.turn}회차 · ${esc(f.name)}의 ${w.n} 작업 — `;
       // 즉시 재앙 규칙
-      if(a.rule==="teddy" && prev===f.id){ say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 들어왔다</span>`); return doom(f); }
-      if(a.rule==="killWork" && k===a.kill){ say(line + `<span style="color:#ff8a7a">${esc(a.dislike)}</span>`); return doom(f); }
+      if(a.rule==="teddy" && prev===f.id){
+        if(a.noFight){ say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다</span>`); return doom(f); }
+        maimOf(f); G.ctr--; say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다 — ${esc(jo(f.name,"을"))} 꼭 끌어안았다(중상)</span> · ${ctrName} -1`);
+        if(G.ctr <= 0) return breach(f); return menu(); }
+      if(a.rule==="killWork" && k===a.killK){ say(line + `<span style="color:#ff8a7a">${esc(a.dislike)}</span>`); return doom(f); }
       if(a.rule==="armor" && k==="tec" && G.flame[f.id]){ say(line + `<span style="color:#ff8a7a">용기의 불꽃을 받은 이가 물러섰다</span>`); return doom(f); }
       if(a.rule==="button"){ const p = clamp(0.1 - 0.25*(power(f,["wil"])/Math.max(1,q.req) - 1), 0.03, 0.3);
         if(Math.random() < p){ say(line + `<span style="color:#ff8a7a">${esc(f.name)}의 손가락이 버튼을 눌렀다</span>`); return doom(f); } }
-      const right = lv==="최고" || lv==="좋음";
+      const right = lv==="최고" || lv==="좋음", lie = a.rule==="liar" && Math.random() < 0.5;   // 양치기 소년: 반응의 반은 거짓말(기분 막대만 진짜)
+      const likeT = lie ? a.dislike : a.like, dislikeT = lie ? a.like : a.dislike;
+      if(a.rule==="pendant" && k==="tec" && !G.pendant){ G.pendant = true; line += `<span style="color:#9ad0ff">펜던트 속 사진을 보여 주었다 — 사수가 잊었던 사람을 떠올렸다</span> · `; }
       if(right){
         const gain = Math.round(WORK_GAIN[lv] * clamp(0.55 + 0.45*ratio, 0.5, 1.3)); G.mood = Math.min(100, G.mood + gain);
-        line += `<span style="color:#8fd6a0">${esc(a.like)}</span> (기분 +${gain})`;
+        line += `<span style="color:${lie ? "#ff8a7a" : "#8fd6a0"}">${esc(likeT)}</span> (기분 +${gain})`;
         if(a.rule==="goodDrops" && lv==="최고"){ G.ctr--; line += ` · <span style="color:#ff8a7a">지나치게 좋은 결과 — 카운터 -1</span>`; }
         if(a.rule==="onlyBest" && lv!=="최고"){ G.ctr--; line += ` · <span style="color:#ff8a7a">최고의 결과가 아니었다 — 카운터 -1</span>`; }
         if(a.rule==="goodRaises" && lv==="최고" && G.ctr < G.max){ G.ctr++; line += " · 카운터 +1"; }
@@ -3717,10 +3701,12 @@ function mgAbno(ctx){
         G.ctr--; G.shake = 10; G.flash = 1;
         const pct = Math.round(({죄종:6, ZAYIN:8, TETH:10, HE:12, WAW:15, ALEPH:18}[a.risk] || 8) * (1 - redMP(f)*0.5)), loss = Math.floor(f.mpMax*pct/100);
         f.mp = Math.max(0, f.mp - loss); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + loss;
-        line += `<span style="color:#ff8a7a">${esc(a.dislike)}</span> · ${ctrName} -1 · ${esc(f.name)} 정신력 -${pct}%(${loss})`;
+        line += `<span style="color:${lie ? "#8fd6a0" : "#ff8a7a"}">${esc(dislikeT)}</span> · ${ctrName} -1 · ${esc(f.name)} 정신력 -${pct}%(${loss})`;
+        if(a.rule==="flesh"){ const v = Math.max(1, Math.floor(f.hpMax*0.06)); f.hp = Math.max(1, f.hp - v); line += ` · <span style="color:#ff8a7a">${esc(f.name)}의 살 1g을 달아 갔다(체력 -${v})</span>`; }
         if(a.rule==="badMaim"){ maimOf(f); line += ` · <span style="color:#ff8a7a">${esc(f.name)} 중상</span>`; }
         if(a.rule==="ember"){ G.embers++; if(G.embers >= 2 && G.ctr > 0){ G.ctr--; line += " · 불씨가 번져 카운터 -1"; } }
       }
+      if(a.high && power(f,[a.high]) >= q.req*1.3 && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">${ATTR_NAME[a.high]}이 지나치게 높은 작업자 — 카운터 -1</span>`; }
       if(a.low && power(f,[a.low]) < q.req && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">${ATTR_NAME[a.low]}이 모자란 작업자 — 카운터 -1</span>`; }
       say(line);
       if(G.ctr > 0 && G.mood >= 100){ G.state = "egg"; G.flash = 1; codexNote(a.vid, "ctrl"); say(`<b style="color:#e8d27a">${esc(josa(shown,"이","가"))} 스스로 알로 잠들었다.</b>`);
@@ -3734,8 +3720,9 @@ function mgAbno(ctx){
       say(`<b style="color:#ff8a7a">${a.rule==="knight" ? "기사가 절망에 빠졌다" : `${a.noCounter ? "참을성이" : "광폭 카운터가"} 다했다`} — ${esc(josa(shown,"이","가"))} 폭주했다!</b>`); await new Promise(r=>setTimeout(r, 1300)); fight();
     }
     async function fight(){
-      cancelAnimationFrame(raf); m.bg.style.visibility = "hidden";
-      const fq = Object.assign({}, q, {goal:"제압", attrs:["str"], foe: shown, abnoFoe:a});
+      cancelAnimationFrame(raf); m.bg.style.visibility = "hidden"; if(G.pendant) toast("펜던트를 떠올린 사수의 흉탄이 흔들린다 — 위력 약화");
+      let AF = a; if(G.pendant){ AF = Object.assign({}, a, {cards: a.cards.map(c=>Object.assign({}, c, {b: Math.max(c.a+1, c.b-2)}))}); }
+      const fq = Object.assign({}, q, {goal: a.kill ? "사살" : "제압", attrs:["str"], foe: shown, abnoFoe:AF});
       const r = await mgCombat({q:fq, team:ctx.team, idx:ctx.idx, total:ctx.total});
       m.close(); if(r.win) codexNote(a.vid, "sup");
       resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, mpLoss:G.mpLoss}));
@@ -3743,7 +3730,8 @@ function mgAbno(ctx){
     m.ctrl.addEventListener("click", e=>{ const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
     m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss}); };
-    if(G.state==="rage"){ say(`${esc(shown)} — <b style="color:#ff8a7a">주변의 모든 것을 부수며 날뛰고 있다!</b> 곧바로 전투에 들어간다.`); setTimeout(fight, 1800); }
+    if(a.kill){ G.state = "rage"; say(`${esc(shown)} — ${esc(a.look)}.<br><b style="color:#ff8a7a">죄종은 관리할 수 없다. 발견 즉시 사살한다.</b>`); setTimeout(fight, 2200); }
+    else if(G.state==="rage"){ say(`${esc(shown)} — <b style="color:#ff8a7a">주변의 모든 것을 부수며 날뛰고 있다!</b> 곧바로 전투에 들어간다.`); setTimeout(fight, 1800); }
     else { say(`${esc(shown)} — ${esc(a.look)}. ${seen===1 ? "처음 보는 환상체다." : `${seen}번째 마주친다.`}<br><span class="muted">작업을 골라 기분을 끝까지 올리면 알로 잠든다. 틀리면 ${jo(ctrName,"이")} 준다.</span>`); menu(); }
   });
 }
@@ -3861,7 +3849,7 @@ async function dispatch(qid, fids){
     Object.entries(abnoR.mpLoss||{}).forEach(([id,v])=>{ const f = team.find(x=>x.id==id); if(f && v) lines.push(`${esc(f.name)}: 틀린 작업으로 정신력 -${v}`); });
     if(abnoR.doom){ if(abnoR.doom.mind) team.forEach(f=>{ const v = Math.floor(f.mpMax*abnoR.doom.mind); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: ${esc(A ? A.n : "환상체")}의 재앙 — 정신력 -${v}`); });
       if(abnoR.doom.maim){ const f = (abnoR.victim!=null && team.find(x=>x.id===abnoR.victim)) || pick(team); f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.08))); lines.push(`${esc(f.name)}: 삼켜졌다가 겨우 끌려 나왔다 — 체력 ${f.hp}`); } }
-    lines.push(abnoR.how==="ctrl" ? "환상체를 알로 잠재웠다(통제)" : abnoR.how==="sup" ? "전투 끝에 환상체를 알로 되돌렸다(제압)" : "환상체를 처리하지 못했다"); }
+    lines.push(abnoR.how==="ctrl" ? "환상체를 알로 잠재웠다(통제)" : abnoR.how==="sup" ? (A && A.kill ? "죄종을 사살했다" : "전투 끝에 환상체를 알로 되돌렸다(제압)") : "환상체를 처리하지 못했다"); }
   team.forEach(f=>{
     const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
@@ -3894,7 +3882,7 @@ async function dispatch(qid, fids){
       });
     });
     if(q.loot){ lines.push(`전리품: <b>${esc(q.loot.name)}</b> 획득(관리에서 장착)`); S.inventory = S.inventory||[]; S.inventory.push(q.loot); }
-    if(q.kind==="환상체" && abnoOf(q)){ const A = abnoOf(q), how = abnoR && abnoR.how ? abnoR.how : "ctrl";
+    if(q.kind==="환상체" && abnoOf(q)){ const A = abnoOf(q), how = abnoR && abnoR.how ? abnoR.how : (A.kill ? "sup" : "ctrl");
       if(Math.random() < GIFT_P*(q.hazard?1.5:1)*(abnoR && abnoR.flame ? 6 : 1) || window.__forceGift){ const g = makeGift(A, how, q.grade);
         if(g){ S.inventory = S.inventory||[]; S.inventory.push(g); codexNote(A.vid, null, g.name); lines.push(`<span style="color:#e8d27a">기프트</span>: <b>${esc(g.name)}</b>(${g.gift.kind} · ${gName(q.grade)}) 획득 — 관리에서 장신구로 장착`); } } }
     if(q.kind==="특색 심사") await passColor(team[0]);
@@ -5310,7 +5298,7 @@ async function openRecords(){
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && !q.abno){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
 const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나무"],["랑가 공방","랑아 공방"],["클라우드 공방","구름 공방"],["아틀리에 로직","로직 아틀리에"]];
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); } }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
@@ -5467,12 +5455,12 @@ async function openAchievements(){
   const met = entries.filter(e=>cx[e.vid] && cx[e.vid].seen);
   const row = e => { const c = cx[e.vid] || {seen:0, gifts:[]}, n = c.seen, lock = k => `<span class="muted">— ${k-n}번 더 만나면 열린다</span>`;
     const L = k => n >= k;
-    return `<div class="cdx ${n?"on":""}"><div class="cdx-h"><b>${L(1) ? esc(e.n) : "???"}</b>${L(2) ? `<span class="badge" style="border-color:${RISK_COL[e.risk]};color:${RISK_COL[e.risk]}">${e.risk}${e.sin ? " · "+e.sin : ""}</span>` : ""}${L(1) ? (e.canon ? `<span class="muted" style="font-size:11px">${e.code ? esc(e.code)+" · " : ""}원작 · ${e.canon==="LCB" ? "림버스 컴퍼니" : "로보토미 코퍼레이션"}</span>` : e.base && ABNO_BY[e.base] ? `<span class="muted" style="font-size:11px">창작 아종 · 바탕: ${esc(ABNO_BY[e.base].n)}</span>` : `<span class="muted" style="font-size:11px">창작</span>`) : ""}<span class="muted" style="margin-left:auto;font-size:11px">만남 ${n} · 통제 ${c.ctrl||0} · 제압 ${c.sup||0}</span></div>
+    return `<div class="cdx ${n?"on":""}"><div class="cdx-h"><b>${L(1) ? esc(e.n) : "???"}</b>${L(2) ? `<span class="badge" style="border-color:${RISK_COL[e.risk]};color:${RISK_COL[e.risk]}">${e.risk}${e.sin ? " · "+e.sin : ""}</span>` : ""}${L(1) ? (e.canon ? `<span class="muted" style="font-size:11px">${e.code ? esc(e.code)+" · " : ""}원작${e.base && ABNO_BY[e.base] ? ` 아종(${esc(ABNO_BY[e.base].n)})` : ""} · ${e.canon==="LCB" ? "림버스 컴퍼니" : "로보토미 코퍼레이션"}</span>` : (e.base && ABNO_BY[e.base]) || e.baseName ? `<span class="muted" style="font-size:11px">창작 아종 · 바탕: ${esc(e.baseName || ABNO_BY[e.base].n)}</span>` : `<span class="muted" style="font-size:11px">창작</span>`) : ""}<span class="muted" style="margin-left:auto;font-size:11px">만남 ${n} · 통제 ${c.ctrl||0} · 제압 ${c.sup||0}</span></div>
       ${n ? `<div class="d">${esc(e.look)}</div>` : ""}
       <div class="cdx-g"><span>위험 등급</span><div>${L(2) ? `${e.risk}${e.sin ? ` — 작은 ${e.sin} 죄종` : ""}` : lock(2)}</div>
-        <span>선호 작업</span><div>${L(3) ? WORKS.map(w=>`${w.n}(${WORK_LBL[w.k]}) <b style="color:${e.pref[w.k]==="최고"?"#8fd6a0":e.pref[w.k]==="좋음"?"#cfe08a":"#ff8a7a"}">${e.pref[w.k]}</b>`).join(" · ") : lock(3)}</div>
-        <span>폭주 조건</span><div>${L(4) ? `${e.noCounter ? `광폭 카운터 없음(이 게임에선 실수 ${e.ctr}번까지)` : `광폭 카운터 ${e.ctr}`} — ${esc(e.escape)}` : lock(4)}</div>
-        <span>전투 조건</span><div>${L(4) ? (e.noFight ? `<span style="color:#ff8a7a">전투 불가</span> — 자리를 떠나지 않거나 즉사 기믹이 있다. 통제에 실패하면 재앙이 일어난다` : "폭주하거나 날뛰면 전투로 제압해 알로 되돌린다") : lock(4)}</div>
+        <span>선호 작업</span><div>${e.kill && L(3) ? `<span style="color:#ff8a7a">관리 불가</span> — 발견 즉시 사살한다` : L(3) ? WORKS.map(w=>`${w.n}(${WORK_LBL[w.k]}) <b style="color:${e.pref[w.k]==="최고"?"#8fd6a0":e.pref[w.k]==="좋음"?"#cfe08a":"#ff8a7a"}">${e.pref[w.k]}</b>`).join(" · ") : lock(3)}</div>
+        <span>폭주 조건</span><div>${L(4) && e.kill ? esc(e.escape) : L(4) ? `${e.noCounter ? `광폭 카운터 없음(이 게임에선 실수 ${e.ctr}번까지)` : `광폭 카운터 ${e.ctr}`} — ${esc(e.escape)}` : lock(4)}</div>
+        <span>전투 조건</span><div>${L(4) && e.kill ? "사살 전투만 있다 — 제압해 되돌릴 수 없다" : L(4) ? (e.noFight ? `<span style="color:#ff8a7a">전투 불가</span> — 자리를 떠나지 않거나 즉사 기믹이 있다. 통제에 실패하면 재앙이 일어난다` : "폭주하거나 날뛰면 전투로 제압해 알로 되돌린다") : lock(4)}</div>
         <span>이야기</span><div>${L(5) ? esc(e.story) : lock(5)}</div>
         <span>기프트</span><div>${(c.gifts||[]).length ? c.gifts.map(esc).join(", ") : `<span class="muted">아직 얻지 못했다</span>`}</div></div></div>`; };
   const cdxBody = met.length ? `<p class="muted" style="margin:0 0 8px">도시의 환상체는 저절로 생겨났거나, 뒤틀림이 깊어진 끝에 환상체가 된 것이다. 만날수록 이름 → 위험 등급 → 선호 작업 → 폭주·전투 조건 → 이야기 순으로 열린다. 이 브라우저에 남는다.</p>${met.map(row).join("")}`
