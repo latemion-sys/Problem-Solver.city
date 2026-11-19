@@ -148,7 +148,9 @@ footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);lin
 /* modal */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:50;padding:12px}
 .modal{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:640px;width:100%;max-height:88vh;display:flex;flex-direction:column}
-.modal .mh{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:16px}
+.modal .mh{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:700;font-size:16px;position:relative;padding-right:48px}
+.modal .mh .mx{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;padding:0;border-radius:8px;font-size:20px;line-height:1;background:transparent;border:1px solid var(--line);color:var(--muted,#aaa);cursor:pointer}
+.modal .mh .mx:hover{color:#fff;border-color:#888;background:rgba(255,255,255,.06)}
 .modal .mb{padding:14px 16px;overflow:auto}
 .modal .mf{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .list{display:flex;flex-direction:column;gap:8px}
@@ -3264,7 +3266,7 @@ function mgCombat(ctx){
     // 선택지 칸이 더 커진 적이 있으면 그 높이를 유지한다(창이 위아래로 흔들리지 않게)
     new ResizeObserver(()=>{ const h = m.ctrl.scrollHeight; if(h > (parseFloat(m.ctrl.style.minHeight)||0)) m.ctrl.style.minHeight = h+"px"; }).observe(m.ctrl);
     const stage = m.bg.querySelector(".mg-stage"), glc = document.createElement("canvas");
-    const gd = Math.min(1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
+    const gd = Math.min(PERF.low ? 1 : 1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
     let G = null; try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; }
     let SFX = null; try { SFX = SlashFX.make(W, H); } catch(e){ SFX = null; }
@@ -7644,8 +7646,9 @@ function modal(title, body, buttons, returnValue, onMount){
     const bg = document.createElement("div"); bg.className="modal-bg";
     bg.innerHTML = `<div class="modal"><div class="mh">${title}</div><div class="mb">${body}</div><div class="mf"></div></div>`;
     const mf = bg.querySelector(".mf");
-    buttons.forEach(b=>{ const el=document.createElement("button"); el.textContent=b.t; if(b.primary) el.className="primary"; if(b.danger) el.className="danger";
-      el.onclick=()=>{ close(); res(b.v!==undefined?b.v:true); }; mf.appendChild(el); });
+    buttons.forEach(b=>{ const el=document.createElement("button"); el.textContent=b.x ? "×" : b.t; if(b.primary) el.className="primary"; if(b.danger) el.className="danger";
+      el.onclick=()=>{ close(); res(b.v!==undefined?b.v:true); };
+      if(b.x){ el.className = "mx"; el.title = b.t; el.setAttribute("aria-label", b.t); bg.querySelector(".mh").appendChild(el); } else mf.appendChild(el); });
     const close = ()=>{ bg.remove(); modalStack = modalStack.filter(x=>x!==close); };
     modalStack.push(()=>{ bg.remove(); res(null); });
     document.getElementById("modal-root").appendChild(bg);
@@ -7890,8 +7893,8 @@ async function openAccept(qid){
   const v = await modal(`의뢰 — ${q.client}`, `<div class="acc-story${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${story}</div>
     <div class="kv"><span>의뢰</span><b>${esc(q.text)}</b><span>종류</span><b>${esc(q.kind)}${q.goal ? ` · ${q.goal}` : ""}</b><span>재해 등급</span><b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)} <span class="muted" style="font-weight:400">(${q.grade===0 ? "특색" : gName(q.grade)} 수준)</span></b>
     <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b><span>마감</span><b>${q.deadline}일</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품</span><b>${esc(q.loot.name)}</b>` : ""}</div>`,
-    [{t:"거절한다", v:"no"}, {t:"사람을 보낸다", v:"yes", primary:true}]);
-  if(!S || !S.requests.includes(q)) return;
+    [{t:"닫기", v:"close", x:true}, {t:"거절한다", v:"no"}, {t:"사람을 보낸다", v:"yes", primary:true}]);
+  if(!S || !S.requests.includes(q) || v==="close") return;
   if(v==="yes"){ q.accepted = true; ac("accept"); save(); render(); return; }
   if(v==="no"){ S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id];
     if(q.prescript){ idxFail(); addLog("지령을 거절했다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%"); }
@@ -8604,8 +8607,11 @@ const Title = {
 
 /* ================= 연출(상단) ================= */
 let cv, cx, skyline=[], rain=[], fx={t:0,color:"#c9a86a",kind:"",good:true};
+// 연출 화면은 픽셀 밀도를 2배까지만 쓴다(3배 화면의 휴대폰에서 무거워지지 않게). PERF: 연출 화면의 프레임 시간 평균 — 느린 기기면 전투 화면 해상도를 낮춘다
+const SDPR = () => Math.min(2, devicePixelRatio||1);
+const PERF = {ft:16, low:false, last:0};
 let loopOn=false;
-function resizeStage(){ if(!cv) return; const r=cv.getBoundingClientRect(); cv.width=Math.max(1,r.width*devicePixelRatio); cv.height=Math.max(1,r.height*devicePixelRatio); buildSky(); }
+function resizeStage(){ if(!cv) return; const r=cv.getBoundingClientRect(); cv.width=Math.max(1,r.width*SDPR()); cv.height=Math.max(1,r.height*SDPR()); buildSky(); }
 function initStage(){
   cv = document.getElementById("cv"); cx = cv.getContext("2d");
   resizeStage();
@@ -8619,9 +8625,9 @@ function buildSky(){
   skyline=[]; const W=cv.width,H=cv.height;
   [0.35,0.55,0.8].forEach((depth,li)=>{
     let x=-20;
-    while(x<W+20){ const w=(30+Math.random()*70)*devicePixelRatio*(0.6+depth*0.5), h=H*(0.25+Math.random()*0.45)*(0.5+depth*0.6);
-      const wins=[]; for(let wy=8;wy<h-6;wy+=9*devicePixelRatio) for(let wx=5;wx<w-6;wx+=8*devicePixelRatio) if(Math.random()<0.18) wins.push([wx,wy,Math.random()]);
-      skyline.push({x,w,h,layer:li,depth,wins}); x+=w+Math.random()*6*devicePixelRatio; }
+    while(x<W+20){ const w=(30+Math.random()*70)*SDPR()*(0.6+depth*0.5), h=H*(0.25+Math.random()*0.45)*(0.5+depth*0.6);
+      const wins=[]; for(let wy=8;wy<h-6;wy+=9*SDPR()) for(let wx=5;wx<w-6;wx+=8*SDPR()) if(Math.random()<0.18) wins.push([wx,wy,Math.random()]);
+      skyline.push({x,w,h,layer:li,depth,wins}); x+=w+Math.random()*6*SDPR(); }
   });
 }
 /* 결과 한 줄: 상단 칸에 로그처럼 문장만 띄운다(빛무리·어두워짐 없이) */
@@ -8634,7 +8640,7 @@ function stageLog(title, sub, good){
    둥지는 밤에도 불이 꺼지지 않고, 꼭대기에는 그 구역 날개의 머리글자가 빛난다 */
 let warp = null, nextWarp = 0;
 function drawCity(now, W, H, NIGHT){
-  const d = devicePixelRatio, D = districtOf(), w = (S && S.weather && S.weather.w) || "clear";
+  const d = SDPR(), D = districtOf(), w = (S && S.weather && S.weather.w) || "clear";
   const tw = Math.max(30*d, W*0.055), tx = W*0.6, th = H*0.97, top = H - th;
   // 곁의 작은 둥지 탑 둘
   [[-0.11, 0.62, 0.7],[0.1, 0.7, 0.8]].forEach(([dx, hk, wk])=>{ const x = tx + W*dx, h = th*hk, ww = tw*wk;
@@ -8670,7 +8676,7 @@ function rollWeather(){ const r = Math.random(), w = r<0.28 ? "clear" : r<0.48 ?
 const weatherText = W => !W ? "" : `${WEATHERS.find(x=>x[0]===W.w)[1]} ${W.night ? "밤" : "낮"}`;
 let bolt = null, nextBolt = 0, clouds = [], stars = [], mists = [];
 function drawWeather(now, W, H, layer){
-  const Wd = (S && S.weather) || {w:"rain", night:true}, d = devicePixelRatio;
+  const Wd = (S && S.weather) || {w:"rain", night:true}, d = SDPR();
   if(layer==="sky"){
     const g = cx.createLinearGradient(0,0,0,H), N = Wd.night, w = Wd.w;
     const top = N ? (w==="clear" ? "#070a18" : w==="cloud" ? "#0d0d14" : w==="fog" ? "#12141a" : "#08080d") : (w==="clear" ? "#4f6f8f" : w==="cloud" ? "#5a5e66" : w==="rain" ? "#3e434b" : w==="fog" ? "#7d848b" : "#34363f");
@@ -8724,6 +8730,7 @@ function playFx(kind, title, sub, good){
 }
 function loop(now){
   if(!cx){ return; }
+  if(PERF.last){ const dt = now - PERF.last; if(dt < 250){ PERF.ft = PERF.ft*0.95 + dt*0.05; PERF.low = PERF.ft > 26; } } PERF.last = now;
   if(window.__hvBusy){ requestAnimationFrame(loop); return; }   // 개화·뒤틀림 화면이 떠 있는 동안 뒤 화면은 쉰다
   if(scene && drawScene(now)){ requestAnimationFrame(loop); return; }
   const W=cv.width,H=cv.height; const age=(now-fx.t)/1000;
@@ -8735,21 +8742,21 @@ function loop(now){
   // 은은한 빛무리
   const glow = Math.max(0, 1-age/3);
   if(glow>0){ const rg=cx.createRadialGradient(W/2,H*0.55,0,W/2,H*0.55,W*0.5); rg.addColorStop(0,fx.color+"55"); rg.addColorStop(1,"transparent"); cx.globalAlpha=glow; cx.fillStyle=rg; cx.fillRect(0,0,W,H); cx.globalAlpha=1; }
-  const shake = (fx.kind==="뒤틀림"||fx.kind==="흉터") && age<1.2 ? (1.2-age)*6*devicePixelRatio : 0;
+  const shake = (fx.kind==="뒤틀림"||fx.kind==="흉터") && age<1.2 ? (1.2-age)*6*SDPR() : 0;
   for(let L=0;L<3;L++){ skyline.forEach(b=>{ if(b.layer!==L) return;
     const off = Math.sin(now/4000+b.depth)*2*b.depth + (shake? (Math.random()-0.5)*shake:0);
     const shade = Math.round(10+b.layer*9);
     cx.fillStyle = NIGHT ? `rgb(${shade},${shade},${shade+6})` : `rgb(${bday[0]-b.layer*12},${bday[1]-b.layer*12},${bday[2]-b.layer*10})`;
     cx.fillRect(b.x+off, H-b.h, b.w, b.h);
-    b.wins.forEach(w=>{ const fl = 0.5+0.5*Math.sin(now/700+w[2]*40); if(fl<0.15 || (!NIGHT && w[2] > 0.35)) return; cx.fillStyle = NIGHT ? `rgba(232,200,130,${0.25+0.5*fl*b.depth})` : `rgba(200,210,220,${0.15+0.2*fl*b.depth})`; cx.fillRect(b.x+off+w[0], H-b.h+w[1], 3*devicePixelRatio, 4*devicePixelRatio); });
+    b.wins.forEach(w=>{ const fl = 0.5+0.5*Math.sin(now/700+w[2]*40); if(fl<0.15 || (!NIGHT && w[2] > 0.35)) return; cx.fillStyle = NIGHT ? `rgba(232,200,130,${0.25+0.5*fl*b.depth})` : `rgba(200,210,220,${0.15+0.2*fl*b.depth})`; cx.fillRect(b.x+off+w[0], H-b.h+w[1], 3*SDPR(), 4*SDPR()); });
   }); drawWeather(now, W, H, "veil", L); if(L<2) drawRumors(now, L); }
   drawWeather(now, W, H, "rain");
   // 뒤틀림: 화면 조각 어긋남
-  if(fx.kind==="뒤틀림" && age<2.5){ for(let i=0;i<6;i++){ const y=Math.random()*H, h=6+Math.random()*20; cx.drawImage(cv,0,y,W,h,(Math.random()-0.5)*40*devicePixelRatio,y,W,h);} }
+  if(fx.kind==="뒤틀림" && age<2.5){ for(let i=0;i<6;i++){ const y=Math.random()*H, h=6+Math.random()*20; cx.drawImage(cv,0,y,W,h,(Math.random()-0.5)*40*SDPR(),y,W,h);} }
   // 에고/특색: 위로 솟는 빛줄기
-  if((fx.kind==="에고"||fx.kind==="특색 심사") && age<3){ for(let i=0;i<14;i++){ const x=W/2+(Math.sin(i*13.7)*W*0.25); const a=(1-age/3)*0.35; cx.fillStyle=`rgba(255,240,200,${a})`; cx.fillRect(x,0,2*devicePixelRatio,H*(0.4+0.6*((i*7)%5)/5)); } }
+  if((fx.kind==="에고"||fx.kind==="특색 심사") && age<3){ for(let i=0;i<14;i++){ const x=W/2+(Math.sin(i*13.7)*W*0.25); const a=(1-age/3)*0.35; cx.fillStyle=`rgba(255,240,200,${a})`; cx.fillRect(x,0,2*SDPR(),H*(0.4+0.6*((i*7)%5)/5)); } }
   // 흉터: 붉은 사선
-  if(fx.kind==="흉터" && age<2.5){ cx.strokeStyle=`rgba(201,74,74,${0.8*(1-age/2.5)})`; cx.lineWidth=4*devicePixelRatio; cx.beginPath(); const p=Math.min(1,age/0.4); cx.moveTo(W*0.3,H*0.2); cx.lineTo(W*0.3+W*0.4*p,H*0.2+H*0.6*p); cx.stroke(); }
+  if(fx.kind==="흉터" && age<2.5){ cx.strokeStyle=`rgba(201,74,74,${0.8*(1-age/2.5)})`; cx.lineWidth=4*SDPR(); cx.beginPath(); const p=Math.min(1,age/0.4); cx.moveTo(W*0.3,H*0.2); cx.lineTo(W*0.3+W*0.4*p,H*0.2+H*0.6*p); cx.stroke(); }
   // 실패 시 어두워짐
   if(fx.good===false && age<1.5 && fx.kind!=="흉터"){ cx.fillStyle=`rgba(0,0,0,${0.35*(1-age/1.5)})`; cx.fillRect(0,0,W,H); }
   requestAnimationFrame(loop);
@@ -8769,7 +8776,7 @@ function playScene(kind, opt){
 }
 function endScene(){ if(!scene) return; const r = scene.res; scene = null; r(); }
 function drawScene(now){
-  const d = devicePixelRatio, W = cv.width/d, H = cv.height/d, t = (now-scene.t0)/1000;
+  const d = SDPR(), W = cv.width/d, H = cv.height/d, t = (now-scene.t0)/1000;
   if(t > scene.sc.dur){ endScene(); return false; }
   cx.save(); cx.setTransform(d,0,0,d,0,0);
   const sh = scene.st.shake || 0;
@@ -11035,7 +11042,7 @@ function rumorTick(now){
   pushRumor(text, main, now); rumorNext = now + rnd(RUMOR_GAP[0], RUMOR_GAP[1]);
 }
 function drawRumors(now, L){
-  const W=cv.width, H=cv.height, d=devicePixelRatio;
+  const W=cv.width, H=cv.height, d=SDPR();
   floats.forEach(f=>{
     if(f.layer!==L || now<f.start) return;
     const p = (now-f.start)/f.dur; if(p>1){ f.dead=true; return; }
