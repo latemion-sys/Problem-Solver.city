@@ -2326,7 +2326,8 @@ function teamPower(team, attrs){ const ps = team.map(f=>power(f,attrs)).sort((a,
 function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.1}[f.ego.type] || 0; return Math.min(r,0.7); }
 function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.25}[f.ego.type] || 0; if(f.shin) r+=0.15; return Math.min(r,0.75); }
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
-function rate(team, q){ const P = teamPower(team,q.attrs); return clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)), 5, 97); }
+const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 사람이 끼면 성공률 -10%p
+function rate(team, q){ const P = teamPower(team,q.attrs); return clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)) - tiredPen(team), 5, 97); }
 function isMental(q){ return q.attrs.includes("wil") && (q.kind==="환상체"||q.kind==="뒤틀림 토벌"||q.attrs[0]==="wil"); }
 function dmgFactor(team,q){ const P = teamPower(team,q.attrs); return clamp(1 + (q.req-P)/Math.max(10,q.req)*2, 0.5, 2.5); }
 const shareMul = n => n<=1 ? 1 : 1/(0.7*n);
@@ -2341,7 +2342,9 @@ function canGo(f){ return f.lastDispatch!==S.day && f.unavailUntil < S.day; }
 /* 강행군: 오늘 이미 출동한 해결사를 하루 한 번 더 내보낸다. 결과와 상관없이 가장 적게 깎일 때(성공 · 안정)의 2.5배가 깎인다 */
 function canMarch(f){ return f.lastDispatch===S.day && f.unavailUntil < S.day && f.marchDay!==S.day && f.hp > 0; }
 const canSend = f => canGo(f) || canMarch(f);
-const STREAK_MAX = 3;   // 사흘 연속 출동하면 이튿날 쉰다
+/* 피로: 사흘 연속 출동한 해결사는 나흘째부터 '피로'가 붙는다 — 그 사람이 낀 출동은 성공률 -10%p, 그 사람이 받는 피해 +20%.
+   하루 쉬면(출동하지 않으면) 피로가 풀리고, 체력·정신력을 평소(20%)보다 15%p 더 회복한다. 쉴지 버틸지는 플레이어가 고른다. */
+const STREAK_MAX = 3, TIRED_RATE = 10, TIRED_DMG = 1.2, REST_BONUS = 0.15;
 const MARCH_K = 2.5;
 function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30?["나쁨","b"]:["위험","d"]; }
 
@@ -2362,7 +2365,7 @@ function leadGear(f){
    성공하면 모두 안정(최소 감소). 실패하면 사람마다 자기 등급에 따라 부상 단계를 뽑는다 — 낮은 등급일수록 중상 이상이 잘 나온다. */
 function autoRate(team, q){
   const best = Math.min(...team.map(f=>f.grade)), qg = q.grade!=null ? q.grade : 9, d = qg - best;
-  return clamp(Math.round(75 + (d>=0 ? 12*d : 15*d) + 4*(team.length-1)), 5, 97);
+  return clamp(Math.round(75 + (d>=0 ? 12*d : 15*d) + 4*(team.length-1)) - tiredPen(team), 5, 97);
 }
 function autoWound(f){
   const g = clamp(f.grade, 1, 9), k = (9-g)/8;                    // 9급 0 → 1급 1
@@ -2934,7 +2937,7 @@ const roll = (a,b) => a + Math.floor(Math.random()*(b-a+1));
 function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
-    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}해야 성공. 최대 6턴.`, ctx, 380);
+    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}하면 성공, 모두 쓰러지면 실패 — 턴 제한은 없다.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(wGear(f)) || "none", spec: weaponSpecOf(wGear(f)), armor: armorSpecOf(aGear(f)), sp2: f.ego && f.ego.special || null, wsp: (wspOf(wGear(f))||{}).id || null, ye:0, wchg:0, hits:0, charge:0, shield:0, endured:false}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null, kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
@@ -3022,7 +3025,9 @@ function mgCombat(ctx){
     }
     function odds(a, spA, b, spB, chg){ let w = 0; for(let i=0;i<300;i++) if(simClash(a, spA, b, spB, chg).win==="me") w++; return w/300; }
     const oddLabel = p => p>=0.8 ? ["압도", "#7fe0a8"] : p>=0.6 ? ["우세", "#a8e07f"] : p>=0.4 ? ["호각", "#e0d27f"] : p>=0.2 ? ["열세", "#e0a37f"] : ["절망", "#e07f7f"];
-    let act = 0, turn = 1; const MAXT = 6, st = {}; let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
+    let act = 0, turn = 1; const st = {};   // 턴 제한 없음 — 목표(사살/제압)를 이루거나 모두 쓰러질 때까지 싸운다
+    let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
+    const longK = () => turn > 12 ? 1 + 0.1*(turn - 12) : 1;   // 합이 아주 길어지면 양쪽 모두 지쳐 한 대가 무거워진다(끝없이 이어지지 않게)
     const S2 = {log:[]};
     function pickFoeSkill(){ if(AB && AB.movement) foe.allow = rnd(0,2); const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def); foeSkill = Math.random()<0.22 && df.length ? pick(df) : pick(at); }
     const coinStr = sk => "●".repeat(sk.coins);
@@ -3036,7 +3041,7 @@ function mgCombat(ctx){
       return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
-      m.info.innerHTML = `<div class="pk-text"><b>${turn}/${MAXT}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp)]}">${WOUND[woundOf(me.hp)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
+      m.info.innerHTML = `<div class="pk-text"><b>${turn}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp)]}">${WOUND[woundOf(me.hp)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
         <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>${jo(foeSkill.n,"을").slice(foeSkill.n.length)} 쓰려 한다(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""}).</span>
         ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}
         ${statusLine()}${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
@@ -3088,7 +3093,7 @@ function mgCombat(ctx){
       const egoNote = [], abNote = [];
       me.lastWon = won;
       const DEFK = {riposte:1.5, zwerch:1.2, improv:1.0, brace:0.8, bind:1.2, counter:1.6, steadfast:0.8};
-      if(won){ let dmg = Math.round(P*(wSk.def ? (T && DEFK[T.id]!=null ? DEFK[T.id] : 0.6) : 1)); if(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush"))) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+      if(won){ let dmg = Math.round(P*(wSk.def ? (T && DEFK[T.id]!=null ? DEFK[T.id] : 0.6) : 1)*longK()); if(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush"))) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(foe.crack) dmg += foe.crack;
         if(T){ const id = T.id;
           if(id==="riposte") tNote.push("되찌르기 — 막은 그대로 찔러 들어갔다"); if(id==="zwerch") tNote.push("가로지르기 — 받으며 동시에 벴다");
@@ -3151,7 +3156,7 @@ function mgCombat(ctx){
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
           foe.cards = [{n:"큰 부리로 물기",a:6,b:14},{n:"집어삼키기",a:7,b:12},{n:"붉은 깃 세우기",a:5,b:9,def:true}]; foe.skills = foe.cards.map(c=>skillOf(c));
           abNote.push(`<b style="color:#ff8a7a">맞은 새가 붉게 변했다 — 가슴의 커다란 부리가 열렸다. 이제 물리면 쓰러진다</b>`); } }
-      else { let dmg = Math.round(P*3*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*(foe.hitK||1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+      else { let dmg = Math.round(P*3*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*(foe.hitK||1)*longK()*(me.f.tired ? TIRED_DMG : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(me.wsp==="meztil"){ dmg = Math.round(dmg*1.2); wNote.push("과속 — 몸이 따라가지 못했다(받는 피해 +20%)"); }
         if(me.wsp==="ranga" && me.rend){ me.rend = 0; wNote.push("벌려 둔 상처가 아물었다"); }
         if(T && T.id==="allout"){ dmg = Math.round(dmg*1.5); tNote.push("전력 공격 — 빈틈을 그대로 맞았다(받는 피해 ×1.5)"); }
@@ -3237,7 +3242,7 @@ function mgCombat(ctx){
       if(foe.hp<=0){ if(revive()){ tick = [tick, foe.reviveNote].filter(Boolean).join(" · "); foe.reviveNote = null; } else return finishMenu(); }
       if(party.every(p=>p.hp<=0)) return finish("lost");
       if(party[act].hp<=0) act = party.findIndex(p=>p.hp>0);
-      turn++; if(turn>MAXT) return finish("time"); pickFoeSkill(); skillMenu(); }
+      turn++; pickFoeSkill(); skillMenu(); }
     function finish(why){
       if(done) return; done = true;
       const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0), prog = 1 - foe.hp/foe.max;
@@ -3246,7 +3251,7 @@ function mgCombat(ctx){
       else if(outcome){ score = 0.3; text = goal==="제압" ? "과잉 진압 — 죽여 버렸다. 의뢰 실패" : "제압만 했다 — 사살 의뢰였다. 의뢰 실패"; }
       else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다 — 의뢰 실패"; }
       else if(why==="fuse"){ score = 0.1; text = "성냥불이 터졌다 — 소녀는 재가 되어 흩어졌다. 의뢰 실패"; }
-      else { score = 0.4*prog; text = "시간이 다 됐다 — 놓쳤다. 의뢰 실패"; }
+      else { score = 0.4*prog; text = "목표를 이루지 못했다 — 의뢰 실패"; }
       const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought: p.fought, death: p.death || null, wound: p.hp<=0 ? 3 : woundOf(p.hp)}))};
       setTimeout(()=>{ mgResult(m, res.score, text).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
@@ -3268,7 +3273,9 @@ function mgCombat(ctx){
     const stage = m.bg.querySelector(".mg-stage"), glc = document.createElement("canvas");
     const gd = Math.min(PERF.low ? 1 : 1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
-    let G = null; try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; }
+    // 그래픽 카드 없이 CPU로 셰이더를 흉내 내는 환경(소프트웨어 렌더러)이면 처음부터 2D로 그린다. 그 밖에도 처음 몇 프레임이 너무 느리면 2D로 내려간다.
+    let G = null; if(!softGL()){ try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; } }
+    const glProbe = {n:0, sum:0};
     let SFX = null; try { SFX = SlashFX.make(W, H); } catch(e){ SFX = null; }
     if(!G){ glc.remove(); m.cvs.classList.remove("mg-over"); }
     const FX_COL = { blade:[0.8,0.9,1], great:[0.85,0.9,1], spear:[0.8,0.92,1], blunt:[1,0.72,0.42], drill:[1,0.66,0.3], gun:[1,0.85,0.5], tool:[0.95,0.85,0.7], twin:[0.8,0.92,1], fist:[1,0.78,0.5], none:[1,0.85,0.7] };
@@ -3386,7 +3393,7 @@ function mgCombat(ctx){
       WOUND.forEach((w,i)=>{ const x = 466 + i*57; c.fillStyle = i===wl ? WOUND_COL[i] : "#1b1f1c"; c.beginPath(); c.roundRect(x, 316, 53, 12, 4); c.fill();
         c.fillStyle = i===wl ? "#101210" : "#5f6a62"; c.font = `700 9px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(w, x+26.5, 325); c.textAlign = "left"; });
       c.fillStyle = "#cfd8d0"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(hp<=0 ? "쓰러짐" : `부상: ${WOUND[wl]}`, 690, 345); c.textAlign = "left";
-      c.fillStyle = "#9fb8a6"; c.fillText(`${turn>MAXT?MAXT:turn} / ${MAXT}턴`, 466, 345);
+      c.fillStyle = "#9fb8a6"; c.fillText(`${turn}턴`, 466, 345);
       c.fillStyle = me.sp>=0 ? "#9fd8ff" : "#ff9a8a"; c.fillText(`정신력 ${me.sp>=0?"+":""}${me.sp}`, 540, 345);
       c.fillStyle = goal==="사살" ? "#ff8a7a" : "#9fe8b0"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "right"; c.fillText(`목표: ${goal}`, 704, 28); c.textAlign = "left";
       // 합: 위력 숫자와 코인(금빛 앞면 · 회색 뒷면 · 깨진 코인은 금이 간 채 흐리게)
@@ -3418,6 +3425,8 @@ function mgCombat(ctx){
       if(outcome && st.koAt==null) st.koAt = clock+300;
       st.shake = (st.shake||0)*0.86; st.aberr = (st.aberr||0)*0.9; st.flash = (st.flash||0)*0.88;
       if(outcome==="사살" && st.koAt!=null && !st.ember && clock-st.koAt>650){ st.ember = 1; const [x,y] = chestOf("foe"); addFx({kind:"pt", x:x+20, y:y+30, n:90, spd:40, dx:0, dy:-1, col:[1,0.55,0.25], seed:7}, 1600); }
+      if(G && glProbe.n >= 0){ glProbe.n++; if(glProbe.n > 3) glProbe.sum += dt;
+        if(glProbe.n === 24){ if(glProbe.sum/20 > 45){ try{ G.dispose(); }catch(_){ } G = null; glc.remove(); m.cvs.classList.remove("mg-over"); PERF.low = true; } glProbe.n = -1; } }
       if(G){
         const gd = fcv.width/W; fctx.setTransform(1,0,0,1,0,0); fctx.clearRect(0,0,fcv.width,fcv.height); fctx.setTransform(gd,0,0,gd,0,0);
         drawFighters(fctx, now);
@@ -5368,6 +5377,7 @@ async function dispatch(qid, fids){
     // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 2.5배
     let pct = march ? Math.floor(LOSS.ok[0] * (1 - red*0.5) * MARCH_K) : abnoR && abnoR.doom ? 0 : gentleQ && !success ? 3 : Math.floor((success ? LOSS.ok : LOSS.fail)[w] * (1 - red*0.5));
     if(LIGHT_THREATS.includes(threatOf(q))) pct = Math.floor(pct/2);   // 뜬소문 · 도시 괴담 의뢰는 입는 피해가 절반
+    if(f.tired) pct = Math.floor(pct*TIRED_DMG);                        // 피로하면 받는 피해 +20%
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
     const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
     let dH = mental ? 0 : main, dM = mental ? main : 0;
@@ -5502,7 +5512,7 @@ const HeartFx = (()=>{
   // WebGL2 셰이더 층(되면 이것으로). 느린 기기에서는 해상도를 스스로 낮춘다
   function glLayer(o, kind, opt){
     opt = opt || {}; opt.scale = opt.scale || 0.55;
-    if(!window.HeartGL || !HeartGL.supported()) return null;
+    if(!window.HeartGL || !HeartGL.supported() || softGL()) return null;   // 소프트웨어 렌더러면 셰이더 없이 글자 연출만
     const c = document.createElement("canvas"); c.className = "hv-gl"; c.setAttribute("aria-hidden","true"); o.insertBefore(c, o.firstChild);
     let fx = null; try{ fx = HeartGL.create(c, kind, opt); }catch(e){ fx = null; }
     if(!fx){ c.remove(); return null; }
@@ -6426,17 +6436,22 @@ function assocScene(id){
       <text x="60" y="72" text-anchor="middle" font-size="34" font-weight="900" fill="currentColor" font-family="serif">${A.sig}</text><path id="arc${id}" d="M 22 60 A 38 38 0 0 1 98 60" fill="none"/><text font-size="11" fill="currentColor" letter-spacing="3"><textPath href="#arc${id}" startOffset="50%" text-anchor="middle">${esc(A.n)}</textPath></text></svg></div></div>
     <canvas class="as-cv"></canvas>
     <div class="as-text"><div>간판 위에 ${esc(A.n)}의 문장이 찍혔다.</div><div>사무소 사람들은 그날 처음으로 같은 옷을 입었다.</div></div>`;
-  const cv = el.querySelector(".as-cv"), c = cv.getContext("2d"), t0 = performance.now(); let skip = false;
+  const cv = el.querySelector(".as-cv"), c = cv.getContext("2d"), t0 = performance.now(); let skip = false; const sprites = {};
   const before = "#59545e", after = hexMix(A.col, "#1a1a22", 0.42);
-  const loop = () => { if(!el.isConnected) return; const d = Math.min(2, devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight; if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
+  const loop = () => { if(!el.isConnected) return; const d = Math.min(1.5, devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight; if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
     c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H); const tt = skip ? 99 : (performance.now() - t0)/1000;
     const n = crew.length, gap = Math.min(150, W/(n+1)), gy = H*0.92, fh = Math.min(H*0.8, 240);
     crew.forEach((f,i)=>{ const x = W/2 + (i - (n-1)/2)*gap, lg = leadGear(f), on = clamp((tt - 5.6 - i*0.7)/0.9, 0, 1), app = clamp((tt - 3.6 - i*0.15)/0.6, 0, 1); if(app<=0) return;
       c.save(); c.globalAlpha = app;
-      const draw = (col, trim) => drawFixer(c, x, gy, fh, {face:1, view:"front", col, state:"idle", weapon: lg.spec, armor: Object.assign({}, lg.armorSpec, trim ? {type:1, collar:1, pad:1, trim:A.col} : {}), t: tt});
-      draw(before, false);
-      if(on > 0){ c.save(); c.beginPath(); c.rect(x - fh, gy - fh*1.3, fh*2, fh*1.3*on); c.clip(); draw(after, true); c.restore();
-        if(on < 1){ c.fillStyle = A.col; c.globalAlpha = 0.8; c.fillRect(x - fh*0.22, gy - fh*1.3 + fh*1.3*on - 1, fh*0.44, 2); } }
+      // 인물은 한 번만 그려 두고(옷 갈아입기 전 · 후 두 장) 매 프레임에는 그 그림만 옮겨 찍는다 — 다섯 명을 매번 새로 그리면 느린 기기에서 끊긴다
+      const key = `${i}|${Math.round(fh)}|${d}`, SP = sprites[key] = sprites[key] || {};
+      const sprite = (col, trim) => { const k2 = trim ? "a" : "b"; if(SP[k2]) return SP[k2]; const sw = Math.ceil(fh*2.2), sh = Math.ceil(fh*1.5), oc = document.createElement("canvas"); oc.width = Math.ceil(sw*d); oc.height = Math.ceil(sh*d);
+        const ox = oc.getContext("2d"); ox.setTransform(d,0,0,d,0,0); drawFixer(ox, sw/2, sh*0.95, fh, {face:1, view:"front", col, state:"idle", weapon: lg.spec, armor: Object.assign({}, lg.armorSpec, trim ? {type:1, collar:1, pad:1, trim:A.col} : {}), t: 0}); return SP[k2] = {oc, sw, sh}; };
+      const draw = (col, trim) => { const sp = sprite(col, trim); c.drawImage(sp.oc, x - sp.sw/2, gy - sp.sh*0.95, sp.sw, sp.sh); };
+      if(on < 1) draw(before, false);   // 다 갈아입은 뒤에는 새 제복만, 갈아입는 중에만 둘을 겹쳐 그린다
+      if(on >= 1) draw(after, true);
+      else if(on > 0){ const top = gy - fh*1.02, span = fh*1.12; c.save(); c.beginPath(); c.rect(x - fh, top, fh*2, span*on); c.clip(); draw(after, true); c.restore();
+        c.fillStyle = A.col; c.globalAlpha = 0.8; c.fillRect(x - fh*0.22, top + span*on - 1, fh*0.44, 2); }
       c.restore();
       c.fillStyle = on >= 1 ? A.col : "#b7b0a6"; c.globalAlpha = app; c.font = `600 13px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(f.name, x, gy + 18); c.globalAlpha = 1; });
     requestAnimationFrame(loop); };
@@ -6817,11 +6832,14 @@ async function endDayInner(reason){
   // 회복
   S.fixers.forEach(f=>{ f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*0.2)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*0.2)); });
   const abLines = abnoNightFx();
-  // 템포: 사흘 연속 출동한 해결사는 이튿날 하루 쉰다(출근 · 행동 불가)
-  const tired = [];
-  S.fixers.forEach(f=>{ f.streak = f.lastDispatch===ended ? (f.streak||0) + 1 : 0;
-    if(f.streak >= STREAK_MAX){ f.streak = 0; f.unavailUntil = Math.max(f.unavailUntil||0, ended + 1); f.restDay = ended + 1; tired.push(f.name); } });
-  if(tired.length){ abLines.push(`<span style="color:#e7a07c">${tired.map(esc).join(", ")}: 사흘 연속 출동 — 내일은 하루 쉰다</span>`); addLog(`${tired.join(", ")}: 사흘 연속 출동해서 내일은 쉰다`); }
+  // 템포: 사흘 연속 출동하면 피로가 붙고, 하루 쉬면 풀린다
+  const tiredNew = [], rested = [];
+  S.fixers.forEach(f=>{ const worked = f.lastDispatch===ended;
+    if(worked){ f.streak = (f.streak||0) + 1; if(f.streak >= STREAK_MAX && !f.tired){ f.tired = true; tiredNew.push(f.name); } }
+    else { if((f.streak||0) > 0 || f.tired){ const was = f.tired; f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*REST_BONUS)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*REST_BONUS)); if(was) rested.push(f.name); }
+      f.streak = 0; f.tired = false; } });
+  if(tiredNew.length){ abLines.push(`<span style="color:#e7a07c">${tiredNew.map(esc).join(", ")}: 사흘 연속 출동 — 피로 (출동 시 성공률 -${TIRED_RATE}% · 받는 피해 +${Math.round((TIRED_DMG-1)*100)}%, 하루 쉬면 풀린다)</span>`); addLog(`${tiredNew.join(", ")}: 피로가 쌓였다`); }
+  if(rested.length){ abLines.push(`<span style="color:#9fe8b0">${rested.map(esc).join(", ")}: 하루 쉬어 피로가 풀렸다 (체력·정신력 +${Math.round(REST_BONUS*100)}% 추가 회복)</span>`); }
   // 마감
   const expired = [];
   S.requests.forEach(q=>{ if(q.deadline!=null){ q.deadline--; if(q.deadline<=0) expired.push(q);} });
@@ -7931,13 +7949,13 @@ function render(){
       ${!q.accepted && q.kind!=="특색 심사" ? `<div class="assign"><button class="primary" data-accept="${q.id}">의뢰를 받는다</button></div></div>` : `
       <div class="est" id="est-${q.id}"></div>
       <div class="party">출동 인원 <b id="pc-${q.id}">0</b> / 최대 ${partyMax(q)}명 <span class="muted">· 권장 ${partyRec(q)}명</span></div>
-      <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 — 강행군"}">${esc(f.name)} <small>${canGo(f) ? gName(f.grade) : "강행군"}</small></button>`).join(""):`<span class="muted" style="font-size:12px">보낼 수 있는 해결사가 없다</span>`}</div>
+      <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 — 강행군"}">${esc(f.name)} <small>${canGo(f) ? gName(f.grade) : "강행군"}${f.tired ? " · 피로" : ""}</small></button>`).join(""):`<span class="muted" style="font-size:12px">보낼 수 있는 해결사가 없다</span>`}</div>
       <div class="assign"><button class="primary" data-go="${q.id}" disabled>출동</button></div></div>`}`;
   }).join("") : `<p class="muted">게시판이 비었다.</p>`;
   // 해결사
   app.querySelector("#fxs").innerHTML = S.fixers.map(f=>{
     const lh=level(f.hp,f.hpMax), lm=level(f.mp,f.mpMax);
-    const st = f.restDay===S.day ? "휴식 — 사흘 연속 출동" : f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? (f.marchDay===S.day ? "강행군까지 마침" : "오늘 출동함 · 강행군 가능") : "대기 중";
+    const st = f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? (f.marchDay===S.day ? "강행군까지 마침" : "오늘 출동함 · 강행군 가능") : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     const nc = nameCol(f);
     return `<div class="fx"><div class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
@@ -7945,7 +7963,7 @@ function render(){
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
-      <div class="state">${st} · 총합 ${total(f)}</div></div>`;
+      <div class="state">${st} · 총합 ${total(f)}${f.tired ? ` · <b style="color:#e7a07c">피로</b>` : (f.streak||0) >= 1 ? ` · <span class="muted">연속 출동 ${f.streak}일</span>` : ""}</div></div>`;
   }).join("");
   app.querySelector("#log").innerHTML = S.log.map(l=>`<div class="${l.cls||""}">${l.d}일 · ${esc(l.t)}</div>`).join("");
   app.querySelector("#endday").disabled = S.over;
@@ -8610,6 +8628,11 @@ let cv, cx, skyline=[], rain=[], fx={t:0,color:"#c9a86a",kind:"",good:true};
 // 연출 화면은 픽셀 밀도를 2배까지만 쓴다(3배 화면의 휴대폰에서 무거워지지 않게). PERF: 연출 화면의 프레임 시간 평균 — 느린 기기면 전투 화면 해상도를 낮춘다
 const SDPR = () => Math.min(2, devicePixelRatio||1);
 const PERF = {ft:16, low:false, last:0};
+let SOFT_GL = null;   // 소프트웨어 렌더러(SwiftShader · llvmpipe 등) 여부 — 한 번만 확인한다
+function softGL(){ if(SOFT_GL !== null) return SOFT_GL; SOFT_GL = false;
+  try{ const g = document.createElement("canvas").getContext("webgl2"); if(!g){ SOFT_GL = true; return SOFT_GL; } const ext = g.getExtension("WEBGL_debug_renderer_info");
+    const rn = ext ? String(g.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : ""; SOFT_GL = /swiftshader|llvmpipe|software|basic render/i.test(rn); const lose = g.getExtension("WEBGL_lose_context"); if(lose) lose.loseContext(); }catch(_){ }
+  return SOFT_GL; }
 let loopOn=false;
 function resizeStage(){ if(!cv) return; const r=cv.getBoundingClientRect(); cv.width=Math.max(1,r.width*SDPR()); cv.height=Math.max(1,r.height*SDPR()); buildSky(); }
 function initStage(){
@@ -11104,7 +11127,7 @@ function fxTestPanel(){
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
    <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="assoc">협회 의뢰</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="streak">사흘 연속 출동 처리</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="streak">사흘 연속 출동 → 피로</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
@@ -11153,7 +11176,7 @@ function fxTestPanel(){
     if(k==="relicreq"){ const q = makeRequest(3, {kind:"일반", attrs:["str"], noRelic:true}); q.relic = true; S.requests.unshift(q); save(); render(); return toast("유물 의뢰 게시"); }
     if(k==="relicok" || k==="relicno"){ closeAll(); const R = pick(RELICS), f = L, fit = k==="relicok" ? {fate:24, str:18, gr:6, v:48} : {fate:-22, str:14, gr:2, v:0};
       await relicScene(R, f, fit, k==="relicok"); if(k==="relicok"){ const it = relicItem(R, f), old = f.gear[R.slot]; f.gear[R.slot] = it; if(old && !old.relic){ S.inventory = S.inventory||[]; S.inventory.push(old); } S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 시험`}); } save(); render(); return; }
-    if(k==="streak"){ S.fixers.forEach(f=>{ f.streak = STREAK_MAX - 1; f.lastDispatch = S.day; }); save(); render(); return toast("모두 이틀 연속 출동한 상태 + 오늘 출동 — 하루 끝내기를 누르면 내일 쉰다"); }
+    if(k==="streak"){ S.fixers.forEach(f=>{ f.streak = STREAK_MAX - 1; f.lastDispatch = S.day; }); save(); render(); return toast("모두 이틀 연속 출동 + 오늘 출동 — 하루 끝내기를 누르면 피로가 붙는다"); }
     if(k==="money10m"){ S.money += 10000000; save(); render(); return toast(`자금 +${won(10000000)} → ${won(S.money)}`); }
     if(k==="en-assoc"){ closeAll(); S.officeGrade = Math.min(S.officeGrade, 4); S.assocAsked = {}; S.assocJoined = null; S.assocObs = null; const P = Math.random; Math.random = () => 0; try{ return await assocOffer(); } finally { Math.random = P; } }
     if(k==="en-assoc2"){ closeAll(); S.officeGrade = Math.min(S.officeGrade, 4); S.assocJoined = null; if(!S.assocObs){ S.assocObs = {id: pick(Object.keys(ASSOCS)), day:S.day, ok:0, n:0, win:0, lost:0}; } Object.assign(S.assocObs, {ok:ASSOC_OBS_OK, n:30, win:30, lost:0}); S.assocObs.day = S.day - ASSOC_OBS_DAYS; S.assocAsked = {}; return assocOffer(); }
