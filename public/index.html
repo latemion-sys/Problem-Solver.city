@@ -1762,6 +1762,20 @@ function applyTraits(it){
   adv.forEach(([,e])=>add(e)); bad.forEach(([,e])=>add(e));
   it.traits = {adv: adv.map(([n,e])=>`${n}(${effTxt(e)})`), bad: bad.map(([n,e])=>`${n}(${effTxt(e)})`)};
   return it; }
+// 정식 · 상급 공방 무기의 생김새(원작 공방의 특징)
+const WORKSHOP_LOOK = {
+  m2:{style:"ranga", metal:"#c8ccd2"}, m3:{style:"ranga"}, m8:{style:"nester"}, m4:{style:"zelkova"}, m5:{style:"zelkova"}, m16:{style:"zelkova"},
+  m9:{style:"rose"}, m10:{style:"rose"}, m12:{style:"cloud", metal:"#c8ccd2"}, m15:{style:"cloud", metal:"#c8ccd2"}, m1:{style:"mook", metal:"#d8dce0"},
+  m6:{style:"oldboys", metal:"#8e959e"}, m7:{style:"allas", metal:"#c8ccd2"}, m14:{style:"leaflet"}, m13:{style:"leaflet"}, m11:{},
+  s1:{style:"wheels", metal:"#4a4f56", len:1.1, wid:1.3}, s2:{style:"crystal", metal:"#dfeaf2", glow:"#7fe0ff", len:1.15, wid:1.2}, s3:{style:"logic", metal:"#2e3136"}, s4:{style:"logic", metal:"#2e3136"},
+  s5:{style:"screw", glow:"#7fe0ff"}, s6:{style:"stigma", metal:"#5a4a44", glow:"#ff8a3a", wid:1.35}, s8:{style:"stigma", metal:"#4a3e3a", glow:"#ff8a3a"}, s7:{style:"meztil", metal:"#e4e7ea", len:1.15}};
+SHOP.forEach(it=>{ const L = WORKSHOP_LOOK[it.id]; if(L) Object.assign(it.look, L); });
+/* 총기는 같은 등급 무기보다 4배 비싸다. 대신 위력이 1.6배이고, 거리를 두고 싸워 받는 체력 피해가 줄어든다(원거리 사격). */
+const GUN_PRICE_K = 4, GUN_POWER_K = 1.6, GUN_HP_RED = 0.06;
+SHOP.filter(it=>it.slot==="weapon" && it.wtype==="gun").forEach(it=>{
+  const peers = SHOP.filter(x=>x.slot==="weapon" && x.wtype!=="gun" && x.tier===it.tier).sort((a,b)=>Math.abs(a.power-it.power)-Math.abs(b.power-it.power));
+  const ref = peers.length ? peers[0].price : it.price; it.price = Math.round(ref*GUN_PRICE_K/1000)*1000;
+  it.power = Math.round(it.power*GUN_POWER_K); it.bonus = profBonus("gun", it.power); it.hpRed = (it.hpRed||0) + GUN_HP_RED; it.gunNote = true; });
 SHOP.forEach(applyTraits);
 /* 내구도: 무기(E.G.O. 제외)는 출동마다 1씩 닳는다. 절반 이하가 되면 고쳐야 쓸 수 있고, 고칠 때마다 최대 내구도가 1 준다.
    최대 내구도가 다 닳으면 부서진다. 고유 무기는 공방이 맡아 손보므로 닳지 않는다 */
@@ -6857,6 +6871,7 @@ function gearDesc(g){
   const pc = (lab, v) => p.push(v<0 ? `<span style="color:#ff8a7a">${lab} 피해 +${Math.abs(Math.round(v*100))}%</span>` : `${lab} 피해 -${Math.abs(Math.round(v*100))}%`);
   if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed);
   if(g.selfUp && g.gift) p.push(`${g.gift.from.replace(/ \(아종:.*\)$/,"")} 관측 시 행동 성공률 +${Math.round(g.selfUp*100)}%p`);
+  if(g.gunNote) p.push(`<span style="color:#9ad0ff">원거리 사격(위력 ×1.6 · 체력 피해 -${Math.round(GUN_HP_RED*100)}% 포함) · 값 4배</span>`);
   if(g.traits) p.push(`<span style="color:#9fe8b0">이점 ${g.traits.adv.join(", ")}</span>`, `<span style="color:#ff8a7a">결점 ${g.traits.bad.join(", ")}</span>`);
   if(g.slot==="weapon" && g.unique){ p.push("고유 무기 · 닳지 않음"); const w = wspOf(g); if(w) p.push(`[${w.n}] ${w.d}`); } else if(durText(g)) p.push(durText(g));
   return p.join(" · ");
@@ -8475,6 +8490,92 @@ function drawAdds(c, u, G, adds, col, edges, far, kind, gEnd, glow){
       c.fillStyle = "#000"; for(let i=0;i<3;i++) c.fillRect((x+0.008+i*0.012)*u, (yt+h2*0.2)*u, 0.005*u, h2*0.6*u); }
   });
 }
+/* 공방 고유 디자인(정식 · 상급 공방 무기). 원작에서 공방마다 알려진 특징을 바탕으로 한다.
+   정식 공방은 깔끔하게 표식 하나, 상급 공방은 한눈에 알아보게.
+   · 묵: 한국식 환도 — 검은 옻칠 손잡이, 칼날의 물결 무늬(담금질 선) · 랑아: 갈퀴 · 늑대 이빨 홈 · 느티나무: 메이스와 도끼 — 나뭇결 자루, 잎 문장
+   · 늙은소년: 빨리 휘두르는 망치 — 쇠띠와 리벳 · 네스터: 진동으로 타격 범위를 넓히는 작은 망치 — 진동 코일 · 로즈스패너: 렌치 · 전기톱 — 장미 문장
+   · 리플렛: 증기를 쓰는 실험 무기 — 증기관 · 압력계 · 알라스: 손놀림을 가속 — 가속 고리 · 구름: 흑운회에 대는 칼 — 구름 무늬
+   · 휠스 인더스트리: 맞히면 폭발하는 거대한 처형검 — 피스톤 약실 · 톱니바퀴 · 붉은 띠 · 크리스탈 아틀리에: 한 쌍의 팔시온 — 결정 날
+   · 로직 아틀리에: 총기 — 흑철 몸체에 금빛 새김 · 스티그마: 가열 · 점화 — 달아오른 심 · 방열구 · 스크류: 전기로 강화한 드릴 — 나선 · 전류
+   · 메즈틸: 알라스보다 빠르고 위험한 칼 — 은빛 날의 속도선 */
+function drawStyle(c, u, G, s, col, far, kind, gEnd, edges){
+  const st = s.style; if(!st || !G) return;
+  const t = performance.now()/1000, lt = hexMix(col,"#ffffff",0.4), dk = hexMix(col,"#000000",0.4);
+  const M=(x,y)=>c.moveTo(x*u,y*u), Lt=(x,y)=>c.lineTo(x*u,y*u), Q=(cx,cy,x,y)=>c.quadraticCurveTo(cx*u,cy*u,x*u,y*u);
+  const mid = tt => (G.top(tt)+G.bot(tt))/2, hw = tt => Math.abs(G.bot(tt)-G.top(tt))/2, X = G.x;
+  const lw = v => Math.max(0.6, u*v);
+  const glowLine = (pts, colr, w, blur) => { c.save(); c.strokeStyle = colr; c.lineWidth = lw(w); c.lineCap = "round"; if(!far){ c.shadowColor = colr; c.shadowBlur = Math.max(2, u*(blur||0.03)); }
+    c.beginPath(); pts.forEach(([x,y],i)=> i ? Lt(x,y) : M(x,y)); c.stroke(); c.restore(); };
+  const gripAt = gEnd!=null ? gEnd : X(0) - 0.12;
+  if(st==="mook"){   // 담금질 물결선 + 검은 손잡이 위 붉은 끈 매듭
+    c.save(); c.strokeStyle = hexMix(col,"#ffffff",0.6); c.globalAlpha = far ? 0.3 : 0.7; c.lineWidth = lw(0.003); c.beginPath();
+    for(let i=0;i<=40;i++){ const tt = 0.04 + 0.86*i/40, y = G.bot(tt) - hw(tt)*(0.55 + 0.18*Math.sin(i*1.3)); i ? Lt(X(tt), y) : M(X(tt), y); } c.stroke(); c.restore();
+    c.fillStyle = "#14110f"; c.fillRect(gripAt*u, -0.012*u, (X(0)-gripAt-0.01)*u, 0.024*u);
+    c.fillStyle = "#a3222a"; for(let x = gripAt+0.008; x < X(0)-0.012; x += 0.016){ c.beginPath(); M(x,-0.012); Lt(x+0.008,0); Lt(x,0.012); Lt(x-0.008,0); c.closePath(); c.fill(); } }
+  else if(st==="ranga"){ for(let i=0;i<3;i++){ const tt = 0.08 + i*0.07, x = X(tt), y = G.top(tt); c.fillStyle = "#1c1a1e"; c.beginPath(); M(x-0.008, y-0.001); Lt(x, y+hw(tt)*0.7); Lt(x+0.008, y-0.001); c.closePath(); c.fill(); } }
+  else if(st==="zelkova"){ c.save(); c.strokeStyle = "rgba(255,230,190,0.25)"; c.lineWidth = lw(0.002); for(let k=-1;k<=1;k++){ c.beginPath(); M(gripAt-0.2, k*0.005); Q(gripAt-0.05, k*0.007+0.003, X(0)-0.02, k*0.004); c.stroke(); } c.restore();
+    const lx = X(0.5), ly = mid(0.5), r = Math.min(hw(0.5)*0.55, 0.02); c.fillStyle = "#c9a86a"; c.beginPath(); M(lx-r, ly); Q(lx, ly-r*1.2, lx+r, ly); Q(lx, ly+r*1.2, lx-r, ly); c.fill(); c.strokeStyle = "#6b4a22"; c.lineWidth = lw(0.002); c.beginPath(); M(lx-r, ly); Lt(lx+r, ly); c.stroke(); }
+  else if(st==="oldboys"){ [0.18, 0.82].forEach(tt=>{ c.fillStyle = "#3d4248"; c.fillRect((X(tt)-0.008)*u, G.top(tt)*u, 0.016*u, (G.bot(tt)-G.top(tt))*u); c.fillStyle = lt; [0.25,0.75].forEach(f=>{ c.beginPath(); c.arc(X(tt)*u, (G.top(tt)+(G.bot(tt)-G.top(tt))*f)*u, lw(0.004), 0, 7); c.fill(); }); }); }
+  else if(st==="nester"){ for(let i=0;i<3;i++){ const tt = 0.2 + i*0.25; c.strokeStyle = dk; c.lineWidth = lw(0.004); c.beginPath(); c.ellipse(X(tt)*u, mid(tt)*u, 0.006*u, (hw(tt)+0.006)*u, 0, 0, 7); c.stroke(); }
+    const pulse = 0.5 + 0.5*Math.sin(t*9); c.fillStyle = `rgba(198,255,90,${0.5 + 0.5*pulse})`; c.beginPath(); c.arc((X(0)-0.02)*u, 0, lw(0.006), 0, 7); c.fill(); }
+  else if(st==="rose"){ const x = X(0.35), y = mid(0.35), r = Math.min(hw(0.35)*0.6, 0.016); c.fillStyle = "#e0a088";
+    for(let k=0;k<5;k++){ const a = k/5*Math.PI*2 + 0.3; c.beginPath(); c.arc((x + Math.cos(a)*r*0.55)*u, (y + Math.sin(a)*r*0.55)*u, r*0.5*u, 0, 7); c.fill(); } c.fillStyle = "#8a3a2a"; c.beginPath(); c.arc(x*u, y*u, r*0.4*u, 0, 7); c.fill(); }
+  else if(st==="leaflet"){ const y0 = G.bot(0.15) + 0.006; c.strokeStyle = "#8a6a3a"; c.lineWidth = lw(0.006); c.beginPath(); M(X(0.02), y0); Lt(X(0.5), y0); c.stroke();
+    const gx = X(0.08), gy = y0 + 0.012; c.fillStyle = "#d8c9a0"; c.beginPath(); c.arc(gx*u, gy*u, lw(0.011), 0, 7); c.fill(); c.strokeStyle = "#3a2a1a"; c.lineWidth = lw(0.002); c.beginPath(); M(gx, gy); Lt(gx + Math.cos(t*0.7)*0.008, gy + Math.sin(t*0.7)*0.008); c.stroke();
+    if(!far){ c.save(); c.globalAlpha = 0.35; c.fillStyle = "#e8e4dc"; for(let i=0;i<3;i++){ const ph = (t*0.8 + i/3) % 1; c.beginPath(); c.arc((X(0.5) + ph*0.04)*u, (y0 - ph*0.05)*u, (0.004 + ph*0.01)*u, 0, 7); c.fill(); } c.restore(); } }
+  else if(st==="allas"){ [0.06,0.14,0.22].forEach((tt,i)=>{ c.strokeStyle = i===1 ? "#6aa2ff" : lt; c.lineWidth = lw(0.003); c.beginPath(); c.ellipse(X(tt)*u, mid(tt)*u, 0.004*u, (hw(tt)+0.004)*u, 0, 0, 7); c.stroke(); }); }
+  else if(st==="cloud"){ c.save(); c.strokeStyle = far ? dk : "rgba(30,30,40,0.55)"; c.lineWidth = lw(0.0025); const x0 = X(0.06), y = mid(0.08);
+    for(let k=0;k<3;k++){ c.beginPath(); c.arc((x0 + k*0.014)*u, y*u, 0.006*u, Math.PI, 0); c.stroke(); } c.restore(); }
+  // ── 상급 공방 ──
+  else if(st==="wheels"){   // 피스톤 약실 + 도는 톱니바퀴 + 붉은 띠 + 배기구
+    const x0 = X(0), x1 = X(0.22), y0 = G.top(0.1), y1 = G.bot(0.1);
+    c.fillStyle = "#24272c"; c.fillRect(x0*u, (y0-0.004)*u, (x1-x0)*u, (y1-y0+0.008)*u);
+    const gx = (x0+x1)/2, gy = (y0+y1)/2, gr = Math.min((x1-x0)*0.32, (y1-y0)*0.38), rot = t*1.5;
+    c.save(); c.translate(gx*u, gy*u); c.rotate(rot); c.fillStyle = "#8e959e"; c.beginPath();
+    for(let i=0;i<20;i++){ const a = i/20*Math.PI*2, r = (i%2 ? gr : gr*1.18)*u; c.lineTo(Math.cos(a)*r, Math.sin(a)*r); } c.closePath(); c.fill();
+    c.fillStyle = "#24272c"; c.beginPath(); c.arc(0,0,gr*0.45*u,0,7); c.fill(); c.restore();
+    c.fillStyle = "#b8282a"; c.fillRect(x1*u, (mid(0.6)-hw(0.6)*0.18)*u, (X(0.95)-x1)*u, hw(0.6)*0.36*u);
+    [0.3,0.45].forEach(tt=>{ c.fillStyle = "#111"; c.fillRect((X(tt)-0.006)*u, (G.top(tt)+hw(tt)*0.15)*u, 0.012*u, hw(tt)*0.35*u); });
+    if(!far){ const ph = (t*1.2) % 1; c.save(); c.globalAlpha = 0.5*(1-ph); c.fillStyle = "#ffb36a"; c.beginPath(); c.arc(X(0.3)*u, (G.top(0.3)-ph*0.04)*u, (0.005+ph*0.012)*u, 0, 7); c.fill(); c.restore(); } }
+  else if(st==="crystal"){   // 결정 날: 삼각 면, 빛 반사, 반짝임
+    c.save(); c.globalAlpha = far ? 0.35 : 0.55;
+    for(let i=0;i<7;i++){ const ta = 0.05 + i*0.13, tb = ta + 0.13, up = i%2===0;
+      c.fillStyle = up ? "rgba(200,240,255,0.55)" : "rgba(90,170,220,0.45)"; c.beginPath(); M(X(ta), up ? G.top(ta) : G.bot(ta)); Lt(X(tb), up ? G.bot(tb) : G.top(tb)); Lt(X((ta+tb)/2), mid((ta+tb)/2)); c.closePath(); c.fill(); }
+    c.restore();
+    [[0.18,0.035],[0.32,0.05],[0.46,0.042],[0.6,0.055],[0.74,0.038]].forEach(([tt,hh],i)=>{ const x = X(tt), y = G.top(tt), w2 = 0.016;
+      const g = c.createLinearGradient(x*u, y*u, (x+0.02)*u, (y-hh)*u); g.addColorStop(0, "rgba(120,200,240,0.85)"); g.addColorStop(1, "rgba(235,250,255,0.95)");
+      c.fillStyle = g; c.beginPath(); M(x - w2, y + 0.002); Lt(x + 0.022, y - hh); Lt(x + w2*0.6, y + 0.002); c.closePath(); c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = lw(0.0015); c.beginPath(); M(x - w2*0.3, y); Lt(x + 0.022, y - hh); c.stroke();
+      edges.push([[x - w2, y], [x + 0.022, y - hh]]); });
+    if(!far){ const sp = (t*0.6) % 1, sx = X(0.1 + sp*0.8), sy = mid(0.1 + sp*0.8), r = 0.012; c.save(); c.strokeStyle = "rgba(255,255,255,0.9)"; c.lineWidth = lw(0.002); c.beginPath(); M(sx-r, sy); Lt(sx+r, sy); M(sx, sy-r); Lt(sx, sy+r); c.stroke(); c.restore(); } }
+  else if(st==="logic"){   // 흑철 몸체 · 금빛 새김 · 총구 쪽 푸른 빛
+    { const xa = X(0) - 0.02, xb = X(1) + 0.012, ya = G.top(0) - 0.006, yb = G.bot(0) + 0.002;
+      c.fillStyle = "#1f2226"; c.beginPath(); c.roundRect(xa*u, ya*u, (xb-xa)*u, (yb-ya)*u, 0.004*u); c.fill();
+      c.fillStyle = "#0c0d0f"; for(let x = xa + 0.02; x < xb - 0.02; x += 0.022) c.fillRect(x*u, (ya + (yb-ya)*0.3)*u, 0.011*u, (yb-ya)*0.4*u);
+      c.strokeStyle = "#d8b45a"; c.lineWidth = lw(0.0025); c.beginPath(); M(xa, ya); Lt(xb, ya); c.stroke(); c.beginPath(); M(xa, yb); Lt(xb, yb); c.stroke();
+      c.fillStyle = "#d8b45a"; c.fillRect((xb-0.006)*u, (ya-0.008)*u, 0.004*u, 0.008*u); }
+    c.save(); c.strokeStyle = "#d8b45a"; c.lineWidth = lw(0.0022); c.globalAlpha = far ? 0.5 : 0.95; c.beginPath();
+    for(let i=0;i<=24;i++){ const tt = i/24, y = G.top(tt) + hw(tt)*(0.6 + 0.3*Math.sin(i*1.1)); i ? Lt(X(tt), y) : M(X(tt), y); } c.stroke();
+    c.beginPath(); M(X(0)-0.03, G.top(0)+0.004); Lt(X(0)-0.06, G.top(0)+0.004); c.stroke(); c.restore();
+    glowLine([[X(0.92), mid(0.92)], [X(1), mid(1)]], "#7fd6ff", 0.004, 0.04); }
+  else if(st==="stigma"){   // 달아오른 심 · 방열구 · 불티
+    const heat = 0.6 + 0.4*Math.sin(t*3);
+    { const x = X(0) - 0.004, r = 0.016; c.fillStyle = "#2a1a14"; c.beginPath(); c.arc(x*u, 0, r*u, 0, 7); c.fill(); c.strokeStyle = `rgba(255,140,60,${0.6+0.4*heat})`; c.lineWidth = lw(0.003); c.beginPath(); c.arc(x*u, 0, r*0.6*u, 0, 7); c.stroke();
+      c.beginPath(); M(x - r*0.4, -r*0.4); Lt(x + r*0.4, r*0.4); M(x + r*0.4, -r*0.4); Lt(x - r*0.4, r*0.4); c.stroke(); }
+    if(!far){ c.save(); c.strokeStyle = "rgba(255,180,120,0.18)"; c.lineWidth = lw(0.004); for(let k=0;k<2;k++){ c.beginPath(); for(let i=0;i<=20;i++){ const tt = 0.1 + 0.8*i/20, y = G.top(tt) - 0.01 - k*0.012 + Math.sin(t*4 + i*0.9 + k)*0.004; i ? Lt(X(tt), y) : M(X(tt), y); } c.stroke(); } c.restore(); }
+    glowLine(Array.from({length:12},(_,i)=>{ const tt = 0.04 + 0.9*i/11; return [X(tt), mid(tt)]; }), `rgba(255,${Math.round(120+60*heat)},60,0.95)`, 0.005, 0.05);
+    [0.12,0.2,0.28].forEach(tt=>{ c.fillStyle = "#1a1210"; c.fillRect((X(tt)-0.004)*u, (G.top(tt)+hw(tt)*0.1)*u, 0.008*u, hw(tt)*0.5*u); c.fillStyle = `rgba(255,140,60,${0.5*heat})`; c.fillRect((X(tt)-0.002)*u, (G.top(tt)+hw(tt)*0.15)*u, 0.004*u, hw(tt)*0.4*u); });
+    if(!far){ c.save(); c.globalCompositeOperation = "lighter"; for(let i=0;i<4;i++){ const ph = (t*0.9 + i*0.27) % 1, tt = 0.2 + i*0.18; c.fillStyle = `rgba(255,170,80,${0.8*(1-ph)})`; c.beginPath(); c.arc((X(tt) + ph*0.02)*u, (G.top(tt) - ph*0.06)*u, Math.max(0.6, (1-ph)*0.004*u), 0, 7); c.fill(); } c.restore(); } }
+  else if(st==="screw"){   // 나선 홈 + 끝을 따라 튀는 전류
+    c.save(); c.strokeStyle = "rgba(127,224,255,0.85)"; c.lineWidth = lw(0.003); if(!far){ c.shadowColor = "#7fe0ff"; c.shadowBlur = Math.max(2, u*0.02); }
+    for(let i=0;i<9;i++){ const tt = 0.05 + i*0.1 + ((t*0.4)%0.1); if(tt > 0.95) continue; c.beginPath(); M(X(tt), G.top(tt)); Lt(X(tt+0.05), G.bot(tt+0.05)); c.stroke(); } c.restore();
+    if(!far && Math.sin(t*13) > 0.2){ const pts = []; for(let i=0;i<7;i++){ const tt = 0.2 + i*0.11; pts.push([X(tt), (i%2 ? G.top(tt) - 0.012 : G.bot(tt) + 0.012) + (Math.random()-0.5)*0.008]); } glowLine(pts, "#bff3ff", 0.0025, 0.03); } }
+  else if(st==="meztil"){   // 은빛 날 위 푸른 속도선 · 장식 깍지
+    if(!far){ c.save(); c.globalAlpha = 0.6; [-1,1].forEach((sg,k)=>{ const ph = (t*1.6 + k*0.5) % 1; glowLine([[X(0.1+ph*0.6), mid(0.1) + sg*0.008], [X(0.25+ph*0.6), mid(0.25) + sg*0.008]], "#9ad0ff", 0.002, 0.02); }); c.restore(); }
+    c.strokeStyle = "#d8b45a"; c.lineWidth = lw(0.004); c.beginPath(); c.ellipse((X(0)-0.01)*u, 0.02*u, 0.03*u, 0.022*u, 0, 0, 7); c.stroke(); c.beginPath(); c.ellipse((X(0)-0.005)*u, -0.016*u, 0.022*u, 0.014*u, 0, 0, 7); c.stroke();
+    c.fillStyle = "#d8b45a"; c.beginPath(); c.arc(X(0)*u, mid(0)*u, lw(0.007), 0, 7); c.fill();
+    glowLine([[X(0.05), mid(0.05)], [X(0.95), mid(0.95)]], "rgba(150,210,255,0.55)", 0.002, 0.02); }
+}
 function drawWeaponSpec(c, s, u, dark, opt){
   if(!s) return; opt = opt || {};
   const L = s.len||1, Wd = s.wid||1, col = s.metal || METALS[0];
@@ -8787,6 +8888,7 @@ function drawWeaponSpec(c, s, u, dark, opt){
       edges.push([[0.064,-0.088],[0.064+bl,-0.088]]); G = {x:t=>0.064+bl*0.4+bl*0.6*t, top:()=>-0.088, bot:()=>-0.056, k:0.7}; }
   }
   drawAdds(c, u, G, s.add, col, edges, opt.far, k, gEnd, s.glow);
+  drawStyle(c, u, G, s, col, opt.far, k, gEnd, edges);
   // 발광: 날 가장자리에 가는 빛
   if(s.glow && !opt.noGlow){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round"; c.lineJoin="round";
     edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); c.restore(); }
