@@ -1901,50 +1901,97 @@ function makeRequest(grade, opts={}){
     loot: Math.random()<lootChance*(hazard?2:1) ? Object.assign({},pick(LOOT)) : null, special:false
   };
   if(opts.synd) applySyndicate(q, opts.synd);
-  else if(!opts.kind && !ab && grade <= 8 && grade >= 3 && Math.random() < SYN_P) applySyndicate(q);
+  else if(!opts.kind && !ab && grade <= 8 && grade >= 2 && Math.random() < SYN_P) applySyndicate(q);
   return Object.assign(q, opts.over||{});
 }
 /* ================= 뒷골목 조직 의뢰 =================
-   손가락 · 검계 · 흑운회는 빼고, 원작에 나온 뒷골목 조직들을 상대(또는 의뢰인)로 하는 의뢰.
-   g: 나오는 의뢰 등급 [높은 쪽, 낮은 쪽] · rows: [내용, 의뢰인, 종류, 능력, 목표 또는 쫓을 대상, 상대]
-   req / pay: 요구치 보정 · 보수 배율 · after: 끝난 뒤 남는 것(성공 · 실패 공통 한 줄 + 효과) */
+   손가락 · 검계 · 흑운회는 빼고, 뒷골목 조직들을 상대(또는 의뢰인)로 하는 의뢰. 원작 조직(사육제 · 브레멘 음악대 · 웃는 얼굴들) + 이 게임의 조직.
+   gr: 맞서기 알맞은 해결사 급수(그 급수 ±1 등급의 의뢰로 나온다) · rows: [내용, 의뢰인, 종류, 능력, 목표 또는 쫓을 대상, 상대]
+   req / pay: 요구치 보정 · 보수 배율 · after: 해낸 뒤 남는 것(한 줄 + 효과)
+   도시 일람: 한 줄(첫 만남) → 개요(한 번 맞섬) → 골목 이야기(세 번 맞섬) */
 const SYN_P = 0.2;
 const SYNDICATES = [
-  {id:"axe", n:"도끼 조직", g:[8,6], col:"#c98a5a", req:1, pay:1.1,
-   rows:[["도끼를 멘 조직원들이 식당가를 돌며 자릿세를 걷는다. 다시는 못 오게 해 달라","골목 식당가 번영회","일반","str","제압","도끼 조직원"],
-         ["자릿세를 거부한 국숫집 문짝이 도끼에 쪼개졌다. 범인들을 끝내 달라","국숫집 주인 내외","일반","str","사살","도끼 조직원"],
-         ["도끼 조직에 빌린 돈을 대신 갚으러 가는 길을 지켜 달라. 돈만 받고 손을 쓸 놈들이다","빚진 세탁소 사장","호위","str"]],
+  {id:"kong", n:"콩콩이파", gr:8, col:"#f0b45a", req:0, pay:1.05,
+   line:"장터와 가판대를 콩콩 뛰어다니며 좀도둑질을 하는 뒷골목의 잔챙이 조직.",
+   info:"우두머리 '콩콩이'를 따르는 열댓 명 남짓. 대부분 뒷골목에서 자란 아이들이거나 갓 어른이 된 이들이다. 훔치고, 도망치고, 들키면 우르르 흩어진다. 해결사가 나서면 대개 하루 만에 끝나지만, 일주일이면 다른 골목에 다시 나타난다.",
+   lore:"콩콩이가 누구인지 제대로 본 사람은 없다. 잡혀 온 아이들은 모두 자기가 콩콩이라고 우긴다. 둥지에서 버려진 아이들이 뒷골목에서 살아남는 가장 흔한 방법이 이것이다.",
+   rows:[["가판대를 털고 달아난 콩콩이파 꼬맹이를 잡아 달라. 물건만 돌려받으면 된다","노점 할머니","일반","agi","person"],
+         ["장터 입구에 진을 친 콩콩이파가 '통행료'를 받는다. 쫓아내 달라","장터 상인회","일반","str","제압","콩콩이파 패거리"],
+         ["콩콩이파가 훔쳐 간 가게 금고 열쇠를 찾아 달라","잡화점 주인","일반","tec","item"]],
+   after:{ok:"달아나던 아이 하나가 뒤돌아 혀를 내밀었다. 다음 주면 다른 골목에 있을 것이다.", fx:null}},
+  {id:"oil", n:"기름철", gr:8, col:"#a39a7c", req:1, pay:1.1,
+   line:"싸구려 의체에 공업용 기름을 부어 넣고 돌아다니는 의체 조직. 늘 기름 냄새가 난다.",
+   info:"제대로 된 공방 의체를 살 돈이 없는 이들이 모였다. 고철을 덧대 만든 팔다리는 자주 멈추고, 그때마다 기름을 들이붓는다. 정비비를 대려고 의수 정비소와 고물상을 턴다. 힘은 세지만 관절이 약하다.",
+   lore:"'한 번 갈아 끼우면 돌아갈 수 없다.' 기름철 조직원들은 그 말을 너무 늦게 들었다. 몸이 녹슬어 갈수록 그들은 더 많은 기름과 더 많은 쇳조각을 원한다.",
+   rows:[["기름철 놈들이 의수 정비소를 점거하고 부품을 내놓으라 버틴다. 몰아내 달라","의수 정비소 '손끝'","일반","str","제압","기름철 조직원"],
+         ["기름철이 고물상 창고에서 훔쳐 간 의체 관절 상자를 찾아 달라","고물상 영감","수색","tec"],
+         ["사람을 붙잡아 의체 값을 대려는 기름철 일당을 처리해 달라","실종자 가족","일반","str","사살","기름 범벅 의체 조직원"]],
+   after:{ok:"쓰러진 의체에서 시커먼 기름이 새어 나왔다. 무기에도 끈적하게 묻었다.", fx:"wear"}},
+  {id:"axe", n:"도끼파", gr:7, col:"#c98a5a", req:1, pay:1.15,
+   line:"도끼 한 자루씩 메고 골목 식당가의 자릿세를 걷는 조직.",
+   info:"모두 같은 손도끼를 쓴다. 자릿세를 거부한 가게 문짝은 다음 날 아침 반으로 쪼개져 있다. 머릿수가 많고 서로 의리가 깊어, 한 명을 건드리면 열이 몰려온다.",
+   lore:"도끼파의 도끼는 한 공방에서 대량으로 찍어 낸 싸구려다. 그래서 오히려 아무도 도끼를 아끼지 않는다. 부러지면 버리고, 다시 받는다. 사람도 그렇게 다룬다는 말이 있다.",
+   rows:[["도끼를 멘 도끼파가 식당가를 돌며 자릿세를 걷는다. 다시는 못 오게 해 달라","골목 식당가 번영회","일반","str","제압","도끼파 조직원"],
+         ["자릿세를 거부한 국숫집 문짝이 도끼에 쪼개졌다. 범인들을 끝내 달라","국숫집 주인 내외","일반","str","사살","도끼파 조직원"],
+         ["도끼파에 빌린 돈을 갚으러 가는 길을 지켜 달라. 돈만 받고 손을 쓸 놈들이다","빚진 세탁소 사장","호위","str"]],
    after:{ok:"부러진 도끼 자루 몇 개가 골목에 굴러다녔다.", fx:"wear"}},
-  {id:"iron", n:"철의 형제단", g:[7,5], col:"#9aa3ad", req:2, pay:1.2,
-   rows:[["온몸을 의체로 바꾼 철의 형제단이 의수 정비소를 점거했다. '뇌수'를 내놓으라며 버틴다. 몰아내 달라","의수 정비소 '손끝'","일반","str","제압","철의 형제단 조직원"],
-         ["사람을 잡아다 의체 값을 대는 철의 형제단 일당을 처리해 달라. 팔에 톱날을 단 놈이 우두머리다","실종자 가족 모임","일반","str","사살","톱날 팔 의체 조직원"],
-         ["철의 형제단이 공방 창고에서 훔쳐 간 의체 부품 상자를 찾아 달라","하청 의체 공방","수색","tec"]],
-   after:{ok:"쓰러진 몸통에서 뇌수가 새어 나왔다. 싸구려 공방 각인이 찍혀 있다.", fx:"wear"}},
-  {id:"bremen", n:"브레멘 음악대", g:[6,4], col:"#b58fd6", req:2, pay:1.25,
+  {id:"chain", n:"녹슨 사슬파", gr:7, col:"#b06a4a", req:1, pay:1.15,
+   line:"문 닫은 공장의 녹슨 사슬을 휘두르며 사람을 묶어 끌고 가는 조직.",
+   info:"빚을 진 사람을 사슬로 묶어 '일할 곳'으로 끌고 간다. 어디로 가는지는 아무도 모른다. 사슬은 공장이 문을 닫을 때 버려진 것들이고, 그 녹이 상처에 들어가면 오래 낫지 않는다.",
+   lore:"녹슨 사슬파의 첫 조직원들은 그 공장의 노동자였다고 한다. 공장이 둥지 밖으로 밀려나던 날, 그들은 마지막 임금 대신 사슬을 챙겼다.",
+   rows:[["녹슨 사슬파에 끌려간 형을 데려와 달라. 폐공장 쪽으로 갔다는 말이 있다","끌려간 이의 동생","일반","agi","person"],
+         ["녹슨 사슬파가 골목 어귀에서 사람을 묶어 간다. 놈들을 끝내 달라","골목 자치회","일반","str","사살","녹슨 사슬파 조직원"],
+         ["사슬파가 노리는 채무자를 빚 정리 사무소까지 데려다 달라","채무 조정 사무소","호위","agi"]],
+   after:{ok:"사슬에 긁힌 자리가 붉게 부어올랐다. 녹이 들어간 것 같다.", fx:"hp", v:5}},
+  {id:"lump", n:"살뭉치", gr:7, col:"#c4444a", req:2, pay:1.2,
+   line:"피와 살인을 숭배하는 뒷골목 집단. 죽인 자의 살점을 뭉쳐 '뭉치'를 빚는다.",
+   info:"살인을 의식으로 여긴다. 정해진 밤마다 거리에서 아무나 골라 죽이고, 그 살점을 한데 뭉쳐 은신처의 제단에 바친다. 뭉치가 커질수록 '그분'이 가까워진다고 믿는다. 조직이라기보다 무리에 가깝고, 두려움이 없다.",
+   lore:"'그분'이 무엇인지 아는 살뭉치 조직원은 없다. 다만 뭉치가 사람 키만큼 커졌던 어느 은신처에서는 해결사들이 들어갔다가 아무도 돌아오지 않았다고 한다. 다음 날 그 은신처에는 뭉치도 사람도 없었다.",
+   rows:[["살뭉치가 '의식의 밤'을 예고했다. 그 전에 은신처를 끝내 달라","구역 자경단","일반","str","사살","살뭉치 신도"],
+         ["살뭉치에게 끌려간 사람들이 어디로 갔는지 알아내 달라","실종자 가족 모임","수색","tec"],
+         ["살뭉치의 표적이 된 정육점 주인을 사흘 밤 지켜 달라","표적이 된 정육점 주인","호위","str"]],
+   after:{ok:"제단에서 나는 냄새가 옷에 배어 며칠째 빠지지 않는다.", fx:"mp", v:8}},
+  {id:"waiver", n:"신체포기각서", gr:6, col:"#9fb0c8", req:2, pay:1.25,
+   line:"돈을 빌려주고 팔, 다리, 장기를 담보로 잡는 '담보 회사'. 계약서 한 장이면 모든 게 합법이라고 주장한다.",
+   info:"말쑥한 정장 차림의 영업 사원과 '수거팀'으로 나뉜다. 영업 사원은 웃으며 계약서를 내밀고, 기한이 지나면 수거팀이 담보를 회수하러 온다. 회수한 신체는 공방과 의체 업자에게 팔린다. 계약서는 정말로 꼼꼼하다.",
+   lore:"신체포기각서 사무실 벽에는 회수 실적표가 붙어 있다고 한다. 맨 위 칸에는 늘 같은 이름이 적혀 있는데, 그 이름의 주인은 계약서에 자기 오른팔을 담보로 걸었던 첫 고객이다.",
+   rows:[["신체포기각서 수거팀이 오늘 밤 남편의 다리를 '회수'하러 온다. 막아 달라","채무자의 아내","호위","str"],
+         ["신체포기각서 사무실에서 아버지의 계약서 원본을 찾아와 달라","채무자의 딸","일반","tec","item"],
+         ["회수를 핑계로 아무나 끌고 가는 신체포기각서 수거팀을 처리해 달라","구역 상인회","일반","str","제압","신체포기각서 수거팀"]],
+   after:{ok:"계약서 사본 몇 장을 태웠다. 원본은 어딘가에 또 있을 것이다.", fx:null}},
+  {id:"carnival", n:"사육제", gr:5, col:"#d8d0c4", req:3, pay:1.35,
+   line:"정중한 말투의 가면 쓴 재단사들. 사람을 '옷감'이라 부른다.",
+   info:"사람을 잡아 비단을 뽑아내고, 그것으로 옷을 짓는다. 말투는 짧고 기계적이며 지나치게 정중하다. 작업장은 늘 깨끗하고, 그 깨끗함이 가장 무섭다는 말이 있다.",
+   lore:"사육제가 지은 옷은 둥지의 경매장에서 비싸게 팔린다. 그 옷감이 무엇으로 짜였는지, 사는 사람들은 묻지 않는다.",
+   rows:[["정중한 말투로 '옷감'을 사러 온다는 가면 쓴 재단사들 — 사육제의 작업장을 찾아 없애 달라","둥지 경계 주민 자치회","일반","str","사살","사육제 재단사"],
+         ["둥지 경매장에 출처를 알 수 없는 비단이 흘러들었다. 사육제와 이어져 있는지 확인해 달라","합법 경매장 감정사","일반","tec","item"],
+         ["사육제가 '치수를 잰' 사람이 있다. 사흘 밤만 그를 지켜 달라","치수를 재인 사람","호위","str"]],
+   after:{ok:"작업장 선반에 고운 비단이 개켜져 있었다. 아무도 손대지 않았다.", fx:"mp", v:8}},
+  {id:"nightwing", n:"나이트윙", gr:5, col:"#7a86c8", req:3, pay:1.35,
+   line:"밤에 지붕을 타고 움직이는 암살 · 잠입 조직. 의뢰를 받아 표적을 지운다.",
+   info:"검은 날개 모양의 망토를 두르고 지붕과 배관을 타고 움직인다. 돈만 맞으면 누구든 표적으로 삼고, 표적이 정해지면 보통 사흘 안에 끝난다. 정면으로 싸우지 않고, 들키면 물러났다가 다시 온다.",
+   lore:"나이트윙은 표적의 집 창틀에 깃털 하나를 꽂아 두고 간다는 소문이 있다. 깃털을 받은 사람이 해결사 사무소를 찾아가면, 사무소는 그날부터 밤에 불을 끄지 않는다.",
+   rows:[["창틀에 검은 깃털이 꽂혀 있었다. 나이트윙의 표적이 됐다 — 사흘만 지켜 달라","깃털을 받은 회계사","호위","agi"],
+         ["나이트윙이 드나든 흔적을 쫓아 누가 의뢰했는지 알아내 달라","표적이 될 뻔한 상인","일반","tec","item"],
+         ["나이트윙의 은신처가 드러났다. 놈들이 다시 날기 전에 끝내 달라","하나 협회 지부","일반","str","사살","나이트윙 암살자"]],
+   after:{ok:"그 뒤로 며칠 밤, 사무소 지붕 위에서 발소리가 들리는 것 같았다.", fx:"mp", v:5}},
+  {id:"bremen", n:"브레멘 음악대", gr:4, col:"#b58fd6", req:3, pay:1.4,
+   line:"당나귀 · 개 · 고양이 · 닭 머리를 단 넷. 기괴한 합창과 함께 나타난다.",
+   info:"동물의 머리를 단 넷이 몸 대부분을 의체로 바꾸고 함께 움직인다. 공연을 하듯 노래하며 싸우고, 공연비라는 명목으로 가게와 사람을 턴다. 넷이 함께일 때 가장 강하다.",
+   lore:"넷은 모두 어딘가에서 '쓸모없다'며 버려진 이들이었다고 한다. 서로를 만난 뒤로 그들은 다시는 버려지지 않기로 했다. 다만 그 방법이 남을 버리는 것이었을 뿐이다.",
    rows:[["당나귀 · 개 · 고양이 · 닭 머리를 단 넷이 골목 가게를 돌며 '공연비'를 뜯는다. 그만두게 해 달라","골목 상인회","일반","str","제압","브레멘 음악대"],
          ["밤마다 울려 퍼지는 기괴한 합창 뒤로 사람이 하나씩 사라진다. 브레멘 음악대를 끝내 달라","재개발 구역 주민 대표","일반","str","사살","브레멘 음악대"],
          ["브레멘 음악대의 '공연'을 본 뒤 말을 잃은 아들을 데려와 달라. 놈들 은신처에 있다","말 없는 아이의 아버지","일반","agi","person"]],
-   after:{ok:"동물 울음 같은 노랫소리가 한동안 귀에 남았다.", fx:"mp", v:5}},
-  {id:"yuro", n:"유로지비", g:[6,4], col:"#7fb3c4", req:1, pay:1.0,
-   rows:[["둥지 물류 창고에서 빠져나간 물자가 유로지비 쪽으로 흘렀다. 장부를 찾아 달라","둥지 물류 하청 업체","일반","tec","item"],
-         ["유로지비 사람이 들고 달아난 배급 명부를 되찾아 달라. 해치지는 말 것","구역 배급소","일반","agi","person"],
-         ["유로지비가 나눠 준 물자를 받으러 가는 골목 노인들을 지켜 달라. 다른 조직이 길목을 노린다","유로지비 연락책","호위","str"]],
-   after:{ok:"골목 사람들이 지나가며 사무소를 흘끗 보았다. 표정은 읽을 수 없었다.", fx:null}},
-  {id:"mariachi", n:"로스 마리아치스", g:[7,5], col:"#e0a23a", req:0, pay:1.15,
-   rows:[["로스 마리아치스의 축제 행렬이 구역을 지난다. 행렬 앞길의 시비꾼들을 치워 달라 — 의뢰인은 마리아치스 본인들이다","로스 마리아치스","호위","str"],
-         ["축제 날 기타를 훔쳐 달아난 놈을 잡아 달라. '음악을 훔친 건 영혼을 훔친 것'이란다","로스 마리아치스 악단장","일반","agi","person"],
-         ["축제 무대를 망치려고 폭죽에 손을 댄 자가 누군지 알아내 달라","로스 마리아치스","일반","tec","item"]],
-   after:{ok:"행렬이 지나간 뒤, 누군가 기타 한 소절을 사무소 앞에 남기고 갔다.", fx:"mpUp", v:6}},
-  {id:"smile", n:"웃는 얼굴들", g:[5,3], col:"#e07a7a", req:3, pay:1.35,
+   after:{ok:"동물 울음 같은 노랫소리가 한동안 귀에 남았다.", fx:"mp", v:6}},
+  {id:"smile", n:"웃는 얼굴들", gr:3, col:"#e07a7a", req:4, pay:1.5,
+   line:"웃는 가면을 쓴 식인 조직. 밤마다 사람을 데려간다.",
+   info:"모두 똑같이 웃는 가면을 쓰고, 가면 아래에서도 웃는다. 데려간 사람은 먹는다. 싸울 때도 웃음을 멈추지 않아, 마주한 해결사들이 먼저 무너지는 일이 잦다.",
+   lore:"웃는 얼굴들은 누군가의 부탁을 받고 움직일 때가 있다고 한다. 그 '누군가'가 누구인지 말하는 조직원은 없다. 입에 재갈이 물려 있거나, 이미 웃고 있기 때문이다.",
    rows:[["웃는 가면을 쓴 무리가 밤마다 사람을 데려간다. 은신처를 찾아 끝내 달라","실종자 가족 모임","일반","str","사살","웃는 얼굴들"],
          ["남편이 웃는 얼굴들에게 끌려갔다는 소문이 있다. 어디로 갔는지만이라도 알아내 달라","실종자의 아내","수색","tec"],
          ["웃는 얼굴들에게서 겨우 도망친 증인을 협회 지부까지 데려다 달라. 놈들이 뒤를 쫓는다","하나 협회 지부","호위","agi"]],
-   after:{ok:"가면 아래에서 새어 나오던 웃음소리가 자꾸만 떠오른다.", fx:"mp", v:10}},
-  {id:"carnival", n:"카니발", g:[4,3], col:"#d8d0c4", req:3, pay:1.45,
-   rows:[["정중한 말투로 '옷감'을 사러 온다는 가면 쓴 재단사들 — 카니발의 작업장을 찾아 없애 달라","둥지 경계 주민 자치회","일반","str","사살","카니발 재단사"],
-         ["둥지 경매장에 출처를 알 수 없는 비단이 흘러들었다. 카니발과 이어져 있는지 확인해 달라","합법 경매장 감정사","일반","tec","item"],
-         ["카니발이 '치수를 잰' 사람이 있다. 사흘 밤만 그를 지켜 달라","치수를 재인 사람","호위","str"]],
-   after:{ok:"작업장 선반에 고운 비단이 개켜져 있었다. 아무도 손대지 않았다.", fx:"mp", v:8}}];
+   after:{ok:"가면 아래에서 새어 나오던 웃음소리가 자꾸만 떠오른다.", fx:"mp", v:10}}];
+SYNDICATES.forEach(s=>{ s.g = [Math.min(9, s.gr+1), Math.max(1, s.gr-1)]; });
 const SYN_BY = Object.fromEntries(SYNDICATES.map(s=>[s.id, s]));
 function applySyndicate(q, forceId){
   const pool = forceId ? [SYN_BY[forceId]] : SYNDICATES.filter(s=>q.grade <= s.g[0] && q.grade >= s.g[1]);
@@ -1955,18 +2002,64 @@ function applySyndicate(q, forceId){
   if(kind==="일반" && attr==="str"){ q.goal = extra || "제압"; q.foe = foe || s.n; }
   else if(kind==="일반" && (attr==="agi" || attr==="tec")) q.chase = extra || (attr==="agi" ? "person" : "item");
   q.req += s.req; q.reward = Math.round(q.reward*s.pay/100)*100; q.loot = null;
+  if(!window.__peekGift) cityNote("synd", s.id, "seen");
   return q; }
 function synAfter(q, team, success, lines){
   const s = q.synd && SYN_BY[q.synd]; if(!s) return; const A = s.after;
+  cityNote("synd", s.id, "met");
   if(!success){ lines.push(`<span class="muted">${esc(s.n)} — 이번에는 놈들이 웃었다. 골목에 소문이 돈다.</span>`); return; }
   let tail = "";
   if(A.fx==="mp"){ team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.round(f.mpMax*A.v/100)); }); tail = ` <span style="color:#ff8a7a">(출동한 이들 정신력 -${A.v}%)</span>`; }
+  else if(A.fx==="hp"){ team.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.round(f.hpMax*A.v/100)); }); tail = ` <span style="color:#ff8a7a">(출동한 이들 체력 -${A.v}%)</span>`; }
   else if(A.fx==="mpUp"){ team.forEach(f=>{ f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*A.v/100)); }); tail = ` <span style="color:#8fd6a0">(출동한 이들 정신력 +${A.v}%)</span>`; }
-  else if(A.fx==="wear"){ team.forEach(f=>{ const g = f.gear.weapon; if(isWornable(g) && g.durMax && g.dur > 1){ g.dur--; } }); tail = ` <span class="muted">(쇠붙이를 쳐서 무기가 더 닳았다)</span>`; }
+  else if(A.fx==="wear"){ team.forEach(f=>{ const g = f.gear.weapon; if(isWornable(g) && g.durMax && g.dur > 1){ g.dur--; } }); tail = ` <span class="muted">(무기가 더 닳았다)</span>`; }
   lines.push(`<span style="color:${s.col}">${esc(s.n)}</span> — ${A.ok}${tail}`);
-  S.st = S.st || {}; S.st.synd = (S.st.synd||0) + 1; ac("synd");
+  ac("synd");
   try{ if(Math.random() < 0.5) pushRumor(`${s.n} 쪽 일을 ${jo(S.officeName,"이")} 정리했다는 말이 돈다.`, false, performance.now(), "minor"); }catch(_){}
 }
+/* ================= 도시 일람 =================
+   환상체 도감 옆 탭. 만난 뒷골목 조직과, 도시에 이름난 해결사(특색)를 기록한다. 이 브라우저에 남는다.
+   이름난 해결사는 '사무소가 올라간 등급'에 따라 귀에 들어오는 소문이 늘어난다 — 뒷골목 사람도 아는 수준까지만. */
+const CITY_KEY = "problem-solver-city-v1";
+function cityLoad(){ try{ return Object.assign({synd:{}, best:9, colors:[]}, JSON.parse(localStorage.getItem(CITY_KEY))||{}); }catch(_){ return {synd:{}, best:9, colors:[]}; } }
+function citySave(d){ try{ localStorage.setItem(CITY_KEY, JSON.stringify(d)); }catch(_){} }
+function cityNote(kind, id, what){ const d = cityLoad();
+  if(kind==="synd"){ const e = d.synd[id] = d.synd[id] || {seen:0, met:0}; e[what] = (e[what]||0) + 1; }
+  if(kind==="best") d.best = Math.min(d.best, id);
+  if(kind==="color" && !d.colors.some(c=>c.t===id.t && c.n===id.n)) d.colors.push(id);
+  citySave(d); }
+// 원작의 이름난 특색 — 뒷골목에 도는 소문 수준. need: 이 등급의 사무소가 되어야 소문이 들어온다(9 = 처음부터)
+const CITY_FIXERS = [
+  {t:"붉은 안개", col:"#ff5a52", need:9, line:"한때 도시에서 가장 이름난 특색.",
+   rumor:"붉은 외투를 걸치고, 지나간 자리에 붉은 안개만 남았다고 한다. 오래전 어느 날 이후로 아무도 그를 보지 못했다. 죽었다는 말도, 아직 어딘가에 있다는 말도 돈다."},
+  {t:"검은 침묵", col:"#a7a7b8", need:9, line:"소리 없이 싸우는 검은 옷의 특색.",
+   rumor:"싸우는 동안 한마디도 하지 않는다고 한다. 손에 든 무기가 싸움 중에 계속 바뀐다는 목격담이 있다. 어느 공방 것인지 아무도 모른다."},
+  {t:"보라 눈물", col:"#b07cff", need:6, line:"어디서든 불쑥 나타나는 특색.",
+   rumor:"한 구역에 있던 사람이 다음 순간 다른 구역에 서 있었다는 이야기가 끊이지 않는다. 해결사 일과는 상관없이, 사라진 아이를 찾아다닌다는 소문이 있다."},
+  {t:"푸른 잔향", col:"#6aa2ff", need:6, line:"음악처럼 싸운다는 특색.",
+   rumor:"그가 싸운 자리에서는 한참 동안 낮은 울림이 남는다고 한다. 그를 본 사람들은 싸움보다 소리를 더 오래 기억한다."},
+  {t:"쪽빛 노인", col:"#5c7fe0", need:4, line:"'호수의 해결사'라 불리는 늙은 특색.",
+   rumor:"대호수에서 무언가를 사냥하며 산다고 한다. 뒷골목 사람들에게는 호수 건너편의 이야기라 실감이 나지 않는다."},
+  {t:"붉은 시선", col:"#e0414c", need:3, line:"정체가 거의 알려지지 않은 특색.",
+   rumor:"이름만 협회 명부에 있고, 본 사람은 드물다. 본 사람들은 하나같이 그 눈빛만 기억한다."}];
+function cityHtml(){
+  const d = cityLoad(); if(S && !S.over) d.best = Math.min(d.best, S.officeGrade);
+  const sy = SYNDICATES.map(s=>{ const e = d.synd[s.id] || {seen:0, met:0}, on = e.seen > 0;
+    const lock = k => `<span class="muted">— ${k - e.met}번 더 맞서면 열린다</span>`;
+    return `<div class="cdx ${on?"on":""}" style="${on?`border-left:3px solid ${s.col}`:""}"><div class="cdx-h"><b style="${on?`color:${s.col}`:""}">${on ? esc(s.n) : "???"}</b>${on ? `<span class="badge">알맞은 급수 ${gName(s.gr)}</span><span class="muted" style="font-size:11px">맞선 횟수 ${e.met}</span>` : ""}</div>
+      ${on ? `<div class="cdx-g"><span>소문</span><div>${esc(s.line)}</div><span>개요</span><div>${e.met>=1 ? esc(s.info) : lock(1)}</div><span>골목 이야기</span><div>${e.met>=3 ? esc(s.lore) : lock(3)}</div></div>` : `<div class="muted" style="font-size:12px">아직 이 조직의 의뢰가 게시판에 오른 적이 없다.</div>`}</div>`; }).join("");
+  const fx = CITY_FIXERS.map(c=>{ const on = d.best <= c.need;
+    return `<div class="cdx ${on?"on":""}" style="${on?`border-left:3px solid ${c.col}`:""}"><div class="cdx-h"><b style="${on?`color:${c.col};text-shadow:0 0 8px ${c.col}55`:""}">${on ? `[${esc(c.t)}]` : "[ ??? ]"}</b><span class="badge">특색</span></div>
+      <div class="cdx-g"><span>소문</span><div>${on ? esc(c.line) : `<span class="muted">${gName(c.need)} 사무소가 되면 이 이름이 귀에 들어온다</span>`}</div>${on ? `<span>뒷말</span><div>${esc(c.rumor)}</div>` : ""}</div></div>`; }).join("");
+  const own = d.colors.length ? d.colors.map(c=>`<div class="cdx on" style="border-left:3px solid ${c.col||"#d9c27a"}"><div class="cdx-h"><b style="color:${c.col||"#d9c27a"}">[${esc(c.t)}] ${esc(c.n)}</b><span class="badge">특색</span><span class="muted" style="font-size:11px">${esc(c.o||"")} · ${c.day||"?"}일째</span></div><div class="muted" style="font-size:12px">당신의 사무소에서 나온 특색. 하나 협회 명부에 이름이 올랐다.</div></div>`).join("")
+    : `<div class="muted" style="font-size:12px;margin:2px 0 6px">아직 당신의 사무소에서 나온 특색은 없다.</div>`;
+  const nS = SYNDICATES.filter(s=>(d.synd[s.id]||{}).seen).length, nF = CITY_FIXERS.filter(c=>d.best<=c.need).length;
+  return `<p class="muted" style="margin:0 0 8px">도시에서 보고 들은 것. 조직은 맞설수록, 이름난 해결사는 사무소가 높아질수록 더 많이 알게 된다. 이 브라우저에 남는다.</p>
+    <h4 style="margin:10px 0 6px">뒷골목 조직 <span class="muted" style="font-weight:400">${nS}/${SYNDICATES.length}</span></h4>${sy}
+    <h4 style="margin:16px 0 6px">이름난 해결사 <span class="muted" style="font-weight:400">${nF}/${CITY_FIXERS.length}</span></h4>${fx}
+    <h4 style="margin:16px 0 6px">우리 사무소 출신</h4>${own}`;
+}
+const cityCount = () => { const d = cityLoad(); return SYNDICATES.filter(s=>(d.synd[s.id]||{}).seen).length + CITY_FIXERS.filter(c=>Math.min(d.best, S && !S.over ? S.officeGrade : 9)<=c.need).length; };
 /* 의뢰 등급대별 의뢰 내용. 사무소 등급이 오를수록 의뢰가 다양하고 위험해진다.
    [의뢰 내용, 의뢰인, 상대(물리 전투의 적 이름) 또는 쫓는 대상(추적: person·cat·dog·rat)]
    · 9~8급(뜬소문·괴담): 뒷골목 쥐·부랑자·동네 양아치와의 싸움, 고양이·잃어버린 물건 찾기, 간단한 호위
@@ -6048,6 +6141,7 @@ async function passColor(f, preset){ if(colorHeld() >= COLOR_MAX && f.grade!==0)
   f.unique = f.unique || {};
   await colorAscend(f.name, title, f.tcol);
   try{ pushRumor(`하나 협회가 새 특색을 올렸다 — [${title}] ${f.name}`, true, performance.now(), "major"); }catch(_){}
+  cityNote("color", {t:title, n:f.name, o:S.officeName, day:S.day, col:f.tcol});
   S.records.push({day:S.day, name:f.name, what:"특색 지정", note:title});
   playFx("특색 심사", title, f.name, true); save();
   const go = await modal("특색 지정", `${jo(esc(f.name),"이")} 특색 <b style="color:${f.tcol}">[${esc(title)}]</b>${jo(title,"로").slice(title.length)} 지정되었다.<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
@@ -7396,10 +7490,10 @@ async function openAchievements(){
         ${e.kill ? "" : `<span>기프트</span><div>${(c.gifts||[]).length ? c.gifts.map(esc).join(", ") : `<span class="muted">아직 얻지 못했다</span>`}</div>`}</div></div>`; };
   const cdxBody = met.length ? `<p class="muted" style="margin:0 0 8px">도시의 환상체는 저절로 생겨났거나, 뒤틀림이 깊어진 끝에 환상체가 된 것이다. 만날수록 이름 → 위험 등급 → 선호 행동 → 폭주·전투 조건 → 이야기 순으로 열린다. 이 브라우저에 남는다.</p>${met.map(row).join("")}`
     : `<div class="ach-empty"><div class="ach-empty-ic">◇</div><b>아직 마주친 환상체가 없다</b><div class="d">환상체 의뢰에서 만난 환상체가 여기에 기록된다.</div></div>`;
-  const body = `<div class="fg-seg" id="achtab" style="margin-bottom:10px"><button class="on" data-tab="a">업적 ${got}/${ACHIEVEMENTS.length}</button><button data-tab="c">환상체 도감 ${met.length}/${entries.length}</button></div><div id="achbody">${achBody}</div>`;
+  const body = `<div class="fg-seg" id="achtab" style="margin-bottom:10px"><button class="on" data-tab="a">업적 ${got}/${ACHIEVEMENTS.length}</button><button data-tab="c">환상체 도감 ${met.length}/${entries.length}</button><button data-tab="city">도시 일람 ${cityCount()}/${SYNDICATES.length + CITY_FIXERS.length}</button></div><div id="achbody">${achBody}</div>`;
   const p = modal("업적", body, [{t:"닫기"}]);
   const tb = document.getElementById("achtab");
-  if(tb) tb.addEventListener("click", e=>{ const b = e.target.closest("button[data-tab]"); if(!b) return; tb.querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b)); document.getElementById("achbody").innerHTML = b.dataset.tab==="a" ? achBody : cdxBody; });
+  if(tb) tb.addEventListener("click", e=>{ const b = e.target.closest("button[data-tab]"); if(!b) return; tb.querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b)); document.getElementById("achbody").innerHTML = b.dataset.tab==="a" ? achBody : b.dataset.tab==="city" ? cityHtml() : cdxBody; });
   await p;
 }
 
@@ -10014,7 +10108,7 @@ function fxTestPanel(){
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
    <b>환상체</b><div class="g"><select id="fxab" style="max-width:100%">${["죄종","ZAYIN","TETH","HE","WAW","ALEPH"].map(r=>`<optgroup label="${r}">${ABNOS.filter(a=>a.risk===r).map(a=>`<option value="${a.id}">${esc(a.n)}${a.canon?" ·원작":""}</option>${a.variant?`<option value="${a.id}~v">${esc(a.n)} (아종: ${esc(a.variant.n)})</option>`:""}`).join("")}</optgroup>`).join("")}</select>
-     <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">모든 기프트를 도감에 추가</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
+     <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="cityall">도시 일람 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">모든 기프트를 도감에 추가</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
    <b>원작 환상체 기믹 시험</b><div class="g"><button data-ab="bless">대표에게 기사의 축복</button><button data-ab="despair">축복받은 이 쓰러뜨리기</button><button data-ab="flame">대표에게 용기의 불꽃 +1</button><button data-ab="feast">대표에게 요정의 축제</button><button data-ab="prick">대표가 가시에 찔림</button><button data-ab="solitude">대표에게 고독</button><button data-ab="bullet">마탄 1발(7번째 탄환)</button><button data-ab="skin">가죽 쓴 동료의 방문</button><button data-ab="gun">대표에게 총 쥐여 주기</button><button data-ab="sup5">환상체 제압 수 +5</button><button data-ab="clear">기믹 상태 모두 지우기</button></div>`;
   document.body.appendChild(el);
   el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
@@ -10064,6 +10158,7 @@ function fxTestPanel(){
     const ab = {id, variant: !!vv}, vid = vv ? id+"~v" : id;
     if(k==="know"){ const d = codexLoad(); d[vid] = Object.assign({seen:0, ctrl:0, sup:0, gifts:[]}, d[vid]||{}); d[vid].seen = Math.max(5, d[vid].seen); codexSave(d); return toast(`${A.n}: 도감 정보를 모두 열었다`); }
     if(k==="codex") return openAchievements();
+    if(k==="cityall"){ const d = cityLoad(); SYNDICATES.forEach(x=>{ d.synd[x.id] = {seen:Math.max(1,(d.synd[x.id]||{}).seen||0), met:Math.max(3,(d.synd[x.id]||{}).met||0)}; }); d.best = 0; citySave(d); return toast("도시 일람을 모두 열었다"); }
     if(k==="knowall"){ const d = codexLoad(); ABNOS.forEach(x=>[x.id].concat(x.variant ? [x.id+"~v"] : []).forEach(v=>{ d[v] = Object.assign({seen:0, ctrl:0, sup:0, gifts:[]}, d[v]||{}); d[v].seen = Math.max(5, d[v].seen); })); codexSave(d); return toast(`환상체 ${ABNOS.length}종의 도감 정보를 모두 열었다`); }
     if(k==="night"){ const l = abnoNightFx(); const ended = S.day; S.day++; render(); await modal("밤 넘기기", l.length ? l.join("<br>") : "남은 기믹 효과가 없다.", [{t:"확인"}]); await skinVisit(ended); for(const f of S.fixers.slice()){ if(!S || S.over) return; await checkCollapse(f); } save(); render(); return; }
     { const L = S.fixers[0]; L.ab = L.ab || {};
