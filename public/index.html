@@ -349,6 +349,18 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .endcard.en .ec-line{width:min(360px,60vw)}
 .ec-q{font-size:15px;color:#bdb5a8;opacity:0;transition:opacity 1.2s}
 .endcard.q .ec-q{opacity:1}
+.as-fx{position:fixed;inset:0;z-index:120;overflow:hidden;cursor:pointer;transition:opacity .8s;background:radial-gradient(ellipse at 50% 30%,#1c1c24,#08080b 70%);font-family:"Nanum Myeongjo","Noto Serif KR",serif}
+.as-fx.out{opacity:0}
+.as-board{position:absolute;left:50%;top:9%;transform:translateX(-50%);width:min(440px,80vw);height:150px;opacity:0;transition:opacity 1s}
+.as-fx.in .as-board{opacity:1}
+.as-sign{position:absolute;left:0;right:0;bottom:0;padding:16px 10px;text-align:center;background:#2c1d12;color:#e2c58e;border:3px solid #6b4a2a;font-size:22px;letter-spacing:.25em;box-shadow:0 10px 30px rgba(0,0,0,.6)}
+.as-stamp{position:absolute;left:50%;top:-30px;width:110px;height:110px;margin-left:-55px;color:var(--ac);opacity:0;transform:scale(3) rotate(-25deg);transition:transform .25s cubic-bezier(.2,1.6,.4,1),opacity .15s;filter:drop-shadow(0 0 12px var(--ac))}
+.as-fx.stamp .as-stamp{opacity:1;transform:scale(1) rotate(-8deg)}
+.as-cv{position:absolute;left:0;right:0;top:32%;width:100%;height:52%}
+.as-text{position:absolute;left:0;right:0;bottom:5%;text-align:center;color:#ddd5c8;font-size:15px;pointer-events:none}
+.as-text div{opacity:0;transition:opacity 1.6s;margin-top:10px}
+.as-fx.t1 .as-text div:nth-child(1),.as-fx.t2 .as-text div:nth-child(2){opacity:1}
+.as-text div:nth-child(2){color:var(--ac)}
 .ledger-fx{position:fixed;inset:0;z-index:120;background:#060504;display:flex;align-items:center;justify-content:center;transition:opacity .7s;cursor:pointer;overflow:hidden}
 .ledger-fx.out{opacity:0}
 .lg-room{position:relative;width:min(640px,92vw);height:min(560px,80vh);display:flex;align-items:center;justify-content:center;transition:opacity 1.4s, filter 1.4s}
@@ -1963,6 +1975,7 @@ function makeRequest(grade, opts={}){
   if(opts.synd) applySyndicate(q, opts.synd);
   else if(!opts.kind && !ab && grade <= 8 && grade >= 2 && Math.random() < SYN_P) applySyndicate(q);
   if(opts.distort) applyDistort(q, true); else if(!opts.kind && !ab && !q.synd) applyDistort(q, false);
+  if(opts.assoc){ q.grade = Math.min(q.grade, 7); const id = assocFor(q) || "liu"; const A = ASSOCS[id]; q.assoc = id; q.client = `${A.n} 7구 남부 지부`; } else if(!opts.kind && !ab) applyAssoc(q);
   return Object.assign(q, opts.over||{});
 }
 /* ================= 이상 의뢰 · 뒤틀림 처리 =================
@@ -5314,7 +5327,7 @@ async function dispatch(qid, fids){
     g.dur = Math.max(0, g.dur-1); g.uses = (g.uses||0) + 1;
     lines.push(`${esc(f.name)}의 ${esc(g.name)}: 내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? (g.durMax<=1 ? " — <b>더는 고칠 수 없다</b>" : " — <b>수리가 필요하다</b>(관리)") : ""}`); });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
-  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines);
+  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines);
   if(success){
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
@@ -5996,7 +6009,8 @@ const ENDING_INFO = {
   "마지막 손님": {no:5, en:"THE LAST CLIENT",        col:"#e2574a", q:"빚은 갚았다. 남은 건 셈으로 치를 수 없는 것들뿐."},
   "소문이 된 색":{no:6, en:"A COLOR TURNED RUMOR",   col:null,      q:"칭호는 협회가 주고, 이름은 골목이 기억한다."},
   "공방의 도면": {no:7, en:"BLUEPRINT",              col:"#8fc2f0", q:"좋은 무기는 주인보다 오래 산다."},
-  "지령":        {no:8, en:"PRESCRIPT",              col:"#f1efe9", q:"의심하지 마라. 묻지도 마라. 따르라."}};
+  "지령":        {no:8, en:"PRESCRIPT",              col:"#f1efe9", q:"의심하지 마라. 묻지도 마라. 따르라."},
+  "협회 직속 사무소":{no:9, en:"ASSOCIATE OFFICE",   col:null,      q:"간판은 그대로다. 그 위에 문장 하나가 더해졌을 뿐."}};
 function endingCard(name, col){
   const I = ENDING_INFO[name] || {no:0, en:"", q:""}, c = col || I.col || "#e8c98a";
   const el = document.createElement("div"); el.className = "endcard"; el.style.setProperty("--ec", c);
@@ -6246,6 +6260,66 @@ async function fingerEnding(){
   if(!S) return; if(S.debt>0){ S.records.push({day:S.day, name:S.officeName, what:"빚 정리", note:`남은 빚 ${won(S.debt)}을 누군가 대신 정리했다`}); S.debt = 0; }
   await fingerScene(); ac("idxEnd");
   await endingClose("지령", "흉터의 장부에서 그 사무소의 줄은 누군가 대신 그어 놓았다. 누가 그었는지 묻는 사람은 없었다.");
+}
+/* ================= 협회 의뢰 · 협회 직속 사무소 =================
+   원작에서 협회는 소속 사무소(Associate Office)를 거느린다. 7급 이하 의뢰 가운데 일부를 하나 협회가 아닌 다른 협회가 맡긴다.
+   츠바이(경호 · 치안) · 시(은밀한 암살) · 리우(여럿을 상대하는 정면 전투) · 세븐(조사 · 정보) · 디에치(지식 · 유물 계약)
+   한 협회의 의뢰를 12건 해내고, 빚을 갚고, 사무소가 4급 이상이면 그 협회가 직속 사무소로 들어오라고 찾아온다 — 엔딩 「협회 직속 사무소」. */
+const ASSOC_P = 0.15, ASSOC_NEED = 12;
+const ASSOCS = {
+  zwei:  {n:"츠바이 협회", sig:"II",  col:"#5b8ce0", role:"경호 · 치안"},
+  shi:   {n:"시 협회",     sig:"IV",  col:"#a7abb6", role:"은밀한 처리"},
+  liu:   {n:"리우 협회",   sig:"VI",  col:"#e0603e", role:"정면 전투"},
+  seven: {n:"세븐 협회",   sig:"VII", col:"#3fae84", role:"조사 · 정보"},
+  dieci: {n:"디에치 협회", sig:"X",   col:"#d0ad52", role:"지식 · 유물 계약"}};
+function assocFor(q){ if(q.kind==="호위") return "zwei"; if(q.kind==="수색") return "seven";
+  if(q.kind==="일반" && q.attrs[0]==="str") return q.goal==="사살" ? "shi" : "liu"; if(q.kind==="일반" && q.attrs[0]==="tec") return "dieci"; if(q.kind==="일반" && q.attrs[0]==="agi") return "seven"; return null; }
+function applyAssoc(q){ if(q.synd || q.distFoe || q.kind==="환상체" || q.grade > 7 || Math.random() >= ASSOC_P) return q;
+  const id = assocFor(q); if(!id) return q; const A = ASSOCS[id];
+  q.assoc = id; q.client = `${A.n} ${rnd(1,25)}구 ${pick(["남부","북부","동부","서부"])} 지부`; q.reward = Math.round(q.reward*1.15/100)*100; return q; }
+function assocAfter(q, team, success, lines){ if(!q.assoc || !success) return; const A = ASSOCS[q.assoc];
+  S.assoc = S.assoc || {}; const n = S.assoc[q.assoc] = (S.assoc[q.assoc]||0) + 1; ac("assoc");
+  lines.push(`<span style="color:${A.col}">${A.n}</span> — 지부 장부에 사무소 이름이 한 줄 더 적혔다 <span class="muted">(협회 의뢰 ${n}건)</span>`); }
+async function assocOffer(){
+  if(!S || S.over || S.debt>0 || S.officeGrade>4) return; S.assocAsked = S.assocAsked || {};
+  const id = Object.keys(ASSOCS).filter(k=>(S.assoc||{})[k] >= ASSOC_NEED && !S.assocAsked[k]).sort((a,b)=>S.assoc[b]-S.assoc[a])[0]; if(!id) return;
+  const A = ASSOCS[id]; S.assocAsked[id] = S.day; save();
+  const v = await modal(A.n, `<p class="ledger-q">${A.n} 지부장이 직접 사무소를 찾아왔다. 제복 가슴에 <b style="color:${A.col}">${A.sig}</b>의 문장이 박혀 있다.<br><br>
+    "${S.assoc[id]}건. 우리 쪽 의뢰를 그만큼 해낸 사무소는 이 구역에서 ${esc(S.officeName)}뿐이오. 우리 협회의 직속 사무소가 되어 주시오. 의뢰는 협회가 대고, 뒷일도 협회가 책임지겠소. 간판은 그대로 두셔도 좋소."<br><br>
+    해결사들이 대표를 바라보았다.</p><p class="muted" style="font-size:12px">${A.n}의 제안은 한 번뿐이다.</p>`, [{t:"사양한다", v:"no"}, {t:"직속 사무소가 된다", v:"yes", primary:true}]);
+  if(v==="yes") return assocEnding(id);
+  addLog(`${A.n}의 제안을 사양했다.`); }
+function assocScene(id){
+  const A = ASSOCS[id], el = document.createElement("div"); el.className = "as-fx"; el.style.setProperty("--ac", A.col); el.dataset.jolt = `stamp|${A.col}|1`;
+  const crew = S.fixers.slice(0, 5);
+  el.innerHTML = `<div class="as-board"><div class="as-sign">${esc(S.officeName)}</div><div class="as-stamp"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="60" cy="60" r="44" fill="none" stroke="currentColor" stroke-width="2"/>
+      <text x="60" y="72" text-anchor="middle" font-size="34" font-weight="900" fill="currentColor" font-family="serif">${A.sig}</text><path id="arc${id}" d="M 22 60 A 38 38 0 0 1 98 60" fill="none"/><text font-size="11" fill="currentColor" letter-spacing="3"><textPath href="#arc${id}" startOffset="50%" text-anchor="middle">${esc(A.n)}</textPath></text></svg></div></div>
+    <canvas class="as-cv"></canvas>
+    <div class="as-text"><div>간판 위에 ${esc(A.n)}의 문장이 찍혔다.</div><div>사무소 사람들은 그날 처음으로 같은 옷을 입었다.</div></div>`;
+  const cv = el.querySelector(".as-cv"), c = cv.getContext("2d"), t0 = performance.now(); let skip = false;
+  const before = "#59545e", after = hexMix(A.col, "#1a1a22", 0.42);
+  const loop = () => { if(!el.isConnected) return; const d = Math.min(2, devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight; if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
+    c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H); const tt = skip ? 99 : (performance.now() - t0)/1000;
+    const n = crew.length, gap = Math.min(150, W/(n+1)), gy = H*0.92, fh = Math.min(H*0.8, 240);
+    crew.forEach((f,i)=>{ const x = W/2 + (i - (n-1)/2)*gap, lg = leadGear(f), on = clamp((tt - 5.6 - i*0.7)/0.9, 0, 1), app = clamp((tt - 3.6 - i*0.15)/0.6, 0, 1); if(app<=0) return;
+      c.save(); c.globalAlpha = app;
+      const draw = (col, trim) => drawFixer(c, x, gy, fh, {face:1, view:"front", col, state:"idle", weapon: lg.spec, armor: Object.assign({}, lg.armorSpec, trim ? {type:1, collar:1, pad:1, trim:A.col} : {}), t: tt});
+      draw(before, false);
+      if(on > 0){ c.save(); c.beginPath(); c.rect(x - fh, gy - fh*1.3, fh*2, fh*1.3*on); c.clip(); draw(after, true); c.restore();
+        if(on < 1){ c.fillStyle = A.col; c.globalAlpha = 0.8; c.fillRect(x - fh*0.22, gy - fh*1.3 + fh*1.3*on - 1, fh*0.44, 2); } }
+      c.restore();
+      c.fillStyle = on >= 1 ? A.col : "#b7b0a6"; c.globalAlpha = app; c.font = `600 13px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(f.name, x, gy + 18); c.globalAlpha = 1; });
+    requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  const add = k => () => el.classList.add(k);
+  const total = 5.6 + crew.length*0.7 + 1.2;
+  return runScene(el, [[300, add("in")], [1500, add("stamp")], [3300, add("line")], [Math.round(total*1000), ()=>{ skip = true; el.classList.add("t1"); }], [Math.round(total*1000)+2000, add("t2")]], 5000);
+}
+async function assocEnding(id){
+  if(!S) return; const A = ASSOCS[id];
+  S.records.push({day:S.day, name:S.officeName, what:"협회 직속", note:`${A.n}의 직속 사무소가 되었다`});
+  await assocScene(id); ac("assocEnd");
+  await endingClose("협회 직속 사무소", `${esc(jo(S.officeName,"은"))} ${A.n}의 직속 사무소가 되었다. 의뢰는 끊이지 않았고, 사무소는 더 이상 혼자가 아니었다. 그 대신 사무소가 고를 수 있는 일도 조금 줄었다.`, A.col);
 }
 // 장부에 남길 줄: 개업 · 처음 · 잃은 사람 · 빛깔을 얻은 사람 · 오늘
 function ledgerLines(){
@@ -6645,6 +6719,7 @@ async function weekly(){ ac("week"); bodyUpkeep();
   if(!S.over && S.scarCard && !S.scarJobPosted && S.day - S.scarCard >= 6){ S.scarJobPosted = S.day; const q = scarRequest(); S.requests.unshift(q); addLog(`남겨진 흉터가 의뢰를 맡기고 갔다 — ${q.text}`); }
   if(!S.over && S.debt<=0 && S.officeGrade<=2 && !S.wingAsked && S.repaidDay && S.day - S.repaidDay >= 6){ await wingOffer(); if(!S || S.over) return; }
   if(!S.over && S.debt<=0 && !S.wsAsked && S.repaidDay && S.day - S.repaidDay >= 6 && uniqueHolder()){ await workshopOffer(); if(!S || S.over) return; }
+  if(!S.over){ await assocOffer(); if(!S || S.over) return; }
   if(!S.over){ await idxVisit(false); if(!S || S.over) return; }
   if(colorHeld() >= COLOR_MAX && !S.over){ const q = trioRequest(); S.requests.unshift(q); addLog(`하나 협회 지명 의뢰가 올라왔다 — ${q.text}`); }
   await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
@@ -7441,7 +7516,7 @@ function render(){
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}" data-q="${q.id}">
-      <div class="head">${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
+      <div class="head">${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
@@ -7728,7 +7803,7 @@ const ACH_RAW = [
 [3,"전설","이름난 이들","도시 일람의 이름난 해결사를 모두 알게 된다.", X=>X.cityFix>=CITY_FIXERS.length],
 [3,"신화","도시를 다 아는 사람","도시 일람을 빈칸 없이 채우고, 특수 엔딩을 모두 본다.", X=>X.cityLore>=SYNDICATES.length && X.cityFix>=CITY_FIXERS.length && X.specialEnd>=ACH_ENDINGS.length-1],
 ];
-const ACH_ENDINGS = ["다음 손님","둥지로","물려준 열쇠","빈 책상","마지막 손님","소문이 된 색","공방의 도면","지령"];
+const ACH_ENDINGS = ["다음 손님","둥지로","물려준 열쇠","빈 책상","마지막 손님","소문이 된 색","공방의 도면","지령","협회 직속 사무소"];
 const ACHIEVEMENTS = ACH_RAW.map((r,i)=>({id:"a"+r[0]+"_"+i, cat:r[0], tier:r[1], name:r[2], desc:r[3], test:r[4], hidden: r[1]==="유일"}));
 const ACH_KEY = "problem-solver-achievements-v1";
 function achLoad(){ try{ return JSON.parse(localStorage.getItem(ACH_KEY))||{}; }catch(_){ return {}; } }
@@ -10617,8 +10692,8 @@ function fxTestPanel(){
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
-   <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령서 받기</button><button data-adj="en-idx3">마지막 지령서</button></div>
+   <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="assoc">협회 의뢰</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령서 받기</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 직속(제안)</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
@@ -10643,7 +10718,7 @@ function fxTestPanel(){
     if(k==="office"){ S.officeGrade = v("#fxog"); save(); render(); return toast(`사무소 등급 → ${gName(S.officeGrade)}`); }
     if(k==="leader"){ const g = v("#fxlg"); if(g===0){ await passColor(L); } else { L.grade = g; L.title = null; L.tcol = null; L.cap = 70; } save(); render(); return toast(`대표 → ${gName(L.grade)}`); }
     if(k==="req"){ const kd = el.querySelector("#fxrk").value, g = v("#fxrg"), n = v("#fxrn");
-      for(let i=0;i<n;i++){ const q = kd==="trio" ? trioRequest() : kd==="distort" ? makeRequest(Math.min(g, 5), {kind:"일반", attrs:["str"], distort:true}) : kd==="synd" ? makeRequest(g, {synd: (SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])[0] ? pick(SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])) : pick(SYNDICATES)).id}) : kd.startsWith("syn:") ? makeRequest(g, {synd: kd.slice(4)}) : ["str","agi","tec"].includes(kd) ? makeRequest(g, {kind:"일반", attrs:[kd]}) : makeRequest(g, {kind:kd, attrs: kd==="호위" ? ["str","agi"] : kd==="수색" ? ["agi","tec"] : ["wil"]}); S.requests.unshift(q); }
+      for(let i=0;i<n;i++){ const q = kd==="trio" ? trioRequest() : kd==="distort" ? makeRequest(Math.min(g, 5), {kind:"일반", attrs:["str"], distort:true}) : kd==="assoc" ? makeRequest(Math.min(g, 7), {kind:pick(["일반","호위","수색"]), attrs:pick([["str"],["tec"],["str","agi"]]), assoc:true}) : kd==="synd" ? makeRequest(g, {synd: (SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])[0] ? pick(SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])) : pick(SYNDICATES)).id}) : kd.startsWith("syn:") ? makeRequest(g, {synd: kd.slice(4)}) : ["str","agi","tec"].includes(kd) ? makeRequest(g, {kind:"일반", attrs:[kd]}) : makeRequest(g, {kind:kd, attrs: kd==="호위" ? ["str","agi"] : kd==="수색" ? ["agi","tec"] : ["wil"]}); S.requests.unshift(q); }
       save(); render(); return toast(`의뢰 ${n}건을 올렸다`); }
     if(k==="clear"){ S.requests = []; save(); render(); return toast("게시판을 비웠다"); }
     if(k==="week"){ S.fixers.forEach(f=>{ f.wk = {n:8, ok:8, hi:5, sc:6}; }); S.wk = {n:10, ok:10, hi:6, sc:7}; save(); return toast("이번 주 심사 기록을 채웠다 — 7일차 밤에 심사"); }
@@ -10659,6 +10734,7 @@ function fxTestPanel(){
     if(k==="en-color"){ closeAll(); repayAll(); S.repaidShown = true; const L = leader(); if(L.grade!==0){ L.grade = 0; L.title = randomColorTitle(); L.tcol = colorOfTitle(L.title); L.cap = 80; } return ledgerOffer(false); }
     if(k==="en-ws"){ closeAll(); repayAll(); S.repaidShown = true; S.wsAsked = null; const L = leader(); let g = L.gear.weapon; if(!g){ g = Object.assign({}, SHOP.find(i=>i.slot==="weapon" && i.tier>=1)); L.gear.weapon = g; } Object.assign(g, {unique:true, owner:L.id}); return workshopOffer(); }
     if(k==="en-idx"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; if(X.done >= 3) X.done = 0; return idxVisit(true); }
+    if(k==="en-assoc"){ closeAll(); repayAll(); S.repaidShown = true; S.officeGrade = Math.min(S.officeGrade, 4); S.assoc = Object.assign({}, S.assoc||{}, {[pick(Object.keys(ASSOCS))]: ASSOC_NEED}); S.assocAsked = {}; return assocOffer(); }
     if(k==="en-idx3"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; X.done = 3; return idxVisit(true); } });
   el.addEventListener("click", async e=>{ const wx = e.target.dataset.wx; if(!wx) return; const [w, n] = wx.split("|"); S.weather = {w, night: n==="1"}; save(); render(); playFx("아침", `${S.day}일차 · ${weatherText(S.weather)}`, "날씨를 바꿨다", true); });
   el.addEventListener("click", async e=>{ const k = e.target.dataset.cs; if(!k) return; const f = S.fixers[0];
