@@ -259,6 +259,60 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .scar-fx.tear .sc-page{transform:translate(30px,60px) rotate(7deg);clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}
 .sc-text{bottom:9%;color:#d8cdbf;font-size:15px}
 .sc-text div:nth-child(3){color:#e9a598;font-size:16px}
+.rumor-fx,.ws-fx,.idx-fx{position:fixed;inset:0;z-index:120;overflow:hidden;cursor:pointer;transition:opacity .8s;font-family:"Nanum Myeongjo","Noto Serif KR",serif}
+.rumor-fx.out,.ws-fx.out,.idx-fx.out{opacity:0}
+.rm-text,.ws-text,.ix-text{position:absolute;left:0;right:0;text-align:center;pointer-events:none}
+.rm-text div,.ws-text div,.ix-text div{opacity:0;transition:opacity 1.6s;margin-top:14px}
+.t1 .rm-text div:nth-child(1),.t2 .rm-text div:nth-child(2),.t1 .ws-text div:nth-child(1),.t2 .ws-text div:nth-child(2),.t3 .ws-text div:nth-child(3),.t1 .ix-text div:nth-child(1),.t2 .ix-text div:nth-child(2){opacity:1}
+/* 소문이 된 색 */
+.rumor-fx{background:#060606}
+.rm-title{position:absolute;left:0;right:0;top:40%;text-align:center;font-size:clamp(30px,6vw,52px);letter-spacing:.3em;color:var(--tc);text-shadow:0 0 30px var(--tc);opacity:0;transition:opacity 2s,filter 4s,letter-spacing 4s}
+.rm-name{position:absolute;left:0;right:0;top:calc(40% + 70px);text-align:center;font-size:15px;letter-spacing:.4em;color:#cfc6b8;opacity:0;transition:opacity 1.6s}
+.rumor-fx.title .rm-title{opacity:1}.rumor-fx.name .rm-name{opacity:1}
+.rumor-fx.fade .rm-name{opacity:0;transition:opacity 3s}
+.rumor-fx.fade .rm-title{opacity:.18;filter:blur(6px);letter-spacing:.6em}
+.rm-v{position:absolute;max-width:36%;font-size:13px;color:#9b948a;opacity:0;transform:translateY(6px);transition:opacity 1.4s,transform 1.4s}
+.rm-v.on{opacity:.85;transform:none}
+.rumor-fx.fade .rm-v{opacity:.35}
+.rumor-fx.t1 .rm-v{opacity:.15;transition:opacity 2s}
+.rm-text{bottom:12%;color:#ddd3c4;font-size:15px}
+.rm-text div:nth-child(2){color:var(--tc);font-size:17px;letter-spacing:.15em}
+/* 공방의 도면 */
+.ws-fx{background:#0d1a2b}
+.ws-sheet{position:absolute;left:50%;top:36%;width:min(560px,90vw);transform:translate(-50%,-50%) scale(.96);padding:16px 20px 22px;opacity:0;color:#cfe0f2;
+  background:#14304f;background-image:linear-gradient(rgba(180,210,240,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(180,210,240,.09) 1px,transparent 1px);background-size:20px 20px;
+  border:1px solid rgba(190,215,240,.4);transition:opacity 1s,transform 1s,top 1.4s}
+.ws-fx.open .ws-sheet{opacity:1;transform:translate(-50%,-50%)}
+.ws-fx.belt .ws-sheet{top:24%;transform:translate(-50%,-50%) scale(.82)}
+.ws-head{display:flex;justify-content:space-between;font-size:12px;letter-spacing:.25em;border-bottom:1px solid rgba(190,215,240,.35);padding-bottom:6px}
+.ws-draw{display:block;width:100%;height:auto;margin:14px 0 4px}
+.ws-draw path{fill:none;stroke:#e8f2ff;stroke-width:1.6;stroke-linejoin:round;stroke-dasharray:1400;stroke-dashoffset:1400;transition:stroke-dashoffset 3.6s ease-in-out}
+.ws-fx.draw .ws-draw path{stroke-dashoffset:0}
+.ws-draw .ws-dim{stroke:#8fb4d8;stroke-width:1;opacity:0;transition:opacity 1s}
+.ws-fx.dim .ws-draw .ws-dim{opacity:1}
+.ws-label{font-size:16px;letter-spacing:.12em;opacity:0;transition:opacity 1s}.ws-label small{font-size:12px;color:#8fb4d8;margin-left:8px}
+.ws-fx.dim .ws-label{opacity:1}
+.ws-stamp{position:absolute;right:22px;bottom:16px;border:3px solid #e2574a;color:#e2574a;padding:4px 12px;font-size:20px;letter-spacing:.25em;transform:rotate(-9deg) scale(2.6);opacity:0;transition:transform .22s cubic-bezier(.2,1.6,.4,1),opacity .15s}
+.ws-fx.stamp .ws-stamp{transform:rotate(-9deg) scale(1);opacity:.9}
+.ws-belt{position:absolute;left:0;right:0;top:56%;height:90px;border-top:2px solid #2b4767;border-bottom:2px solid #2b4767;background:repeating-linear-gradient(90deg,#10233a 0 40px,#132a45 40px 80px);opacity:0;transition:opacity .8s}
+.ws-fx.belt .ws-belt{opacity:1}
+.ws-copy{position:absolute;top:10px;left:-180px;width:150px;text-align:center;color:#8fb4d8;font-size:10px;letter-spacing:.1em}
+.ws-copy svg{width:150px;height:50px}.ws-copy path{fill:rgba(200,220,240,.08);stroke:#cfe0f2;stroke-width:2}
+.ws-fx.belt .ws-copy{animation:ws-roll 7s linear calc(var(--i)*.55s) both}
+@keyframes ws-roll{from{left:-180px}to{left:110%}}
+.ws-text{bottom:8%;color:#d6e2ee;font-size:15px}
+.ws-text div:nth-child(3){color:#f2d58f}
+/* 지령 */
+.idx-fx{background:#0a0a0c}
+.ix-card{position:absolute;top:-30%;width:min(220px,40vw);padding:12px 14px;background:#f1efe9;color:#222;font-size:12px;line-height:1.6;box-shadow:0 8px 20px rgba(0,0,0,.6);transform:rotate(var(--r));opacity:0}
+.idx-fx.rain .ix-card{animation:ix-fall 5.5s cubic-bezier(.3,.2,.4,1) var(--d) forwards}
+@keyframes ix-fall{0%{top:-30%;opacity:0}10%{opacity:1}100%{top:var(--y);opacity:.9}}
+.idx-fx.clear .ix-card{opacity:0 !important;transition:opacity 1.2s;animation-play-state:paused}
+.ix-final{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(.9);width:min(420px,84vw);min-height:90px;padding:26px 24px;background:#f6f4ee;color:#111;font-size:17px;letter-spacing:.06em;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.8);opacity:0;transition:opacity 1s,transform 1s}
+.idx-fx.final .ix-final{opacity:1;transform:translate(-50%,-50%)}
+.ix-text{bottom:12%;color:#cfcfd4;font-size:15px}
+.ix-text div:nth-child(2){font-size:13px;color:#8b8b92}
+.idx-card{margin:10px auto;padding:14px 16px;max-width:360px;background:#f1efe9;color:#1d1d1d;font-family:"Nanum Myeongjo","Noto Serif KR",serif;line-height:1.7;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.4)}
 .ledger-fx{position:fixed;inset:0;z-index:120;background:#060504;display:flex;align-items:center;justify-content:center;transition:opacity .7s;cursor:pointer;overflow:hidden}
 .ledger-fx.out{opacity:0}
 .lg-room{position:relative;width:min(640px,92vw);height:min(560px,80vh);display:flex;align-items:center;justify-content:center;transition:opacity 1.4s, filter 1.4s}
@@ -4874,6 +4928,7 @@ async function dispatch(qid, fids){
     g.dur = Math.max(0, g.dur-1); g.uses = (g.uses||0) + 1;
     lines.push(`${esc(f.name)}의 ${esc(g.name)}: 내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? (g.durMax<=1 ? " — <b>더는 고칠 수 없다</b>" : " — <b>수리가 필요하다</b>(관리)") : ""}`); });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
+  idxOnDispatch(q, team, success);
   if(success){
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
@@ -5404,7 +5459,7 @@ async function twistFixer(f){ ac("twist");
 // 대표가 뒤틀린다: 그대로 엔딩
 async function twistLeader(f){
   playFx("뒤틀림", "뒤틀림", f.name, false);
-  ac("end"); acSet("ending", "대표의 뒤틀림"); S.over = true; S.records.push({day:S.day, name:f.name, what:"뒤틀림", note:"대표가 목소리를 따라갔다"}); save();
+  ac("end"); acSet("gameover", "대표의 뒤틀림"); S.over = true; S.records.push({day:S.day, name:f.name, what:"뒤틀림", note:"대표가 목소리를 따라갔다"}); save();
   await HeartFx.voice(f);
   const o = await HeartFx.twist(f, "대표", "목소리를 따라간다");
   const lines = (ENDINGS[f.personality] || ENDINGS["다정함"]).map(t=>esc(t.replace(/\{o\}/g, S.officeName).replace(/\{n\}은\(는\)/g, josa(f.name,"은","는")).replace(/\{n\}이\(가\)/g, josa(f.name,"이","가")).replace(/\{n\}/g, f.name)))
@@ -5525,10 +5580,12 @@ async function ledgerOffer(first){
     : `<p class="ledger-q">서랍 속 낡은 장부를 다시 꺼낸다. 마지막 줄 아래로 빈 칸이 남아 있다.</p>`;
   const btns = [{t:"내일도 문을 연다", v:"go"}];
   if(heir && !alone) btns.push({t:`${heir.name}에게 열쇠를 넘긴다`, v:"heir"});
+  if(leaderColor() && !alone) btns.push({t:`[${leaderColor().title}]을 내려놓는다`, v:"color"});
   btns.push({t:"장부를 덮는다", v:"end", primary:true});
   const v = await modal("장부", body, btns);
   if(v==="end") await (alone ? deskEnding() : ledgerEnding());
   else if(v==="heir") await heirEnding(heir);
+  else if(v==="color") await rumorEnding();
 }
 function trioRequest(){
   const q = makeRequest(0); q.client = "하나 협회 지명"; q.reward = Math.round(q.reward*1.5/100)*100; q.text = `하나 협회의 지명 — ${q.text}`; q.trio = true; return q; }
@@ -5655,6 +5712,130 @@ async function scarJobCheck(){
     if(v==="yes") return scarEnding();
     addLog("흉터는 장부를 도로 품에 넣고 돌아갔다.");
   }
+}
+/* ---- 특수 엔딩 · 특색: 소문이 된 색 ----
+   대표가 특색이고 빚을 다 갚았으면, 장부 창에서 칭호를 내려놓을 수 있다. 사람은 사라지고 칭호만 소문으로 떠돈다. */
+const leaderColor = () => { const L = leader(); return L && L.grade===0 && L.title ? L : null; };
+function rumorScene(L){
+  const el = document.createElement("div"); el.className = "rumor-fx"; el.style.setProperty("--tc", L.tcol || "#d9c27a");
+  const T = esc(L.title), N = esc(L.name);
+  const voices = [`[${T}]? 아직 그 골목에 산대.`, `칭호를 협회에 돌려줬다던데.`, `아니야, 둥지 쪽에서 봤다는 사람이 있어.`, `${N}… 그게 본명이었나?`,
+    `협회 명부엔 아직 이름이 있대.`, `그 사무소 간판, 지금은 다른 데가 걸었어.`, `한 번 봤어. 그냥 평범한 사람이던데.`, `[${T}]${josa(L.title,"이","").slice(L.title.length)}라면 아직 의뢰 받는다던데?`,
+    `죽었대. 아니, 그만뒀대.`, `우리 아버지가 그 사람한테 신세 졌었지.`, `색이 바래면 사람도 사라지는 거야.`, `흉내 내는 애들이 요즘 많더라.`];
+  el.innerHTML = `<div class="rm-title">${T}</div><div class="rm-name">${N}</div>${voices.map((v,i)=>`<div class="rm-v" style="left:${(i%2 ? 56 : 6) + ((i*7)%9)}%;top:${[6,15,24,54,63,72][Math.floor(i/2)%6]}%">${v}</div>`).join("")}
+    <div class="rm-text"><div>사람은 어느 날 골목에서 보이지 않게 되었다.</div><div>이름은 소문이 되었다.</div></div>`;
+  const vs = () => [...el.querySelectorAll(".rm-v")];
+  const plan = [[500, ()=>el.classList.add("title")], [2400, ()=>el.classList.add("name")]];
+  voices.forEach((_,i)=>plan.push([3800 + i*620, (all)=>{ (all ? vs() : [vs()[i]]).forEach(x=>x && x.classList.add("on")); }]));
+  const t = 3800 + voices.length*620;
+  plan.push([t, ()=>el.classList.add("fade")], [t+2600, ()=>el.classList.add("t1")], [t+4400, ()=>el.classList.add("t2")]);
+  return runScene(el, plan, 5000);
+}
+async function rumorEnding(){
+  const L = leaderColor(); if(!S || !L) return;
+  S.records.push({day:S.day, name:L.name, what:"칭호 반납", note:`[${L.title}]을 내려놓았다`});
+  await rumorScene(L); ac("rumorEnd");
+  await endingClose("소문이 된 색", `하나 협회는 [${esc(L.title)}]의 칭호를 비워 두었다. 몇 해가 지나도록, 그 칭호를 다시 받은 해결사는 없었다.`);
+}
+/* ---- 특수 엔딩 · 공방: 공방의 도면 ----
+   빚을 갚은 뒤, 공방이 다시 벼려 준 고유 무기를 든 해결사가 있으면 그 공방이 찾아와 무기를 양산 모델로 내자고 한다. */
+function uniqueHolder(){ const xs = S.fixers.filter(f=>f.gear.weapon && f.gear.weapon.unique); return xs.find(f=>f.isLeader) || xs[0] || null; }
+const WEAPON_SVG = {
+  blade:"M10 50 L40 50 L40 40 L46 40 L46 46 L270 46 L292 50 L270 54 L46 54 L46 60 L40 60 L40 50",
+  blunt:"M10 50 L190 50 M190 50 L190 28 L250 28 L250 72 L190 72 L190 50 M250 38 L262 38 L262 62 L250 62",
+  gun:"M30 40 L250 40 L250 50 L120 50 L120 58 L100 58 L96 50 L80 50 L70 82 L46 82 L54 50 L30 50 Z M250 43 L272 43 L272 47 L250 47",
+  spear:"M10 50 L230 50 M230 42 L290 50 L230 58 Z M226 40 L226 60",
+  fist:"M40 32 L170 32 L190 38 L190 62 L170 68 L40 68 Z M190 40 L230 36 L240 44 L240 56 L230 64 L190 60 M70 32 L70 68 M110 32 L110 68 M150 32 L150 68"};
+const svgKind = w => ({blade:"blade",great:"blade",long:"blade",rapier:"blade",twin:"blade",blunt:"blunt",staff:"blunt",tool:"blunt",gun:"gun",lance:"spear",spear:"spear",fist:"fist"})[weaponTypeOf(w)] || "blade";
+async function workshopOffer(){
+  if(!S || S.over || S.wsAsked || S.debt>0) return; const f = uniqueHolder(); if(!f) return;
+  const g = f.gear.weapon, maker = g.maker || "공방"; S.wsAsked = S.day; save();
+  const v = await modal("공방에서 온 사람", `<p class="ledger-q">${esc(maker)}의 장인이 직접 찾아왔다. 기름 냄새가 밴 손으로 ${esc(jo(f.name,"이"))} 든 <b>${esc(g.name)}</b>을(를) 한참 들여다본다.<br><br>
+    "이건 우리가 벼린 것 중에서도 손에 꼽소. 도면을 떠서 공방 이름으로 내고 싶소. 대신 이 물건은 공방 진열장에 들어가고, 쓰던 사람은… 시험 해결사로 공방에 와 주면 좋겠소."<br><br>
+    대표는 벽에 걸린 간판과 ${esc(g.name)}을(를) 번갈아 보았다.</p><p class="muted" style="font-size:12px">이 제안은 한 번뿐이다.</p>`,
+    [{t:"돌려보낸다", v:"no"}, {t:"도면을 뜬다", v:"yes", primary:true}]);
+  if(v==="yes") return workshopEnding(f);
+  addLog(`${maker}의 장인을 돌려보냈다. ${g.name}은(는) 여전히 ${f.name}의 손에 있다.`);
+}
+function workshopScene(f){
+  const g = f.gear.weapon, maker = g.maker || "공방", d = WEAPON_SVG[svgKind(g)], no = 100 + (S.day % 900);
+  const el = document.createElement("div"); el.className = "ws-fx";
+  const copy = i => `<div class="ws-copy" style="--i:${i}"><svg viewBox="0 0 300 100"><path d="${d}"/></svg><span>No.${String(no).padStart(4,"0")}-${String(i+1).padStart(3,"0")}</span></div>`;
+  el.innerHTML = `<div class="ws-sheet"><div class="ws-head"><span>${esc(maker)}</span><span>도면 제 ${no}호</span></div>
+      <svg class="ws-draw" viewBox="0 0 300 100"><path d="${d}"/><path class="ws-dim" d="M10 90 L292 90 M10 86 L10 94 M292 86 L292 94"/></svg>
+      <div class="ws-label">${esc(g.name)} <small>원형 — ${esc(f.name)}</small></div><div class="ws-stamp">양산 승인</div></div>
+    <div class="ws-belt">${Array.from({length:9}, (_,i)=>copy(i)).join("")}</div>
+    <div class="ws-text"><div>${esc(g.name)}은(는) 공방 진열장 맨 윗칸에 놓였다.</div><div>몇 해 뒤, 뒷골목 아이들이 그 모조품을 들고 해결사 놀이를 했다.</div><div>"내가 ${esc(f.name)} 할래!"</div></div>`;
+  const add = c => () => el.classList.add(c);
+  return runScene(el, [[400, add("open")], [900, add("draw")], [4600, add("dim")], [5800, add("stamp")], [7600, add("belt")], [12600, add("t1")], [14400, add("t2")], [16400, add("t3")]], 5200);
+}
+async function workshopEnding(f){
+  if(!S || !f) return; const g = f.gear.weapon;
+  S.records.push({day:S.day, name:f.name, what:"도면", note:`${g.maker||"공방"}에서 ${g.name}의 도면을 떴다`});
+  await workshopScene(f); ac("wsEnd");
+  await endingClose("공방의 도면", `${esc(g.maker||"공방")}의 카탈로그에는 지금도 그 이름이 실려 있다. 원형을 든 사람이 누구였는지는, 진열장 앞 작은 명판에만 적혀 있다.`);
+}
+/* ---- 특수 엔딩 · 손가락: 지령 ----
+   14일째부터 주간 정산 때 가끔 검지의 사도가 지령서를 두고 간다. 따르면 기한 안에 지령을 지켜야 한다(지키면 돈, 어기면 모두 다친다).
+   지령을 셋 지키면 마지막 지령서가 온다 — 장부를 덮고 간판을 내려라. 남은 빚은 그들이 정리한다. 두 번 찢으면 더는 오지 않는다. */
+const PRESCRIPTS = [
+  {id:"solo", t:"이레 안에, 해결사를 하나씩만 보내 의뢰 둘을 끝내라.", need:2, days:7, test:(q,team)=>team.length===1},
+  {id:"escort", t:"이레 안에 누군가를 지키는 일을 두 번 하라.", need:2, days:7, test:q=>q.kind==="호위"},
+  {id:"rest", t:"사흘 동안, 누구도 문밖으로 일하러 내보내지 마라.", rest:true, days:3},
+  {id:"night", t:"이레 안에, 해가 진 뒤에 일을 하나 끝내라.", need:1, days:7, test:()=>!!(S.weather && S.weather.night)},
+  {id:"fine", t:"이레 안에, 손끝이 필요한 일을 셋 끝내라.", need:3, days:7, test:q=>(q.attrs||[]).includes("tec")},
+  {id:"search", t:"이레 안에, 무언가를 찾는 일을 둘 끝내라.", need:2, days:7, test:q=>q.kind==="수색"}];
+const idxState = () => (S.idx = S.idx || {cur:null, done:0, torn:0});
+const idxPay = () => Math.round(REQ_BASE[Math.max(0, Math.min(9, S.officeGrade))][0]*2/100)*100;
+async function idxVisit(force){
+  if(!S || S.over) return; const X = idxState(); if(X.closed || X.cur) return;
+  if(X.done >= 3) return idxFinal();
+  if(!force && (S.day < 14 || Math.random() >= 0.4)) return;
+  const P = pick(PRESCRIPTS.filter(p=>p.id!==X.last));
+  const v = await modal("지령서", `<p class="ledger-q">아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉에는 아무것도 적혀 있지 않다.<br><br>
+    골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다. 검지의 사도다.</p>
+    <div class="idx-card">${P.t}</div><p class="muted" style="font-size:12px">따르면 기한 안에 지켜야 한다. 지키면 사례가 오고, 어기면 대가를 치른다.</p>`,
+    [{t:"찢는다", v:"no"}, {t:"따른다", v:"yes", primary:true}]);
+  if(v==="yes"){ X.cur = {id:P.id, got:0, until:S.day + P.days, from:S.day}; X.last = P.id; addLog(`검지의 지령서를 받았다 — ${P.t}`); }
+  else { X.torn++; addLog("지령서를 찢었다."); if(X.torn >= 2){ X.closed = true; addLog("그 뒤로 문틈에 봉투가 끼워지는 일은 없었다."); } }
+  save(); render();
+}
+function idxOnDispatch(q, team, success){
+  const X = S && S.idx; if(!X || !X.cur) return; const P = PRESCRIPTS.find(p=>p.id===X.cur.id); if(!P) return;
+  if(P.rest){ idxFail(P); return; }
+  if(success && P.test(q, team)){ X.cur.got++; if(X.cur.got >= P.need) idxDone(P); }
+}
+function idxDone(P){ const X = S.idx, pay = idxPay(); X.cur = null; X.done++; S.money += pay; S.todayIncome = (S.todayIncome||0) + pay;
+  addLog(`지령을 지켰다. 다음 날 문틈의 봉투에 ${won(pay)}과 쪽지 한 장 — "잘했다."`); toast(`검지의 지령 이행 (${X.done}/3) · +${won(pay)}`); save(); }
+function idxFail(P){ const X = S.idx; X.cur = null;
+  S.fixers.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.round(f.hpMax*0.1)); });
+  addLog(`지령을 어겼다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%`); toast("검지의 지령을 어겼다"); save(); }
+function idxDayEnd(){ const X = S && S.idx; if(!X || !X.cur) return; const P = PRESCRIPTS.find(p=>p.id===X.cur.id);
+  if(S.day >= X.cur.until){ if(P.rest) idxDone(P); else idxFail(P); } }
+async function idxFinal(){
+  const X = idxState(); if(X.closed) return; X.closed = true; save();
+  const v = await modal("마지막 지령서", `<p class="ledger-q">봉투가 다시 문틈에 끼워져 있었다. 이번 것은 무겁다.</p>
+    <div class="idx-card">오늘 밤, ${esc(S.officeName)}의 장부를 덮고 간판을 내려라.${S.debt>0 ? `<br>남은 빚 ${won(S.debt)}은 우리가 정리한다.` : ""}<br>내일부터 너는 우리와 함께 걷는다.</div>
+    <p class="muted" style="font-size:12px">찢으면 지령서는 다시 오지 않는다.</p>`, [{t:"찢는다", v:"no"}, {t:"따른다", v:"yes", primary:true}]);
+  if(v==="yes") return fingerEnding();
+  addLog("마지막 지령서를 찢었다. 골목 끝의 사람은 다시 나타나지 않았다.");
+}
+function fingerScene(){
+  const el = document.createElement("div"); el.className = "idx-fx";
+  const olds = PRESCRIPTS.map(p=>p.t).concat(["오른쪽 신발 끈부터 묶어라.","세 번째로 만나는 사람에게 인사하지 마라.","오늘은 빨간 것을 먹지 마라.","문을 열 때 숫자를 일곱까지 세라.","가장 아끼는 물건을 골목에 두고 와라."]);
+  el.innerHTML = `${olds.map((t,i)=>`<div class="ix-card" style="left:${4+((i*29)%74)}%;--r:${((i*53)%30)-15}deg;--y:${30+((i*23)%45)}%;--d:${(i*0.45).toFixed(2)}s">${esc(t)}</div>`).join("")}
+    <div class="ix-final"><span></span></div>
+    <div class="ix-text"><div>그날 밤, 그 사무소의 불은 일찍 꺼졌다.</div><div>골목 사람들은 그 뒤로 대표를 '사도'라고 불렀다. 대놓고 부르지는 않았다.</div></div>`;
+  const msg = "오늘 밤, 장부를 덮고 간판을 내려라.";
+  const sp = el.querySelector(".ix-final span"); let k = 0, iv = null;
+  const type = all => { if(all){ clearInterval(iv); sp.textContent = msg; return; } iv = setInterval(()=>{ sp.textContent = msg.slice(0, ++k); if(k >= msg.length) clearInterval(iv); }, 120); };
+  const add = c => () => el.classList.add(c);
+  return runScene(el, [[300, add("rain")], [11000, add("clear")], [12200, add("final")], [12800, type], [18200, add("t1")], [20200, add("t2")]], 5000);
+}
+async function fingerEnding(){
+  if(!S) return; if(S.debt>0){ S.records.push({day:S.day, name:S.officeName, what:"빚 정리", note:`남은 빚 ${won(S.debt)}을 누군가 대신 정리했다`}); S.debt = 0; }
+  await fingerScene(); ac("idxEnd");
+  await endingClose("지령", "흉터의 장부에서 그 사무소의 줄은 누군가 대신 그어 놓았다. 누가 그었는지 묻는 사람은 없었다.");
 }
 // 장부에 남길 줄: 개업 · 처음 · 잃은 사람 · 빛깔을 얻은 사람 · 오늘
 function ledgerLines(){
@@ -6010,7 +6191,7 @@ function closeShop(){
   });
 }
 async function endDayInner(reason){
-  const ended = S.day; ac("days");
+  const ended = S.day; ac("days"); idxDayEnd();
   if(S.pending && S.pending.length){ const due = S.pending.filter(p=>p.day <= ended + 1); S.pending = S.pending.filter(p=>p.day > ended + 1);
     due.forEach(p=>{ S.money += p.amt; addLog(`${p.from}이(가) 미뤄 둔 보수 ${won(p.amt)}을 가져왔다`); }); } S.st = S.st || {}; S.st.days = ended; acSet("weather", S.weather && S.weather.w);
   { const inc = S.todayIncome||0; acMax("dayPayBest", inc); if(S.scars===2 && S.st.edgeDay && ended - S.st.edgeDay >= 7) acMax("edge7", 1); }
@@ -6052,6 +6233,8 @@ async function endDayInner(reason){
 async function weekly(){ ac("week");
   if(!S.over && S.scarCard && !S.scarJobPosted && S.day - S.scarCard >= 6){ S.scarJobPosted = S.day; const q = scarRequest(); S.requests.unshift(q); addLog(`남겨진 흉터가 의뢰를 맡기고 갔다 — ${q.text}`); }
   if(!S.over && S.debt<=0 && S.officeGrade<=2 && !S.wingAsked && S.repaidDay && S.day - S.repaidDay >= 6){ await wingOffer(); if(!S || S.over) return; }
+  if(!S.over && S.debt<=0 && !S.wsAsked && S.repaidDay && S.day - S.repaidDay >= 6 && uniqueHolder()){ await workshopOffer(); if(!S || S.over) return; }
+  if(!S.over){ await idxVisit(false); if(!S || S.over) return; }
   if(colorHeld() >= COLOR_MAX && !S.over){ const q = trioRequest(); S.requests.unshift(q); addLog(`하나 협회 지명 의뢰가 올라왔다 — ${q.text}`); }
   await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
 }
@@ -6156,7 +6339,7 @@ async function review(){
   await modal("하나 협회 등급 심사", (lines.length? lines.join("<br>") : "<span class='muted'>승급한 해결사가 없다.</span>")+(wait.length ? `<p class="muted" style="font-size:12px">${wait.join("<br>")}</p>` : "")+off, [{t:"확인",primary:true}]);
 }
 async function gameOver(title, text){
-  ac("end"); acSet("ending", title); S.over = true; save(); render();
+  ac("end"); acSet("gameover", title); S.over = true; save(); render();
   playFx("종료", title, "", false);
   await modal(title, `<p>${text}</p><div class="kv"><span>버틴 날</span><b>${S.day}일</b><span>남은 빚</span><b>${won(S.debt)}</b><span>사무소 등급</span><b>${gName(S.officeGrade)}</b></div>`, [{t:"새 게임",primary:true,v:"new"}]);
   clearSave(); S=null; renderStart();
@@ -7008,12 +7191,12 @@ const ACH_RAW = [
 [3,"드묾","벼랑 끝","흉터 경고 둘을 안고 7일을 더 버틴다.", X=>X.R.edge7>=1],
 [3,"드묾","징조","징조를 본다.", X=>X.L.omen>=1],
 [3,"드묾","목소리","동료가 뒤틀리는 것을 본다.", X=>X.L.twist>=1],
-[3,"드묾","끝을 보다","엔딩을 하나 본다.", X=>(X.L$set.ending||[]).length>=1],
+[3,"드묾","끝을 보다","엔딩을 하나 본다.", X=>(X.L$set.ending||[]).filter(e=>ACH_ENDINGS.includes(e)).length>=1],
 [3,"드묾","협회의 편지","하나 협회의 편지를 받는다.", X=>X.L.mail>=1],
 [3,"희귀","열다섯 번째 간판","사무소를 15번 연다.", X=>X.L.runs>=15],
 [3,"희귀","온 도시","모든 구역에서 사무소를 연다.", X=>(X.L$set.district||[]).length>=X.districtAll],
 [3,"희귀","오백 일","모두 합쳐 500일을 보낸다.", X=>X.L.days>=500],
-[3,"희귀","세 갈래 끝","엔딩을 세 가지 본다.", X=>(X.L$set.ending||[]).length>=3],
+[3,"희귀","세 갈래 끝","엔딩을 세 가지 본다.", X=>(X.L$set.ending||[]).filter(e=>ACH_ENDINGS.includes(e)).length>=3],
 [3,"희귀","귀가 밝은 사무소","도시의 큰 사건 소식을 30번 듣는다.", X=>X.L.major>=30],
 [3,"희귀","넉 달","한 게임에서 120일을 넘긴다.", X=>X.R.days>=120],
 [3,"희귀","쉰 개의 기록","업적을 50개 이룬다.", X=>X.achN>=50],
@@ -7021,7 +7204,7 @@ const ACH_RAW = [
 [3,"희귀","두둑한 금고","자금 1,000만 원을 쥔다.", X=>X.S && X.S.money>=10000000],
 [3,"영웅","천 일","모두 합쳐 1,000일을 보낸다.", X=>X.L.days>=1000],
 [3,"영웅","백 개의 기록","업적을 100개 이룬다.", X=>X.achN>=100],
-[3,"영웅","모든 끝","엔딩을 모두 본다.", X=>(X.L$set.ending||[]).length>=X.endingAll],
+[3,"영웅","모든 끝","엔딩을 모두 본다.", X=>(X.L$set.ending||[]).filter(e=>ACH_ENDINGS.includes(e)).length>=X.endingAll],
 [3,"영웅","반년 넘게","한 게임에서 200일을 넘긴다.", X=>X.R.days>=200],
 [3,"영웅","억대 금고","자금 1억 원을 쥔다.", X=>X.S && X.S.money>=100000000],
 [3,"전설","백사십 개의 기록","업적을 140개 이룬다.", X=>X.achN>=140],
@@ -7030,7 +7213,7 @@ const ACH_RAW = [
 [3,"신화","삼천 일","모두 합쳐 3,000일을 보낸다.", X=>X.L.days>=3000],
 [3,"유일","도시의 이야기","다른 업적을 모두 이룬다.", X=>X.achN>=ACHIEVEMENTS.length-1],
 ];
-const ACH_ENDINGS = ["다음 손님","둥지로","물려준 열쇠","빈 책상","마지막 손님","대표 사망","대표 실종","인식에서 삭제","세 번째 흉터","대표의 뒤틀림"];
+const ACH_ENDINGS = ["다음 손님","둥지로","물려준 열쇠","빈 책상","마지막 손님","소문이 된 색","공방의 도면","지령"];
 const ACHIEVEMENTS = ACH_RAW.map((r,i)=>({id:"a"+r[0]+"_"+i, cat:r[0], tier:r[1], name:r[2], desc:r[3], test:r[4], hidden: r[1]==="유일"}));
 const ACH_KEY = "problem-solver-achievements-v1";
 function achLoad(){ try{ return JSON.parse(localStorage.getItem(ACH_KEY))||{}; }catch(_){ return {}; } }
@@ -9707,7 +9890,7 @@ function fxTestPanel(){
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
    <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option></select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button></div>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령서 받기</button><button data-adj="en-idx3">마지막 지령서</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
@@ -9744,7 +9927,11 @@ function fxTestPanel(){
     if(k==="en-desk"){ closeAll(); repayAll(); S.repaidShown = true; const L = leader();
       S.fixers.filter(f=>!f.isLeader).forEach(f=>S.records.push({day:S.day, name:f.name, what:"사망", note:"시험"})); S.fixers = [L];
       while(lossCount() < 3) S.records.push({day:S.day, name:randomName(), what:"실종", note:"시험"}); return ledgerOffer(false); }
-    if(k==="en-scar"){ closeAll(); repayAll(); S.repaidShown = true; S.scars = 0; S.scarCard = S.day; S.scarJobPosted = S.day; S.scarJobDone = S.day; S.scarJobSeen = false; return scarJobCheck(); } });
+    if(k==="en-scar"){ closeAll(); repayAll(); S.repaidShown = true; S.scars = 0; S.scarCard = S.day; S.scarJobPosted = S.day; S.scarJobDone = S.day; S.scarJobSeen = false; return scarJobCheck(); }
+    if(k==="en-color"){ closeAll(); repayAll(); S.repaidShown = true; const L = leader(); if(L.grade!==0){ L.grade = 0; L.title = randomColorTitle(); L.tcol = colorOfTitle(L.title); L.cap = 80; } return ledgerOffer(false); }
+    if(k==="en-ws"){ closeAll(); repayAll(); S.repaidShown = true; S.wsAsked = null; const L = leader(); let g = L.gear.weapon; if(!g){ g = Object.assign({}, SHOP.find(i=>i.slot==="weapon" && i.tier>=1)); L.gear.weapon = g; } Object.assign(g, {unique:true, owner:L.id}); return workshopOffer(); }
+    if(k==="en-idx"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; if(X.done >= 3) X.done = 0; return idxVisit(true); }
+    if(k==="en-idx3"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; X.done = 3; return idxVisit(true); } });
   el.addEventListener("click", async e=>{ const wx = e.target.dataset.wx; if(!wx) return; const [w, n] = wx.split("|"); S.weather = {w, night: n==="1"}; save(); render(); playFx("아침", `${S.day}일차 · ${weatherText(S.weather)}`, "날씨를 바꿨다", true); });
   el.addEventListener("click", async e=>{ const k = e.target.dataset.cs; if(!k) return; const f = S.fixers[0];
     const toOne = () => { if(f.grade!==1){ f.grade = 1; f.title = null; } f.starDone = Math.max(STAR_FOR_COLOR, f.starDone||0); };
