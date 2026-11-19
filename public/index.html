@@ -167,6 +167,8 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .mbtn:hover{border-left-color:#c9a86a;padding-left:24px;background:rgba(30,26,22,.85)}
 .mbtn.primary{border-left-color:#c94a4a;color:#f3e3c0;background:rgba(40,22,20,.78)}
 .report-btn{position:fixed;top:12px;right:14px;z-index:140;padding:6px 14px;border:1px solid #e8b24a;border-radius:3px;background:rgba(24,16,6,.88);color:#f2c25e;font-size:13px;font-weight:700;letter-spacing:.1em;text-decoration:none;box-shadow:0 0 14px rgba(232,178,74,.25);transition:background .2s,color .2s}
+.bgm-btn{position:fixed;top:12px;right:92px;z-index:140;padding:6px 12px;border:1px solid #6d6556;border-radius:3px;background:rgba(18,15,12,.88);color:#d9cdb6;font-size:13px;cursor:pointer}
+.bgm-btn.off{color:#6d675e;text-decoration:line-through}
 .report-btn:hover{background:#e8b24a;color:#1a1208}
 .spoiler{margin-top:28px;max-width:300px;padding:10px 14px;border:1px solid rgba(232,178,74,.55);border-left:3px solid #e8b24a;background:rgba(20,14,6,.72);color:#e9dcc2;font-size:12.5px;line-height:1.6;border-radius:3px;box-shadow:0 0 18px rgba(232,178,74,.12)}
 .spoiler b{display:block;color:#f2c25e;font-size:13px;letter-spacing:.12em;margin-bottom:3px}
@@ -710,6 +712,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 </style>
 </head>
 <body>
+<button class="bgm-btn" id="bgmbtn" title="배경 음악 켜기 · 끄기">♪ 음악</button>
 <a class="report-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSfIf5geuiauFB4ArTdeMoJAZbp2oOnyZvX_Bm5K1Aj5K1ETUg/viewform?usp=publish-editor" target="_blank" rel="noopener" title="버그 · 오류 · 의견 제보">[제보]</a>
 <div class="wrap" id="app"></div>
 <footer>이 게임은 Project Moon 세계관을 바탕으로 비영리적인 목적으로 만들어진 팬게임입니다. 플레이를 제외한 일체의 수익성 행위를 금지합니다.<br>또한 모든 환상체와 번호는 팬게임을 위해 일시적으로 부여되거나 원작 번호를 바탕으로 허구로 재구성되었습니다. 그리고 모든 수치와 사건은 이 게임을 위해 만든 허구입니다.</footer>
@@ -2019,7 +2022,7 @@ function synAfter(q, team, success, lines){
   else if(A.fx==="mpUp"){ team.forEach(f=>{ f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*A.v/100)); }); tail = ` <span style="color:#8fd6a0">(출동한 이들 정신력 +${A.v}%)</span>`; }
   else if(A.fx==="wear"){ team.forEach(f=>{ const g = f.gear.weapon; if(isWornable(g) && g.durMax && g.dur > 1){ g.dur--; } }); tail = ` <span class="muted">(무기가 더 닳았다)</span>`; }
   lines.push(`<span style="color:${s.col}">${esc(s.n)}</span> — ${A.ok}${tail}`);
-  ac("synd");
+  ac("synd"); ac("synd_"+s.id);
   try{ if(Math.random() < 0.5) pushRumor(`${s.n} 쪽 일을 ${jo(S.officeName,"이")} 정리했다는 말이 돈다.`, false, performance.now(), "minor"); }catch(_){}
 }
 /* ================= 도시 일람 =================
@@ -2120,7 +2123,14 @@ const REQ_POOL = [
   wil:[["밤마다 장례 행렬이 지나가는 거리를 확인해 달라","장례식장 야간 관리인"]]}
 ];
 const reqTier = g => g>=8 ? 0 : g>=6 ? 1 : g>=4 ? 2 : 3;
-function genRequests(){
+/* 마감 기한: 처음 2주(EARLY_DL_DAYS)는 사무소 인원에 맞춰 넉넉하게 — 하루에 마감되는 의뢰가 해결사 수를 넘지 않도록 2일부터 차례로 늘린다.
+   그 뒤로는 본격적으로 1~3일. 새로 올라오는 의뢰에만 적용한다. */
+const EARLY_DL_DAYS = 14;
+function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequestsInner();
+  if(S.day <= EARLY_DL_DAYS){ const nF = Math.max(1, S.fixers.filter(f=>f.hp > 0).length), fresh = S.requests.filter(q=>!before.has(q.id) && q.deadline!=null);
+    const load = {}; S.requests.forEach(q=>{ if(before.has(q.id) && q.deadline!=null) load[q.deadline] = (load[q.deadline]||0) + 1; });
+    fresh.forEach(q=>{ let d = 2; while((load[d]||0) >= nF) d++; q.deadline = d; load[d] = (load[d]||0) + 1; }); } }
+function genRequestsInner(){
   let n = 12 - S.officeGrade; // 9급 3개, 8급 4개, 7급 5개 ...
   if(S.day<=3){
     // 초반 3일: 각 해결사의 가장 높은 능력치에 맞춘 쉬운 의뢰(성공률 90% 이상)
@@ -2235,6 +2245,42 @@ async function runMinigames(q, team){
   return {score: games.length ? sum/games.length : 0, combat, decisive: dec.length===games.length ? dec.every(d=>d.win) : null, lostDecisive: dec.some(d=>!d.win), abno};
 }
 
+/* ================= 배경 음악 =================
+   미니게임 창이 열리면 그 상황의 곡이 흐르고, 닫히면 잦아든다. 창이 겹치면(호위 중 매복 전투 등) 맨 위 창의 곡이 흐른다.
+   normal: 일반 의뢰 수행 · battle: 전투 의뢰 · warn1: 죄종~TETH · warn2: HE~WAW · warn3: ALEPH */
+const BGM = (function(){
+  const SRC = {normal:"bgm/normal.mp3", battle:"bgm/battle.mp3", warn1:"bgm/warn1.mp3", warn2:"bgm/warn2.mp3", warn3:"bgm/warn3.mp3"};
+  const KEY = "problem-solver-bgm-v1";
+  let opt = {on:true, vol:0.45}; try{ Object.assign(opt, JSON.parse(localStorage.getItem(KEY))||{}); }catch(_){}
+  const stack = [], els = {}; let cur = null, fadeT = null, relT = null;
+  const el = k => { if(!els[k]){ const a = new Audio(SRC[k]); a.loop = true; a.preload = "none"; a.volume = 0; els[k] = a; } return els[k]; };
+  function fade(a, to, ms, done){ const from = a.volume, t0 = performance.now();
+    const step = () => { const p = Math.min(1, (performance.now()-t0)/ms); a.volume = Math.max(0, Math.min(1, from + (to-from)*p)); if(p < 1) a._f = requestAnimationFrame(step); else if(done) done(); };
+    cancelAnimationFrame(a._f); step(); }
+  function apply(){
+    for(let i=stack.length-1;i>=0;i--) if(stack[i].bg && !stack[i].bg.isConnected) stack.splice(i,1);
+    const want = opt.on && stack.length ? stack[stack.length-1].k : null;
+    if(want === cur){ if(cur) fade(el(cur), opt.vol, 300); return; }
+    if(cur){ const a = el(cur); fade(a, 0, 700, ()=>{ if(cur !== a._k) a.pause(); }); }
+    cur = want;
+    if(want){ const a = el(want); a._k = want; if(a.paused){ a.currentTime = a._k===want && a._pos ? a._pos : 0; } a.play().catch(()=>{}); fade(a, opt.vol, 900); }
+  }
+  return {
+    push(k, bg){ if(!SRC[k]) return null; const tok = {k, bg}; stack.push(tok); clearTimeout(relT); apply(); return tok; },
+    pop(tok){ const i = stack.indexOf(tok); if(i>=0) stack.splice(i,1); clearTimeout(relT); relT = setTimeout(apply, 450); },
+    toggle(){ opt.on = !opt.on; try{ localStorage.setItem(KEY, JSON.stringify(opt)); }catch(_){} apply(); return opt.on; },
+    setVol(v){ opt.vol = Math.max(0, Math.min(1, v)); try{ localStorage.setItem(KEY, JSON.stringify(opt)); }catch(_){} if(cur) el(cur).volume = opt.vol; },
+    tick(){ if(stack.some(t=>t.bg && !t.bg.isConnected)) apply(); },
+    get on(){ return opt.on; }, get vol(){ return opt.vol; }, get cur(){ return cur; }, get depth(){ return stack.length; }
+  };
+})();
+// 미니게임 창 제목과 의뢰로 곡을 고른다
+function bgmFor(title, q){
+  if(q && (q.kind==="환상체" || q.abnoFoe)){
+    const a = q && typeof abnoOf==="function" ? abnoOf(q) : null, r = a ? a.risk : "TETH";
+    return r==="ALEPH" ? "warn3" : (r==="HE" || r==="WAW") ? "warn2" : "warn1"; }
+  if(/^정면 돌파/.test(title)) return "battle";
+  return "normal"; }
 /* ================= 미니게임 공통 창 ================= */
 function mgOpen(title, desc, ctx, H=300){
   const bg = document.createElement("div"); bg.className = "mg-bg";
@@ -2245,11 +2291,12 @@ function mgOpen(title, desc, ctx, H=300){
   const cvs = bg.querySelector("canvas"), c = cvs.getContext("2d");
   const d = Math.min(2, devicePixelRatio||1); cvs.width = 720*d; cvs.height = H*d; c.setTransform(d,0,0,d,0,0);
   const pos = e => { const r = cvs.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*720, y:(e.clientY-r.top)/r.height*H}; };
-  return { bg, cvs, c, pos, info: bg.querySelector(".mg-info"), ctrl: bg.querySelector(".mg-ctrl"), quit: bg.querySelector(".mg-quit"), close(){ bg.remove(); } };
+  const tok = BGM.push(bgmFor(title, ctx.q), bg);
+  return { bg, cvs, c, pos, info: bg.querySelector(".mg-info"), ctrl: bg.querySelector(".mg-ctrl"), quit: bg.querySelector(".mg-quit"), close(){ if(bg.isConnected) BGM.pop(tok); bg.remove(); } };
 }
 function mgResult(m, score, text){
   return new Promise(res=>{ m.info.innerHTML = `<b style="color:${score>=0.7?"var(--green)":score>=0.4?"var(--yellow)":"var(--red)"}">${text} · ${Math.round(score*100)}점</b>`; m.ctrl.innerHTML=""; m.quit.textContent="계속";
-    m.quit.onclick = ()=>{ m.close(); res(score); }; setTimeout(()=>{ if(document.body.contains(m.bg)){ m.close(); res(score); } }, 1800); });
+    m.quit.onclick = ()=>{ m.close(); res(score); }; setTimeout(()=>{ if(document.body.contains(m.bg)){ m.close(); res(score); } }, 2600); });
 }
 const powK = (ctx, a) => clamp(teamPower(ctx.team, [a]) / Math.max(1, ctx.q.req), 0.55, 1.7);
 
@@ -3150,7 +3197,7 @@ function mgCombat(ctx){
         const at = st.abAtk ? clock - st.abAtk.t0 : 1e9, ak = at < st.abAtk?.imp + 360 ? (at < st.abAtk.imp ? ease(at/st.abAtk.imp) : 1 - clamp((at-st.abAtk.imp)/360,0,1)) : 0;
         const egg = outcome==="제압" && st.koAt!=null && clock>st.koAt, rr = 34 + (ABNO_LVL[AB.risk]||2)*1.5;
         c.save(); if(outcome==="사살" && st.koAt!=null) c.globalAlpha = 1 - clamp((clock-st.koAt)/900,0,1)*0.85;
-        drawAbnoFigure(c, now/1000, POS.foe.x + fp.dx*0.12 - ak*22, POS.foe.gy - POS.foe.h*0.55 + Math.sin(now/600)*4 + fp.dy*0.12 + ak*8, rr, AB.risk, {rage: !egg && (foe.hp < foe.max*0.5 || AB.rage), egg, ent: 1, flash: fp.flash*3, atk: ak, dim: fdim});
+        drawAbnoFigure(c, now/1000, POS.foe.x + fp.dx*0.12 - ak*22, POS.foe.gy - POS.foe.h*0.55 + Math.sin(now/600)*4 + fp.dy*0.12 + ak*8, rr, AB.risk, {rage: !egg && (foe.hp < foe.max*0.5 || AB.rage), egg, eggT: egg ? (clock - st.koAt)/1000 : null, ent: 1, flash: fp.flash*3, atk: ak, dim: fdim});
         c.restore();
       } else
       drawFixer(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, {face:-1, col:fcol, state: outcome==="제압" ? "hurt" : "combat", weapon: outcome ? null : foe.spec, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot, hurt: 1-fworst});
@@ -4446,13 +4493,60 @@ const abnoTags = f => { const A = f.ab || {}, t = [];
    전투: enrage(맞으면 붉게) · fuse(성냥불 표식, N턴 뒤 폭발) · aoe(N턴마다 심판) — mgCombat에서 처리 */
 /* 환상체의 모습: 위험 등급 빛깔의 가시 다각형 몸통 · 색이 어긋난 잔상 · 서로 반대로 도는 파편 고리 · 텅 빈 구멍 속 세로로 찢어진 눈.
    관측(통제) 화면과 전투 화면이 같은 그림을 쓴다. o: {rage, egg, ent(등장 0~1), flash(맞음 0~1), atk(공격 0~1), dim(어두움 0~1)} */
+/* 알로 돌아가기 — 원작에서 환상체는 죽지 않고, 제압되면 알 모양의 핵(core)으로 되돌아갔다가 시간이 지나면 다시 깨어난다.
+   0~0.7초: 몸이 굳으며 금이 가고 하얗게 달아오른다 → 0.5~1.6초: 몸이 조각나 빛 알갱이가 소용돌이치며 한 점으로 빨려 든다
+   1.3~1.7초: 한 점이 번쩍 → 1.5초~: 알이 부풀어 오르며(살짝 튕김) 굳고, 껍질 안쪽으로 위험 등급 빛이 심장처럼 천천히 맥동한다.
+   o.eggT: 알이 되기 시작한 뒤 지난 초(없으면 다 끝난 모습) */
+function drawAbnoEgg(c, t, sx, sy, r, risk, o){
+  const RC = ABNO_RCOL[risk] || ABNO_RCOL.ZAYIN, k44 = r/44, et = o.eggT==null ? 99 : o.eggT, lvl = ABNO_LVL[risk] || 1, N = 26 + lvl*6;
+  const cy = sy + 8*k44, seg2 = (a,b)=>clamp((et-a)/(b-a), 0, 1), easeO = x=>1-Math.pow(1-x,3);
+  // ① 굳고 금이 가는 몸
+  const p1 = seg2(0, 0.7), fade = 1 - seg2(0.45, 0.95);
+  if(fade > 0){ c.save(); c.globalAlpha *= fade; const jit = p1*3*k44;
+    drawAbnoFigure(c, t*0.2, sx + (Math.random()-0.5)*jit, sy + (Math.random()-0.5)*jit, r*(1 - 0.12*p1), risk, Object.assign({}, o, {egg:false, rage:false, flash: Math.min(1, p1*1.2), atk:0}));
+    c.strokeStyle = `rgba(255,250,235,${0.9*p1})`; c.lineWidth = Math.max(1, 1.6*k44); c.lineCap = "round";
+    for(let i=0;i<7;i++){ const a0 = i*0.9 + 0.3, len = r*(0.4 + 0.5*((i*37)%10)/10)*p1; c.beginPath(); let x = sx, y = sy; c.moveTo(x, y);
+      for(let k=1;k<=3;k++){ x = sx + Math.cos(a0 + Math.sin(k*2.1+i)*0.5)*len*k/3; y = sy + Math.sin(a0 + Math.sin(k*1.7+i)*0.5)*len*k/3; c.lineTo(x, y); } c.stroke(); }
+    c.restore(); }
+  // ② 빛 알갱이가 소용돌이치며 한 점으로
+  const p2 = seg2(0.5, 1.6);
+  if(p2 > 0 && p2 < 1){ c.save(); c.globalCompositeOperation = "lighter";
+    for(let i=0;i<N;i++){ const h0 = (i*97.13)%1, a0 = i/N*Math.PI*2 + h0, rad = r*(0.6 + 1.4*h0)*(1 - easeO(p2)), ang = a0 + easeO(p2)*(3 + h0*2);
+      const x = sx + Math.cos(ang)*rad, y = cy + Math.sin(ang)*rad*0.8 - (1-p2)*8*k44*h0, sz = (1.5 + 2.5*(1-h0))*k44*(1 - p2*0.5);
+      const cc = h0 < 0.35 ? [255,250,235] : RC; c.fillStyle = `rgba(${cc.join(",")},${0.85*(1 - p2*0.3)})`; c.beginPath(); c.arc(x, y, sz, 0, 7); c.fill();
+      c.strokeStyle = `rgba(${RC.join(",")},${0.25*(1-p2)})`; c.lineWidth = sz*0.8; c.beginPath(); c.moveTo(x, y); c.lineTo(x - Math.cos(ang+1.4)*sz*4, y - Math.sin(ang+1.4)*sz*3.2); c.stroke(); }
+    c.restore(); }
+  // ③ 번쩍
+  const p3 = seg2(1.3, 1.75);
+  if(p3 > 0 && p3 < 1){ c.save(); c.globalCompositeOperation = "lighter"; const fr = r*(0.4 + 2.6*easeO(p3)), g = c.createRadialGradient(sx, cy, 0, sx, cy, fr);
+    g.addColorStop(0, `rgba(255,252,240,${0.95*(1-p3)})`); g.addColorStop(0.4, `rgba(${RC.join(",")},${0.5*(1-p3)})`); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(sx-fr, cy-fr, fr*2, fr*2);
+    c.strokeStyle = `rgba(255,250,235,${0.8*(1-p3)})`; c.lineWidth = 2*k44; c.beginPath(); c.ellipse(sx, cy, fr*0.8, fr*0.62, 0, 0, 7); c.stroke(); c.restore(); }
+  // ④ 알: 부풀어 오르며 굳는다 · 안쪽 맥동 · 바닥 그림자
+  const p4 = seg2(1.5, 2.3); if(p4 <= 0) return;
+  const pop = p4 < 1 ? easeO(p4)*(1 + 0.12*Math.sin(p4*Math.PI)) : 1, beat = 0.5 + 0.5*Math.pow(Math.max(0, Math.sin(t*1.6)), 6), bob = Math.sin(t*1.1)*1.5*k44;
+  const ex = sx, ey = cy + bob, rx = r*0.5*pop, ry = r*0.66*pop;
+  c.save(); c.fillStyle = "rgba(0,0,0,0.35)"; c.beginPath(); c.ellipse(sx, cy + r*0.7, r*0.42*pop, r*0.08*pop, 0, 0, 7); c.fill(); c.restore();
+  const halo = c.createRadialGradient(ex, ey, 0, ex, ey, r*1.6); halo.addColorStop(0, `rgba(${RC.join(",")},${0.18 + 0.14*beat})`); halo.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = halo; c.fillRect(ex-r*1.6, ey-r*1.6, r*3.2, r*3.2);
+  const egP = new Path2D(); egP.ellipse(ex, ey, rx, ry, 0, 0, 7);
+  const shell = c.createRadialGradient(ex - rx*0.35, ey - ry*0.45, rx*0.1, ex, ey, ry*1.05);
+  shell.addColorStop(0, "rgb(246,240,226)"); shell.addColorStop(0.55, "rgb(214,206,188)"); shell.addColorStop(1, "rgb(150,142,128)");
+  c.fillStyle = shell; c.fill(egP);
+  c.save(); c.clip(egP);
+  const core = c.createRadialGradient(ex, ey + ry*0.15, 0, ex, ey + ry*0.15, rx*1.1); core.addColorStop(0, `rgba(${RC.join(",")},${0.35 + 0.35*beat})`); core.addColorStop(1, `rgba(${RC.join(",")},0)`);
+  c.globalCompositeOperation = "multiply"; c.fillStyle = core; c.fillRect(ex-rx, ey-ry, rx*2, ry*2); c.globalCompositeOperation = "source-over";
+  // 껍질의 실금(굳는 동안 빛이 새어 나왔다가 닫힌다)
+  const seal = 1 - seg2(1.8, 2.8); if(seal > 0){ c.strokeStyle = `rgba(255,250,235,${0.85*seal})`; c.lineWidth = Math.max(1, 1.4*k44); c.beginPath(); c.moveTo(ex - rx*0.9, ey - ry*0.05); [[-0.5,0.08],[-0.2,-0.06],[0.1,0.1],[0.4,-0.04],[0.9,0.06]].forEach(([u,v])=>c.lineTo(ex + rx*u, ey + ry*v)); c.stroke(); }
+  c.fillStyle = "rgba(255,255,255,0.35)"; c.beginPath(); c.ellipse(ex - rx*0.35, ey - ry*0.45, rx*0.18, ry*0.12, -0.6, 0, 7); c.fill();
+  c.restore();
+  c.strokeStyle = `rgba(${RC.map(v=>Math.round(v*0.5)).join(",")},0.8)`; c.lineWidth = Math.max(1, 1.5*k44); c.stroke(egP);
+}
 function drawAbnoFigure(c, t, sx, sy, r, risk, o){
   o = o || {}; const RC = ABNO_RCOL[risk] || ABNO_RCOL.ZAYIN, rage = !!o.rage, egg = !!o.egg, ent = o.ent==null ? 1 : o.ent, k44 = r/44, atk = o.atk||0;
   const cc0 = egg ? [230,220,190] : rage ? RC.map(v=>Math.min(255, Math.round(v*1.15+20))) : RC, fl = o.flash||0, dm = o.dim||0;
   const cc = cc0.map(v=>Math.round((v + (255 - v)*fl*0.7)*(1-dm))), col = cc.join(","), N = ABNO_SHARD[risk] || 6, lvl = ABNO_LVL[risk] || 1;
   const sc = (egg ? 1 : 0.35 + 0.65*Math.min(1, ent*1.6))*(1 + 0.18*atk);
+  if(egg) return drawAbnoEgg(c, t, sx, sy, r, risk, o);
   const gl = c.createRadialGradient(sx, sy, 4, sx, sy, r*2.6*sc); gl.addColorStop(0, `rgba(${col},${0.32+0.06*lvl+0.25*atk})`); gl.addColorStop(1, `rgba(${col},0)`); c.fillStyle = gl; c.fillRect(sx-r*3, sy-r*3, r*6, r*6);
-  if(egg){ c.fillStyle = `rgba(${col},0.9)`; c.beginPath(); c.ellipse(sx, sy+8*k44, r*0.55, r*0.72, 0, 0, 7); c.fill(); return; }
   // 떠도는 파편 고리: 서로 반대로 돌며 깜빡인다
   for(let ring=0; ring<2; ring++){ const rr0 = r*(1.55+ring*0.45)*sc, sp = (ring ? -0.6 : 0.9)*(rage?2.4:1)*(1+atk*2);
     for(let i=0;i<N;i++){ const ang = i/N*Math.PI*2 + t*sp + ring*0.4, f2 = 0.35 + 0.65*Math.abs(Math.sin(t*3 + i*1.7 + ring));
@@ -4669,7 +4763,8 @@ function mgAbno(ctx){
           c.strokeStyle = `rgba(${col},${al})`; c.lineWidth = 1.5 + (1-e)*3; c.beginPath();
           for(let i=0;i<=N;i++){ const ang = i/N*Math.PI*2 + k*0.6 + t*(k%2?1:-1), rr = rad*(1 + 0.08*Math.sin(i*3+k)); const x = sx + Math.cos(ang)*rr, y = sy + Math.sin(ang)*rr*0.8; i ? c.lineTo(x,y) : c.moveTo(x,y); } c.stroke(); }
         for(let y=0;y<H;y+=3){ if(Math.random() < (1-ent)*0.35){ c.fillStyle = `rgba(${col},${0.08*(1-ent)})`; c.fillRect(0,y,W,1); } } c.restore(); }
-      drawAbnoFigure(c, t, sx, sy, r, a.risk, {rage, egg, ent});
+      if(egg && G.eggAt==null) G.eggAt = t; if(!egg) G.eggAt = null;
+      drawAbnoFigure(c, t, sx, sy, r, a.risk, {rage, egg, ent, eggT: egg ? t - G.eggAt : null});
       // 화면이 어긋나는 잡음: 위험할수록, 날뛸수록 잦다
       if(!egg && Math.random() < 0.02 + lvl*0.012 + (rage ? 0.08 : 0) + (ent<1 ? 0.15 : 0)){ const d = Math.min(2, devicePixelRatio||1), y0 = Math.random()*H, hh = 4 + Math.random()*18, dx = (Math.random()-0.5)*(14 + lvl*6);
         c.save(); c.setTransform(1,0,0,1,0,0); c.drawImage(m.cvs, 0, y0*d, W*d, hh*d, dx*d, y0*d, W*d, hh*d); c.restore(); }
@@ -6013,6 +6108,7 @@ async function idxVisit(force){
     골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다. 검지의 사도다.</p>
     <div class="idx-card">${P.t}</div><p class="muted" style="font-size:12px">따르면 기한 안에 지켜야 한다. 지키면 사례가 오고, 어기면 대가를 치른다.</p>`,
     [{t:"찢는다", v:"no"}, {t:"따른다", v:"yes", primary:true}]);
+  ac("idxGot");
   if(v==="yes"){ X.cur = {id:P.id, got:0, until:S.day + P.days, from:S.day}; X.last = P.id; addLog(`검지의 지령서를 받았다 — ${P.t}`); }
   else { X.torn++; addLog("지령서를 찢었다."); if(X.torn >= 2){ X.closed = true; addLog("그 뒤로 문틈에 봉투가 끼워지는 일은 없었다."); } }
   save(); render();
@@ -6022,7 +6118,7 @@ function idxOnDispatch(q, team, success){
   if(P.rest){ idxFail(P); return; }
   if(success && P.test(q, team)){ X.cur.got++; if(X.cur.got >= P.need) idxDone(P); }
 }
-function idxDone(P){ const X = S.idx, pay = idxPay(); X.cur = null; X.done++; S.money += pay; S.todayIncome = (S.todayIncome||0) + pay;
+function idxDone(P){ const X = S.idx, pay = idxPay(); X.cur = null; X.done++; ac("idxDone"); S.money += pay; S.todayIncome = (S.todayIncome||0) + pay;
   addLog(`지령을 지켰다. 다음 날 문틈의 봉투에 ${won(pay)}과 쪽지 한 장 — "잘했다."`); toast(`검지의 지령 이행 (${X.done}/3) · +${won(pay)}`); save(); }
 function idxFail(P){ const X = S.idx; X.cur = null;
   S.fixers.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.round(f.hpMax*0.1)); });
@@ -6958,6 +7054,7 @@ async function openForge(f, slot0, mode){
     a: ego ? (egoSlot(f.ego)==="armor" ? eL : null) : prevA ? Object.assign({}, prevA.look) : null,
     name: ego ? f.ego.name : up ? wpn.name : "", alloc: null, special: ego ? f.ego.special || null : null};
   if(st.w && !Array.isArray(st.w.add)) st.w.add = [];
+  if(st.w && st.w.kind) st.w.add = st.w.add.filter(id=>addsFor(st.w.kind).some(x=>x.id===id));
   const kindName = () => st.slot==="weapon" ? WEAPON_KINDS[st.w.kind].n : ARMOR_TYPES[st.a.type];
   const defName = () => ego ? f.ego.name : up ? wpn.name : `${f.title||f.name}의 ${kindName()}`;
   const wpw = up ? (wpn.power || UNIQUE_POWER) : 0;
@@ -6999,7 +7096,7 @@ async function openForge(f, slot0, mode){
           + `<div class="fg-row"><span>길이</span><input type="range" min="0.75" max="1.5" step="0.05" value="${st.w.len}" data-wlen="1"></div>`
           + `<div class="fg-row"><span>폭·두께</span><input type="range" min="0.7" max="1.6" step="0.05" value="${st.w.wid}" data-wwid="1"></div>`
           + sw(METALS, st.w.metal, "metal", "금속색") + sw(GLOWS, st.w.glow, "glow", "발광")
-          + `<div class="fg-row"><span>추가 붙임<br><small class="muted">${ad.length}/${ADD_MAX}</small></span><div class="fg-seg fg-add">${WEAPON_ADDS.map(a=>`<button class="${ad.includes(a.id)?"on":""}" data-add="${a.id}" title="${esc(a.d)}" ${!ad.includes(a.id) && ad.length>=ADD_MAX ? "disabled" : ""}>${a.n}</button>`).join("")}</div></div>`;
+          + `<div class="fg-row"><span>추가 붙임<br><small class="muted">${ad.length}/${ADD_MAX}</small></span><div class="fg-seg fg-add">${addsFor(st.w.kind).map(a=>`<button class="${ad.includes(a.id)?"on":""}" data-add="${a.id}" title="${esc(a.d)}" ${!ad.includes(a.id) && ad.length>=ADD_MAX ? "disabled" : ""}>${a.n}</button>`).join("")}</div></div>`;
       } else ctl = seg(ARMOR_TYPES, st.a.type, "atype", "형태") + seg(["없음","작게","크게"], st.a.pad||0, "pad", "어깨 장갑") + seg(["낮게","세움"], st.a.collar||0, "collar", "깃") + sw(GLOWS, st.a.trim, "trim", "장식선");
       return head + `<div class="fg-body">${prev}<div class="fg-ctl">${ctl}
         ${mode==="retouch" ? `<div class="fg-row"><span>이름</span><b>${esc(wpn.name)}</b></div>` : `<div class="fg-row"><span>이름</span><input id="fgname" maxlength="30" value="${esc(st.name || defName())}"></div>`}
@@ -7037,7 +7134,7 @@ async function openForge(f, slot0, mode){
       const b = e.target.closest("button"); if(!b || b.disabled) return; const d = b.dataset;
       if(d.slot){ st.slot = d.slot; st.step = 2; st.name = ""; st.alloc = null; }
       else if(d.add){ const ad = st.w.add = st.w.add||[]; const i = ad.indexOf(d.add); if(i>=0) ad.splice(i,1); else if(ad.length < ADD_MAX) ad.push(d.add); }
-      else if(d.kind){ st.w = Object.assign(defaultSpec(d.kind), st.w && st.w.kind===d.kind ? st.w : {}); st.step = 3; }
+      else if(d.kind){ st.w = Object.assign(defaultSpec(d.kind), st.w && st.w.kind===d.kind ? st.w : {}); st.w.add = (st.w.add||[]).filter(id=>addsFor(d.kind).some(a=>a.id===id)); st.step = 3; }
       else if(d.atype!==undefined){ st.a = Object.assign({type:1, pad:1, collar:0, trim:null}, st.a||{}, {type:+d.atype}); if(st.step===2) st.step = 3; }
       else if(d.wv!==undefined){ st.w.v = +d.wv; }
       else if(d.metal){ st.w.metal = d.metal; }
@@ -7243,7 +7340,7 @@ function buildShell(){
 /* ================= 업적 ================= */
 // 게임 시스템이 정리되면 여기에 업적을 추가한다. {id, name, desc, hidden}
 /* ================= 업적 =================
-   네 갈래(사무소·의뢰 / 해결사·공방 / 환상체·도감·기프트 / 기타), 갈래마다 41개 + 유일 1개.
+   네 갈래(사무소·의뢰 / 해결사·공방 / 환상체·도감·기프트 / 기타), 갈래마다 41개 + 유일 1개, 그 뒤에 덧붙인 17개(새 업적은 늘 끝에 붙인다 — id가 순서로 매겨진다).
    등급 비중(갈래마다): 일반 14(34%) · 드묾 9(22%) · 희귀 9(22%) · 영웅 5(12%) · 전설 2(5%) · 신화 2(5%) · 유일 1.
    일반은 평범하게 하다 보면 닿고, 유일은 운이 아니라 끈기와 솜씨로만 닿게 했다.
    달성 기록과 누적 기록은 게임을 새로 시작해도 이 브라우저에 남는다. */
@@ -7261,45 +7358,45 @@ const ACH_RAW = [
 // ── 1. 사무소 · 의뢰
 [0,"일반","첫 의뢰","의뢰를 처음으로 해낸다.", X=>X.L.ok>=1],
 [0,"일반","게시판 단골","의뢰를 10건 해낸다.", X=>X.L.ok>=10],
-[0,"일반","첫 보수","보수를 모두 합쳐 10만 원 번다.", X=>X.L.pay>=100000],
+[0,"일반","첫 보수","보수를 모두 합쳐 10만 안 번다.", X=>X.L.pay>=100000],
 [0,"일반","직접 뛴다","직접 수행으로 의뢰를 5건 해낸다.", X=>X.L.play>=5],
 [0,"일반","믿고 맡긴다","자동 진행으로 의뢰를 5건 해낸다.", X=>X.L.auto>=5],
 [0,"일반","첫 주","한 게임에서 7일을 넘긴다.", X=>X.R.days>=7],
 [0,"일반","첫 상환","빚을 처음으로 갚는다.", X=>X.L.repay>=1],
 [0,"일반","길동무","호위 의뢰를 3건 해낸다.", X=>X.L.escort>=3],
-[0,"일반","장부 넘기기","수색 의뢰를 3건 해낸다.", X=>X.L.search>=3],
-[0,"일반","머릿수","세 명 이상이 함께 나가 의뢰를 5건 해낸다.", X=>X.L.crew>=5],
+[0,"일반","발품","수색 의뢰를 3건 해낸다.", X=>X.L.search>=3],
+[0,"일반","여럿이 한 몸처럼","세 명 이상이 함께 나가 의뢰를 5건 해낸다.", X=>X.L.crew>=5],
 [0,"일반","홀로 선 자리","혼자 나가 의뢰를 5건 해낸다.", X=>X.L.solo>=5],
 [0,"일반","목숨은 남긴다","의뢰에서 5번 제압으로 끝낸다.", X=>X.L.spare>=5],
 [0,"일반","첫 심사","하나 협회 등급 심사를 처음 받는다.", X=>X.L.review>=1],
-[0,"일반","7급 사무소","사무소가 7급이 된다.", X=>X.og<=7],
+[0,"일반","한 계단","사무소가 7급이 된다.", X=>X.og<=7],
 [0,"드묾","손에 익은 일","의뢰를 50건 해낸다.", X=>X.L.ok>=50],
-[0,"드묾","백만 원","보수를 모두 합쳐 100만 원 번다.", X=>X.L.pay>=1000000],
+[0,"드묾","첫 백만 안","보수를 모두 합쳐 100만 안 번다.", X=>X.L.pay>=1000000],
 [0,"드묾","한 달","한 게임에서 30일을 넘긴다.", X=>X.R.days>=30],
-[0,"드묾","5급 사무소","사무소가 5급이 된다.", X=>X.og<=5],
+[0,"드묾","중견 사무소","사무소가 5급이 된다.", X=>X.og<=5],
 [0,"드묾","뒤를 남기지 않는다","의뢰에서 20번 사살로 끝낸다.", X=>X.L.kill>=20],
 [0,"드묾","분수 넘치는 일","출동한 해결사 중 가장 높은 등급보다 어려운 의뢰를 10건 해낸다.", X=>X.L.over>=10],
 [0,"드묾","깔끔한 솜씨","직접 수행에서 90점 이상으로 10번 끝낸다.", X=>X.L.clean>=10],
 [0,"드묾","흉터 없는 한 달","한 게임에서 흉터 경고 없이 28일을 넘긴다.", X=>X.R.days>=28 && !X.S.scars],
 [0,"드묾","길과 장부","호위와 수색 의뢰를 각각 15건 해낸다.", X=>X.L.escort>=15 && X.L.search>=15],
-[0,"희귀","이름난 사무소","의뢰를 200건 해낸다.", X=>X.L.ok>=200],
-[0,"희귀","천만 원","보수를 모두 합쳐 1,000만 원 번다.", X=>X.L.pay>=10000000],
-[0,"희귀","3급 사무소","사무소가 3급이 된다.", X=>X.og<=3],
+[0,"희귀","이름난 사무소","의뢰를 120건 해낸다.", X=>X.L.ok>=120],
+[0,"희귀","천만 안의 장부","보수를 모두 합쳐 1,000만 안 번다.", X=>X.L.pay>=10000000],
+[0,"희귀","이름 있는 간판","사무소가 3급이 된다.", X=>X.og<=3],
 [0,"희귀","두 달","한 게임에서 60일을 넘긴다.", X=>X.R.days>=60],
 [0,"희귀","바쁜 하루","하루에 의뢰를 5건 해낸다.", X=>X.R.dayBest>=5],
 [0,"희귀","악몽을 걷다","도시 악몽 의뢰를 5건 해낸다.", X=>X.L.nightmare>=5],
 [0,"희귀","스무 번의 성공","한 게임에서 의뢰를 20번 잇달아 해낸다.", X=>X.R.streakBest>=20],
 [0,"희귀","흠 없는 한 주","한 주에 의뢰를 10건 이상 맡아 하나도 그르치지 않는다.", X=>X.L.cleanWeek>=1],
-[0,"희귀","현장의 사람들","직접 수행으로 의뢰를 100건 해낸다.", X=>X.L.play>=100],
-[0,"영웅","도시가 아는 이름","의뢰를 500건 해낸다.", X=>X.L.ok>=500],
-[0,"영웅","1급 사무소","사무소가 1급이 된다.", X=>X.og<=1],
-[0,"영웅","별을 따다","도시의 별 의뢰를 10건 해낸다.", X=>X.L.star>=10],
+[0,"희귀","현장의 사람들","직접 수행으로 의뢰를 60건 해낸다.", X=>X.L.play>=60],
+[0,"영웅","도시가 아는 이름","의뢰를 250건 해낸다.", X=>X.L.ok>=250],
+[0,"영웅","정점의 간판","사무소가 1급이 된다.", X=>X.og<=1],
+[0,"영웅","별을 따다","도시의 별 의뢰를 5건 해낸다.", X=>X.L.star>=5],
 [0,"영웅","장부가 닫히다","빚을 모두 갚는다.", X=>X.L.repaid>=1],
-[0,"영웅","억","보수를 모두 합쳐 1억 원 번다.", X=>X.L.pay>=100000000],
+[0,"영웅","억대 매출","보수를 모두 합쳐 1억 안 번다.", X=>X.L.pay>=100000000],
 [0,"전설","석 달 안에","90일 안에 빚을 모두 갚는다.", X=>X.L.repaid90>=1],
-[0,"전설","천 건의 기록","의뢰를 1,000건 해낸다.", X=>X.L.ok>=1000],
+[0,"전설","사백 건의 장부","의뢰를 400건 해낸다.", X=>X.L.ok>=400],
 [0,"신화","흉터 한 줄 없이","한 게임에서 흉터 경고를 한 번도 받지 않고 빚을 모두 갚는다.", X=>X.L.repaidClean>=1],
-[0,"신화","별이 쏟아지는 밤","도시의 별 의뢰를 50건 해낸다.", X=>X.L.star>=50],
+[0,"신화","별이 쏟아지는 밤","도시의 별 의뢰를 20건 해낸다.", X=>X.L.star>=20],
 [0,"유일","도시의 별이 된 사무소","한 게임에서 사무소 1급 · 빚 청산 · 특색 3명을 모두 이루고, 그동안 아무도 잃지 않는다.", X=>X.og<=1 && X.S && X.S.debt<=0 && X.colorN>=3 && !X.R.lost],
 // ── 2. 해결사 · 공방
 [1,"일반","첫 식구","해결사를 처음 영입한다.", X=>X.L.hire>=1],
@@ -7310,39 +7407,39 @@ const ACH_RAW = [
 [1,"일반","장신구 하나","장신구를 낀 해결사가 있다.", X=>X.S && X.S.fixers.some(f=>f.gear && f.gear.acc)],
 [1,"일반","넷이서","해결사가 넷이 된다.", X=>X.fixN>=4],
 [1,"일반","강행군","하루에 두 번 내보낸다.", X=>X.L.march>=1],
-[1,"일반","7급 해결사","7급 해결사가 나온다.", X=>X.bestG<=7],
+[1,"일반","첫 계단","해결사가 처음으로 7급에 오른다.", X=>X.bestG<=7],
 [1,"일반","다섯 번의 승급","해결사 승급을 모두 합쳐 5번 한다.", X=>X.L.promo>=5],
-[1,"일반","스무 번의 성장","의뢰로 오른 능력치가 모두 합쳐 20이 된다.", X=>X.L.grow>=20],
+[1,"일반","몸이 기억한다","의뢰로 오른 능력치가 모두 합쳐 20이 된다.", X=>X.L.grow>=20],
 [1,"일반","기술 깨우침","해결사가 처음으로 기술을 깨우친다.", X=>X.L.tech>=1],
 [1,"일반","단골 공방","공방에서 장비를 5번 산다.", X=>X.L.buy>=5],
 [1,"일반","다섯 식구","해결사가 다섯이 된다.", X=>X.fixN>=5],
-[1,"드묾","5급 해결사","5급 해결사가 나온다.", X=>X.bestG<=5],
+[1,"드묾","어엿한 해결사","5급 해결사가 나온다.", X=>X.bestG<=5],
 [1,"드묾","스무 번의 승급","해결사 승급을 모두 합쳐 20번 한다.", X=>X.L.promo>=20],
 [1,"드묾","개화","해결사의 E.G.O.가 처음 피어난다.", X=>X.L.ego>=1],
 [1,"드묾","제 것","고유 장비를 처음 갖는다.", X=>X.L.forge>=1],
 [1,"드묾","사람을 모으다","해결사를 10명 영입한다.", X=>X.L.hire>=10],
-[1,"드묾","백 번의 성장","의뢰로 오른 능력치가 모두 합쳐 100이 된다.", X=>X.L.grow>=100],
+[1,"드묾","단련의 흔적","의뢰로 오른 능력치가 모두 합쳐 100이 된다.", X=>X.L.grow>=100],
 [1,"드묾","신(心)","해결사가 처음으로 신(心)을 깨우친다.", X=>X.L.shin>=1],
 [1,"드묾","다섯 갈래 손","한 해결사가 기술을 다섯 가지 깨우친다.", X=>X.S && X.S.fixers.some(f=>(f.techs||[]).length>=5)],
 [1,"드묾","여섯 식구","해결사가 여섯이 된다.", X=>X.fixN>=6],
-[1,"희귀","3급 해결사","3급 해결사가 나온다.", X=>X.bestG<=3],
-[1,"희귀","1급 해결사","1급 해결사가 나온다.", X=>X.bestG<=1],
+[1,"희귀","협회가 눈여겨보는 이","3급 해결사가 나온다.", X=>X.bestG<=3],
+[1,"희귀","정상의 문턱","1급 해결사가 나온다.", X=>X.bestG<=1],
 [1,"희귀","다섯 송이","E.G.O. 개화를 모두 합쳐 5번 본다.", X=>X.L.ego>=5],
 [1,"희귀","한계 근처","한 해결사의 능력치 하나가 50에 닿는다.", X=>X.S && X.S.fixers.some(f=>ATTRS.some(a=>f.stats[a]>=50))],
 [1,"희귀","색이 붙은 이름","해결사가 처음으로 특색이 된다.", X=>X.L.color>=1],
-[1,"희귀","백 건의 사람","한 해결사가 의뢰를 100건 해낸다.", X=>X.S && X.S.fixers.some(f=>(f.done||0)>=100)],
-[1,"희귀","쉬지 않는 발","강행군을 모두 합쳐 30번 한다.", X=>X.L.march>=30],
+[1,"희귀","백 건의 사람","한 해결사가 의뢰를 60건 해낸다.", X=>X.S && X.S.fixers.some(f=>(f.done||0)>=60)],
+[1,"희귀","쉬지 않는 발","강행군을 모두 합쳐 15번 한다.", X=>X.L.march>=15],
 [1,"희귀","공방의 이름","고유 장비를 모두 합쳐 5개 갖는다.", X=>X.L.forge>=5],
-[1,"희귀","오십 번의 승급","해결사 승급을 모두 합쳐 50번 한다.", X=>X.L.promo>=50],
+[1,"희귀","키워 낸 사람들","해결사 승급을 모두 합쳐 30번 한다.", X=>X.L.promo>=30],
 [1,"영웅","두 빛깔","한 게임에서 특색이 둘이 된다.", X=>X.colorN>=2],
-[1,"영웅","총합 170","능력치 총합이 170인 해결사가 있다.", X=>X.S && X.S.fixers.some(f=>total(f)>=170)],
+[1,"영웅","괴물 같은 몸","능력치 총합이 170인 해결사가 있다.", X=>X.S && X.S.fixers.some(f=>total(f)>=170)],
 [1,"영웅","대표의 빛깔","대표가 특색이 된다.", X=>X.S && X.S.fixers.some(f=>f.isLeader && f.grade===0)],
 [1,"영웅","모든 것을 갖춘 이","한 해결사가 특색 · E.G.O. 개화 · 고유 무기를 모두 갖춘다.", X=>X.S && X.S.fixers.some(f=>f.grade===0 && f.ego && f.gear.weapon && f.gear.weapon.unique)],
 [1,"영웅","아무도 잃지 않은 두 달","한 게임에서 아무도 잃지 않고 60일을 넘긴다.", X=>X.R.days>=60 && !X.R.lost],
 [1,"전설","세 빛깔","한 게임에서 특색이 셋이 된다.", X=>X.colorN>=3],
 [1,"전설","바닥에서 별까지","9급으로 들어온 동료가 특색이 된다.", X=>X.S && X.S.fixers.some(f=>!f.isLeader && f.grade===0 && f.hiredGrade===9)],
 [1,"신화","세 송이 빛","한 게임의 특색 셋이 모두 E.G.O.를 피운다.", X=>X.S && X.colorN>=3 && X.S.fixers.filter(f=>f.grade===0).every(f=>f.ego)],
-[1,"신화","오백 건의 사람","한 해결사가 의뢰를 500건 해낸다.", X=>X.S && X.S.fixers.some(f=>(f.done||0)>=500)],
+[1,"신화","이백 건의 사람","한 해결사가 의뢰를 200건 해낸다.", X=>X.S && X.S.fixers.some(f=>(f.done||0)>=200)],
 [1,"유일","처음부터 끝까지","개업 날의 대표와 첫 동료가 둘 다 살아남아 특색이 되고, 빚도 모두 갚는다.", X=>X.S && X.S.debt<=0 && X.S.fixers.filter(f=>f.founder && f.grade===0).length>=2],
 // ── 3. 환상체 · 도감 · 기프트
 [2,"일반","첫 조우","환상체를 처음 마주한다.", X=>X.met>=1],
@@ -7351,52 +7448,52 @@ const ACH_RAW = [
 [2,"일반","첫 기프트","기프트를 처음 얻는다.", X=>X.L.gift>=1],
 [2,"일반","다섯 장","도감에 환상체 5종이 오른다.", X=>X.met>=5],
 [2,"일반","버릇을 알다","한 환상체의 선호 행동이 열린다.", X=>X.know3>=1],
-[2,"일반","ZAYIN 다섯","ZAYIN 환상체를 5번 통제한다.", X=>X.L.ctrl_ZAYIN>=5],
-[2,"일반","TETH 셋","TETH 환상체를 3번 통제한다.", X=>X.L.ctrl_TETH>=3],
+[2,"일반","순한 것들의 관리인","ZAYIN 환상체를 5번 통제한다.", X=>X.L.ctrl_ZAYIN>=5],
+[2,"일반","이빨을 재우다","TETH 환상체를 3번 통제한다.", X=>X.L.ctrl_TETH>=3],
 [2,"일반","몸에 지닌 이야기","기프트를 낀 해결사가 있다.", X=>X.S && X.S.fixers.some(f=>f.gear && f.gear.acc && f.gear.acc.gift)],
 [2,"일반","열 장","도감에 환상체 10종이 오른다.", X=>X.met>=10],
 [2,"일반","열 개의 알","환상체를 모두 합쳐 10번 통제한다.", X=>X.L.ctrl>=10],
 [2,"일반","열 번의 제압","환상체를 모두 합쳐 10번 제압한다.", X=>X.L.sup>=10],
-[2,"일반","들어 본 이름","원작 환상체 5종을 마주한다.", X=>X.canonMet>=5],
+[2,"일반","들어 본 이름","원작에 나오는 환상체 5종을 마주한다.", X=>X.canonMet>=5],
 [2,"일반","첫 이야기","한 환상체의 이야기가 열린다.", X=>X.story>=1],
 [2,"드묾","스물다섯 장","도감에 환상체 25종이 오른다.", X=>X.met>=25],
-[2,"드묾","HE 다섯","HE 환상체를 5번 통제한다.", X=>X.L.ctrl_HE>=5],
+[2,"드묾","위험한 손님맞이","HE 환상체를 5번 통제한다.", X=>X.L.ctrl_HE>=5],
 [2,"드묾","열 가지 선물","도감에 기프트 10종이 오른다.", X=>X.giftN>=10],
 [2,"드묾","열 편의 이야기","이야기가 열린 환상체가 10종이 된다.", X=>X.story>=10],
 [2,"드묾","쉰 개의 알","환상체를 모두 합쳐 50번 통제한다.", X=>X.L.ctrl>=50],
-[2,"드묾","WAW","WAW 환상체를 마주한다.", X=>X.metRisk.WAW>=1],
+[2,"드묾","몸서리","WAW 환상체를 처음 마주한다.", X=>X.metRisk.WAW>=1],
 [2,"드묾","서른 번의 제압","환상체를 모두 합쳐 30번 제압한다.", X=>X.L.sup>=30],
-[2,"드묾","HE 제압","HE 환상체를 5번 제압한다.", X=>X.L.sup_HE>=5],
-[2,"드묾","원작의 얼굴들","원작 환상체를 모두 마주한다.", X=>X.canonMet>=X.canonN],
+[2,"드묾","힘으로 달래다","HE 환상체를 5번 제압한다.", X=>X.L.sup_HE>=5],
+[2,"드묾","원작의 얼굴들","원작에 나오는 환상체 15종을 마주한다.", X=>X.canonMet>=Math.min(15, X.canonN)],
 [2,"희귀","빈칸 없는 목록","도감의 모든 환상체를 마주한다.", X=>X.met>=X.allN],
-[2,"희귀","WAW 다섯","WAW 환상체를 5번 통제한다.", X=>X.L.ctrl_WAW>=5],
-[2,"희귀","ALEPH","ALEPH 환상체를 마주한다.", X=>X.metRisk.ALEPH>=1],
+[2,"희귀","익숙해진 공포","WAW 환상체를 5번 통제한다.", X=>X.L.ctrl_WAW>=5],
+[2,"희귀","마주해선 안 될 것","ALEPH 환상체를 처음 마주한다.", X=>X.metRisk.ALEPH>=1],
 [2,"희귀","서른 가지 선물","도감에 기프트 30종이 오른다.", X=>X.giftN>=30],
 [2,"희귀","서른 편의 이야기","이야기가 열린 환상체가 30종이 된다.", X=>X.story>=30],
-[2,"희귀","백오십 개의 알","환상체를 모두 합쳐 150번 통제한다.", X=>X.L.ctrl>=150],
-[2,"희귀","여든 번의 제압","환상체를 모두 합쳐 80번 제압한다.", X=>X.L.sup>=80],
+[2,"희귀","여든 개의 알","환상체를 모두 합쳐 80번 통제한다.", X=>X.L.ctrl>=80],
+[2,"희귀","쉰 번의 제압","환상체를 모두 합쳐 50번 제압한다.", X=>X.L.sup>=50],
 [2,"희귀","죄를 끊다","죄종을 10번 사살한다.", X=>X.L.sinKill>=10],
-[2,"희귀","원작의 이야기","원작 환상체의 이야기가 모두 열린다.", X=>X.canonStory>=X.canonN],
+[2,"희귀","원작의 이야기","원작에 나오는 환상체 10종의 이야기가 열린다.", X=>X.canonStory>=Math.min(10, X.canonN)],
 [2,"영웅","날개를 꺾는 것","ALEPH 환상체를 통제한다.", X=>X.L.ctrl_ALEPH>=1],
 [2,"영웅","재앙을 누르다","ALEPH 환상체를 제압한다.", X=>X.L.sup_ALEPH>=1],
 [2,"영웅","모든 이야기","도감의 모든 이야기가 열린다.", X=>X.story>=X.allN],
 [2,"영웅","예순 가지 선물","도감에 기프트 60종이 오른다.", X=>X.giftN>=60],
-[2,"영웅","WAW 서른","WAW 환상체를 30번 통제한다.", X=>X.L.ctrl_WAW>=30],
-[2,"전설","다섯 재앙","ALEPH 환상체 5종을 모두 통제한다.", X=>X.alephCtrlKinds>=5],
+[2,"영웅","공포의 관리인","WAW 환상체를 15번 통제한다.", X=>X.L.ctrl_WAW>=15],
+[2,"전설","세 재앙","서로 다른 ALEPH 환상체 3종을 통제한다.", X=>X.alephCtrlKinds>=3],
 [2,"전설","모든 선물","도감에 모든 기프트가 오른다.", X=>X.giftN>=X.giftAll],
-[2,"신화","재앙의 관리인","ALEPH 환상체를 25번 통제한다.", X=>X.L.ctrl_ALEPH>=25],
+[2,"신화","재앙의 관리인","ALEPH 환상체를 10번 통제한다.", X=>X.L.ctrl_ALEPH>=10],
 [2,"신화","무사한 관측","한 게임에서 환상체 의뢰를 30건 해내고, 그동안 아무도 잃지 않는다.", X=>X.R.abnoOk>=30 && !X.R.lost],
 [2,"유일","모든 것을 다룬 손","모든 환상체를 한 번 이상 통제하거나 제압하고, 도감의 모든 이야기를 연다.", X=>X.handledAll && X.story>=X.allN],
 // ── 4. 기타
 [3,"일반","개업","새 사무소를 연다.", X=>X.L.runs>=1],
 [3,"일반","첫 밤","하루를 마감한다.", X=>X.L.days>=1],
-[3,"일반","하늘 셋","날씨 세 가지를 겪는다.", X=>X.weatherN>=3],
+[3,"일반","변덕스러운 하늘","날씨 세 가지를 겪는다.", X=>X.weatherN>=3],
 [3,"일반","안개 속","안개 낀 날을 겪는다.", X=>(X.L$set.weather||[]).includes("fog")],
 [3,"일반","두 번째 간판","사무소를 두 번 연다.", X=>X.L.runs>=2],
-[3,"일반","다시 일어서다","게임이 한 번 끝난다.", X=>X.L.end>=1],
+[3,"일반","다시 일어서다","사무소 하나가 문을 닫는다(엔딩이든 게임 오버든).", X=>X.L.end>=1],
 [3,"일반","흉터의 방문","남겨진 흉터가 찾아온다.", X=>X.L.scarVisit>=1],
 [3,"일반","두 주","한 게임에서 14일을 넘긴다.", X=>X.R.days>=14],
-[3,"일반","주간 결산","주간 결산을 모두 합쳐 4번 넘긴다.", X=>X.L.week>=4],
+[3,"일반","한 달 치 장부","주간 결산을 모두 합쳐 4번 넘긴다.", X=>X.L.week>=4],
 [3,"일반","떠도는 간판","세 구역에서 사무소를 연다.", X=>(X.L$set.district||[]).length>=3],
 [3,"일반","새 얼굴","대표의 외형을 바꾼다.", X=>X.L.relook>=1],
 [3,"일반","기록을 챙기다","저장 코드를 복사한다.", X=>X.L.export>=1],
@@ -7411,25 +7508,43 @@ const ACH_RAW = [
 [3,"드묾","목소리","동료가 뒤틀리는 것을 본다.", X=>X.L.twist>=1],
 [3,"드묾","끝을 보다","엔딩을 하나 본다.", X=>(X.L$set.ending||[]).filter(e=>ACH_ENDINGS.includes(e)).length>=1],
 [3,"드묾","협회의 편지","하나 협회의 편지를 받는다.", X=>X.L.mail>=1],
-[3,"희귀","열다섯 번째 간판","사무소를 15번 연다.", X=>X.L.runs>=15],
+[3,"희귀","열 번째 간판","사무소를 10번 연다.", X=>X.L.runs>=10],
 [3,"희귀","온 도시","모든 구역에서 사무소를 연다.", X=>(X.L$set.district||[]).length>=X.districtAll],
 [3,"희귀","오백 일","모두 합쳐 500일을 보낸다.", X=>X.L.days>=500],
 [3,"희귀","세 갈래 끝","엔딩을 세 가지 본다.", X=>(X.L$set.ending||[]).filter(e=>ACH_ENDINGS.includes(e)).length>=3],
 [3,"희귀","귀가 밝은 사무소","도시의 큰 사건 소식을 30번 듣는다.", X=>X.L.major>=30],
 [3,"희귀","넉 달","한 게임에서 120일을 넘긴다.", X=>X.R.days>=120],
 [3,"희귀","쉰 개의 기록","업적을 50개 이룬다.", X=>X.achN>=50],
-[3,"희귀","큰 하루","하루 수입이 100만 원을 넘긴다.", X=>X.R.dayPayBest>=1000000],
-[3,"희귀","두둑한 금고","자금 1,000만 원을 쥔다.", X=>X.S && X.S.money>=10000000],
-[3,"영웅","천 일","모두 합쳐 1,000일을 보낸다.", X=>X.L.days>=1000],
+[3,"희귀","큰 하루","하루 수입이 100만 안을 넘긴다.", X=>X.R.dayPayBest>=1000000],
+[3,"희귀","두둑한 금고","자금 1,000만 안을 쥔다.", X=>X.S && X.S.money>=10000000],
+[3,"영웅","육백 일","모두 합쳐 600일을 보낸다.", X=>X.L.days>=600],
 [3,"영웅","백 개의 기록","업적을 100개 이룬다.", X=>X.achN>=100],
 [3,"영웅","모든 끝","엔딩을 모두 본다.", X=>(X.L$set.ending||[]).filter(e=>ACH_ENDINGS.includes(e)).length>=X.endingAll],
-[3,"영웅","반년 넘게","한 게임에서 200일을 넘긴다.", X=>X.R.days>=200],
-[3,"영웅","억대 금고","자금 1억 원을 쥔다.", X=>X.S && X.S.money>=100000000],
+[3,"영웅","반년 넘게","한 게임에서 180일을 넘긴다.", X=>X.R.days>=180],
+[3,"영웅","억대 금고","자금 1억 안을 쥔다.", X=>X.S && X.S.money>=100000000],
 [3,"전설","백사십 개의 기록","업적을 140개 이룬다.", X=>X.achN>=140],
-[3,"전설","쉰 번째 간판","사무소를 50번 연다.", X=>X.L.runs>=50],
+[3,"전설","스물다섯 번째 간판","사무소를 25번 연다.", X=>X.L.runs>=25],
 [3,"신화","백육십 개의 기록","업적을 160개 이룬다.", X=>X.achN>=160],
-[3,"신화","삼천 일","모두 합쳐 3,000일을 보낸다.", X=>X.L.days>=3000],
+[3,"신화","천오백 일","모두 합쳐 1,500일을 보낸다.", X=>X.L.days>=1500],
 [3,"유일","도시의 이야기","다른 업적을 모두 이룬다.", X=>X.achN>=ACHIEVEMENTS.length-1],
+// ── 추가(뒤에 붙인다: 업적 id가 순서로 매겨지므로 기존 순서를 지킨다)
+[0,"일반","뒷골목 청소","뒷골목 조직 의뢰를 처음 해낸다.", X=>X.L.synd>=1],
+[0,"일반","현장의 변수","의뢰 현장에서 뜻밖의 일을 처음 겪는다.", X=>X.L.field>=1],
+[3,"일반","골목의 얼굴들","도시 일람에 조직 3곳이 오른다.", X=>X.citySeen>=3],
+[1,"일반","손때 묻은 장식","고유 무기에 추가 붙임을 단다.", X=>X.S && X.S.fixers.some(f=>f.gear.weapon && f.gear.weapon.unique && f.gear.weapon.look && (f.gear.weapon.look.add||[]).length)],
+[3,"일반","하얀 봉투","검지의 지령서를 처음 받는다.", X=>X.L.idxGot>=1],
+[0,"드묾","조직 사냥꾼","서로 다른 뒷골목 조직 5곳과 맞선다.", X=>X.cityMet>=5],
+[3,"드묾","약속을 지키는 사무소","검지의 지령을 모두 합쳐 3번 지킨다.", X=>X.L.idxDone>=3],
+[0,"드묾","웃돈과 외상","의뢰 현장에서 뜻밖의 일을 모두 합쳐 10번 겪는다.", X=>X.L.field>=10],
+[0,"희귀","골목의 지도","도시 일람의 뒷골목 조직 모두와 한 번 이상 맞선다.", X=>X.cityMet>=SYNDICATES.length],
+[3,"희귀","다른 끝","특수 엔딩을 하나 본다.", X=>X.specialEnd>=1],
+[0,"희귀","웃음을 멎게 하다","웃는 얼굴들의 의뢰를 해낸다.", X=>X.L.synd_smile>=1],
+[0,"영웅","뒷골목의 이름","뒷골목 조직 의뢰를 모두 합쳐 50건 해낸다.", X=>X.L.synd>=50],
+[3,"영웅","골목이 아는 이야기","도시 일람의 골목 이야기를 모두 연다.", X=>X.cityLore>=SYNDICATES.length],
+[3,"영웅","다섯 갈래 끝","엔딩을 다섯 가지 본다.", X=>(X.L$set.ending||[]).filter(e=>ACH_ENDINGS.includes(e)).length>=5],
+[0,"전설","가면을 벗기다","사육제와 웃는 얼굴들의 의뢰를 각각 5건 해낸다.", X=>X.L.synd_carnival>=5 && X.L.synd_smile>=5],
+[3,"전설","이름난 이들","도시 일람의 이름난 해결사를 모두 알게 된다.", X=>X.cityFix>=CITY_FIXERS.length],
+[3,"신화","도시를 다 아는 사람","도시 일람을 빈칸 없이 채우고, 특수 엔딩을 모두 본다.", X=>X.cityLore>=SYNDICATES.length && X.cityFix>=CITY_FIXERS.length && X.specialEnd>=ACH_ENDINGS.length-1],
 ];
 const ACH_ENDINGS = ["다음 손님","둥지로","물려준 열쇠","빈 책상","마지막 손님","소문이 된 색","공방의 도면","지령"];
 const ACHIEVEMENTS = ACH_RAW.map((r,i)=>({id:"a"+r[0]+"_"+i, cat:r[0], tier:r[1], name:r[2], desc:r[3], test:r[4], hidden: r[1]==="유일"}));
@@ -7457,6 +7572,9 @@ function achCtx(){
     handledAll: ABNOS.every(a=>handled.has(a.id)),
     weatherN: (L.set.weather||[]).length, weatherAll: WEATHERS.length, districtAll: DISTRICTS.length, endingAll: ACH_ENDINGS.length,
     achN: Object.keys(achLoad()).filter(id=>ACHIEVEMENTS.some(a=>a.id===id)).length };
+  try{ const cd = cityLoad(), ss = SYNDICATES.map(x=>cd.synd[x.id]||{}); X.citySeen = ss.filter(e=>e.seen).length; X.cityMet = ss.filter(e=>e.met>=1).length; X.cityLore = ss.filter(e=>e.met>=3).length;
+    const best = Math.min(cd.best, S && !S.over ? S.officeGrade : 9); X.cityFix = CITY_FIXERS.filter(f=>best<=f.need).length; }catch(_){ X.citySeen = X.cityMet = X.cityLore = X.cityFix = 0; }
+  X.specialEnd = (L.set.ending||[]).filter(e=>ACH_ENDINGS.includes(e) && e!=="다음 손님").length;
   return X; }
 let achBusy = false;
 function achCheck(){ if(achBusy) return; achBusy = true;
@@ -8094,23 +8212,41 @@ const carryOf = s => !s ? null : (s.kind==="gun" && poseV(s)>0) ? "back" : (WEAP
    잎날창(가운데 등뼈·소켓), 날개창(러그), 할버드(도끼날·갈고리·창끝), 글레이브(외날·뒤 가시), 랜스(뱀플레이트·그래퍼),
    스웹트 힐트 레이피어, 에스터크, 리볼버(실린더·해머·방아쇠울), 펌프 산탄총(포엔드·튜브 탄창), 볼트 장총, 자동 권총(슬라이드 톱니),
    파이프 렌치(갈고리 턱·나사), 전기톱(엔진·손잡이 고리·가이드 바·체인 날) */
+/* 고유 무기 추가 붙임 — 무기마다 붙일 수 있는 자리가 다르다(총에 가지날을 달 수는 없다).
+   레퍼런스: 실제 무기의 장식·개조(칠지도의 가지날, 구환도의 고리, 할버드의 도끼날, 창 수술과 창기, 총검 · 조준경, 손잡이의 수술 · 사슬, 건틀릿의 징 · 붕대)
+   kinds: 붙일 수 있는 무기 종류. 예전에 붙여 둔 것이라도 그 무기에 맞지 않으면 그리지 않는다. */
 const WEAPON_ADDS = [
-  {id:"branch", n:"가지날", d:"날 양옆으로 엇갈려 뻗은 가지(칠지도처럼)"},
-  {id:"prong",  n:"곁날",   d:"밑동에서 앞으로 나란히 뻗은 두 날(삼지창처럼)"},
-  {id:"hook",   n:"갈고리", d:"끝 가까이 등 쪽으로 휘어 걸리는 갈고리"},
-  {id:"axe",    n:"도끼날", d:"날 쪽에 붙인 초승달 도끼날(할버드처럼)"},
-  {id:"spike",  n:"가시",   d:"등을 따라 줄지어 박힌 가시"},
-  {id:"ring",   n:"고리",   d:"등에 꿰어 단 쇠고리(구환도처럼)"}
+  {id:"branch",  n:"가지날",   d:"날 양옆으로 엇갈려 뻗은 가지(칠지도 · 방천극처럼)",       kinds:["blade","spear"]},
+  {id:"prong",   n:"곁날",     d:"창끝 밑동에서 앞으로 나란히 뻗은 두 날(삼지창처럼)",     kinds:["spear"]},
+  {id:"hook",    n:"갈고리",   d:"끝 가까이 등 쪽으로 휘어 걸리는 갈고리(구겸창 · 갈고리검)", kinds:["blade","long","twin","great","spear"]},
+  {id:"axe",     n:"도끼날",   d:"창끝 아래 한쪽에 붙인 초승달 도끼날(할버드처럼)",       kinds:["spear"]},
+  {id:"spike",   n:"톱니 · 가시", d:"칼등을 따라 낸 톱니, 둔기 머리 · 건틀릿 마디에는 가시",  kinds:["blade","long","twin","great","blunt","staff","fist","tool"]},
+  {id:"ring",    n:"고리",     d:"칼등에 꿴 쇠고리(구환도) · 봉 끝의 쇠고리",             kinds:["blade","long","great","staff"]},
+  {id:"engrave", n:"새김",     d:"날 · 총신 가운데를 따라 새긴 문양",                    kinds:["blade","long","twin","great","rapier","spear","lance","gun"]},
+  {id:"tassel",  n:"수술",     d:"칼자루 끝 · 창끝 아래에 매단 술",                      kinds:["blade","long","twin","great","rapier","spear","staff","blunt"]},
+  {id:"pennon",  n:"창기",     d:"창끝 아래에 단 작은 깃발",                             kinds:["spear","lance"]},
+  {id:"chain",   n:"사슬",     d:"손잡이 끝 · 손목에 늘어뜨린 짧은 사슬",                  kinds:["tool","fist"]},
+  {id:"wrap",    n:"감은 천",  d:"자루 · 손등에 감은 낡은 천(붕대)",                      kinds:["blunt","staff","fist","tool"]},
+  {id:"studs",   n:"징",       d:"주먹 마디를 따라 박은 쇠징",                            kinds:["fist"]},
+  {id:"scope",   n:"조준경",   d:"총신 위에 얹은 조준경",                                kinds:["gun"]},
+  {id:"bayonet", n:"총검",     d:"총구 아래에 꽂은 짧은 칼",                             kinds:["gun"]},
+  {id:"muzzle",  n:"총구 장치", d:"총구 끝에 단 소염기",                                  kinds:["gun"]}
 ];
 const ADD_MAX = 3;
-function drawAdds(c, u, G, adds, col, edges, far){
+const addsFor = kind => WEAPON_ADDS.filter(a=>a.kinds.includes(kind));
+function drawAdds(c, u, G, adds, col, edges, far, kind, gEnd, glow){
   if(!G || !adds || !adds.length) return;
+  adds = adds.filter(id=>{ const A = WEAPON_ADDS.find(a=>a.id===id); return A && (!kind || A.kinds.includes(kind)); });
+  if(!adds.length) return;
   const lt = hexMix(col,"#ffffff",0.4), dk = hexMix(col,"#000000",0.34);
   const L0 = Math.abs(G.x(1)-G.x(0)), hwA = Math.abs(G.bot(0.5)-G.top(0.5))/2, sz = clamp(Math.min(L0*0.17, hwA*4+0.022), 0.026, 0.075)*(G.k||1);
   const at = (t,s)=>[G.x(t), s<0 ? G.top(t) : G.bot(t)];
   const M=(x,y)=>c.moveTo(x*u,y*u), Lt=(x,y)=>c.lineTo(x*u,y*u), Q=(cx,cy,x,y)=>c.quadraticCurveTo(cx*u,cy*u,x*u,y*u);
-  const shape = (fn, bev)=>{ c.fillStyle = col; c.beginPath(); fn(); c.closePath(); c.fill();
+  const shape = (fn, bev, fill)=>{ c.fillStyle = fill || col; c.beginPath(); fn(); c.closePath(); c.fill();
     if(bev){ c.save(); c.beginPath(); fn(); c.closePath(); c.clip(); c.strokeStyle = lt; c.lineWidth = Math.max(0.6, sz*0.38*u); c.beginPath(); bev(); c.stroke(); c.restore(); } };
+  const cloth = glow || "#b0403a", clothD = hexMix(cloth, "#000000", 0.35);
+  // 수술 · 사슬을 매달 자리: 칼자루 끝(검류) 또는 창끝 · 머리 바로 아래(장병기 · 둔기)
+  const hangAt = kind==="staff" ? [G.x(0.92), 0] : (kind==="spear" || kind==="lance" || kind==="blunt" || gEnd==null) ? [G.x(0) - 0.012, 0] : [gEnd - 0.006, 0];
   adds.forEach(id=>{
     if(id==="branch") [[0.3,-1],[0.48,1],[0.66,-1]].forEach(([t,s])=>{ const [x,y] = at(t,s), b = sz*0.3;
       shape(()=>{ M(x-b,y-s*0.003); Q(x-b*0.2, y+s*sz*0.75, x+sz*0.95, y+s*sz*0.98); Q(x+b*0.5, y+s*sz*0.42, x+b*0.8, y-s*0.003); },
@@ -8120,20 +8256,56 @@ function drawAdds(c, u, G, adds, col, edges, far){
       shape(()=>{ M(x-0.004, y); Lt(x+sz*0.2, y+s*sz*0.9); Lt(x+reach, y+s*sz*0.62); Lt(x+reach-th*1.8, y+s*(sz*0.62-th*0.75)); Lt(x+sz*0.3+th, y+s*(sz*0.9-th*1.05)); Lt(x+th*1.4, y); },
             ()=>{ M(x+sz*0.2, y+s*sz*0.92); Lt(x+reach, y+s*sz*0.64); });
       edges.push([[x+sz*0.2, y+s*sz*0.9],[x+reach, y+s*sz*0.62]]); });
-    else if(id==="hook"){ const [x,y] = at(0.8,-1), b = sz*0.3, sz0 = sz; { const sz = sz0*1.35;
+    else if(id==="hook"){ const [x,y] = at(0.8,-1), b = sz*0.3, sz0 = sz; { const sz = sz0*1.2;
       shape(()=>{ M(x-b,y+0.002); Q(x-b*0.1, y-sz*1.1, x-sz*0.9, y-sz*0.82); Q(x+b*0.3, y-sz*0.5, x+b, y+0.002); },
             ()=>{ M(x-b*0.6, y-sz*0.5); Q(x-b*0.4, y-sz*0.95, x-sz*0.9, y-sz*0.82); });
       edges.push([[x-b*0.4, y-sz*0.6],[x-sz*0.3, y-sz*1.0],[x-sz*0.9, y-sz*0.82]]); } }
-    else if(id==="axe"){ const [x1,y1] = at(0.42,1), [x2,y2] = at(0.78,1), m = (x1+x2)/2, ym = Math.max(y1,y2), w = clamp((x2-x1)*0.32, sz*0.9, 0.065);
+    else if(id==="axe"){ const [x1,y1] = at(0.02,1), [x2,y2] = at(0.34,1), m = (x1+x2)/2, ym = Math.max(y1,y2), w = clamp((x2-x1)*0.5, sz*1.1, 0.075);
       const outer = ()=>{ M(x1-w*0.25, ym+w*1.05); Q(m, ym+w*1.6, x2+w*0.35, ym+w*1.0); };
       shape(()=>{ M(x1,y1); Lt(x1-w*0.25, ym+w*1.05); Q(m, ym+w*1.6, x2+w*0.35, ym+w*1.0); Lt(x2,y2); Q(m, ym+w*0.45, x1, y1); }, outer);
       edges.push([[x1-w*0.25, ym+w*1.05],[m, ym+w*1.33],[x2+w*0.35, ym+w*1.0]]); }
-    else if(id==="spike"){ const n = 6; for(let i=0;i<n;i++){ const t = 0.12 + 0.76*i/(n-1), [x,y] = at(t,-1), b = sz*0.16;
-      c.fillStyle = col; c.beginPath(); M(x-b,y+0.002); Lt(x+sz*0.12, y-sz*0.52); Lt(x+b,y+0.002); c.closePath(); c.fill();
-      c.fillStyle = lt; c.beginPath(); M(x,y); Lt(x+sz*0.12, y-sz*0.52); Lt(x+b,y); c.closePath(); c.fill(); } }
-    else if(id==="ring"){ const n = 4; for(let i=0;i<n;i++){ const t = 0.18 + 0.6*i/(n-1), [x,y] = at(t,-1), r = sz*0.3;
+    else if(id==="spike"){
+      if(kind==="blunt" || kind==="fist" || kind==="staff"){ const n = kind==="staff" ? 3 : 5; for(let i=0;i<n;i++){ const t = kind==="staff" ? 0.7 + 0.12*i : 0.15 + 0.7*i/(n-1);
+          [-1,1].forEach(s=>{ const [x,y] = at(t,s), b = kind==="blunt" ? 0.008 : sz*0.14, hgt = kind==="blunt" ? 0.03 : sz*(kind==="fist" ? 0.32 : 0.45);
+            c.fillStyle = col; c.beginPath(); M(x-b,y); Lt(x, y+s*hgt); Lt(x+b,y); c.closePath(); c.fill(); c.fillStyle = lt; c.beginPath(); M(x,y); Lt(x, y+s*hgt); Lt(x+b,y); c.closePath(); c.fill(); }); } }
+      else { const n = 7; for(let i=0;i<n;i++){ const t = 0.1 + 0.6*i/(n-1), [x,y] = at(t,-1), b = sz*0.14;   // 칼등 톱니: 뒤로 누운 이빨
+          c.fillStyle = col; c.beginPath(); M(x-b,y+0.002); Lt(x-sz*0.16, y-sz*0.36); Lt(x+b,y+0.002); c.closePath(); c.fill();
+          c.fillStyle = lt; c.beginPath(); M(x,y); Lt(x-sz*0.16, y-sz*0.36); Lt(x+b,y); c.closePath(); c.fill(); } } }
+    else if(id==="ring"){ const n = kind==="staff" ? 2 : 4; for(let i=0;i<n;i++){ const t = kind==="staff" ? 0.86 + 0.08*i : 0.18 + 0.5*i/(n-1), [x,y] = at(t,-1), r = sz*(kind==="staff" ? 0.42 : 0.3);
       c.strokeStyle = far ? dk : lt; c.lineWidth = Math.max(0.6, sz*0.11*u); c.beginPath(); c.arc(x*u, (y-r*0.35)*u, r*u, 0, 7); c.stroke();
       c.fillStyle = dk; c.beginPath(); c.arc(x*u, (y+0.002)*u, Math.max(0.4, sz*0.07*u), 0, 7); c.fill(); } }
+    else if(id==="engrave"){ c.save(); c.strokeStyle = glow || hexMix(col, "#ffffff", 0.55); c.globalAlpha = far ? 0.4 : 0.85; c.lineWidth = Math.max(0.6, 0.004*u);
+      if(glow){ c.shadowColor = glow; c.shadowBlur = Math.max(2, u*0.02); }
+      c.beginPath(); for(let i=0;i<=24;i++){ const t = 0.08 + 0.72*i/24, x = G.x(t), mid = (G.top(t)+G.bot(t))/2, amp = Math.abs(G.bot(t)-G.top(t))*0.18; const y = mid + Math.sin(i*1.1)*amp; i ? Lt(x,y) : M(x,y); } c.stroke();
+      [0.25,0.5,0.72].forEach(t=>{ const x = G.x(t), y = (G.top(t)+G.bot(t))/2; c.beginPath(); c.arc(x*u, y*u, Math.max(0.5, Math.abs(G.bot(t)-G.top(t))*0.16*u), 0, 7); c.stroke(); }); c.restore(); }
+    else if(id==="tassel"){ const [x,y] = hangAt, len = 0.09, sw = Math.sin(performance.now()/420 + x*9)*0.012;
+      c.strokeStyle = clothD; c.lineWidth = Math.max(0.6, 0.004*u); c.beginPath(); M(x,y); Q(x-0.012, y+len*0.4, x-0.008+sw, y+len*0.55); c.stroke();
+      c.fillStyle = cloth; c.beginPath(); M(x-0.014+sw, y+len*0.5); Lt(x+0.006+sw, y+len*0.5); Lt(x+0.014+sw*1.4, y+len); Lt(x-0.024+sw*1.4, y+len); c.closePath(); c.fill();
+      c.fillStyle = clothD; c.fillRect((x-0.012+sw)*u, (y+len*0.5)*u, 0.016*u, 0.006*u); }
+    else if(id==="pennon"){ const [x,y] = hangAt, fl = Math.sin(performance.now()/300)*0.01;
+      c.fillStyle = cloth; c.beginPath(); M(x-0.07, y-0.004); Lt(x-0.004, y-0.004); Q(x-0.02, y+0.04+fl, x-0.03+fl, y+0.07); Lt(x-0.05, y+0.045+fl*0.5); Lt(x-0.07, y+0.07+fl); c.closePath(); c.fill();
+      c.fillStyle = clothD; c.fillRect((x-0.07)*u, (y-0.006)*u, 0.066*u, 0.005*u); }
+    else if(id==="chain"){ const [x,y] = kind==="fist" ? [G.x(0)-0.02, G.bot(0)] : (gEnd!=null ? [gEnd-0.004, 0] : hangAt);
+      c.strokeStyle = far ? dk : lt; c.lineWidth = Math.max(0.5, 0.004*u); const sw = Math.sin(performance.now()/500)*0.006;
+      for(let i=0;i<5;i++){ const cx2 = x - 0.004 + sw*i*0.4, cy2 = y + 0.012 + i*0.014; c.beginPath(); c.ellipse(cx2*u, cy2*u, (i%2 ? 0.0035 : 0.006)*u, 0.008*u, 0, 0, 7); c.stroke(); } }
+    else if(id==="wrap"){ c.save(); c.strokeStyle = "#d8cdb6"; c.globalAlpha = far ? 0.5 : 0.9; c.lineWidth = Math.max(0.8, 0.007*u);
+      if(kind==="blunt" || kind==="tool"){ const hw = 0.014;   // 자루: 쥐는 자리 둘레에 감는다
+        for(let x=-0.1; x<0.04; x+=0.016){ c.beginPath(); M(x,-hw); Lt(x+0.012,hw); c.stroke(); } c.beginPath(); M(0.04, hw); Q(0.05, hw+0.03, 0.034, hw+0.05); c.stroke(); }
+      else { const t0 = 0.0, t1 = kind==="fist" ? 0.7 : 0.3;
+        for(let t=t0; t<t1; t+=0.07){ const [xa,ya] = at(t,-1), [xb,yb] = at(t+0.05,1); c.beginPath(); M(xa,ya); Lt(xb,yb); c.stroke(); }
+        if(kind!=="fist"){ const [xe,ye] = at(t1,1); c.beginPath(); M(xe,ye); Q(xe+0.01, ye+0.03, xe-0.006, ye+0.05); c.stroke(); } } c.restore(); }
+    else if(id==="studs"){ for(let i=0;i<4;i++){ const t = 0.2 + 0.2*i, [x,y] = at(t,-1); c.fillStyle = dk; c.beginPath(); c.arc(x*u, y*u, Math.max(0.6, 0.007*u), 0, 7); c.fill(); c.fillStyle = lt; c.beginPath(); c.arc((x-0.002)*u, (y-0.002)*u, Math.max(0.4, 0.003*u), 0, 7); c.fill(); } }
+    else if(id==="scope"){ const top = G.top(0), x0 = G.x(0) - L0*0.55, len = L0*0.6, r = 0.011;
+      c.fillStyle = dk; c.fillRect((x0+len*0.25)*u, (top-0.012)*u, 0.01*u, 0.012*u); c.fillRect((x0+len*0.7)*u, (top-0.012)*u, 0.01*u, 0.012*u);
+      shape(()=>{ M(x0, top-0.012-r*1.25); Lt(x0+len, top-0.012-r*1.25); Lt(x0+len, top-0.012+r*0.25); Lt(x0, top-0.012+r*0.25); }, ()=>{ M(x0, top-0.012-r*1.1); Lt(x0+len, top-0.012-r*1.1); }, dk);
+      c.fillStyle = glow || "#7fd6ff"; c.globalAlpha = 0.8; c.fillRect((x0+len-0.003)*u, (top-0.012-r)*u, 0.003*u, r*1.1*u); c.globalAlpha = 1; }
+    else if(id==="bayonet"){ const x = G.x(1) - 0.02, y = G.bot(1) + 0.004, len = 0.13;
+      c.fillStyle = dk; c.fillRect((x-0.02)*u, (y-0.004)*u, 0.024*u, 0.009*u);
+      shape(()=>{ M(x, y-0.002); Lt(x+len, y+0.004); Lt(x, y+0.012); }, ()=>{ M(x, y-0.001); Lt(x+len, y+0.004); });
+      edges.push([[x, y-0.002],[x+len, y+0.004]]); }
+    else if(id==="muzzle"){ const x = G.x(1), yt = G.top(1), yb = G.bot(1), h2 = (yb-yt);
+      shape(()=>{ M(x, yt-0.004); Lt(x+0.045, yt-0.004); Lt(x+0.045, yb+0.004); Lt(x, yb+0.004); }, ()=>{ M(x, yt-0.003); Lt(x+0.045, yt-0.003); }, dk);
+      c.fillStyle = "#000"; for(let i=0;i<3;i++) c.fillRect((x+0.008+i*0.012)*u, (yt+h2*0.2)*u, 0.005*u, h2*0.6*u); }
   });
 }
 function drawWeaponSpec(c, s, u, dark, opt){
@@ -8155,9 +8327,9 @@ function drawWeaponSpec(c, s, u, dark, opt){
   // 모양을 채우고 그 안쪽 가장자리를 따라 밝은 연마면을 그린다
   const shape = (fn, st, bev, bw)=>{ fs(st||col); c.beginPath(); fn(); c.closePath(); c.fill();
     if(bev){ c.save(); c.beginPath(); fn(); c.closePath(); c.clip(); c.strokeStyle = lt; c.lineWidth = lw(bw||0.02); c.beginPath(); bev(); c.stroke(); c.restore(); } };
-  const edges = []; let G = null;
+  const edges = []; let G = null, gEnd = null;
   // 손잡이: 가죽 감개(사선) · 실 감개(마름모) · 감개 없음. 끝(폼멜 쪽) x를 돌려준다
-  const grip = (len, w, wrap)=>{ len *= gL; w *= gW; fs(dark); R(-len, -w/2, len+0.014, w);
+  const grip = (len, w, wrap)=>{ len *= gL; w *= gW; gEnd = -len; fs(dark); R(-len, -w/2, len+0.014, w);
     c.save(); c.beginPath(); c.rect(-len*u, -w/2*u, (len+0.014)*u, w*u); c.clip();
     if(wrap==="ito"){ fs(hexMix(dark,"#ffffff",0.28)); for(let x=-len+0.008; x<0.006; x+=0.021) poly([[x,-w/2],[x+0.0105,0],[x,w/2],[x-0.0105,0]]);
       fs(dark); for(let x=-len+0.008; x<0.006; x+=0.021) poly([[x,-w*0.2],[x+0.004,0],[x,w*0.2],[x-0.004,0]]); }
@@ -8447,7 +8619,7 @@ function drawWeaponSpec(c, s, u, dark, opt){
       c.strokeStyle = dk; c.lineWidth = lw(0.005); c.beginPath(); c.arc(0.022*u, -0.03*u, 0.02*u, 0.2, Math.PI-0.2); c.stroke(); fs(dark); R(0.018, -0.036, 0.005, 0.018);
       edges.push([[0.064,-0.088],[0.064+bl,-0.088]]); G = {x:t=>0.064+bl*0.4+bl*0.6*t, top:()=>-0.088, bot:()=>-0.056, k:0.7}; }
   }
-  drawAdds(c, u, G, s.add, col, edges, opt.far);
+  drawAdds(c, u, G, s.add, col, edges, opt.far, k, gEnd, s.glow);
   // 발광: 날 가장자리에 가는 빛
   if(s.glow && !opt.noGlow){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round"; c.lineJoin="round";
     edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); c.restore(); }
@@ -8465,7 +8637,7 @@ function drawGauntlet(c, s, hand, a, h, dark, far){
   c.fillStyle = far ? dk : lt; for(let i=0;i<4;i++){ c.beginPath(); c.arc(0.02*u, (-0.019+i*0.0127)*W*u, Math.max(0.4, 0.0042*u), 0, 7); c.fill(); }
   if(s.v===1){ c.fillStyle = mc; for(let i=-1;i<=1;i++){ c.beginPath(); c.moveTo(0.022*u, (i*0.017-0.006)*W*u); c.quadraticCurveTo((0.05+0.012*(s.len||1))*u, (i*0.019-0.004)*W*u, (0.065+0.025*(s.len||1))*u, i*0.024*W*u); c.lineTo(0.022*u, (i*0.017+0.006)*W*u); c.closePath(); c.fill(); } }
   const edges = [[[-0.1,-0.02*W],[-0.02,-0.028*W]]];
-  drawAdds(c, u, {x:t=>-0.06+0.085*t, top:()=>-0.028*W, bot:()=>0.028*W, k:0.6}, s.add, mc, edges, far);
+  drawAdds(c, u, {x:t=>-0.06+0.085*t, top:()=>-0.028*W, bot:()=>0.028*W, k:0.6}, s.add, mc, edges, far, "fist", null, s.glow);
   if(s.glow && !far){ c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=6; c.lineWidth=Math.max(1,u*0.006); c.lineCap="round"; edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); }
   c.restore();
 }
@@ -8786,6 +8958,7 @@ function drawFixerSD(c, x, gy, h, o){
   // 어깨에 멘 무기: 손은 가슴 앞(팔꿈치는 아래로, 아래팔은 어깨 쪽으로 세운다), 자루·칼등은 어깨 위에 얹혀 머리 뒤로 비스듬히 넘어간다
   if(K.shoulder){ const st = R(0.05, -0.245); K.nearA = Math.atan2(st[1] - hand1T[1], st[0] - hand1T[0]); }
   let hand2T = P(K.far[0] + K.step*0.6, K.far[1]);
+  if(back && state==="combat" && !twoH && kind!=="twin" && !boxer && !K.sling && kind!=="gun") hand2T = R(-0.1 - (o.atk ? 0.02 : 0), 0.06 + br*0.004);   // 뒷모습: 빈팔은 옆구리를 따라 내려뜨린다
   if(twoH){ const ax = Math.cos(K.nearA), ay = Math.sin(K.nearA);                     // 양손 무기: 뒷손이 자루를 함께 쥔다
     hand2T = kind==="gun" && !K.two ? [hand1T[0]-0.026*h, hand1T[1]+0.026*h] : [hand1T[0] + ax*K.two*h*0.82, hand1T[1] + ay*K.two*h*0.82]; }
   const L1 = SD.L1*h, L2 = SD.L2*h;
@@ -8856,8 +9029,19 @@ function drawFixerSD(c, x, gy, h, o){
   // ② 코트 자락: 허리에서 바닥까지 A자, 밑단은 물결처럼 흔들린다. 밑단에는 천의 두께(안감)가 보인다
   const wav = (state==="idle" ? 0.004 : 0.007)*h + (o.atk ? 0.006*h : 0);
   const hf = (K.hemF + K.step*0.9 + K.flare)*h, hb = (K.hemB + K.step*0.5 + K.flare*0.6 - (o.atk ? 0.02 : 0))*h;
-  const hem = []; for(let k=0;k<=8;k++){ const u = k/8; hem.push([hf + (hb-hf)*u + Math.sin(t*2.6 + u*3 + seed)*wav*0.6, -0.004*h + Math.sin(t*(state==="idle"?2:5.5) - u*4 + seed)*wav*(0.4+u*0.6)]); }
-  const skirtPts = [R(0.072, 0.0), [W[0] + 0.088*h + K.flare*0.4*h, -0.25*h], ...hem, [W[0] - 0.1*h + K.flare*0.3*h, -0.25*h], R(-0.077, 0.0)];
+  // 방어구 형태에 따라 자락 길이가 다르다: 경량 재킷(허리 아래 조금) · 해결사 코트(무릎 위) · 롱코트(발목) · 중장갑(무릎 위, 앞뒤로 판을 덧댄다)
+  const aType = ar.type!=null ? ar.type : 1, HL = [0.2, 0.62, 1.0, 0.56][aType] ?? 0.62, hemY0 = W[1]*(1-HL) - 0.004*h, BW = back ? 1.2 : 1, hx = x0 => W[0] + (x0 - W[0])*(0.3 + 0.7*HL)*BW;
+  const hem = []; for(let k=0;k<=8;k++){ const u = k/8; hem.push([hx(hf + (hb-hf)*u) + Math.sin(t*2.6 + u*3 + seed)*wav*0.6*HL, hemY0 + Math.sin(t*(state==="idle"?2:5.5) - u*4 + seed)*wav*(0.4+u*0.6)*HL]); }
+  const sideY = (W[1] + hemY0)/2;
+  const skirtPts = [R(0.072, 0.0), [W[0] + (0.06 + 0.028*HL)*h + K.flare*0.4*h*HL, sideY], ...hem, [W[0] - (0.075 + 0.025*HL)*h + K.flare*0.3*h*HL, sideY], R(-0.077, 0.0)];
+  // 다리: 자락이 짧으면 보인다(긴 코트면 밑단 아래로 발끝만). 먼 다리는 어둡게, 무릎을 조금 굽힌다
+  { const legC = hexMix(col, "#000000", 0.42), legF = hexMix(col, "#000000", 0.3), shoe = hexMix(col, "#000000", 0.62), sw = Math.sin(t*(state==="idle"?1.2:3) + seed)*0.004*h;
+    const legs = [[R(-0.035, 0.0), [W[0] - 0.05*h - (o.atk ? 0.02*h : 0), 0], legC, -1], [R(0.035, 0.0), [W[0] + 0.06*h + K.step*0.55*h + sw, 0], legF, 1]];
+    legs.forEach(([hp, ft, fc, sd])=>{ const kn = [(hp[0] + ft[0])/2 + sd*0.012*h, (hp[1] + ft[1])/2 + (K.crouch||0)*0.3*h];
+      const wT = 0.034*h, wB = 0.022*h, Lg = new Path2D();
+      Lg.moveTo(hp[0] - wT, hp[1]); Lg.quadraticCurveTo(kn[0] - wT*0.8, kn[1], ft[0] - wB, ft[1] - 0.012*h); Lg.lineTo(ft[0] + wB, ft[1] - 0.012*h); Lg.quadraticCurveTo(kn[0] + wT*0.8, kn[1], hp[0] + wT, hp[1]); Lg.closePath();
+      paint(Lg, fc, {sh:0.01, hl:0.003, grad:false, lw:1});
+      const Sh = new Path2D(); Sh.ellipse(ft[0] + sd*0.008*h*face, ft[1] - 0.008*h, 0.03*h, 0.011*h, 0, 0, 7); paint(Sh, shoe, {sh:0.003, hl:0.002, hlA:0.3, grad:false, lw:1}); }); }
   const lining = sPath([R(0.06, 0.02), ...hem.map((q,k)=>[q[0], q[1] + 0.007*h]), R(-0.06, 0.02)]);
   c.fillStyle = hexMix(col, "#000000", 0.5); c.strokeStyle = line; c.lineWidth = LW*2; c.stroke(lining); c.fill(lining);
   const skirt = sPath(skirtPts);
@@ -8865,26 +9049,57 @@ function drawFixerSD(c, x, gy, h, o){
   c.save(); c.clip(skirt);
   c.fillStyle = "rgba(0,0,0,0.14)"; c.beginPath(); c.moveTo(...R(-0.02, 0.0)); c.lineTo(hem[5][0], 0); c.lineTo(hem[8][0]-0.02*h, 0); c.lineTo(...R(-0.077, 0)); c.closePath(); c.fill();   // 먼 쪽 면(3/4 시점)
   // 주름: 허리에서 퍼지는 쐐기(흔들림을 따라 휜다)
-  [[0.03,2,0.6],[-0.015,4,0.0],[-0.05,6,-0.5]].forEach(([tx,hi,cv])=>{ fold(R(tx, 0.03), [hem[hi][0], hem[hi][1]], 0.016*h, cv*0.02*h + (hem[hi][0]-W[0])*0.05, 0.16, 0.07); });
+  if(!back) [[0.03,2,0.6],[-0.015,4,0.0],[-0.05,6,-0.5]].forEach(([tx,hi,cv])=>{ fold(R(tx, 0.03), [hem[hi][0], hem[hi][1]], 0.016*h, cv*0.02*h + (hem[hi][0]-W[0])*0.05, 0.16, 0.07); });
   if(!back){
   // 앞여밈(겹친 앞판의 그림자) · 주머니 덮개
   { const top = R(0.03, 0.0), bot = [hem[2][0] - 0.004*h, hem[2][1]]; fold(top, bot, 0.008*h, 0.004*h, 0.3, 0.12); }
   [[0.045,0.09],[-0.045,0.09]].forEach(([px,py])=>{ const q = R(px, py); const pk = new Path2D(); pk.moveTo(q[0]-0.024*h, q[1]); pk.lineTo(q[0]+0.024*h, q[1]); pk.lineTo(q[0]+0.021*h, q[1]+0.014*h); pk.lineTo(q[0]-0.021*h, q[1]+0.014*h); pk.closePath();
     c.fillStyle = "rgba(0,0,0,0.18)"; c.save(); c.translate(0, 0.004*h); c.fill(pk); c.restore(); c.fillStyle = hexMix(col, "#ffffff", 0.06); c.fill(pk); c.fillStyle = "rgba(255,255,255,0.12)"; c.fillRect(q[0]-0.022*h, q[1], 0.044*h, 0.003*h); });
-  } else {   // 등판 가운데 뒤트임(겹친 자락의 그림자) + 양옆으로 접힌 맞주름
-    const vt = R(-0.012, 0.06), vb = [hem[4][0], hem[4][1]]; fold(vt, vb, 0.009*h, 0.003*h, 0.34, 0.12);
-    fold(R(-0.04, 0.02), [hem[5][0], hem[5][1]], 0.012*h, -0.004*h, 0.14, 0.06); fold(R(0.02, 0.02), [hem[3][0], hem[3][1]], 0.012*h, 0.004*h, 0.14, 0.06);
+  } else {   // 뒷모습 자락: 두꺼운 모직 코트 — 주름은 적고 넓게. 허리띠 아래 Z자로 몰린 주름, 둥근 관처럼 흘러내리는 큰 주름 둘, 가운데 뒤트임, 밑단 두께
+    const lerpP = (a,b,k)=>[a[0]+(b[0]-a[0])*k, a[1]+(b[1]-a[1])*k], w0 = R(-0.012, 0.012), vb = hem[4], vt = lerpP(w0, vb, 0.42);
+    // 먼 쪽 절반: 빛을 등진 면. 가장자리로 갈수록 짙어진다
+    { const Pp = new Path2D(); Pp.moveTo(...w0); Pp.quadraticCurveTo(vt[0]-0.012*h, vt[1], vb[0]-0.004*h, vb[1]); hem.slice(4).forEach(q=>Pp.lineTo(q[0], q[1]+0.01*h)); Pp.lineTo(...R(-0.14, 0.0)); Pp.closePath();
+      const g = c.createLinearGradient(vb[0], 0, hem[8][0], 0); g.addColorStop(0, "rgba(8,6,14,0.16)"); g.addColorStop(1, "rgba(8,6,14,0.42)"); c.fillStyle = g; c.fill(Pp); }
+    // 큰 주름: 허리에서 좁게 시작해 밑단에서 넓어지는 관. 한쪽은 그늘, 다른 쪽은 빛(부드럽게 이어진다)
+    const tube = (tp, bt, wTop, wBot, dA, lA)=>{ const dx = bt[0]-tp[0], dy = bt[1]-tp[1], L = Math.hypot(dx,dy)||1, nx = -dy/L, ny = dx/L, mid = lerpP(tp, bt, 0.6);
+      const Pp = new Path2D(); Pp.moveTo(tp[0]-nx*wTop, tp[1]-ny*wTop); Pp.quadraticCurveTo(mid[0]-nx*wBot*0.8, mid[1]-ny*wBot*0.8, bt[0]-nx*wBot, bt[1]-ny*wBot);
+      Pp.lineTo(bt[0]+nx*wBot, bt[1]+ny*wBot); Pp.quadraticCurveTo(mid[0]+nx*wBot*0.8, mid[1]+ny*wBot*0.8, tp[0]+nx*wTop, tp[1]+ny*wTop); Pp.closePath();
+      const g = c.createLinearGradient(mid[0]-nx*wBot, mid[1]-ny*wBot, mid[0]+nx*wBot, mid[1]+ny*wBot);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.3, `rgba(0,0,0,${dA})`); g.addColorStop(0.55, "rgba(0,0,0,0)"); g.addColorStop(0.75, `rgba(255,255,255,${lA})`); g.addColorStop(1, "rgba(255,255,255,0)");
+      c.fillStyle = g; c.fill(Pp); };
+    const wb = (0.02 + 0.03*HL)*h;
+    tube(R(0.04, 0.03), [hem[1][0]+0.01*h, hem[1][1]], 0.006*h, wb, 0.3, 0.14);
+    tube(R(-0.05, 0.03), [hem[6][0], hem[6][1]], 0.006*h, wb*0.9, 0.34, 0.06);
+    tube(R(0.012, 0.035), [hem[3][0], hem[3][1]], 0.004*h, wb*0.7, 0.22, 0.1);
+    // 뒤트임: 위는 겹친 자락이 만드는 짧은 그늘, 아래로 갈수록 벌어져 안감 그늘이 보인다
+    { const sl = new Path2D(); sl.moveTo(vt[0], vt[1]); sl.quadraticCurveTo(vt[0]+0.004*h, (vt[1]+vb[1])/2, vb[0]+0.006*h, vb[1]); sl.lineTo(vb[0]-0.004*h, vb[1]); sl.quadraticCurveTo(vt[0]-0.004*h, (vt[1]+vb[1])/2, vt[0], vt[1]); sl.closePath(); c.fillStyle = "rgba(0,0,0,0.42)"; c.fill(sl);
+      const op = new Path2D(), m1 = lerpP(vt, vb, 0.7); op.moveTo(m1[0], m1[1]); op.lineTo(vb[0]-0.02*h*HL, vb[1]+0.006*h); op.lineTo(vb[0]+0.014*h*HL, vb[1]+0.006*h); op.closePath(); c.fillStyle = "rgba(0,0,0,0.38)"; c.fill(op); }
+    // 밑단 두께: 접어 박은 단의 그늘과 바로 위의 얇은 빛
+    { c.strokeStyle = "rgba(0,0,0,0.35)"; c.lineWidth = Math.max(1.2, h*0.008); c.beginPath(); hem.forEach((q,i)=> i ? c.lineTo(q[0], q[1]-0.002*h) : c.moveTo(q[0], q[1]-0.002*h)); c.stroke();
+      c.strokeStyle = "rgba(255,255,255,0.08)"; c.lineWidth = Math.max(1, h*0.003); c.beginPath(); hem.forEach((q,i)=> i ? c.lineTo(q[0], q[1]-0.014*h) : c.moveTo(q[0], q[1]-0.014*h)); c.stroke(); }
   }
   c.restore();
   // ③ 몸통(코트 윗부분) — 3/4 시점이라 앞(진행 방향) 어깨가 조금 넓다
   // 롤랑 LD처럼: 어깨는 살짝 처지고 가슴에서 허리로 좁아진다(V자), 허리는 조여 있다
-  const torsoPts = [R(-0.074, 0.0), R(-0.068, -0.06), R(-0.08, -0.15), R(-0.087, -0.196), R(-0.064, -0.222), R(-0.02, -0.233), R(0.03, -0.235), R(0.07, -0.223), R(0.091, -0.199), R(0.084, -0.13), R(0.066, -0.06), R(0.07, 0.0)];
+  const torsoPts = back
+    ? [R(-0.068, 0.0), R(-0.064, -0.06), R(-0.084, -0.15), R(-0.1, -0.196), R(-0.078, -0.226), R(-0.02, -0.237), R(0.04, -0.239), R(0.088, -0.226), R(0.106, -0.199), R(0.092, -0.13), R(0.064, -0.06), R(0.066, 0.0)]
+    : [R(-0.074, 0.0), R(-0.068, -0.06), R(-0.08, -0.15), R(-0.087, -0.196), R(-0.064, -0.222), R(-0.02, -0.233), R(0.03, -0.235), R(0.07, -0.223), R(0.091, -0.199), R(0.084, -0.13), R(0.066, -0.06), R(0.07, 0.0)];
   const torso = sPath(torsoPts);
   paint(torso, col, {sh:0.035, hl:0.008, box:[-0.1,-0.75,0.1,-0.5]});
   c.save(); c.clip(torso);
+  if(!back){
   c.fillStyle = "rgba(0,0,0,0.14)"; c.beginPath(); c.moveTo(...R(-0.1,0.02)); c.lineTo(...R(-0.1,-0.26)); c.lineTo(...R(-0.03,-0.26)); c.lineTo(...R(-0.025,0.02)); c.closePath(); c.fill();
   fold(R(0.06,-0.17), R(0.035,-0.06), 0.008*h, -0.004*h, 0.16, 0.06);      // 겨드랑이에서 허리로 당기는 주름
   fold(R(-0.05,-0.15), R(-0.03,-0.04), 0.007*h, 0.003*h, 0.12, 0.05);
+  } else {
+  // 등(셀 음영): 먼 쪽 어깨에서 허리로 비스듬한 단단한 그림자, 가까운 어깨뼈에 빛, 어깨뼈 아래 접힘
+  { const a = R(-0.11,-0.12), b2 = R(0.0,-0.12), g = c.createLinearGradient(a[0], a[1], b2[0], b2[1]); g.addColorStop(0, "rgba(8,6,14,0.42)"); g.addColorStop(0.62, "rgba(8,6,14,0.22)"); g.addColorStop(1, "rgba(8,6,14,0)");
+    c.fillStyle = g; c.beginPath(); [[-0.13,-0.26],[-0.01,-0.26],[0.006,-0.17],[-0.012,-0.08],[-0.03,0.02],[-0.13,0.02]].forEach((q,i)=> i ? c.lineTo(...R(q[0],q[1])) : c.moveTo(...R(q[0],q[1]))); c.closePath(); c.fill(); }
+  { const q = R(0.058,-0.185), g = c.createRadialGradient(q[0], q[1], 0, q[0], q[1], 0.075*h); g.addColorStop(0, "rgba(255,255,255,0.2)"); g.addColorStop(0.6, "rgba(255,255,255,0.07)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = g; c.beginPath(); c.ellipse(q[0], q[1], 0.07*h, 0.05*h, -0.5, 0, 7); c.fill(); }      // 가까운 어깨뼈에 맺힌 빛
+  { const a = R(0.1,-0.1), b2 = R(0.06,-0.1), g = c.createLinearGradient(a[0], a[1], b2[0], b2[1]); g.addColorStop(0, "rgba(0,0,0,0.24)"); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(...R(0.05,-0.15), 0.06*h, 0.15*h); }   // 옆구리로 돌아가는 면
+  c.strokeStyle = "rgba(0,0,0,0.32)"; c.lineWidth = Math.max(1, h*0.004); c.beginPath(); c.moveTo(...R(0.03,-0.2)); c.quadraticCurveTo(...R(0.026,-0.15), ...R(0.05,-0.12)); c.stroke();
+  }
   c.restore();
   if(!back){
   // 셔츠 V와 넥타이: 깃 사이로 보이는 밝은 셔츠, 가운데 어두운 넥타이(매듭 → 아래로 넓어진다)
@@ -8907,13 +9122,21 @@ function drawFixerSD(c, x, gy, h, o){
   } else {
   // 등판: 가운데 솔기, 어깨뼈 아래 그늘, 허리 뒤 반쪽 벨트(단추 두 개)
   c.save(); c.clip(torso);
-  c.strokeStyle = "rgba(0,0,0,0.3)"; c.lineWidth = Math.max(1, h*0.004); c.beginPath(); c.moveTo(...R(-0.01,-0.228)); c.quadraticCurveTo(...R(-0.016,-0.12), ...R(-0.012, 0.0)); c.stroke();
-  fold(R(-0.06,-0.19), R(-0.035,-0.1), 0.012*h, -0.004*h, 0.18, 0.05); fold(R(0.05,-0.19), R(0.03,-0.1), 0.012*h, 0.004*h, 0.16, 0.06);
-  c.fillStyle = "rgba(255,255,255,0.1)"; c.beginPath(); c.moveTo(...R(0.06,-0.22)); c.lineTo(...R(0.09,-0.2)); c.lineTo(...R(0.08,-0.1)); c.lineTo(...R(0.065,-0.12)); c.closePath(); c.fill();   // 진행 방향 어깨 가장자리 빛
+  c.strokeStyle = "rgba(0,0,0,0.22)"; c.lineWidth = Math.max(1, h*0.003); c.beginPath(); c.moveTo(...R(-0.008,-0.236)); c.quadraticCurveTo(...R(-0.014,-0.12), ...R(-0.012, 0.0)); c.stroke();   // 등 가운데 솔기
   c.restore();
   { const hb2 = sPath([R(-0.06,-0.016), R(0.05,-0.016), R(0.048,0.012), R(-0.058,0.012)]); paint(hb2, hexMix(col, "#000000", 0.32), {sh:0.006, hl:0.003, grad:false, lw:1.2});
     [-0.045, 0.035].forEach(px=>{ const q = R(px, -0.002), bP = new Path2D(); bP.arc(q[0], q[1], Math.max(1.2, h*0.007), 0, 7); paint(bP, hexMix(col, "#000000", 0.5), {sh:0.003, hl:0.002, hlA:0.4, grad:false, lw:0.8}); }); }
   }
+  // 중장갑: 가슴판(앞) · 등판(뒤) — 금속빛 판을 덧댄다
+  if(aType===3){ const mc = hexMix(col, "#c9d2de", 0.32);
+    const pl = back ? sPath([R(-0.07,-0.21), R(0.06,-0.215), R(0.072,-0.09), R(0.0,-0.06), R(-0.064,-0.09)]) : sPath([R(-0.03,-0.215), R(0.078,-0.21), R(0.07,-0.1), R(0.02,-0.06), R(-0.03,-0.1)]);
+    paint(pl, mc, {sh:0.01, hl:0.004, hlA:0.35, grad:false, lw:1.2});
+    c.strokeStyle = "rgba(0,0,0,0.25)"; c.lineWidth = Math.max(1, h*0.003); c.beginPath(); c.moveTo(...R(back ? -0.05 : 0.0, -0.15)); c.lineTo(...R(back ? 0.05 : 0.065, -0.15)); c.stroke(); }
+  // 장식선: 앞모습은 앞여밈을 따라, 뒷모습은 등 솔기와 밑단을 따라 빛나는 선
+  if(ar.trim){ c.save(); c.strokeStyle = ar.trim; c.shadowColor = ar.trim; c.shadowBlur = Math.max(3, h*0.03); c.lineWidth = Math.max(1, h*0.006); c.lineCap = "round";
+    c.beginPath(); if(!back){ c.moveTo(...R(0.03,-0.22)); c.lineTo(...R(0.03, 0.0)); c.lineTo(hem[2][0], hem[2][1]); }
+    else { c.moveTo(...R(-0.01,-0.226)); c.lineTo(...R(-0.012, 0.0)); }
+    c.stroke(); c.beginPath(); hem.forEach((q,i)=> i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); c.globalAlpha = 0.85; c.stroke(); c.restore(); }
   if(!back && K.sling){ arm(a1, S1, col, false); handAt(a1, glove, K.nearA, true, false); }
   if(!back && K.wBehind) w1();       // 어깨에 멘 무기: 가슴·어깨 위로 지나 머리 뒤로 넘어간다(머리가 가린다)
   // ④ 목 · 머리: 크고 단순한 타원(얼굴·머리카락 없음). 빛은 앞-위, 뒤통수와 턱 아래가 그늘진다
@@ -8921,7 +9144,7 @@ function drawFixerSD(c, x, gy, h, o){
   const nk = R(0.008, -0.225), ha = lean*0.45 + (K.tilt||0)*0.6 + (state==="idle" ? Math.sin(t*0.37+seed)*0.02 : 0);
   const hc = [nk[0] + Math.sin(ha)*0.1*h + 0.01*h, nk[1] - Math.cos(ha)*0.1*h];
   // 옷깃: 목 뒤에서 세운 깃(머리 뒤로 들어간다)
-  { const cl = new Path2D(); const p1 = R(-0.05,-0.21), p2 = R(-0.05,-0.25), p3 = R(-0.02,-0.262), p4 = R(0.012,-0.222); cl.moveTo(...p1); cl.quadraticCurveTo(p2[0], p2[1], p3[0], p3[1]); cl.lineTo(p4[0], p4[1]); cl.closePath(); paint(cl, hexMix(col, "#000000", 0.08), {sh:0.01, hl:0.003, grad:false}); }
+  if(!back){ const cH = ar.collar ? 0.028 : 0, cl = new Path2D(); const p1 = R(-0.05,-0.21), p2 = R(-0.056 - cH*0.3,-0.25 - cH), p3 = R(-0.022,-0.262 - cH*1.15), p4 = R(0.014,-0.222 - cH*0.35); cl.moveTo(...p1); cl.quadraticCurveTo(p2[0], p2[1], p3[0], p3[1]); cl.lineTo(p4[0], p4[1]); cl.closePath(); paint(cl, hexMix(col, "#000000", 0.08), {sh:0.01, hl:0.003, grad:false}); }
   { const Np = new Path2D(); Np.moveTo(nk[0]-0.02*h, nk[1]+0.01*h); Np.lineTo(hc[0]-0.022*h, hc[1]+0.06*h); Np.lineTo(hc[0]+0.022*h, hc[1]+0.06*h); Np.lineTo(nk[0]+0.024*h, nk[1]+0.01*h); Np.closePath();
     paint(Np, hexMix(col, "#000000", 0.18), {sh:0.01, hl:0.003, grad:false}); }
   // 머리: 타원이 아니라 정수리가 둥글고 턱이 앞-아래로 좁아지는 형태(3/4 시점). 얼굴 생김새·머리카락은 그리지 않는다
@@ -8935,12 +9158,29 @@ function drawFixerSD(c, x, gy, h, o){
   else { c.save(); c.clip(Hp); const hg = c.createRadialGradient(hc[0]+0.03*h, hc[1]-0.04*h, 0, hc[0]+0.03*h, hc[1]-0.04*h, 0.06*h); hg.addColorStop(0, "rgba(255,255,255,0.16)"); hg.addColorStop(1, "rgba(255,255,255,0)"); c.fillStyle = hg; c.fill(Hp); c.restore();   } // 이마 쪽 부드러운 반사광
   c.save(); c.clip(Hp); c.fillStyle = "rgba(0,0,0,0.16)"; c.beginPath(); c.ellipse(hc[0] - 0.012*h, hc[1] + 0.07*h, 0.06*h, 0.03*h, ha, 0, 7); c.fill(); c.restore();   // 턱 아래 그늘
   if(o.rim){ c.strokeStyle = o.rim; c.lineWidth = Math.max(1, h*0.008); c.beginPath(); c.ellipse(hc[0], hc[1], SD.head[0]*h, SD.head[1]*h, ha, -2.2, -0.6); c.stroke(); }
+  // 뒷모습 깃: 목을 감싸며 세운 높은 깃(뒤에서 보면 뒤통수 아래를 가린다). 세움 = 귀 높이까지, 낮게 = 목덜미까지
+  if(back){ const cH = ar.collar ? 0.016 : 0.0;
+    // 어깨선에서 이어져 올라가며 위가 살짝 벌어지는 깔때기 깃: 아래(목둘레)는 둥글게 처지고, 위 가장자리는 머리 뒤를 감싸며 둥글게 휜다
+    const b0 = R(-0.074,-0.216), b1 = R(0.064,-0.214), t0 = R(-0.08,-0.25 - cH), t1 = R(0.056,-0.236 - cH*0.35), tm = R(-0.028,-0.268 - cH*1.1), bm = R(-0.006,-0.234);
+    const cl = new Path2D(); cl.moveTo(...b0);
+    cl.bezierCurveTo(b0[0]-0.008*h, b0[1]-0.012*h, t0[0]-0.004*h, t0[1]+0.012*h, t0[0], t0[1]);            // 먼 쪽 옆선: 바깥으로 살짝 벌어진다
+    cl.quadraticCurveTo(tm[0], tm[1], t1[0], t1[1]);                                                          // 위 가장자리
+    cl.bezierCurveTo(t1[0]+0.006*h, t1[1]+0.012*h, b1[0]+0.006*h, b1[1]-0.014*h, b1[0], b1[1]);             // 가까운 쪽 옆선
+    cl.quadraticCurveTo(bm[0], bm[1]+0.012*h, b0[0], b0[1]); cl.closePath();                                 // 목둘레(어깨와 만나는 선)
+    c.save(); c.strokeStyle = line; c.lineWidth = LW*1.3; c.stroke(cl); c.fillStyle = col; c.fill(cl); c.clip(cl);
+    { const g = c.createLinearGradient(t0[0], 0, t1[0]+0.01*h, 0); g.addColorStop(0, "rgba(8,6,14,0.45)"); g.addColorStop(0.45, "rgba(8,6,14,0.12)"); g.addColorStop(0.8, "rgba(255,255,255,0.08)"); g.addColorStop(1, "rgba(255,255,255,0.18)"); c.fillStyle = g; c.fill(cl); }
+    c.strokeStyle = "rgba(255,255,255,0.22)"; c.lineWidth = Math.max(1, h*0.004); c.beginPath(); c.moveTo(t0[0]+0.008*h, t0[1]-0.002*h); c.quadraticCurveTo(tm[0], tm[1]+0.004*h, t1[0]-0.004*h, t1[1]+0.002*h); c.stroke();   // 위 가장자리의 접힌 두께
+    c.strokeStyle = "rgba(0,0,0,0.25)"; c.lineWidth = Math.max(1, h*0.003); c.beginPath(); c.moveTo(...R(-0.05,-0.232)); c.quadraticCurveTo(bm[0], bm[1]-0.004*h, ...R(0.045,-0.23)); c.stroke();      // 깃이 시작되는 솔기
+    c.restore(); }
   // ⑤ 칼 → 앞팔 → 앞손(칼자루를 감싼다)
   if(back){ if(K.wBehind || K.overBack) w1();      // 뒷모습: 어깨에 멘·걸친 무기는 어깨 위로 이쪽(등 쪽)으로 넘어와 보인다
     if(!twoH && !farFront){ w2(); arm(a2, S2, col, false); handAt(a2, glove, farGripA, farGrip, false); }
     if(K.sling){ arm(a1, S1, col, false); w1(); handAt(a1, glove, K.nearA, true, false); } }      // 뒷모습: 등에 멘 칼은 두 팔보다 앞(이쪽)에 있다. 손잡이를 쥔 손만 칼 위에
   else { if(!K.wBehind && !K.sling) w1(); if(twoH){ const d2 = hexMix(col, "#000000", 0.16); arm(a2, S2, d2, true); handAt(a2, hexMix(glove, "#000000", 0.15), farGripA, true, true); }
     if(!K.sling){ arm(a1, S1, col, false); handAt(a1, glove, K.nearA, mainGrip, false); } }
+  // 어깨 장갑: 작게 · 크게(중장갑은 최소 작게). 먼 어깨는 어둡게, 가까운 어깨는 팔 위에 얹는다
+  { const pd = Math.max(ar.pad||0, aType===3 ? 1 : 0); if(pd){ const mc = hexMix(col, "#c9d2de", 0.35), rx = (pd===2 ? 0.05 : 0.038)*h, ry = (pd===2 ? 0.034 : 0.026)*h;
+    [[S2, hexMix(mc, "#000000", 0.25), -0.25], [S1, mc, 0.25]].forEach(([sp, fc, rot])=>{ const P2 = new Path2D(); P2.ellipse(sp[0], sp[1] - ry*0.25, rx, ry, rot*(back?-1:1), Math.PI, 0); P2.closePath(); paint(P2, fc, {sh:0.006, hl:0.003, hlA:0.35, grad:false, lw:1}); }); } }
   if(o.acc){ c.fillStyle = `rgb(${o.acc})`; c.beginPath(); c.arc(...R(-0.04,-0.15), 0.011*h, 0, 7); c.fill(); }
   c.restore();
   return {hand: a1[1]};
@@ -10268,6 +10508,8 @@ async function openRigGallery(){
 /* ================= 부팅 ================= */
 S = null;
 renderStart();
+setInterval(()=>BGM.tick(), 1500);
+{ const b = document.getElementById("bgmbtn"); if(b){ b.classList.toggle("off", !BGM.on); b.onclick = () => b.classList.toggle("off", !BGM.toggle()); } }
 fxTestPanel();
 </script>
 </body>
