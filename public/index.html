@@ -4428,6 +4428,16 @@ function codexLoad(){ let d; try{ d = JSON.parse(localStorage.getItem(CODEX_KEY)
     const ok = A && A.gifts ? [A.gifts.a, A.gifts.b].filter(Boolean).map(g=>g.n) : []; e.gifts = e.gifts.filter(n=>ok.includes(n)); });
   return d; }
 function codexSave(d){ try{ localStorage.setItem(CODEX_KEY, JSON.stringify(d)); }catch(_){} }
+/* 환상체 기록(사무소가 바뀌어도 이어진다): 환상체가 주는 기프트 쪽, 환상체 제압 수, 마탄을 의뢰한 수. 도감(만난 횟수)과 같은 곳에 남는다. */
+const ABREC_KEY = "problem-solver-abrec-v1";
+function abRec(){ let r; try{ r = JSON.parse(localStorage.getItem(ABREC_KEY)) || {}; }catch(_){ r = {}; } r.giftPick = r.giftPick || {}; r.sup = r.sup || 0; r.frei = r.frei || 0; return r; }
+function abRecSave(r){ try{ localStorage.setItem(ABREC_KEY, JSON.stringify(r)); }catch(_){} }
+// 예전 저장의 사무소별 기록을 이어지는 기록으로 옮긴다(큰 쪽을 남긴다)
+function abRecMigrate(d){ if(!d) return; const r = abRec(); let ch = false;
+  if(d.giftPick){ Object.keys(d.giftPick).forEach(k=>{ if(!r.giftPick[k]){ r.giftPick[k] = d.giftPick[k]; ch = true; } }); delete d.giftPick; }
+  if(d.supCount){ if(d.supCount > r.sup){ r.sup = d.supCount; ch = true; } delete d.supCount; }
+  if(d.freiShots){ if(d.freiShots > r.frei){ r.frei = d.freiShots; ch = true; } delete d.freiShots; }
+  if(ch) abRecSave(r); }
 function codexSeen(vid){ return (codexLoad()[vid]||{}).seen || 0; }
 function codexMeet(vid){ const d = codexLoad(), e = d[vid] = d[vid] || {seen:0, ctrl:0, sup:0, gifts:[]}; e.seen++; codexSave(d); return e.seen; }
 function codexNote(vid, how, gift){ const d = codexLoad(), e = d[vid] = d[vid] || {seen:0, ctrl:0, sup:0, gifts:[]}; if(how) e[how] = (e[how]||0) + 1; if(gift && !e.gifts.includes(gift)) e.gifts.push(gift); codexSave(d); }
@@ -4436,7 +4446,7 @@ const CODEX_STEPS = ["이름","위험 등급","선호 행동","폭주 · 전투 
    기프트의 급수(만난 의뢰 등급)가 지닌 해결사보다 높으면 정신이 무너질 때 통제 기프트는 개화 쪽으로, 제압 기프트는 뒤틀림 쪽으로 기운다. */
 const GIFT_P = 0.08;
 function makeGift(a, how, grade){ if(!a.gifts) return null; const id = String(a.vid||a.id).split("~")[0];
-  S.giftPick = S.giftPick || {}; let k = S.giftPick[id]; if(!k){ k = Math.random() < 0.5 ? "a" : "b"; if(!window.__peekGift) S.giftPick[id] = k; }
+  const RC = abRec(); let k = RC.giftPick[id]; if(!k){ k = Math.random() < 0.5 ? "a" : "b"; if(!window.__peekGift){ RC.giftPick[id] = k; abRecSave(RC); } }
   const G = a.gifts[k]; if(!G) return null;
   return Object.assign({slot:"acc", name:G.n, gift:{abno:a.vid, from:a.n, kind: how==="ctrl" ? "통제" : "제압", grade}}, G.bonus ? {bonus:Object.assign({}, G.bonus)} : {}, G.mpRed ? {mpRed:G.mpRed} : {}, G.hpRed ? {hpRed:G.hpRed} : {}, G.selfUp ? {selfUp:G.selfUp} : {});  }
 const overGift = f => { const g = f.gear && f.gear.acc; return g && g.gift && g.gift.grade < f.grade ? g.gift : null; };
@@ -4537,7 +4547,7 @@ function abnoApply(q, team, R, lines){
   if(X.bearer!=null){ const f = who(X.bearer); if(f){ const v = Math.floor(f.hpMax*0.1); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 탑을 내려놓았다. 어깨가 한동안 펴지지 않는다 — 체력 -${v}`); } }
   if(X.pair){ const [p1, p2] = X.pair.map(who); if(p1 && p2){ p1.ab = p1.ab || {}; p2.ab = p2.ab || {}; p1.ab.wing = {mate:p2.id, until:day + 3}; p2.ab.wing = {mate:p1.id, until:day + 3}; lines.push(`<span style="color:#9ad0ff">${esc(p1.name)} · ${esc(p2.name)}: 비익조의 한 쌍이 되었다 — 사흘 동안 함께 나가지 않으면 밤마다 둘 다 정신력을 잃는다</span>`); } }
   if(X.kin!=null){ const f = mark(X.kin, "kin", day + 2); if(f) lines.push(`<span style="color:#ffb0a0">${esc(f.name)}: 늙은 기사의 자식이 되었다 — 이틀 밤 동안 피를 받아 몸이 낫지만 꿈에 시달린다</span>`); }
-  if(R.how==="sup") S.supCount = (S.supCount||0) + 1;   // 붉은 두건의 용병이 늑대 냄새를 맡는다
+  if(R.how==="sup"){ const RC = abRec(); RC.sup++; abRecSave(RC); }   // 붉은 두건의 용병이 늑대 냄새를 맡는다
   return lost;
 }
 // 현장에서 잃은 사람 처리(죽음·실종). 대표면 끝
@@ -4839,7 +4849,7 @@ function mgAbno(ctx){
     const NAILS = ["엄지","검지","중지","약지","새끼"];
     const nextNail = () => { if(!G.nailSeq || G.nailPos >= 5){ G.nailSeq = [0,1,2,3,4].sort(()=>Math.random()-0.5); G.nailPos = 0; } G.nail = G.nailSeq[G.nailPos++]; G.order = G.nail===1 ? pick(["str","agi","tec","wil"]) : null; };
     if(a.fx==="nails") nextNail();
-    if(a.fx==="mercenary"){ const cut = Math.floor((S.supCount||0)/5); if(cut){ G.ctr = Math.max(1, G.ctr - cut); } }
+    if(a.fx==="mercenary"){ const cut = Math.floor(abRec().sup/5); if(cut){ G.ctr = Math.max(1, G.ctr - cut); } }
     const W = 720, H = 300, t0 = performance.now(); let raf;
     // 오래 남는 기믹: 기사의 축복을 받은 이는 행동할 수 없다 · 용기의 불꽃을 지닌 이가 재주 행동을 하면 목이 떨어진다
     const blessedF = f => f.ab && f.ab.bless && S.day <= f.ab.bless.until, flameOf = f => f.ab && f.ab.flame ? f.ab.flame.lv : 0;
@@ -4904,7 +4914,7 @@ function mgAbno(ctx){
     function menu(){
       const chips = `<div class="pk-who"><span class="muted">행동하는 이</span><button class="${G.pick==null?"on":""}" data-pk="auto">자동(능력치 높은 이)</button>${ctx.team.map(f=>`<button class="${G.pick===f.id?"on":""}" data-pk="${f.id}">${esc(f.name)}${tagOf(f)}</button>`).join("")}</div>`;
       const merc = a.fx==="mercenary" && G.ctr > 0 ? `<button data-merc="list"><b>하청을 맡긴다</b><small>게시판의 물리 의뢰 하나를 보수의 40%를 떼고 대신 처리해 준다<br><span style="color:#ff8a7a">그 대가로 광폭 카운터 -1</span></small></button>` : "";
-      const mb = a.fx==="bullet" && !G.bullet ? `<button data-mb="1"><b>마탄을 의뢰한다</b><small>자금의 10%(${won(bulletCost())}) · 다음 전투가 시작될 때 적을 꿰뚫는다<br>지금까지 의뢰한 마탄: ${S.freiShots||0}발</small></button>` : "";
+      const mb = a.fx==="bullet" && !G.bullet ? `<button data-mb="1"><b>마탄을 의뢰한다</b><small>자금의 10%(${won(bulletCost())}) · 다음 전투가 시작될 때 적을 꿰뚫는다<br>지금까지 의뢰한 마탄: ${abRec().frei}발</small></button>` : "";
       if(a.rule==="watch"){ const f = workerFor("wil"); m.ctrl.innerHTML = chips + `<div class="pk-moves"><button data-watch="1"><b>손대지 않고 지켜본다</b><small>할 수 있는 일은 이것뿐이다. 의지가 약하면 누르고 싶은 충동을 버티지 못한다<br>${esc(f.name)} · 의지 ${power(f,["wil"])}${tagOf(f)}</small></button></div>`; return; }
       const ntc = a.fx==="nails" && G.nail!=null ? `<div class="muted" style="font-size:12px;margin:4px 0">솟은 못 — <b style="color:#ffb35a">${NAILS[G.nail]}</b> · ${["가장 높은 등급이 먼저 나서야 한다","지령: <b>"+(G.order ? ATTR_NAME[G.order] : "")+" 행동</b>","틀리면 모두가 갚는다","최고가 아니면 졸작이다","누군가 엿듣는다 — 반응이 보이지 않는다"][G.nail]}</div>` : a.fx==="tower" && G.babel!=null ? `<div class="muted" style="font-size:12px;margin:4px 0">말이 갈라졌다 — 고른 사람 대신 <b>${esc((ctx.team.find(f=>f.id===G.babel)||{}).name||"")}</b>${jo((ctx.team.find(f=>f.id===G.babel)||{}).name||"","이").slice(-1)} 나선다</div>` : "";
       m.ctrl.innerHTML = chips + ntc + `<div class="pk-moves">${WORKS.map(w=>{ const f = workerFor(w.k), lv = know(3) ? a.pref[w.k] : "?";
@@ -4920,8 +4930,8 @@ function mgAbno(ctx){
       if(G.ctr <= 0) return breach(ctx.team[0]); menu(); }
     const bulletCost = () => Math.max(500, Math.round((S.money||0)*0.1/100)*100);
     function orderBullet(){ const c = bulletCost(); if((S.money||0) < c){ toast("자금이 모자라다"); return; }
-      S.money -= c; S.freiShots = (S.freiShots||0) + 1; S.bullets = (S.bullets||[]).concat([{n: S.freiShots}]); G.bullet = true;
-      say(`사수가 탄환 한 발을 깎아 장전했다 — 자금 -${won(c)}. <span class="muted">지금까지 의뢰한 마탄 ${S.freiShots}발째. 다음 전투가 시작될 때 날아간다.</span>`); menu(); }
+      S.money -= c; const RC = abRec(); RC.frei++; abRecSave(RC); S.bullets = (S.bullets||[]).concat([{n: RC.frei}]); G.bullet = true;
+      say(`사수가 탄환 한 발을 깎아 장전했다 — 자금 -${won(c)}. <span class="muted">지금까지 의뢰한 마탄 ${abRec().frei}발째. 다음 전투가 시작될 때 날아간다.</span>`); menu(); }
     // 만지지 마: 지켜볼수록 충동이 커진다
     function watch(){ if(G.done) return; G.turn++; const f = workerFor("wil"), ratio = power(f,["wil"]) / Math.max(1, q.req), p = clamp(0.12 - 0.25*(ratio - 1), 0.03, 0.35);
       let line = `${G.turn}회차 · ${esc(jo(f.name,"이"))} 버튼을 지켜본다 — `; G.last = f.id;
@@ -5989,14 +5999,22 @@ async function ledgerOffer(first){
 function trioRequest(){
   const q = makeRequest(0); q.client = "하나 협회 지명"; q.reward = Math.round(q.reward*1.5/100)*100; q.text = `하나 협회의 지명 — ${q.text}`; q.trio = true; return q; }
 // 엔딩 공통 마무리
-async function endingClose(name, epi, col){
+/* 엔딩을 본 뒤 "사무소를 계속 운영한다"를 고르면 장부는 그 자리에서 다시 펼쳐진다. 엔딩은 업적·기록에 남고, 엔딩마다 이어지는 모습이 조금 다르다(cont).
+   이어서 운영하면 그 주에는 다른 엔딩 제안이 연달아 오지 않는다(endCool). */
+async function endingClose(name, epi, col, cont){
   await endingCard(name, col); if(!S) return;
   ac("end"); acSet("ending", name);
   S.records.push({day:S.day, name:S.officeName, what:"엔딩", note:name}); S.over = true; save(); render();
-  await modal(`엔딩 — ${name}`, `<p class="muted" style="line-height:1.7">${epi}</p>
-    <div class="kv"><span>버틴 날</span><b>${S.day}일</b><span>사무소 등급</span><b>${gName(S.officeGrade)} 사무소</b><span>잃은 사람</span><b>${lossCount()}명</b><span>함께한 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"새 게임", primary:true, v:"new"}]);
+  const v = await modal(`엔딩 — ${name}`, `<p class="muted" style="line-height:1.7">${epi}</p>
+    <div class="kv"><span>버틴 날</span><b>${S.day}일</b><span>사무소 등급</span><b>${gName(S.officeGrade)} 사무소</b><span>잃은 사람</span><b>${lossCount()}명</b><span>함께한 해결사</span><b>${S.fixers.length}명</b></div>`,
+    [{t:"사무소를 계속 운영한다", v:"cont"}, {t:"새 게임", primary:true, v:"new"}]);
+  if(v==="cont" && S){
+    S.over = false; S.lastEndDay = S.day; S.endings = (S.endings||[]).concat([name]);
+    if(cont) cont();
+    addLog(`엔딩 「${name}」 뒤에도 사무소는 문을 열었다.`); save(); render(); return; }
   clearSave(); S = null; renderStart();
 }
+const endCool = () => !!(S && S.lastEndDay && S.day - S.lastEndDay < 7);
 /* 엔딩 연출 강화: 장면의 결정적인 순간에 화면이 흔들리고 번쩍인다(jolt). 장면이 끝나면 엔딩 타이틀 카드가 내리꽂힌다. */
 function jolt(el, col, big){
   if(!el) return; el.classList.remove("jolt", "jolt-big"); void el.offsetWidth; el.classList.add(big ? "jolt-big" : "jolt");
@@ -6084,7 +6102,9 @@ async function heirEnding(h){
   if(!S || !h) return; const L = leader();
   S.records.push({day:S.day, name:h.name, what:"대표 승계", note:`${L.name}에게서 열쇠를 넘겨받았다`});
   await heirScene(L, h); ac("heirEnd");
-  await endingClose("물려준 열쇠", `${esc(h.name)} 대표의 사무소는 그 뒤로도 같은 간판을 달고 문을 열었다. 서랍 속 장부에는 다른 글씨체가 이어 적혔다.`);
+  await endingClose("물려준 열쇠", `${esc(h.name)} 대표의 사무소는 그 뒤로도 같은 간판을 달고 문을 열었다. 서랍 속 장부에는 다른 글씨체가 이어 적혔다.`, null, ()=>{
+    const old = leader(); if(!old || !S.fixers.includes(h)) return; old.isLeader = false; h.isLeader = true;
+    S.fixers = S.fixers.filter(f=>f!==old); S.records.push({day:S.day, name:old.name, what:"은퇴", note:`열쇠를 ${h.name}에게 넘기고 사무소를 떠났다`}); });
 }
 /* 빈 책상 — 잃은 이들의 책상 스탠드가 하나씩 꺼지고, 마지막으로 대표의 불이 꺼진다 */
 function deskScene(){
@@ -6158,7 +6178,8 @@ async function rumorEnding(){
   const L = leaderColor(); if(!S || !L) return;
   S.records.push({day:S.day, name:L.name, what:"행방불명", note:`[${L.title}]의 주인이 골목에서 사라졌다`});
   await rumorScene(L); ac("rumorEnd");
-  await endingClose("소문이 된 색", `하나 협회는 칭호를 거두지 않았다. [${esc(L.title)}]은(는) 주인이 사라진 채 명부에 남았고, 골목에서는 지금도 그 이름을 본 사람이 나온다.`, L.tcol);
+  await endingClose("소문이 된 색", `하나 협회는 칭호를 거두지 않았다. [${esc(L.title)}]은(는) 주인이 사라진 채 명부에 남았고, 골목에서는 지금도 그 이름을 본 사람이 나온다.`, L.tcol, ()=>{
+    S.records = S.records.filter(r=>!(r.what==="행방불명" && r.name===L.name)); S.records.push({day:S.day, name:L.name, what:"복귀", note:"며칠 뒤, 대표는 아무 일 없었다는 듯 사무소 문을 열었다"}); });
 }
 /* ---- 특수 엔딩 · 공방: 공방의 도면 ----
    빚을 갚은 뒤, 공방이 다시 벼려 준 고유 무기를 든 해결사가 있으면 그 공방이 찾아와 무기를 양산 모델로 내자고 한다. */
@@ -6175,10 +6196,10 @@ async function workshopOffer(){
   const g = f.gear.weapon, maker = g.maker || "공방"; S.wsAsked = S.day; save();
   const v = await modal("공방에서 온 사람", `<p class="ledger-q">${esc(maker)}의 장인이 직접 찾아왔다. 기름 냄새가 밴 손으로 ${esc(jo(f.name,"이"))} 든 <b>${esc(g.name)}</b>을(를) 한참 들여다본다.<br><br>
     "이건 우리가 벼린 것 중에서도 손에 꼽소. 도면을 떠서 공방 이름으로 내고 싶소. 대신 이 물건은 공방 진열장에 들어가고, 쓰던 사람은… 시험 해결사로 공방에 와 주면 좋겠소."<br><br>
-    대표는 벽에 걸린 간판과 ${esc(g.name)}을(를) 번갈아 보았다.</p><p class="muted" style="font-size:12px">이 제안은 한 번뿐이다.</p>`,
+    대표는 벽에 걸린 간판과 ${esc(jo(g.name,"을"))} 번갈아 보았다.</p><p class="muted" style="font-size:12px">이 제안은 한 번뿐이다.</p>`,
     [{t:"돌려보낸다", v:"no"}, {t:"도면을 뜬다", v:"yes", primary:true}]);
   if(v==="yes") return workshopEnding(f);
-  addLog(`${maker}의 장인을 돌려보냈다. ${g.name}은(는) 여전히 ${f.name}의 손에 있다.`);
+  addLog(`${maker}의 장인을 돌려보냈다. ${jo(g.name,"은")} 여전히 ${f.name}의 손에 있다.`);
 }
 function workshopScene(f){
   const g = f.gear.weapon, maker = g.maker || "공방", d = WEAPON_SVG[svgKind(g)], no = 100 + (S.day % 900);
@@ -6188,7 +6209,7 @@ function workshopScene(f){
       <svg class="ws-draw" viewBox="0 0 300 100"><path d="${d}"/><path class="ws-dim" d="M10 90 L292 90 M10 86 L10 94 M292 86 L292 94"/></svg>
       <div class="ws-label">${esc(g.name)} <small>원형 — ${esc(f.name)}</small></div><div class="ws-stamp">양산 승인</div></div>
     <div class="ws-belt">${Array.from({length:9}, (_,i)=>copy(i)).join("")}</div>
-    <div class="ws-text"><div>${esc(g.name)}은(는) 공방 진열장 맨 윗칸에 놓였다.</div><div>몇 해 뒤, 뒷골목 아이들이 그 모조품을 들고 해결사 놀이를 했다.</div><div>"내가 ${esc(f.name)} 할래!"</div></div>`;
+    <div class="ws-text"><div>${esc(jo(g.name,"은"))} 공방 진열장 맨 윗칸에 놓였다.</div><div>몇 해 뒤, 뒷골목 아이들이 그 모조품을 들고 해결사 놀이를 했다.</div><div>"내가 ${esc(f.name)} 할래!"</div></div>`;
   const add = c => () => el.classList.add(c);
   return runScene(el, [[400, add("open")], [900, add("draw")], [4600, add("dim")], [5800, add("stamp")], [7600, add("belt")], [12600, add("t1")], [14400, add("t2")], [16400, add("t3")]], 5200);
 }
@@ -6211,7 +6232,7 @@ const PRESCRIPTS = [
 const idxState = () => (S.idx = S.idx || {cur:null, done:0, torn:0});
 const idxPay = () => Math.round(REQ_BASE[Math.max(0, Math.min(9, S.officeGrade))][0]*2/100)*100;
 async function idxVisit(force){
-  if(!S || S.over) return; const X = idxState(); if(X.closed || X.cur) return;
+  if(!S || S.over || (!force && endCool())) return; const X = idxState(); if(X.closed || X.cur) return;
   if(X.done >= 3) return idxFinal();
   if(!force && (S.day < 14 || Math.random() >= 0.4)) return;
   const P = pick(PRESCRIPTS.filter(p=>p.id!==X.last));
@@ -6281,7 +6302,7 @@ function assocAfter(q, team, success, lines){ if(!q.assoc || !success) return; c
   S.assoc = S.assoc || {}; const n = S.assoc[q.assoc] = (S.assoc[q.assoc]||0) + 1; ac("assoc");
   lines.push(`<span style="color:${A.col}">${A.n}</span> — 지부 장부에 사무소 이름이 한 줄 더 적혔다 <span class="muted">(협회 의뢰 ${n}건)</span>`); }
 async function assocOffer(){
-  if(!S || S.over || S.debt>0 || S.officeGrade>4) return; S.assocAsked = S.assocAsked || {};
+  if(!S || S.over || S.assocJoined || S.debt>0 || S.officeGrade>4) return; S.assocAsked = S.assocAsked || {};
   const id = Object.keys(ASSOCS).filter(k=>(S.assoc||{})[k] >= ASSOC_NEED && !S.assocAsked[k]).sort((a,b)=>S.assoc[b]-S.assoc[a])[0]; if(!id) return;
   const A = ASSOCS[id]; S.assocAsked[id] = S.day; save();
   const v = await modal(A.n, `<p class="ledger-q">${A.n} 지부장이 직접 사무소를 찾아왔다. 제복 가슴에 <b style="color:${A.col}">${A.sig}</b>의 문장이 박혀 있다.<br><br>
@@ -6318,7 +6339,7 @@ function assocScene(id){
 async function assocEnding(id){
   if(!S) return; const A = ASSOCS[id];
   S.records.push({day:S.day, name:S.officeName, what:"협회 직속", note:`${A.n}의 직속 사무소가 되었다`});
-  await assocScene(id); ac("assocEnd");
+  S.assocJoined = id; await assocScene(id); ac("assocEnd");
   await endingClose("협회 직속 사무소", `${esc(jo(S.officeName,"은"))} ${A.n}의 직속 사무소가 되었다. 의뢰는 끊이지 않았고, 사무소는 더 이상 혼자가 아니었다. 그 대신 사무소가 고를 수 있는 일도 조금 줄었다.`, A.col);
 }
 // 장부에 남길 줄: 개업 · 처음 · 잃은 사람 · 빛깔을 얻은 사람 · 오늘
@@ -6356,7 +6377,7 @@ function ledgerScene(lines){
    사건마다 고를 거리 둘. 결과는 보수 · 체력 · 정신력 · 게시판에 바로 반영된다. 시작 구역의 이름이 섞여 나온다. */
 const FIELD_P = 0.18;
 const FIELD_EVENTS = [
-  {id:"extra", when:"ok", t:"웃돈", body:q=>`일을 마치자 ${esc(q.client)}이(가) 봉투를 하나 더 내민다. "같은 동네에 한 건 더 있는데… 오늘 안에 봐 줄 수 있겠소?"`,
+  {id:"extra", when:"ok", t:"웃돈", body:q=>`일을 마치자 ${esc(jo(q.client,"이"))} 봉투를 하나 더 내민다. "같은 동네에 한 건 더 있는데… 오늘 안에 봐 줄 수 있겠소?"`,
    opts:[{t:"맡는다", d:"같은 등급 의뢰가 하나 더 올라온다(보수 +20%, 기한 1일)", run:(c)=>{ const nq = makeRequest(c.q.grade, {kind:"일반", attrs:[pick(["str","agi","tec"])]}); nq.reward = Math.round(nq.reward*1.2/100)*100; nq.deadline = S.day + 1; nq.client = c.q.client; S.requests.unshift(nq); return "게시판에 의뢰가 하나 더 붙었다(보수 +20%)."; }},
          {t:"오늘은 여기까지", d:"수고비로 보수의 10%를 더 받는다", run:(c)=>{ c.payMul *= 1.1; return "의뢰인이 웃으며 수고비를 얹어 주었다(보수 +10%)."; }}]},
   {id:"rival", when:"ok", t:"몫 다툼", body:q=>`현장을 정리하는데 다른 사무소 사람들이 들이닥쳤다. "이 건, 우리가 먼저 받은 거야. 몫 좀 나누지?"`,
@@ -6364,7 +6385,7 @@ const FIELD_EVENTS = [
          {t:"버틴다", d:"가장 센 사람의 근력 판정 — 이기면 보수 +15%, 지면 다친다", run:(c)=>{ const f = c.best("str"), ok = Math.random() < clamp(power(f,["str"])/Math.max(1,c.q.req)*0.6, 0.2, 0.9);
            if(ok){ c.payMul *= 1.15; return `${esc(jo(f.name,"이"))} 앞으로 나서자 그들이 물러났다. 오히려 사과 값까지 챙겼다(보수 +15%).`; }
            const v = Math.floor(f.hpMax*0.12); f.hp = Math.max(1, f.hp - v); return `<span style="color:#ff8a7a">주먹다짐이 붙었다. ${esc(f.name)} 체력 -${v}.</span> 보수는 지켰다.`; }}]},
-  {id:"stiff", when:"ok", t:"외상", body:q=>`${esc(q.client)}이(가) 난처한 얼굴로 머리를 긁는다. "지금 가진 게 이것뿐이라… 나머지는 사흘 안에 꼭 드리리다."`,
+  {id:"stiff", when:"ok", t:"외상", body:q=>`${esc(jo(q.client,"이"))} 난처한 얼굴로 머리를 긁는다. "지금 가진 게 이것뿐이라… 나머지는 사흘 안에 꼭 드리리다."`,
    opts:[{t:"믿고 기다린다", d:"지금 보수의 60%만, 사흘 뒤 나머지 60%가 들어온다", run:(c)=>{ const later = Math.round(c.pay*0.6/100)*100; c.payMul *= 0.6; S.pending = (S.pending||[]).concat([{day:S.day+3, amt:later, from:c.q.client}]); return `사흘 뒤 ${won(later)}을 받기로 했다.`; }},
          {t:"지금 받아 낸다", d:"대표의 의지 판정 — 이기면 전액, 지면 절반만", run:(c)=>{ const L = leader() || c.team[0], ok = Math.random() < clamp(power(L,["wil"])/Math.max(1,c.q.req)*0.6, 0.2, 0.9);
            if(ok) return "끝까지 눈을 피하지 않자 의뢰인이 숨겨 둔 돈을 꺼냈다(전액)."; c.payMul *= 0.5; return `<span style="color:#ff8a7a">의뢰인이 뒷문으로 달아났다. 절반만 손에 남았다.</span>`; }}]},
@@ -6379,21 +6400,21 @@ const FIELD_EVENTS = [
          {t:"모른 척한다", d:"아무 일도 없다", run:()=>"아이는 한참 서 있다가 다른 어른을 따라갔다."}]},
   {id:"hurt", when:"any", t:"쓰러진 사람", body:()=>`길가에 피를 흘리며 쓰러진 사람이 있다. 아직 숨이 붙어 있다.`,
    opts:[{t:"돕는다", d:"가장 멀쩡한 사람 체력 -6% · 절반 확률로 그 사람이 나중에 의뢰를 들고 온다", run:(c)=>{ const f = c.team.slice().sort((a,b)=>b.hp/b.hpMax-a.hp/a.hpMax)[0]; f.hp = Math.max(1, f.hp - Math.floor(f.hpMax*0.06));
-           if(Math.random()<0.5){ const nq = makeRequest(clamp(c.q.grade, S.officeGrade, 9)); nq.client = "길에서 구해 준 사람"; nq.reward = Math.round(nq.reward*1.25/100)*100; S.requests.push(nq); return `${esc(f.name)}이(가) 업어서 진료소까지 데려다주었다. 며칠 뒤 그가 의뢰를 들고 찾아왔다(보수 +25%).`; }
-           return `${esc(f.name)}이(가) 업어서 진료소까지 데려다주었다. 이름도 묻지 못했다.`; }},
+           if(Math.random()<0.5){ const nq = makeRequest(clamp(c.q.grade, S.officeGrade, 9)); nq.client = "길에서 구해 준 사람"; nq.reward = Math.round(nq.reward*1.25/100)*100; S.requests.push(nq); return `${esc(jo(f.name,"이"))} 업어서 진료소까지 데려다주었다. 며칠 뒤 그가 의뢰를 들고 찾아왔다(보수 +25%).`; }
+           return `${esc(jo(f.name,"이"))} 업어서 진료소까지 데려다주었다. 이름도 묻지 못했다.`; }},
          {t:"지나친다", d:"출동한 사람 모두 정신력 -3%", run:(c)=>{ c.team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.floor(f.mpMax*0.03)); }); return "도시에선 흔한 일이다. 그래도 발걸음이 무겁다."; }}]},
-  {id:"retry", when:"fail", t:"한 번 더", body:q=>`${esc(q.client)}이(가) 다른 사무소에 넘기기 전에 묻는다. "…한 번만 더 맡아 줄 수 있겠소? 대신 값은 깎읍시다."`,
+  {id:"retry", when:"fail", t:"한 번 더", body:q=>`${esc(jo(q.client,"이"))} 다른 사무소에 넘기기 전에 묻는다. "…한 번만 더 맡아 줄 수 있겠소? 대신 값은 깎읍시다."`,
    opts:[{t:"다시 맡는다", d:"같은 의뢰가 보수 -30%로 게시판에 돌아온다", run:(c)=>{ const nq = Object.assign({}, c.q, {id:S.nextId++, reward:Math.round(c.q.reward*0.7/100)*100, deadline: c.q.deadline ? Math.max(c.q.deadline, S.day+1) : S.day+2}); S.requests.unshift(nq); return "같은 의뢰를 다시 받았다(보수 -30%)."; }},
          {t:"고개를 숙인다", d:"아무 일도 없다", run:()=>"의뢰인은 말없이 돌아섰다."}]},
   {id:"gossip", when:"fail", t:"소문", body:()=>`실패한 이야기가 벌써 골목에 돌고 있다. "${esc(S.officeName)}? 거기 요즘 손이 무디다던데."`,
    opts:[{t:"의뢰인을 찾아가 사과한다", d:"자금 -보수의 10% · 소문이 가라앉는다", run:(c)=>{ const v = Math.round(c.q.reward*0.1/100)*100; S.money = Math.max(0, S.money - v); return `작은 선물을 들고 찾아가 고개를 숙였다(-${won(v)}). 소문은 금방 잦아들었다.`; }},
          {t:"내버려 둔다", d:"내일 게시판의 의뢰가 하나 줄어든다", run:()=>{ S.gossip = S.day + 1; return "소문은 소문일 뿐이다. 다만 내일은 문을 두드리는 사람이 적을지도 모른다."; }}]},
-  {id:"comfort", when:"fail", t:"약값", body:q=>`다친 얼굴을 본 ${esc(q.client)}이(가) 주머니를 뒤진다. "일은 틀어졌어도… 이걸로 약이라도 사시오."`,
+  {id:"comfort", when:"fail", t:"약값", body:q=>`다친 얼굴을 본 ${esc(jo(q.client,"이"))} 주머니를 뒤진다. "일은 틀어졌어도… 이걸로 약이라도 사시오."`,
    opts:[{t:"받는다", d:"보수의 15%를 받는다", run:(c)=>{ c.payAdd += Math.round(c.q.reward*0.15/100)*100; return "고맙게 받아 들었다."; }},
          {t:"사양한다", d:"출동한 사람 모두 정신력 +4%", run:(c)=>{ c.team.forEach(f=>{ f.mp = Math.min(f.mpMax, f.mp + Math.floor(f.mpMax*0.04)); }); return "괜찮다고 손을 저었다. 의뢰인은 몇 번이고 고개를 숙였다."; }}]},
   {id:"rats", when:"any", t:"뒷골목 쥐", body:()=>`지름길로 들어서자 뒷골목 쥐 몇이 쇠파이프를 끌며 길을 막는다. "가진 거 다 내놓고 가."`,
    opts:[{t:"싸운다", d:"가장 센 사람의 근력 판정 — 이기면 쥐들의 주머니를, 지면 다친다", run:(c)=>{ const f = c.best("str"), ok = Math.random() < clamp(0.55 + (9 - f.grade)*0.06, 0.4, 0.95);
-           if(ok){ const v = rnd(2,6)*1000; c.payAdd += v; return `${esc(f.name)}이(가) 앞장서 쥐들을 쫓아냈다. 떨어뜨린 지갑을 주웠다(+${won(v)}).`; }
+           if(ok){ const v = rnd(2,6)*1000; c.payAdd += v; return `${esc(jo(f.name,"이"))} 앞장서 쥐들을 쫓아냈다. 떨어뜨린 지갑을 주웠다(+${won(v)}).`; }
            const v = Math.floor(f.hpMax*0.1); f.hp = Math.max(1, f.hp - v); return `<span style="color:#ff8a7a">숫자에 밀렸다. ${esc(f.name)} 체력 -${v}.</span>`; }},
          {t:"돌아간다", d:"출동한 사람 모두 체력 -4%(먼 길)", run:(c)=>{ c.team.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.floor(f.hpMax*0.04)); }); return "먼 길을 돌아서 왔다. 발바닥이 욱신거린다."; }}]},
 ];
@@ -6678,7 +6699,7 @@ function closeShop(){
 async function endDayInner(reason){
   const ended = S.day; ac("days"); idxDayEnd();
   if(S.pending && S.pending.length){ const due = S.pending.filter(p=>p.day <= ended + 1); S.pending = S.pending.filter(p=>p.day > ended + 1);
-    due.forEach(p=>{ S.money += p.amt; addLog(`${p.from}이(가) 미뤄 둔 보수 ${won(p.amt)}을 가져왔다`); }); } S.st = S.st || {}; S.st.days = ended; acSet("weather", S.weather && S.weather.w);
+    due.forEach(p=>{ S.money += p.amt; addLog(`${jo(p.from,"이")} 미뤄 둔 보수 ${won(p.amt)}을 가져왔다`); }); } S.st = S.st || {}; S.st.days = ended; acSet("weather", S.weather && S.weather.w);
   { const inc = S.todayIncome||0; acMax("dayPayBest", inc); if(S.scars===2 && S.st.edgeDay && ended - S.st.edgeDay >= 7) acMax("edge7", 1); }
   // 회복
   S.fixers.forEach(f=>{ f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*0.2)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*0.2)); });
@@ -6717,9 +6738,9 @@ async function endDayInner(reason){
 }
 async function weekly(){ ac("week"); bodyUpkeep();
   if(!S.over && S.scarCard && !S.scarJobPosted && S.day - S.scarCard >= 6){ S.scarJobPosted = S.day; const q = scarRequest(); S.requests.unshift(q); addLog(`남겨진 흉터가 의뢰를 맡기고 갔다 — ${q.text}`); }
-  if(!S.over && S.debt<=0 && S.officeGrade<=2 && !S.wingAsked && S.repaidDay && S.day - S.repaidDay >= 6){ await wingOffer(); if(!S || S.over) return; }
-  if(!S.over && S.debt<=0 && !S.wsAsked && S.repaidDay && S.day - S.repaidDay >= 6 && uniqueHolder()){ await workshopOffer(); if(!S || S.over) return; }
-  if(!S.over){ await assocOffer(); if(!S || S.over) return; }
+  if(!S.over && !endCool() && S.debt<=0 && S.officeGrade<=2 && !S.wingAsked && S.repaidDay && S.day - S.repaidDay >= 6){ await wingOffer(); if(!S || S.over) return; }
+  if(!S.over && !endCool() && S.debt<=0 && !S.wsAsked && S.repaidDay && S.day - S.repaidDay >= 6 && uniqueHolder()){ await workshopOffer(); if(!S || S.over) return; }
+  if(!S.over && !endCool()){ await assocOffer(); if(!S || S.over) return; }
   if(!S.over){ await idxVisit(false); if(!S || S.over) return; }
   if(colorHeld() >= COLOR_MAX && !S.over){ const q = trioRequest(); S.requests.unshift(q); addLog(`하나 협회 지명 의뢰가 올라왔다 — ${q.text}`); }
   await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
@@ -7111,7 +7132,7 @@ function bodyUpkeep(){ let cost = 0; S.fixers.forEach(f=>{ if(f.body && f.body.f
    조건: 정식 공방 이상 무기 · 그 무기를 처음 받은 최대 내구도만큼 출동 · 해결사 4급 이상. 조건이 처음 갖춰지는 출동에서 한 번만 10%로 굴린다. */
 const UPGRADE_P = 0.17, UPGRADE_STAT = [0, 3, 4];
 /* 공방이 벼려 줄 때 붙여 주는 특수 능력(공방마다 하나). 원작에 무기의 작동이 적힌 공방은 그대로,
-   적히지 않은 공방(늙은소년·느티나무·휠스·크리스탈·랑아·리플렛·로직 아틀리에)은 무기 생김새와 쓰임에서 끌어냈다.
+   적히지 않은 공방(늙은소년·느티나무·휠스·크리스탈·랑가·리플렛·로직 아틀리에)은 무기 생김새와 쓰임에서 끌어냈다.
    · 묵: 예(銳) 2식 발도 — 쌓일수록 베기 피해가 오르고 방어는 약해진다(림버스) · 스티그마: 가열·점화, 지워지지 않는 낙인(림버스·루이나 '화상 +1')
    · 네스터: 치는 순간 단추를 눌러 진동을 터뜨린다 · 로즈스패너: 진동(떨림)을 키우는 렌치·전기톱(림버스 진영)
    · 스크류: 전기로 강화한 드릴, 잘못 쓰면 자신도 감전 · 알라스: 손놀림을 다섯 배까지 빠르게 · 메즈틸: 알라스처럼 빠르지만 다루기 위험
@@ -7460,7 +7481,7 @@ const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하
 function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} if(S) achCheck(); }
 const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나무"],["랑가 공방","랑아 공방"],["클라우드 공방","구름 공방"],["아틀리에 로직","로직 아틀리에"]];
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ pruneOldGifts(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
 }catch(_){} return null; }
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
@@ -10693,7 +10714,7 @@ function fxTestPanel(){
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
    <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="assoc">협회 의뢰</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령서 받기</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 직속(제안)</button></div>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령서 받기</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 직속(제안)</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
@@ -10734,7 +10755,8 @@ function fxTestPanel(){
     if(k==="en-color"){ closeAll(); repayAll(); S.repaidShown = true; const L = leader(); if(L.grade!==0){ L.grade = 0; L.title = randomColorTitle(); L.tcol = colorOfTitle(L.title); L.cap = 80; } return ledgerOffer(false); }
     if(k==="en-ws"){ closeAll(); repayAll(); S.repaidShown = true; S.wsAsked = null; const L = leader(); let g = L.gear.weapon; if(!g){ g = Object.assign({}, SHOP.find(i=>i.slot==="weapon" && i.tier>=1)); L.gear.weapon = g; } Object.assign(g, {unique:true, owner:L.id}); return workshopOffer(); }
     if(k==="en-idx"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; if(X.done >= 3) X.done = 0; return idxVisit(true); }
-    if(k==="en-assoc"){ closeAll(); repayAll(); S.repaidShown = true; S.officeGrade = Math.min(S.officeGrade, 4); S.assoc = Object.assign({}, S.assoc||{}, {[pick(Object.keys(ASSOCS))]: ASSOC_NEED}); S.assocAsked = {}; return assocOffer(); }
+    if(k==="money10m"){ S.money += 10000000; save(); render(); return toast(`자금 +${won(10000000)} → ${won(S.money)}`); }
+    if(k==="en-assoc"){ closeAll(); repayAll(); S.repaidShown = true; S.officeGrade = Math.min(S.officeGrade, 4); S.assoc = Object.assign({}, S.assoc||{}, {[pick(Object.keys(ASSOCS))]: ASSOC_NEED}); S.assocAsked = {}; S.assocJoined = null; return assocOffer(); }
     if(k==="en-idx3"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; X.done = 3; return idxVisit(true); } });
   el.addEventListener("click", async e=>{ const wx = e.target.dataset.wx; if(!wx) return; const [w, n] = wx.split("|"); S.weather = {w, night: n==="1"}; save(); render(); playFx("아침", `${S.day}일차 · ${weatherText(S.weather)}`, "날씨를 바꿨다", true); });
   el.addEventListener("click", async e=>{ const k = e.target.dataset.cs; if(!k) return; const f = S.fixers[0];
@@ -10759,8 +10781,8 @@ function fxTestPanel(){
       if(k==="feast"){ L.ab.feast = S.day + 1; save(); render(); return toast(`${L.name}: 요정의 축제 — 다른 의뢰에 보내 보라`); }
       if(k==="prick"){ L.ab.prick = {n:3}; save(); render(); return toast(`${L.name}: 가시에 찔렸다(쾌감 3밤 → 금단)`); }
       if(k==="solitude"){ L.ab.solitude = {n:2}; save(); render(); return toast(`${L.name}: 고독(2밤)`); }
-      if(k==="bullet"){ S.freiShots = 7; S.bullets = (S.bullets||[]).concat([{n:6},{n:7}]); save(); return toast("마탄 2발 장전 — 첫 전투엔 6번째 탄(고정 피해 21)이 적에게, 두 번째 전투엔 7번째 탄이 아군에게"); }
-      if(k==="sup5"){ S.supCount = (S.supCount||0) + 5; save(); return toast(`환상체 제압 수 ${S.supCount} — 붉은 두건의 용병이 카운터 -${Math.floor(S.supCount/5)}로 시작한다`); }
+      if(k==="bullet"){ const RC = abRec(); RC.frei = 7; abRecSave(RC); S.bullets = (S.bullets||[]).concat([{n:6},{n:7}]); save(); return toast("마탄 2발 장전 — 첫 전투엔 6번째 탄(고정 피해 21)이 적에게, 두 번째 전투엔 7번째 탄이 아군에게"); }
+      if(k==="sup5"){ const RC = abRec(); RC.sup += 5; abRecSave(RC); return toast(`환상체 제압 수 ${RC.sup} — 붉은 두건의 용병이 카운터 -${Math.floor(RC.sup/5)}로 시작한다`); }
       if(k==="skin"){ S.skinVisit = {name: (S.fixers[1]||L).name, day: S.day + 1}; return toast("밤 넘기기를 누르면 문 두드리는 소리가 난다"); }
       if(k==="gun"){ const it = SHOP.find(i=>i.wtype==="gun"); if(!it) return toast("총이 없다"); L.gear.weapon = initDur(JSON.parse(JSON.stringify(it))); save(); render(); return toast(`${L.name}: ${it.name} 장착`); }
       if(k==="clear"){ S.fixers.forEach(f=>{ f.ab = {}; }); S.bullets = []; S.skinVisit = null; save(); render(); return toast("기믹 상태를 모두 지웠다"); } }
