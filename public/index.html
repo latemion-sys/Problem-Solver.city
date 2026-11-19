@@ -1479,8 +1479,9 @@ const START_DEBT = 3000000;   // 사무소를 세우느라 진 빚(건물 · 간
 // 의뢰 등급별: 기준 보수, 요구치, 재해 등급
 // [기준 보수, 요구치(권장 인원 팀이 75%가 되는 값), 재해 등급]
 // 재해 등급: 뜬소문(9급) · 도시 괴담(9~8급) · 도시 전설(7~6급) · 도시 질병(5~4급) · 도시 악몽(3~2급) · 도시의 별(1급 이상)
-const REQ_BASE = {9:[3750,9,"뜬소문"],8:[7500,15,"도시 괴담"],7:[11250,21,"도시 전설"],6:[22500,26,"도시 전설"],5:[45000,32,"도시 질병"],4:[90000,38,"도시 질병"],3:[180000,44,"도시 악몽"],2:[225000,51,"도시 악몽"],1:[450000,58,"도시의 별"],0:[1012500,66,"도시의 별"]};
+const REQ_BASE = {9:[3750,9,"뜬소문"],8:[7500,15,"도시 괴담"],7:[11250,21,"도시 전설"],6:[22500,26,"도시 전설"],5:[45000,32,"도시 질병"],4:[90000,38,"도시 질병"],3:[108000,44,"도시 악몽"],2:[135000,51,"도시 악몽"],1:[270000,58,"도시의 별"],0:[607500,66,"도시의 별"]};   // 도시 악몽 · 도시의 별은 예전 값의 60%(40% 감소, 소수점 버림)
 const THREAT_COL = {"뜬소문":"#b4ada3","도시 괴담":"#9cc487","도시 전설":"#7fb0e6","도시 질병":"#e2bf5c","도시 악몽":"#c47ae0","도시의 별":"#ff6a5e"};
+const LIGHT_THREATS = ["뜬소문", "도시 괴담"];
 const threatOf = q => q.threat || (REQ_BASE[q.grade]||[])[2] || "뜬소문";
 const RISK = g => g>=8?"ZAYIN":g>=6?"TETH":g>=4?"HE":g>=2?"WAW":"ALEPH";
 // 승급 기준: 현재 등급 -> 다음 등급 필요 총합
@@ -1962,7 +1963,7 @@ function makeRequest(grade, opts={}){
   // 물리 일반 의뢰는 제압 / 사살로 나뉜다(낮은 등급은 대부분 제압)
   let goal = null;
   if(ab && ABNO_BY[ab.id].kill) goal = "사살";
-  if(kind==="일반" && key==="str"){ goal = Math.random()<P.kill ? "사살" : "제압"; if(goal==="사살"){ const k2 = pick(P.str_kill); text = k2[0]; client = k2[1]; foe = k2[2]; } }
+  if(kind==="일반" && key==="str"){ goal = opts.goal || (Math.random()<P.kill ? "사살" : "제압"); if(goal==="사살"){ const k2 = pick(P.str_kill); text = k2[0]; client = k2[1]; foe = k2[2]; } }
   const lootChance = kind==="수색"?0.07:kind==="환상체"?0.05:0.03;
   // 환상체 의뢰 일부는 고위험(75% 기준을 넘김)
   const hazard = kind==="환상체" && !opts.kind && Math.random()<0.25;
@@ -1975,7 +1976,8 @@ function makeRequest(grade, opts={}){
   if(opts.synd) applySyndicate(q, opts.synd);
   else if(!opts.kind && !ab && grade <= 8 && grade >= 2 && Math.random() < SYN_P) applySyndicate(q);
   if(opts.distort) applyDistort(q, true); else if(!opts.kind && !ab && !q.synd) applyDistort(q, false);
-  if(opts.assoc){ q.grade = Math.min(q.grade, 7); const id = assocFor(q) || "liu"; const A = ASSOCS[id]; q.assoc = id; q.client = `${A.n} 7구 남부 지부`; } else if(!opts.kind && !ab) applyAssoc(q);
+  if(!opts.kind && !ab && !q.synd && !q.distFoe && grade <= 7 && Math.random() < ASSOC_P) return Object.assign(assocRequest(grade), opts.over||{});
+  if(!opts.kind && IDX_THREATS.includes(threat) && !(S.idx && S.idx.closed) && Math.random() < IDX_P) return Object.assign(prescriptReq(q), opts.over||{});
   return Object.assign(q, opts.over||{});
 }
 /* ================= 이상 의뢰 · 뒤틀림 처리 =================
@@ -4428,16 +4430,16 @@ function codexLoad(){ let d; try{ d = JSON.parse(localStorage.getItem(CODEX_KEY)
     const ok = A && A.gifts ? [A.gifts.a, A.gifts.b].filter(Boolean).map(g=>g.n) : []; e.gifts = e.gifts.filter(n=>ok.includes(n)); });
   return d; }
 function codexSave(d){ try{ localStorage.setItem(CODEX_KEY, JSON.stringify(d)); }catch(_){} }
-/* 환상체 기록(사무소가 바뀌어도 이어진다): 환상체가 주는 기프트 쪽, 환상체 제압 수, 마탄을 의뢰한 수. 도감(만난 횟수)과 같은 곳에 남는다. */
-const ABREC_KEY = "problem-solver-abrec-v1";
-function abRec(){ let r; try{ r = JSON.parse(localStorage.getItem(ABREC_KEY)) || {}; }catch(_){ r = {}; } r.giftPick = r.giftPick || {}; r.sup = r.sup || 0; r.frei = r.frei || 0; return r; }
-function abRecSave(r){ try{ localStorage.setItem(ABREC_KEY, JSON.stringify(r)); }catch(_){} }
-// 예전 저장의 사무소별 기록을 이어지는 기록으로 옮긴다(큰 쪽을 남긴다)
-function abRecMigrate(d){ if(!d) return; const r = abRec(); let ch = false;
-  if(d.giftPick){ Object.keys(d.giftPick).forEach(k=>{ if(!r.giftPick[k]){ r.giftPick[k] = d.giftPick[k]; ch = true; } }); delete d.giftPick; }
-  if(d.supCount){ if(d.supCount > r.sup){ r.sup = d.supCount; ch = true; } delete d.supCount; }
-  if(d.freiShots){ if(d.freiShots > r.frei){ r.frei = d.freiShots; ch = true; } delete d.freiShots; }
-  if(ch) abRecSave(r); }
+/* 사무소별 환상체 기록(예외 — 새 사무소면 처음부터): 환상체가 주는 기프트 쪽, 환상체 제압 수, 마탄을 의뢰한 수. 도감(만난 횟수)은 브라우저에 남아 이어진다. */
+const ABREC_KEY = "problem-solver-abrec-v1";   // 잠깐 쓰였던 브라우저 기록 — 이제 쓰지 않는다
+function abRec(){ if(!S) return {giftPick:{}, sup:0, frei:0}; const r = S.abrec = S.abrec || {}; r.giftPick = r.giftPick || {}; r.sup = r.sup || 0; r.frei = r.frei || 0; return r; }
+function abRecSave(){ }
+// 예전 저장의 낱 칸(giftPick · supCount · freiShots)을 사무소 기록으로 옮기고, 잠깐 쓰였던 브라우저 기록은 지운다
+function abRecMigrate(d){ if(!d) return; const r = d.abrec = d.abrec || {giftPick:{}, sup:0, frei:0};
+  if(d.giftPick){ r.giftPick = Object.assign({}, d.giftPick, r.giftPick||{}); delete d.giftPick; }
+  if(d.supCount){ r.sup = Math.max(r.sup||0, d.supCount); delete d.supCount; }
+  if(d.freiShots){ r.frei = Math.max(r.frei||0, d.freiShots); delete d.freiShots; }
+  try{ localStorage.removeItem(ABREC_KEY); }catch(_){} }
 function codexSeen(vid){ return (codexLoad()[vid]||{}).seen || 0; }
 function codexMeet(vid){ const d = codexLoad(), e = d[vid] = d[vid] || {seen:0, ctrl:0, sup:0, gifts:[]}; e.seen++; codexSave(d); return e.seen; }
 function codexNote(vid, how, gift){ const d = codexLoad(), e = d[vid] = d[vid] || {seen:0, ctrl:0, sup:0, gifts:[]}; if(how) e[how] = (e[how]||0) + 1; if(gift && !e.gifts.includes(gift)) e.gifts.push(gift); codexSave(d); }
@@ -5317,7 +5319,8 @@ async function dispatch(qid, fids){
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
     // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 2.5배
-    const pct = march ? Math.floor(LOSS.ok[0] * (1 - red*0.5) * MARCH_K) : abnoR && abnoR.doom ? 0 : gentleQ && !success ? 3 : Math.floor((success ? LOSS.ok : LOSS.fail)[w] * (1 - red*0.5));
+    let pct = march ? Math.floor(LOSS.ok[0] * (1 - red*0.5) * MARCH_K) : abnoR && abnoR.doom ? 0 : gentleQ && !success ? 3 : Math.floor((success ? LOSS.ok : LOSS.fail)[w] * (1 - red*0.5));
+    if(LIGHT_THREATS.includes(threatOf(q))) pct = Math.floor(pct/2);   // 뜬소문 · 도시 괴담 의뢰는 입는 피해가 절반
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
     const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
     let dH = mental ? 0 : main, dM = mental ? main : 0;
@@ -5337,7 +5340,7 @@ async function dispatch(qid, fids){
     g.dur = Math.max(0, g.dur-1); g.uses = (g.uses||0) + 1;
     lines.push(`${esc(f.name)}의 ${esc(g.name)}: 내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? (g.durMax<=1 ? " — <b>더는 고칠 수 없다</b>" : " — <b>수리가 필요하다</b>(관리)") : ""}`); });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
-  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines);
+  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); prescriptAfter(q, success, lines);
   if(success){
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
@@ -6229,12 +6232,39 @@ const PRESCRIPTS = [
   {id:"night", t:"이레 안에, 해가 진 뒤에 일을 하나 끝내라.", need:1, days:7, test:()=>!!(S.weather && S.weather.night)},
   {id:"fine", t:"이레 안에, 손끝이 필요한 일을 셋 끝내라.", need:3, days:7, test:q=>(q.attrs||[]).includes("tec")},
   {id:"search", t:"이레 안에, 무언가를 찾는 일을 둘 끝내라.", need:2, days:7, test:q=>q.kind==="수색"}];
+/* 지령은 이제 게시판에 온다: 도시 악몽급 이상 의뢰가 나올 때 5% 확률로, 그 의뢰 대신 검지의 지령이 붙는다(난이도는 도시 악몽 그대로).
+   지키면(성공) 보수와 함께 이행 1회, 실패하거나 기한을 넘기면 대가(모두 체력 -10%). 셋을 지키면 주간 정산 때 마지막 지령서가 온다. */
+const IDX_P = 0.05, IDX_THREATS = ["도시 악몽", "도시의 별"];
+const IDX_ORDERS = [
+  "일곱 해가 지나고 처음 걷는 두 발자국 아래에서, 세 번 손바닥으로 바닥을 내리쳐라.",
+  "해가 지기 전, 열두 번째로 마주친 우산의 주인에게 그 우산의 무게를 물어라.",
+  "왼손에 든 것을 내려놓지 말고, 계단 마흔네 칸을 거꾸로 내려가라.",
+  "가장 먼저 우는 개에게 이름을 지어 주고, 그 이름을 세 번 틀리게 불러라.",
+  "푸른 문이 달린 집의 초인종을 누르고, 문이 열리기 전에 떠나라.",
+  "다섯 번째 골목의 가로등 밑에 서서, 불이 두 번 깜빡일 때까지 숨을 참아라.",
+  "오늘 받은 거스름돈 중 가장 작은 동전을 반으로 갈라, 한쪽을 처음 보는 이의 신발 안에 넣어라.",
+  "지붕 위의 까마귀가 날아오르기 전에 그 수를 세라. 짝수면 동쪽으로, 홀수면 서쪽으로 걸어라.",
+  "자정까지 사람의 이름이 들어간 말을 입 밖에 내지 마라. 단, 한 번은 반드시 불러야 한다.",
+  "열여덟 시 정각, 붉은 것을 먹고 있는 사람의 접시에서 하나를 가져와라.",
+  "눈을 감고 가장 가까운 벽까지 걸어가, 이마를 대고 일곱까지 세어라. 여섯은 세지 마라.",
+  "오늘 처음 만나는 아이에게 지도를 그려 주어라. 존재하지 않는 곳으로 가는 길을.",
+  "세 번째로 울리는 전화를 받고, 상대가 누구든 \"네, 다녀왔습니다\"라고 답하라.",
+  "가장 높은 건물의 그림자가 가장 짧아질 때, 그 그림자 끝에 서 있는 사람을 쓰러뜨려라.",
+  "주인을 모르는 장갑 한 짝을 찾아, 해가 지기 전에 그 짝이 될 장갑을 만들어라.",
+  "빗물이 고인 웅덩이 아홉 개를 지나며, 여덟 번째에서만 발을 적셔라."];
+function prescriptReq(q){
+  return Object.assign(q, {kind:"일반", attrs:[pick(["str","agi","tec"])], abno:null, risk:null, hazard:false, goal:null, foe:null, chase:null, loot:null, synd:null, distFoe:null, assoc:null, cat:null,
+    prescript:true, client:"검지의 사도 — 흰 봉투", text:`지령: ${pick(IDX_ORDERS)}`, reward: Math.round(q.reward*1.4/100)*100, deadline:2}); }
+function prescriptAfter(q, success, lines){ if(!q.prescript) return; const X = idxState();
+  if(success){ X.done++; ac("idxDone"); S.records.push({day:S.day, name:S.officeName, what:"지령 이행", note:q.text.replace(/^지령: /,"")});
+    lines.push(`<span style="color:#f1efe9">지령을 지켰다</span> <span class="muted">(${Math.min(X.done,3)}/3)</span>${X.done>=3 ? " — 골목 끝에서 누군가 고개를 숙였다" : ""}`); }
+  else { idxFail(); lines.push(`<span style="color:#ff8a7a">지령을 어겼다 — 그날 밤 모두 체력 -10%</span>`); } }
 const idxState = () => (S.idx = S.idx || {cur:null, done:0, torn:0});
 const idxPay = () => Math.round(REQ_BASE[Math.max(0, Math.min(9, S.officeGrade))][0]*2/100)*100;
 async function idxVisit(force){
   if(!S || S.over || (!force && endCool())) return; const X = idxState(); if(X.closed || X.cur) return;
   if(X.done >= 3) return idxFinal();
-  if(!force && (S.day < 14 || Math.random() >= 0.4)) return;
+  if(!force) return;     // 지령서는 이제 게시판의 지령 의뢰로 온다(미리보기 패널의 "지령서 받기"만 예전 방식)
   const P = pick(PRESCRIPTS.filter(p=>p.id!==X.last));
   const v = await modal("지령서", `<p class="ledger-q">아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉에는 아무것도 적혀 있지 않다.<br><br>
     골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다. 검지의 사도다.</p>
@@ -6252,7 +6282,7 @@ function idxOnDispatch(q, team, success){
 }
 function idxDone(P){ const X = S.idx, pay = idxPay(); X.cur = null; X.done++; ac("idxDone"); S.money += pay; S.todayIncome = (S.todayIncome||0) + pay;
   addLog(`지령을 지켰다. 다음 날 문틈의 봉투에 ${won(pay)}과 쪽지 한 장 — "잘했다."`); toast(`검지의 지령 이행 (${X.done}/3) · +${won(pay)}`); save(); }
-function idxFail(P){ const X = S.idx; X.cur = null;
+function idxFail(){ const X = idxState(); X.cur = null;
   S.fixers.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.round(f.hpMax*0.1)); });
   addLog(`지령을 어겼다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%`); toast("검지의 지령을 어겼다"); save(); }
 function idxDayEnd(){ const X = S && S.idx; if(!X || !X.cur) return; const P = PRESCRIPTS.find(p=>p.id===X.cur.id);
@@ -6286,7 +6316,7 @@ async function fingerEnding(){
    원작에서 협회는 소속 사무소(Associate Office)를 거느린다. 7급 이하 의뢰 가운데 일부를 하나 협회가 아닌 다른 협회가 맡긴다.
    츠바이(경호 · 치안) · 시(은밀한 암살) · 리우(여럿을 상대하는 정면 전투) · 세븐(조사 · 정보) · 디에치(지식 · 유물 계약)
    한 협회의 의뢰를 12건 해내고, 빚을 갚고, 사무소가 4급 이상이면 그 협회가 직속 사무소로 들어오라고 찾아온다 — 엔딩 「협회 직속 사무소」. */
-const ASSOC_P = 0.15, ASSOC_NEED = 12;
+const ASSOC_P = 0.1, ASSOC_NEED = 12;
 const ASSOCS = {
   zwei:  {n:"츠바이 협회", sig:"II",  col:"#5b8ce0", role:"경호 · 치안"},
   shi:   {n:"시 협회",     sig:"IV",  col:"#a7abb6", role:"은밀한 처리"},
@@ -6295,8 +6325,11 @@ const ASSOCS = {
   dieci: {n:"디에치 협회", sig:"X",   col:"#d0ad52", role:"지식 · 유물 계약"}};
 function assocFor(q){ if(q.kind==="호위") return "zwei"; if(q.kind==="수색") return "seven";
   if(q.kind==="일반" && q.attrs[0]==="str") return q.goal==="사살" ? "shi" : "liu"; if(q.kind==="일반" && q.attrs[0]==="tec") return "dieci"; if(q.kind==="일반" && q.attrs[0]==="agi") return "seven"; return null; }
-function applyAssoc(q){ if(q.synd || q.distFoe || q.kind==="환상체" || q.grade > 7 || Math.random() >= ASSOC_P) return q;
-  const id = assocFor(q); if(!id) return q; const A = ASSOCS[id];
+// 협회마다 맡기는 일(원작의 역할): 츠바이 = 호위, 세븐 = 수색·조사, 시 = 사살, 리우 = 정면 제압, 디에치 = 정밀(지식·유물)
+const ASSOC_REQ = {zwei:{kind:"호위", attrs:["str","agi"]}, seven:{kind:"수색", attrs:["agi","tec"]}, shi:{kind:"일반", attrs:["str"], goal:"사살"}, liu:{kind:"일반", attrs:["str"], goal:"제압"}, dieci:{kind:"일반", attrs:["tec"]}};
+// 협회를 먼저 고르고(다섯 협회 같은 확률) 그 협회가 맡길 일로 의뢰를 새로 만든다
+function assocRequest(grade, id){ id = id || pick(Object.keys(ASSOCS)); const A = ASSOCS[id], R = ASSOC_REQ[id];
+  const q = makeRequest(Math.min(grade, 7), {kind:R.kind, attrs:R.attrs.slice(), goal:R.goal});
   q.assoc = id; q.client = `${A.n} ${rnd(1,25)}구 ${pick(["남부","북부","동부","서부"])} 지부`; q.reward = Math.round(q.reward*1.15/100)*100; return q; }
 function assocAfter(q, team, success, lines){ if(!q.assoc || !success) return; const A = ASSOCS[q.assoc];
   S.assoc = S.assoc || {}; const n = S.assoc[q.assoc] = (S.assoc[q.assoc]||0) + 1; ac("assoc");
@@ -6708,12 +6741,14 @@ async function endDayInner(reason){
   const expired = [];
   S.requests.forEach(q=>{ if(q.deadline!=null){ q.deadline--; if(q.deadline<=0) expired.push(q);} });
   S.requests = S.requests.filter(q=>!expired.includes(q));
+  const idxMiss = expired.filter(q=>q.prescript); if(idxMiss.length) idxFail();
+  const fee = officeFees(ended);
   let html = `<p class="muted">${reason||""}</p><div class="kv">
     <span>오늘 수입</span><b>${won(S.todayIncome)}</b>
     <span>보유 자금</span><b>${won(S.money)}</b>
     <span>남은 빚</span><b>${won(S.debt)}</b>
     <span>회복</span><b>전원 체력·정신력 20% 회복</b>
-    <span>마감된 의뢰</span><b>${expired.length}건</b></div>${abLines.length ? `<p style="font-size:13px">${abLines.join("<br>")}</p>` : ""}`;
+    <span>마감된 의뢰</span><b>${expired.length}건</b>${fee}</div>${idxMiss.length ? `<p style="color:#ff8a7a;font-size:13px">지령의 기한이 지났다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%</p>` : ""}${abLines.length ? `<p style="font-size:13px">${abLines.join("<br>")}</p>` : ""}`;
   const distortExpired = expired.filter(q=>q.kind==="뒤틀림 토벌");
   if(distortExpired.length){
     S.fixers.forEach(f=>{ if(!f.isLeader) f.mp = Math.max(1, f.mp - Math.round(f.mpMax*0.15)); });
@@ -6823,6 +6858,23 @@ function reviewOf(w, g, needHi){ w = w || {n:0, ok:0, hi:0, sc:0}; const need = 
   if(w.ok < need) why.push("해낸 의뢰가 모자라다"); if(w.hi < (needHi!=null ? needHi : Math.ceil(need/2))) why.push("제 등급에 걸맞은 의뢰 실적이 모자라다");
   if(w.n && w.ok/w.n < 0.7) why.push("실패가 잦았다"); if(w.n && w.sc/w.n < 0.5) why.push("일 처리가 서툴렀다");
   return {ok: !why.length && w.n > 0, why}; }
+/* 사무소가 5급이 되면 더 큰 건물로 옮겨야 한다(100만 안). 빚이 남아 있으면 흉터 수금이 먼저라, 빚을 다 갚은 뒤 첫 심사 때 옮긴다. 모자라면 있는 만큼 내고 나머지는 정산 때마다 떼 간다.
+   옮긴 뒤로는 14일마다 월세와 뒷골목의 밤 처리 비용으로 그때 가진 돈의 20%가 빠져나간다(소수점 버림). */
+const MOVE_COST = 1000000, RENT_DAYS = 14, RENT_K = 0.2;
+async function officeMove(){
+  if(!S || S.over || S.moved || S.officeGrade > 5 || S.debt > 0) return;   // 빚(흉터 수금)이 남아 있으면 다 갚은 뒤 첫 심사 때 옮긴다
+  const pay = Math.min(S.money, MOVE_COST), due = MOVE_COST - pay; S.money -= pay; S.moveDue = due; S.moved = S.day;
+  S.records.push({day:S.day, name:S.officeName, what:"사무소 이전", note:`${gName(S.officeGrade)} 사무소가 되어 더 큰 건물로 옮겼다`}); addLog(`사무소를 옮겼다 — 이전 비용 ${won(MOVE_COST)}`);
+  await modal("사무소 이전", `<p class="ledger-q">${gName(S.officeGrade)} 사무소가 되자 협회 지부에서 통지서가 왔다. 이 등급의 사무소가 쓰기에는 지금 건물이 좁다고.<br><br>
+    짐을 싸서 한 블록 위, 간판을 두 개쯤 걸 수 있는 건물로 옮겼다. 새 건물에는 월세가 붙고, 이 구역의 뒷골목은 밤마다 따로 손을 봐 둬야 한다.</p>
+    <div class="kv"><span>이전 비용</span><b>${won(MOVE_COST)}</b><span>지금 낸 돈</span><b>${won(pay)}</b>${due ? `<span>남은 비용</span><b style="color:#e7a07c">${won(due)} — 정산 때마다 떼 간다</b>` : ""}
+    <span>앞으로</span><b>${RENT_DAYS}일마다 월세 · 뒷골목의 밤 처리 — 그때 가진 돈의 ${Math.round(RENT_K*100)}%</b></div>`, [{t:"확인", primary:true}]);
+  save(); render(); }
+function officeFees(ended){ if(!S.moved) return ""; let h = "";
+  if(S.moveDue > 0){ const t = Math.min(S.money, S.moveDue); S.money -= t; S.moveDue -= t; if(t) h += `<span>이전 비용</span><b>-${won(t)}${S.moveDue ? ` (남은 ${won(S.moveDue)})` : " (다 냈다)"}</b>`; }
+  if(ended % RENT_DAYS === 0){ const r = Math.floor(S.money*RENT_K); S.money -= r; S.st = S.st || {}; addLog(`월세 · 뒷골목의 밤 처리 — ${won(r)}`);
+    h += `<span>월세 · 밤 처리</span><b style="color:#e7a07c">-${won(r)} (자금의 ${Math.round(RENT_K*100)}%)</b>`; }
+  return h; }
 async function review(){
   const lines = [], wait = []; ac("review"); if(S.wk && S.wk.n >= 10 && S.wk.ok===S.wk.n) ac("cleanWeek");
   S.fixers.forEach(f=>{
@@ -6843,7 +6895,8 @@ async function review(){
   }
   S.wk = {n:0, ok:0, hi:0, sc:0};
   playFx("심사", "하나 협회 등급 심사", lines.length?"결과가 나왔다.":"변동 없음", true);
-  await modal("하나 협회 등급 심사", (lines.length? lines.join("<br>") : "<span class='muted'>승급한 해결사가 없다.</span>")+(wait.length ? `<p class="muted" style="font-size:12px">${wait.join("<br>")}</p>` : "")+off, [{t:"확인",primary:true}]);
+  await modal("하나 협회 등급 심사", (lines.length? lines.join("<br>") : "<span class='muted'>승급한 해결사가 없다.</span>")+(wait.length ? `<p class="muted" style="font-size:12px">${wait.join("<br>")}</p>` : "")+off+(S.officeGrade<=5 && !S.moved ? `<p style="color:#e7a07c">${gName(S.officeGrade)} 사무소 — ${S.debt > 0 ? "빚을 다 갚으면 사무소를 옮겨야 한다." : "사무소를 옮겨야 한다."}</p>` : ""), [{t:"확인",primary:true}]);
+  await officeMove();
 }
 async function gameOver(title, text){
   ac("end"); acSet("gameover", title); S.over = true; save(); render();
@@ -6925,7 +6978,7 @@ async function openManage(){
       <button data-heal="mp" ${f.mp>=f.mpMax||S.money<hc?"disabled":""}>정신력 상담 +10</button>
       <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
     </div>
-    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품</h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${repairBtn(g, `data-repinv="${i}"`)}<button data-equipinv="${i}">${esc(f.name)}에게 장착</button></div></div>`).join("")}</div>`:""}
+    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${repairBtn(g, `data-repinv="${i}"`)}<button data-equipinv="${i}">${esc(f.name)}에게 장착</button><button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button></div></div>`).join("")}</div>`:""}
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
   };
   await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
@@ -6955,6 +7008,9 @@ async function openManage(){
       else if(d.relook && f){ const L = Object.assign({}, f.look);
         const ok = await modal("대표 외형 변경", `<div id="rl">${lookFields(L)}</div>`, [{t:"취소",v:false},{t:"바꾸기",v:true,primary:true}], true, r=>bindLook(r.querySelector("#rl"), L));
         if(ok){ f.look = L; ac("relook"); } }
+      else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; const v = pawnPrice(g);
+        if(!await confirmBox("전당포", `<b>${esc(jo(g.name,"을"))}</b> 전당포에 맡긴다. 받는 돈 <b>${won(v)}</b> — 되찾을 수 없다.`)) return;
+        S.inventory.splice(i, 1); S.money += v; ac("pawn"); addLog(`전당포: ${g.name} → +${won(v)}`); }
       else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
       else if(d.fire && f){ if(await confirmBox("해고", `${jo(esc(f.name),"을")} 내보낸다. 되돌릴 수 없다.`)){ removeFixer(f,"해고","사무소를 떠남"); sel=S.fixers[0]?.id; } }
       else return;
@@ -7483,6 +7539,12 @@ const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); }
 function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
 }catch(_){} return null; }
+/* 전당포: 보관함의 물건을 산 값(값이 없는 전리품·기프트는 같은 칸에서 가장 비슷한 가치의 공방 물건 값)의 40%에 판다. 소수점 버림. */
+const PAWN_K = 0.4;
+function gearScore(g){ const b = g.bonus ? Object.values(g.bonus).reduce((a,v)=>a+v, 0) : 0; return (g.power||0) + b*2 + ((g.hpRed||0) + (g.mpRed||0))*100; }
+function pawnValue(g){ if(g.price) return g.price; const sc = gearScore(g), peers = SHOP.filter(it=>it.slot===g.slot && it.price);
+  if(!peers.length) return 0; return peers.slice().sort((a,b)=>Math.abs(gearScore(a)-sc) - Math.abs(gearScore(b)-sc))[0].price; }
+const pawnPrice = g => Math.floor(pawnValue(g)*PAWN_K);
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
@@ -7537,7 +7599,7 @@ function render(){
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}" data-q="${q.id}">
-      <div class="head">${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
+      <div class="head">${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
@@ -10714,7 +10776,7 @@ function fxTestPanel(){
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
    <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="assoc">협회 의뢰</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령서 받기</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 직속(제안)</button></div>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 직속(제안)</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
@@ -10739,7 +10801,7 @@ function fxTestPanel(){
     if(k==="office"){ S.officeGrade = v("#fxog"); save(); render(); return toast(`사무소 등급 → ${gName(S.officeGrade)}`); }
     if(k==="leader"){ const g = v("#fxlg"); if(g===0){ await passColor(L); } else { L.grade = g; L.title = null; L.tcol = null; L.cap = 70; } save(); render(); return toast(`대표 → ${gName(L.grade)}`); }
     if(k==="req"){ const kd = el.querySelector("#fxrk").value, g = v("#fxrg"), n = v("#fxrn");
-      for(let i=0;i<n;i++){ const q = kd==="trio" ? trioRequest() : kd==="distort" ? makeRequest(Math.min(g, 5), {kind:"일반", attrs:["str"], distort:true}) : kd==="assoc" ? makeRequest(Math.min(g, 7), {kind:pick(["일반","호위","수색"]), attrs:pick([["str"],["tec"],["str","agi"]]), assoc:true}) : kd==="synd" ? makeRequest(g, {synd: (SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])[0] ? pick(SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])) : pick(SYNDICATES)).id}) : kd.startsWith("syn:") ? makeRequest(g, {synd: kd.slice(4)}) : ["str","agi","tec"].includes(kd) ? makeRequest(g, {kind:"일반", attrs:[kd]}) : makeRequest(g, {kind:kd, attrs: kd==="호위" ? ["str","agi"] : kd==="수색" ? ["agi","tec"] : ["wil"]}); S.requests.unshift(q); }
+      for(let i=0;i<n;i++){ const q = kd==="trio" ? trioRequest() : kd==="distort" ? makeRequest(Math.min(g, 5), {kind:"일반", attrs:["str"], distort:true}) : kd==="assoc" ? assocRequest(g) : kd==="synd" ? makeRequest(g, {synd: (SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])[0] ? pick(SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])) : pick(SYNDICATES)).id}) : kd.startsWith("syn:") ? makeRequest(g, {synd: kd.slice(4)}) : ["str","agi","tec"].includes(kd) ? makeRequest(g, {kind:"일반", attrs:[kd]}) : makeRequest(g, {kind:kd, attrs: kd==="호위" ? ["str","agi"] : kd==="수색" ? ["agi","tec"] : ["wil"]}); S.requests.unshift(q); }
       save(); render(); return toast(`의뢰 ${n}건을 올렸다`); }
     if(k==="clear"){ S.requests = []; save(); render(); return toast("게시판을 비웠다"); }
     if(k==="week"){ S.fixers.forEach(f=>{ f.wk = {n:8, ok:8, hi:5, sc:6}; }); S.wk = {n:10, ok:10, hi:6, sc:7}; save(); return toast("이번 주 심사 기록을 채웠다 — 7일차 밤에 심사"); }
@@ -10754,7 +10816,10 @@ function fxTestPanel(){
     if(k==="en-scar"){ closeAll(); repayAll(); S.repaidShown = true; S.scars = 0; S.scarCard = S.day; S.scarJobPosted = S.day; S.scarJobDone = S.day; S.scarJobSeen = false; return scarJobCheck(); }
     if(k==="en-color"){ closeAll(); repayAll(); S.repaidShown = true; const L = leader(); if(L.grade!==0){ L.grade = 0; L.title = randomColorTitle(); L.tcol = colorOfTitle(L.title); L.cap = 80; } return ledgerOffer(false); }
     if(k==="en-ws"){ closeAll(); repayAll(); S.repaidShown = true; S.wsAsked = null; const L = leader(); let g = L.gear.weapon; if(!g){ g = Object.assign({}, SHOP.find(i=>i.slot==="weapon" && i.tier>=1)); L.gear.weapon = g; } Object.assign(g, {unique:true, owner:L.id}); return workshopOffer(); }
-    if(k==="en-idx"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; if(X.done >= 3) X.done = 0; return idxVisit(true); }
+    if(k==="en-idx"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; if(X.done >= 3) X.done = 0; S.requests.unshift(prescriptReq(makeRequest(Math.min(S.officeGrade, 3), {kind:"일반", attrs:["str"]}))); save(); render(); return toast("게시판에 지령이 붙었다"); }
+    if(k==="move5"){ closeAll(); S.officeGrade = Math.min(S.officeGrade, 5); S.moved = null; S.moveDue = 0; if(S.debt > 0){ S.debt = 0; S.repaidShown = true; } return officeMove(); }
+    if(k==="rent"){ if(!S.moved){ S.moved = S.day; } const m0 = S.money, h = officeFees(RENT_DAYS*Math.max(1, Math.ceil(S.day/RENT_DAYS))); save(); render(); return toast(`월세 · 밤 처리: ${won(m0)} → ${won(S.money)}`); }
+    if(k==="pawnfill"){ S.inventory = S.inventory||[]; S.inventory.push(Object.assign({}, pick(LOOT)), JSON.parse(JSON.stringify(pick(SHOP.filter(x=>x.slot==="weapon")))), JSON.parse(JSON.stringify(pick(SHOP.filter(x=>x.slot==="armor"))))); save(); render(); return toast("보관함에 물건 3개를 넣었다 — 관리에서 확인"); }
     if(k==="money10m"){ S.money += 10000000; save(); render(); return toast(`자금 +${won(10000000)} → ${won(S.money)}`); }
     if(k==="en-assoc"){ closeAll(); repayAll(); S.repaidShown = true; S.officeGrade = Math.min(S.officeGrade, 4); S.assoc = Object.assign({}, S.assoc||{}, {[pick(Object.keys(ASSOCS))]: ASSOC_NEED}); S.assocAsked = {}; S.assocJoined = null; return assocOffer(); }
     if(k==="en-idx3"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; X.done = 3; return idxVisit(true); } });
