@@ -313,6 +313,34 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .ix-text{bottom:12%;color:#cfcfd4;font-size:15px}
 .ix-text div:nth-child(2){font-size:13px;color:#8b8b92}
 .idx-card{margin:10px auto;padding:14px 16px;max-width:360px;background:#f1efe9;color:#1d1d1d;font-family:"Nanum Myeongjo","Noto Serif KR",serif;line-height:1.7;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+/* 엔딩 연출: 흔들림 · 번쩍임 · 타이틀 카드 */
+.jolt{animation:jolt .45s cubic-bezier(.3,.7,.4,1)}
+.jolt-big{animation:jolt-big .7s cubic-bezier(.3,.7,.4,1)}
+@keyframes jolt{0%{transform:translate(0,0)}15%{transform:translate(-6px,3px)}30%{transform:translate(5px,-4px)}45%{transform:translate(-3px,2px)}60%{transform:translate(2px,-1px)}100%{transform:none}}
+@keyframes jolt-big{0%{transform:scale(1.04) translate(0,0)}10%{transform:scale(1.035) translate(-14px,6px)}22%{transform:scale(1.025) translate(12px,-8px)}36%{transform:scale(1.015) translate(-8px,5px)}52%{transform:translate(5px,-3px)}70%{transform:translate(-2px,1px)}100%{transform:none}}
+.jolt-flash{position:absolute;inset:0;pointer-events:none;opacity:.75;mix-blend-mode:screen;animation:jflash .85s ease-out forwards;z-index:5}
+@keyframes jflash{0%{opacity:.8}100%{opacity:0}}
+.endcard{position:fixed;inset:0;z-index:125;background:#030303;overflow:hidden;cursor:pointer;transition:opacity .8s;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Nanum Myeongjo","Noto Serif KR",serif}
+.endcard.out{opacity:0}
+.ec-slash{position:absolute;left:-10%;right:-10%;top:50%;height:2px;background:var(--ec);box-shadow:0 0 18px var(--ec);transform:scaleX(0) rotate(-4deg);transform-origin:left center}
+.endcard.slash .ec-slash{animation:ec-slash .55s cubic-bezier(.8,0,.2,1) forwards}
+@keyframes ec-slash{0%{transform:scaleX(0) rotate(-4deg);opacity:1}70%{transform:scaleX(1) rotate(-4deg);opacity:1}100%{transform:scaleX(1) rotate(-4deg);opacity:0}}
+.ec-no{font-family:ui-monospace,monospace;font-size:12px;letter-spacing:.5em;color:var(--ec);opacity:0;transition:opacity .4s;margin-bottom:18px}
+.ec-title{position:relative;font-size:clamp(40px,9vw,92px);font-weight:900;letter-spacing:.08em;color:#f4efe6;opacity:0;transform:scale(1.9);filter:blur(10px)}
+.ec-title::before,.ec-title::after{content:attr(data-t);position:absolute;inset:0;opacity:0}
+.ec-title::before{color:#ff2a3a;transform:translate(-4px,0);mix-blend-mode:screen}
+.ec-title::after{color:#2ad8ff;transform:translate(4px,0);mix-blend-mode:screen}
+.endcard.hit .ec-no{opacity:.85}
+.endcard.hit .ec-title{animation:ec-hit .5s cubic-bezier(.2,1.4,.4,1) forwards}
+.endcard.hit .ec-title::before,.endcard.hit .ec-title::after{animation:ec-split .7s ease-out forwards}
+@keyframes ec-hit{0%{opacity:0;transform:scale(1.9);filter:blur(10px)}60%{opacity:1;transform:scale(.97);filter:blur(0)}100%{opacity:1;transform:scale(1);filter:none;text-shadow:0 0 28px var(--ec)}}
+@keyframes ec-split{0%{opacity:.9}100%{opacity:0;transform:translate(0,0)}}
+.ec-en{margin-top:10px;font-family:ui-monospace,monospace;font-size:clamp(12px,1.8vw,16px);letter-spacing:.6em;color:var(--ec);opacity:0;transform:translateY(8px);transition:opacity .8s,transform .8s}
+.endcard.en .ec-en{opacity:1;transform:none}
+.ec-line{width:0;height:1px;background:var(--ec);margin:22px 0 16px;transition:width 1s cubic-bezier(.6,0,.2,1);opacity:.7}
+.endcard.en .ec-line{width:min(360px,60vw)}
+.ec-q{font-size:15px;color:#bdb5a8;opacity:0;transition:opacity 1.2s}
+.endcard.q .ec-q{opacity:1}
 .ledger-fx{position:fixed;inset:0;z-index:120;background:#060504;display:flex;align-items:center;justify-content:center;transition:opacity .7s;cursor:pointer;overflow:hidden}
 .ledger-fx.out{opacity:0}
 .lg-room{position:relative;width:min(640px,92vw);height:min(560px,80vh);display:flex;align-items:center;justify-content:center;transition:opacity 1.4s, filter 1.4s}
@@ -329,7 +357,10 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .lg-cover span{color:rgba(210,180,120,.55);font-family:"Noto Serif KR",serif;letter-spacing:.3em;font-size:14px}
 .ledger-fx.closing .lg-cover{transform:rotateY(0deg)}
 .ledger-fx.dark .lg-room{opacity:.12;filter:blur(1px)}
-.lg-knock{position:absolute;left:0;right:0;bottom:16%;text-align:center;color:#d8cfc2;font-family:"Noto Serif KR",serif;pointer-events:none}
+.lg-door{position:absolute;left:50%;top:8%;width:2px;height:46%;transform:translateX(-50%);background:linear-gradient(180deg,rgba(255,226,170,0),rgba(255,226,170,.9) 20%,rgba(255,226,170,.9) 80%,rgba(255,226,170,0));box-shadow:0 0 30px 6px rgba(255,210,140,.35);opacity:0;pointer-events:none}
+.ledger-fx.knock .lg-door{animation:lg-door 6s ease-in-out 3.8s forwards}
+@keyframes lg-door{0%{opacity:0;width:2px}25%{opacity:1;width:2px}100%{opacity:.9;width:min(220px,40vw);box-shadow:0 0 120px 40px rgba(255,210,140,.35)}}
+.lg-knock{z-index:2;position:absolute;left:0;right:0;bottom:16%;text-align:center;color:#d8cfc2;font-family:"Noto Serif KR",serif;pointer-events:none}
 .lg-knock div{opacity:0;transition:opacity 1.6s}
 .lg-knock .k1{font-size:22px;letter-spacing:.3em}
 .lg-knock .k2{margin-top:18px;font-size:16px;color:#bfb4a6}
@@ -1855,7 +1886,7 @@ function makeRequest(grade, opts={}){
   else if(P[key]){ row = pick(P[key]); }
   if(row){ text = row[0]; client = row[1]; if(key==="str") foe = row[2] || null; else chase = row[2] || null; }
   if(ab){ const A = ABNO_BY[ab.id]; text = A.kill ? A.rumor : `${A.rumor}. 확인하고 처리해 달라`; }
-  else { text = pick(TEXTS[key] || TEXTS.str); client = pick(CLIENTS[key] || CLIENTS.str); }
+  else if(!row){ text = pick(TEXTS[key] || TEXTS.str); client = pick(CLIENTS[key] || CLIENTS.str); }
   // 물리 일반 의뢰는 제압 / 사살로 나뉜다(낮은 등급은 대부분 제압)
   let goal = null;
   if(ab && ABNO_BY[ab.id].kill) goal = "사살";
@@ -1869,7 +1900,72 @@ function makeRequest(grade, opts={}){
     req: Math.round(req*(hazard?1.25:1)) + rnd(-1,1), deadline: rnd(1,3),
     loot: Math.random()<lootChance*(hazard?2:1) ? Object.assign({},pick(LOOT)) : null, special:false
   };
+  if(opts.synd) applySyndicate(q, opts.synd);
+  else if(!opts.kind && !ab && grade <= 8 && grade >= 3 && Math.random() < SYN_P) applySyndicate(q);
   return Object.assign(q, opts.over||{});
+}
+/* ================= 뒷골목 조직 의뢰 =================
+   손가락 · 검계 · 흑운회는 빼고, 원작에 나온 뒷골목 조직들을 상대(또는 의뢰인)로 하는 의뢰.
+   g: 나오는 의뢰 등급 [높은 쪽, 낮은 쪽] · rows: [내용, 의뢰인, 종류, 능력, 목표 또는 쫓을 대상, 상대]
+   req / pay: 요구치 보정 · 보수 배율 · after: 끝난 뒤 남는 것(성공 · 실패 공통 한 줄 + 효과) */
+const SYN_P = 0.2;
+const SYNDICATES = [
+  {id:"axe", n:"도끼 조직", g:[8,6], col:"#c98a5a", req:1, pay:1.1,
+   rows:[["도끼를 멘 조직원들이 식당가를 돌며 자릿세를 걷는다. 다시는 못 오게 해 달라","골목 식당가 번영회","일반","str","제압","도끼 조직원"],
+         ["자릿세를 거부한 국숫집 문짝이 도끼에 쪼개졌다. 범인들을 끝내 달라","국숫집 주인 내외","일반","str","사살","도끼 조직원"],
+         ["도끼 조직에 빌린 돈을 대신 갚으러 가는 길을 지켜 달라. 돈만 받고 손을 쓸 놈들이다","빚진 세탁소 사장","호위","str"]],
+   after:{ok:"부러진 도끼 자루 몇 개가 골목에 굴러다녔다.", fx:"wear"}},
+  {id:"iron", n:"철의 형제단", g:[7,5], col:"#9aa3ad", req:2, pay:1.2,
+   rows:[["온몸을 의체로 바꾼 철의 형제단이 의수 정비소를 점거했다. '뇌수'를 내놓으라며 버틴다. 몰아내 달라","의수 정비소 '손끝'","일반","str","제압","철의 형제단 조직원"],
+         ["사람을 잡아다 의체 값을 대는 철의 형제단 일당을 처리해 달라. 팔에 톱날을 단 놈이 우두머리다","실종자 가족 모임","일반","str","사살","톱날 팔 의체 조직원"],
+         ["철의 형제단이 공방 창고에서 훔쳐 간 의체 부품 상자를 찾아 달라","하청 의체 공방","수색","tec"]],
+   after:{ok:"쓰러진 몸통에서 뇌수가 새어 나왔다. 싸구려 공방 각인이 찍혀 있다.", fx:"wear"}},
+  {id:"bremen", n:"브레멘 음악대", g:[6,4], col:"#b58fd6", req:2, pay:1.25,
+   rows:[["당나귀 · 개 · 고양이 · 닭 머리를 단 넷이 골목 가게를 돌며 '공연비'를 뜯는다. 그만두게 해 달라","골목 상인회","일반","str","제압","브레멘 음악대"],
+         ["밤마다 울려 퍼지는 기괴한 합창 뒤로 사람이 하나씩 사라진다. 브레멘 음악대를 끝내 달라","재개발 구역 주민 대표","일반","str","사살","브레멘 음악대"],
+         ["브레멘 음악대의 '공연'을 본 뒤 말을 잃은 아들을 데려와 달라. 놈들 은신처에 있다","말 없는 아이의 아버지","일반","agi","person"]],
+   after:{ok:"동물 울음 같은 노랫소리가 한동안 귀에 남았다.", fx:"mp", v:5}},
+  {id:"yuro", n:"유로지비", g:[6,4], col:"#7fb3c4", req:1, pay:1.0,
+   rows:[["둥지 물류 창고에서 빠져나간 물자가 유로지비 쪽으로 흘렀다. 장부를 찾아 달라","둥지 물류 하청 업체","일반","tec","item"],
+         ["유로지비 사람이 들고 달아난 배급 명부를 되찾아 달라. 해치지는 말 것","구역 배급소","일반","agi","person"],
+         ["유로지비가 나눠 준 물자를 받으러 가는 골목 노인들을 지켜 달라. 다른 조직이 길목을 노린다","유로지비 연락책","호위","str"]],
+   after:{ok:"골목 사람들이 지나가며 사무소를 흘끗 보았다. 표정은 읽을 수 없었다.", fx:null}},
+  {id:"mariachi", n:"로스 마리아치스", g:[7,5], col:"#e0a23a", req:0, pay:1.15,
+   rows:[["로스 마리아치스의 축제 행렬이 구역을 지난다. 행렬 앞길의 시비꾼들을 치워 달라 — 의뢰인은 마리아치스 본인들이다","로스 마리아치스","호위","str"],
+         ["축제 날 기타를 훔쳐 달아난 놈을 잡아 달라. '음악을 훔친 건 영혼을 훔친 것'이란다","로스 마리아치스 악단장","일반","agi","person"],
+         ["축제 무대를 망치려고 폭죽에 손을 댄 자가 누군지 알아내 달라","로스 마리아치스","일반","tec","item"]],
+   after:{ok:"행렬이 지나간 뒤, 누군가 기타 한 소절을 사무소 앞에 남기고 갔다.", fx:"mpUp", v:6}},
+  {id:"smile", n:"웃는 얼굴들", g:[5,3], col:"#e07a7a", req:3, pay:1.35,
+   rows:[["웃는 가면을 쓴 무리가 밤마다 사람을 데려간다. 은신처를 찾아 끝내 달라","실종자 가족 모임","일반","str","사살","웃는 얼굴들"],
+         ["남편이 웃는 얼굴들에게 끌려갔다는 소문이 있다. 어디로 갔는지만이라도 알아내 달라","실종자의 아내","수색","tec"],
+         ["웃는 얼굴들에게서 겨우 도망친 증인을 협회 지부까지 데려다 달라. 놈들이 뒤를 쫓는다","하나 협회 지부","호위","agi"]],
+   after:{ok:"가면 아래에서 새어 나오던 웃음소리가 자꾸만 떠오른다.", fx:"mp", v:10}},
+  {id:"carnival", n:"카니발", g:[4,3], col:"#d8d0c4", req:3, pay:1.45,
+   rows:[["정중한 말투로 '옷감'을 사러 온다는 가면 쓴 재단사들 — 카니발의 작업장을 찾아 없애 달라","둥지 경계 주민 자치회","일반","str","사살","카니발 재단사"],
+         ["둥지 경매장에 출처를 알 수 없는 비단이 흘러들었다. 카니발과 이어져 있는지 확인해 달라","합법 경매장 감정사","일반","tec","item"],
+         ["카니발이 '치수를 잰' 사람이 있다. 사흘 밤만 그를 지켜 달라","치수를 재인 사람","호위","str"]],
+   after:{ok:"작업장 선반에 고운 비단이 개켜져 있었다. 아무도 손대지 않았다.", fx:"mp", v:8}}];
+const SYN_BY = Object.fromEntries(SYNDICATES.map(s=>[s.id, s]));
+function applySyndicate(q, forceId){
+  const pool = forceId ? [SYN_BY[forceId]] : SYNDICATES.filter(s=>q.grade <= s.g[0] && q.grade >= s.g[1]);
+  if(!pool.length || !pool[0]) return q; const s = pick(pool), r = pick(s.rows);
+  const [text, client, kind, attr, extra, foe] = r;
+  q.kind = kind; q.attrs = kind==="호위" ? [attr, attr==="str" ? "agi" : "str"] : kind==="수색" ? ["agi","tec"] : [attr];
+  q.text = text; q.client = client; q.synd = s.id; q.goal = null; q.foe = null; q.chase = null;
+  if(kind==="일반" && attr==="str"){ q.goal = extra || "제압"; q.foe = foe || s.n; }
+  else if(kind==="일반" && (attr==="agi" || attr==="tec")) q.chase = extra || (attr==="agi" ? "person" : "item");
+  q.req += s.req; q.reward = Math.round(q.reward*s.pay/100)*100; q.loot = null;
+  return q; }
+function synAfter(q, team, success, lines){
+  const s = q.synd && SYN_BY[q.synd]; if(!s) return; const A = s.after;
+  if(!success){ lines.push(`<span class="muted">${esc(s.n)} — 이번에는 놈들이 웃었다. 골목에 소문이 돈다.</span>`); return; }
+  let tail = "";
+  if(A.fx==="mp"){ team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.round(f.mpMax*A.v/100)); }); tail = ` <span style="color:#ff8a7a">(출동한 이들 정신력 -${A.v}%)</span>`; }
+  else if(A.fx==="mpUp"){ team.forEach(f=>{ f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*A.v/100)); }); tail = ` <span style="color:#8fd6a0">(출동한 이들 정신력 +${A.v}%)</span>`; }
+  else if(A.fx==="wear"){ team.forEach(f=>{ const g = f.gear.weapon; if(isWornable(g) && g.durMax && g.dur > 1){ g.dur--; } }); tail = ` <span class="muted">(쇠붙이를 쳐서 무기가 더 닳았다)</span>`; }
+  lines.push(`<span style="color:${s.col}">${esc(s.n)}</span> — ${A.ok}${tail}`);
+  S.st = S.st || {}; S.st.synd = (S.st.synd||0) + 1; ac("synd");
+  try{ if(Math.random() < 0.5) pushRumor(`${s.n} 쪽 일을 ${jo(S.officeName,"이")} 정리했다는 말이 돈다.`, false, performance.now(), "minor"); }catch(_){}
 }
 /* 의뢰 등급대별 의뢰 내용. 사무소 등급이 오를수록 의뢰가 다양하고 위험해진다.
    [의뢰 내용, 의뢰인, 상대(물리 전투의 적 이름) 또는 쫓는 대상(추적: person·cat·dog·rat)]
@@ -4928,7 +5024,7 @@ async function dispatch(qid, fids){
     g.dur = Math.max(0, g.dur-1); g.uses = (g.uses||0) + 1;
     lines.push(`${esc(f.name)}의 ${esc(g.name)}: 내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? (g.durMax<=1 ? " — <b>더는 고칠 수 없다</b>" : " — <b>수리가 필요하다</b>(관리)") : ""}`); });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
-  idxOnDispatch(q, team, success);
+  idxOnDispatch(q, team, success); synAfter(q, team, success, lines);
   if(success){
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
@@ -5580,7 +5676,7 @@ async function ledgerOffer(first){
     : `<p class="ledger-q">서랍 속 낡은 장부를 다시 꺼낸다. 마지막 줄 아래로 빈 칸이 남아 있다.</p>`;
   const btns = [{t:"내일도 문을 연다", v:"go"}];
   if(heir && !alone) btns.push({t:`${heir.name}에게 열쇠를 넘긴다`, v:"heir"});
-  if(leaderColor() && !alone) btns.push({t:`[${leaderColor().title}]을 내려놓는다`, v:"color"});
+  if(leaderColor() && !alone) btns.push({t:`[${leaderColor().title}] — 간판을 내리고 사라진다`, v:"color"});
   btns.push({t:"장부를 덮는다", v:"end", primary:true});
   const v = await modal("장부", body, btns);
   if(v==="end") await (alone ? deskEnding() : ledgerEnding());
@@ -5590,12 +5686,34 @@ async function ledgerOffer(first){
 function trioRequest(){
   const q = makeRequest(0); q.client = "하나 협회 지명"; q.reward = Math.round(q.reward*1.5/100)*100; q.text = `하나 협회의 지명 — ${q.text}`; q.trio = true; return q; }
 // 엔딩 공통 마무리
-async function endingClose(name, epi){
+async function endingClose(name, epi, col){
+  await endingCard(name, col); if(!S) return;
   ac("end"); acSet("ending", name);
   S.records.push({day:S.day, name:S.officeName, what:"엔딩", note:name}); S.over = true; save(); render();
   await modal(`엔딩 — ${name}`, `<p class="muted" style="line-height:1.7">${epi}</p>
     <div class="kv"><span>버틴 날</span><b>${S.day}일</b><span>사무소 등급</span><b>${gName(S.officeGrade)} 사무소</b><span>잃은 사람</span><b>${lossCount()}명</b><span>함께한 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"새 게임", primary:true, v:"new"}]);
   clearSave(); S = null; renderStart();
+}
+/* 엔딩 연출 강화: 장면의 결정적인 순간에 화면이 흔들리고 번쩍인다(jolt). 장면이 끝나면 엔딩 타이틀 카드가 내리꽂힌다. */
+function jolt(el, col, big){
+  if(!el) return; el.classList.remove("jolt", "jolt-big"); void el.offsetWidth; el.classList.add(big ? "jolt-big" : "jolt");
+  const fl = document.createElement("div"); fl.className = "jolt-flash"; fl.style.background = col || "#fff"; el.appendChild(fl); setTimeout(()=>fl.remove(), 900); }
+const ENDING_INFO = {
+  "다음 손님":   {no:1, en:"THE NEXT CLIENT",        col:"#e8c98a", q:"도시는 오늘도 누군가의 문을 두드린다."},
+  "둥지로":      {no:2, en:"INTO THE NEST",          col:"#dfe8f2", q:"뒷골목은 둥지를 꿈꾸고, 둥지는 뒷골목을 두려워한다."},
+  "물려준 열쇠": {no:3, en:"THE INHERITED KEY",      col:"#d9b56a", q:"간판은 남고, 이름은 바뀐다."},
+  "빈 책상":     {no:4, en:"EMPTY DESKS",            col:"#9a9086", q:"불 꺼진 사무소에는 아무도 의뢰하러 오지 않는다."},
+  "마지막 손님": {no:5, en:"THE LAST CLIENT",        col:"#e2574a", q:"빚은 갚았다. 남은 건 셈으로 치를 수 없는 것들뿐."},
+  "소문이 된 색":{no:6, en:"A COLOR TURNED RUMOR",   col:null,      q:"칭호는 협회가 주고, 이름은 골목이 기억한다."},
+  "공방의 도면": {no:7, en:"BLUEPRINT",              col:"#8fc2f0", q:"좋은 무기는 주인보다 오래 산다."},
+  "지령":        {no:8, en:"PRESCRIPT",              col:"#f1efe9", q:"의심하지 마라. 묻지도 마라. 따르라."}};
+function endingCard(name, col){
+  const I = ENDING_INFO[name] || {no:0, en:"", q:""}, c = col || I.col || "#e8c98a";
+  const el = document.createElement("div"); el.className = "endcard"; el.style.setProperty("--ec", c);
+  el.innerHTML = `<div class="ec-slash"></div><div class="ec-no">ENDING · ${String(I.no).padStart(2,"0")} / ${ACH_ENDINGS.length}</div>
+    <div class="ec-title" data-t="${esc(name)}">${esc(name)}</div><div class="ec-en">${esc(I.en)}</div><div class="ec-line"></div><div class="ec-q">${esc(I.q)}</div>`;
+  const add = k => () => el.classList.add(k);
+  return runScene(el, [[150, add("slash")], [700, ()=>{ el.classList.add("hit"); jolt(el, c, true); }], [1500, add("en")], [2300, add("q")]], 3800);
 }
 // 장면 진행기: plan = [[ms, fn]...], 끝나면 holdMs 뒤 닫힌다. 클릭하면 남은 단계를 한꺼번에 건너뛰고, 마지막 장면에서 클릭하면 닫힌다.
 function runScene(el, plan, holdMs){
@@ -5604,7 +5722,8 @@ function runScene(el, plan, holdMs){
     let done = false, last = false; const timers = [];
     const finish = () => { if(done) return; done = true; timers.forEach(clearTimeout); el.classList.add("out"); setTimeout(()=>{ el.remove(); res(); }, 800); };
     const toEnd = () => { timers.forEach(clearTimeout); timers.length = 0; plan.forEach(([,fn])=>{ try{ fn(true); }catch(_){} }); last = true; timers.push(setTimeout(finish, holdMs)); };
-    plan.forEach(([ms, fn], i) => timers.push(setTimeout(()=>{ fn(false); if(i===plan.length-1){ last = true; timers.push(setTimeout(finish, holdMs)); } }, ms)));
+    const JO = (el.dataset.jolt||"").split(",").filter(Boolean).map(x=>x.split("|"));
+    plan.forEach(([ms, fn], i) => timers.push(setTimeout(()=>{ const had = JO.map(([k])=>el.classList.contains(k)); fn(false); JO.forEach(([k,c,b],j)=>{ if(!had[j] && el.classList.contains(k)) jolt(el, c, b==="1"); }); if(i===plan.length-1){ last = true; timers.push(setTimeout(finish, holdMs)); } }, ms)));
     el.onclick = () => last ? finish() : toEnd();
   }); }
 async function ledgerEnding(){
@@ -5625,7 +5744,7 @@ async function wingOffer(){
   addLog("날개의 제안을 거절했다. 간판은 그대로 걸려 있다.");
 }
 function nestScene(){
-  const el = document.createElement("div"); el.className = "nest-fx";
+  const el = document.createElement("div"); el.className = "nest-fx"; el.dataset.jolt = "shut|#555,arrive|#fff|1";
   const floors = ["뒷골목", "거리", "둥지 외곽", "둥지"];
   el.innerHTML = `<div class="ns-shaft"><div class="ns-sky"></div>${floors.map((t,i)=>`<div class="ns-floor" style="bottom:${8+i*25}%"><span>${t}</span></div>`).join("")}</div>
     <div class="ns-car"><div class="ns-door l"></div><div class="ns-door r"></div><div class="ns-sign">${esc(S.officeName)}</div></div>
@@ -5640,7 +5759,7 @@ async function nestEnding(){
 }
 /* 물려준 열쇠 — 문 유리의 이름을 긁어내고 새 이름을 쓴다 */
 function heirScene(L, h){
-  const el = document.createElement("div"); el.className = "key-fx";
+  const el = document.createElement("div"); el.className = "key-fx"; el.dataset.jolt = "t1|#d9b56a";
   const sp = s => [...s].map(c=>`<i>${c===" " ? "&nbsp;" : esc(c)}</i>`).join("");
   el.innerHTML = `<div class="ky-door"><div class="ky-glass"><div class="ky-office">${esc(S.officeName)}</div><div class="ky-rule"></div>
       <div class="ky-name"><span class="ky-old">${sp("대표 "+L.name)}</span><span class="ky-new">${sp("대표 "+h.name)}</span></div></div></div>
@@ -5665,7 +5784,7 @@ async function heirEnding(h){
 }
 /* 빈 책상 — 잃은 이들의 책상 스탠드가 하나씩 꺼지고, 마지막으로 대표의 불이 꺼진다 */
 function deskScene(){
-  const el = document.createElement("div"); el.className = "desk-fx";
+  const el = document.createElement("div"); el.className = "desk-fx"; el.dataset.jolt = "click|#000|1";
   const lost = (S.records||[]).filter(r=>/사망|실종|뒤틀림|삭제/.test(r.what)).slice(-5).map(r=>r.name), L = leader();
   const desks = lost.map(n=>({n, me:false})).concat([{n:L ? L.name : "대표", me:true}]);
   el.innerHTML = `<div class="dk-row">${desks.map(d=>`<div class="dk${d.me?" me":""}"><div class="dk-glow"></div><div class="dk-lamp"></div><div class="dk-top"></div><div class="dk-tag">${esc(d.n)}</div></div>`).join("")}</div>
@@ -5689,7 +5808,7 @@ function scarRequest(){
   const q = makeRequest(g, {kind:"일반", attrs:["str","wil"]}); q.client = "남겨진 흉터"; q.reward = Math.round(q.reward*2/100)*100; q.deadline = 5;
   q.text = `남겨진 흉터의 의뢰 — ${q.text}`; q.scarJob = true; return q; }
 function scarScene(){
-  const el = document.createElement("div"); el.className = "scar-fx";
+  const el = document.createElement("div"); el.className = "scar-fx"; el.dataset.jolt = "stamp|#a32418|1,tear|#000";
   const others = Array.from({length:5}, ()=>`${pick(SURNAMES)}${pick(["","가"])} ${pick(["사무소","해결사 사무소","상회"])}`);
   const rows = others.slice(0,3).map(n=>`<div class="sc-row x"><span>${esc(n)}</span><span>${won(Math.round((1+Math.random()*4))*1000000)}</span></div>`).join("")
     + `<div class="sc-row me"><span>${esc(S.officeName)}</span><span>${won(START_DEBT)}</span></div>`
@@ -5717,13 +5836,13 @@ async function scarJobCheck(){
    대표가 특색이고 빚을 다 갚았으면, 장부 창에서 칭호를 내려놓을 수 있다. 사람은 사라지고 칭호만 소문으로 떠돈다. */
 const leaderColor = () => { const L = leader(); return L && L.grade===0 && L.title ? L : null; };
 function rumorScene(L){
-  const el = document.createElement("div"); el.className = "rumor-fx"; el.style.setProperty("--tc", L.tcol || "#d9c27a");
+  const el = document.createElement("div"); el.className = "rumor-fx"; el.dataset.jolt = `title|${L.tcol||"#fff"}|1,fade|#000`; el.style.setProperty("--tc", L.tcol || "#d9c27a");
   const T = esc(L.title), N = esc(L.name);
-  const voices = [`[${T}]? 아직 그 골목에 산대.`, `칭호를 협회에 돌려줬다던데.`, `아니야, 둥지 쪽에서 봤다는 사람이 있어.`, `${N}… 그게 본명이었나?`,
-    `협회 명부엔 아직 이름이 있대.`, `그 사무소 간판, 지금은 다른 데가 걸었어.`, `한 번 봤어. 그냥 평범한 사람이던데.`, `[${T}]${josa(L.title,"이","").slice(L.title.length)}라면 아직 의뢰 받는다던데?`,
+  const voices = [`[${T}]? 아직 그 골목에 산대.`, `협회가 칭호를 거둬 갔다던데. 아니, 아직 명부에 있대.`, `아니야, 둥지 쪽에서 봤다는 사람이 있어.`, `${N}… 그게 본명이었나?`,
+    `칭호는 주는 거지 받는 게 아니래. 돌려줄 수도 없고.`, `그 사무소 간판, 지금은 다른 데가 걸었어.`, `한 번 봤어. 그냥 평범한 사람이던데.`, `[${T}]${josa(L.title,"이","").slice(L.title.length)}라면 아직 의뢰 받는다던데?`,
     `죽었대. 아니, 그만뒀대.`, `우리 아버지가 그 사람한테 신세 졌었지.`, `색이 바래면 사람도 사라지는 거야.`, `흉내 내는 애들이 요즘 많더라.`];
   el.innerHTML = `<div class="rm-title">${T}</div><div class="rm-name">${N}</div>${voices.map((v,i)=>`<div class="rm-v" style="left:${(i%2 ? 56 : 6) + ((i*7)%9)}%;top:${[6,15,24,54,63,72][Math.floor(i/2)%6]}%">${v}</div>`).join("")}
-    <div class="rm-text"><div>사람은 어느 날 골목에서 보이지 않게 되었다.</div><div>이름은 소문이 되었다.</div></div>`;
+    <div class="rm-text"><div>사람은 어느 날 골목에서 보이지 않게 되었다.</div><div>칭호는 소문이 되었다.</div></div>`;
   const vs = () => [...el.querySelectorAll(".rm-v")];
   const plan = [[500, ()=>el.classList.add("title")], [2400, ()=>el.classList.add("name")]];
   voices.forEach((_,i)=>plan.push([3800 + i*620, (all)=>{ (all ? vs() : [vs()[i]]).forEach(x=>x && x.classList.add("on")); }]));
@@ -5733,9 +5852,9 @@ function rumorScene(L){
 }
 async function rumorEnding(){
   const L = leaderColor(); if(!S || !L) return;
-  S.records.push({day:S.day, name:L.name, what:"칭호 반납", note:`[${L.title}]을 내려놓았다`});
+  S.records.push({day:S.day, name:L.name, what:"행방불명", note:`[${L.title}]의 주인이 골목에서 사라졌다`});
   await rumorScene(L); ac("rumorEnd");
-  await endingClose("소문이 된 색", `하나 협회는 [${esc(L.title)}]의 칭호를 비워 두었다. 몇 해가 지나도록, 그 칭호를 다시 받은 해결사는 없었다.`);
+  await endingClose("소문이 된 색", `하나 협회는 칭호를 거두지 않았다. [${esc(L.title)}]은(는) 주인이 사라진 채 명부에 남았고, 골목에서는 지금도 그 이름을 본 사람이 나온다.`, L.tcol);
 }
 /* ---- 특수 엔딩 · 공방: 공방의 도면 ----
    빚을 갚은 뒤, 공방이 다시 벼려 준 고유 무기를 든 해결사가 있으면 그 공방이 찾아와 무기를 양산 모델로 내자고 한다. */
@@ -5759,7 +5878,7 @@ async function workshopOffer(){
 }
 function workshopScene(f){
   const g = f.gear.weapon, maker = g.maker || "공방", d = WEAPON_SVG[svgKind(g)], no = 100 + (S.day % 900);
-  const el = document.createElement("div"); el.className = "ws-fx";
+  const el = document.createElement("div"); el.className = "ws-fx"; el.dataset.jolt = "stamp|#e2574a|1,belt|#8fc2f0";
   const copy = i => `<div class="ws-copy" style="--i:${i}"><svg viewBox="0 0 300 100"><path d="${d}"/></svg><span>No.${String(no).padStart(4,"0")}-${String(i+1).padStart(3,"0")}</span></div>`;
   el.innerHTML = `<div class="ws-sheet"><div class="ws-head"><span>${esc(maker)}</span><span>도면 제 ${no}호</span></div>
       <svg class="ws-draw" viewBox="0 0 300 100"><path d="${d}"/><path class="ws-dim" d="M10 90 L292 90 M10 86 L10 94 M292 86 L292 94"/></svg>
@@ -5821,7 +5940,7 @@ async function idxFinal(){
   addLog("마지막 지령서를 찢었다. 골목 끝의 사람은 다시 나타나지 않았다.");
 }
 function fingerScene(){
-  const el = document.createElement("div"); el.className = "idx-fx";
+  const el = document.createElement("div"); el.className = "idx-fx"; el.dataset.jolt = "final|#fff|1";
   const olds = PRESCRIPTS.map(p=>p.t).concat(["오른쪽 신발 끈부터 묶어라.","세 번째로 만나는 사람에게 인사하지 마라.","오늘은 빨간 것을 먹지 마라.","문을 열 때 숫자를 일곱까지 세라.","가장 아끼는 물건을 골목에 두고 와라."]);
   el.innerHTML = `${olds.map((t,i)=>`<div class="ix-card" style="left:${4+((i*29)%74)}%;--r:${((i*53)%30)-15}deg;--y:${30+((i*23)%45)}%;--d:${(i*0.45).toFixed(2)}s">${esc(t)}</div>`).join("")}
     <div class="ix-final"><span></span></div>
@@ -5852,7 +5971,7 @@ function ledgerScene(lines){
   return new Promise(res=>{
     const el = document.createElement("div"); el.className = "ledger-fx";
     el.innerHTML = `<div class="lg-room"><div class="lg-lamp"></div><div class="lg-book"><div class="lg-page"><div class="lg-head">${esc(S.officeName)} · 장부</div><div class="lg-lines"></div></div><div class="lg-cover"><span>${esc(S.officeName)}</span></div></div></div>
-      <div class="lg-knock"><div class="k1">똑, 똑.</div><div class="k2">"…여기, 해결사 사무소 맞나요?"</div><div class="k3">대표는 잠시 덮인 장부를 내려다보다가, 일어나 문을 열었다.</div></div>`;
+      <div class="lg-door"></div><div class="lg-knock"><div class="k1">똑, 똑.</div><div class="k2">"…여기, 해결사 사무소 맞나요?"</div><div class="k3">대표는 잠시 덮인 장부를 내려다보다가, 일어나 문을 열었다.</div></div>`;
     document.body.appendChild(el);
     let done = false; const timers = [], at = (ms, fn) => timers.push(setTimeout(fn, ms));
     const finish = () => { if(done) return; done = true; timers.forEach(clearTimeout); el.classList.add("out"); setTimeout(()=>{ el.remove(); res(); }, 700); };
@@ -5862,7 +5981,7 @@ function ledgerScene(lines){
     lines.forEach((t,i)=>at(900 + i*1150, ()=>{ const d = document.createElement("div"); d.className = "lg-line"; d.textContent = t; box.appendChild(d); requestAnimationFrame(()=>d.classList.add("on"));
       [...box.children].forEach((c,j,arr)=>{ c.style.opacity = j === arr.length-1 ? "" : String(Math.max(.35, 1 - (arr.length-1-j)*.12)); }); }));
     const tClose = 900 + lines.length*1150 + 900;
-    function closeAndKnock(delay){ at(delay, ()=>el.classList.add("closing")); at(delay + 1600, ()=>el.classList.add("dark")); at(delay + 2900, ()=>el.classList.add("knock"));
+    function closeAndKnock(delay){ at(delay, ()=>el.classList.add("closing")); at(delay + 1600, ()=>el.classList.add("dark")); at(delay + 2900, ()=>{ el.classList.add("knock"); jolt(el, "#e8c98a", false); });
       at(delay + 2900 + 7000, finish); }
     function showAll(){ box.innerHTML = lines.map(t=>`<div class="lg-line on">${esc(t)}</div>`).join(""); closeAndKnock(600); }
     closeAndKnock(tClose);
@@ -6944,7 +7063,7 @@ function render(){
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req ${q.kind==="뒤틀림 토벌"?"distort":q.special?"special":""}" data-q="${q.id}">
-      <div class="head"><span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>
+      <div class="head"><span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
@@ -9889,7 +10008,7 @@ function fxTestPanel(){
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
-   <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option></select>
+   <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
      <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령서 받기</button><button data-adj="en-idx3">마지막 지령서</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
@@ -9915,7 +10034,7 @@ function fxTestPanel(){
     if(k==="office"){ S.officeGrade = v("#fxog"); save(); render(); return toast(`사무소 등급 → ${gName(S.officeGrade)}`); }
     if(k==="leader"){ const g = v("#fxlg"); if(g===0){ await passColor(L); } else { L.grade = g; L.title = null; L.tcol = null; L.cap = 70; } save(); render(); return toast(`대표 → ${gName(L.grade)}`); }
     if(k==="req"){ const kd = el.querySelector("#fxrk").value, g = v("#fxrg"), n = v("#fxrn");
-      for(let i=0;i<n;i++){ const q = kd==="trio" ? trioRequest() : ["str","agi","tec"].includes(kd) ? makeRequest(g, {kind:"일반", attrs:[kd]}) : makeRequest(g, {kind:kd, attrs: kd==="호위" ? ["str","agi"] : kd==="수색" ? ["agi","tec"] : ["wil"]}); S.requests.unshift(q); }
+      for(let i=0;i<n;i++){ const q = kd==="trio" ? trioRequest() : kd==="synd" ? makeRequest(g, {synd: (SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])[0] ? pick(SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])) : pick(SYNDICATES)).id}) : kd.startsWith("syn:") ? makeRequest(g, {synd: kd.slice(4)}) : ["str","agi","tec"].includes(kd) ? makeRequest(g, {kind:"일반", attrs:[kd]}) : makeRequest(g, {kind:kd, attrs: kd==="호위" ? ["str","agi"] : kd==="수색" ? ["agi","tec"] : ["wil"]}); S.requests.unshift(q); }
       save(); render(); return toast(`의뢰 ${n}건을 올렸다`); }
     if(k==="clear"){ S.requests = []; save(); render(); return toast("게시판을 비웠다"); }
     if(k==="week"){ S.fixers.forEach(f=>{ f.wk = {n:8, ok:8, hi:5, sc:6}; }); S.wk = {n:10, ok:10, hi:6, sc:7}; save(); return toast("이번 주 심사 기록을 채웠다 — 7일차 밤에 심사"); }
