@@ -166,7 +166,9 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .mbtn{text-align:left;padding:12px 18px;font-size:15px;background:rgba(14,13,18,.72);border:1px solid #2c2a33;border-left:3px solid #3a3740;border-radius:4px;backdrop-filter:blur(4px);transition:all .2s}
 .mbtn:hover{border-left-color:#c9a86a;padding-left:24px;background:rgba(30,26,22,.85)}
 .mbtn.primary{border-left-color:#c94a4a;color:#f3e3c0;background:rgba(40,22,20,.78)}
-.ver{margin-top:26px;font-size:11px;color:#6d675e}
+.spoiler{margin-top:28px;max-width:300px;padding:10px 14px;border:1px solid rgba(232,178,74,.55);border-left:3px solid #e8b24a;background:rgba(20,14,6,.72);color:#e9dcc2;font-size:12.5px;line-height:1.6;border-radius:3px;box-shadow:0 0 18px rgba(232,178,74,.12)}
+.spoiler b{display:block;color:#f2c25e;font-size:13px;letter-spacing:.12em;margin-bottom:3px}
+.ver{margin-top:16px;font-size:11px;color:#6d675e}
 .name-panel{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,92vw);background:rgba(18,16,22,.92);border:1px solid #2f2c35;border-top:3px solid #c9a86a;border-radius:6px;backdrop-filter:blur(6px);animation:npIn .45s ease}
 @keyframes npIn{from{opacity:0;transform:translate(-50%,-46%)}to{opacity:1;transform:translate(-50%,-50%)}}
 .np-h{padding:14px 18px;border-bottom:1px dashed #34313a;font-weight:800;font-size:17px;display:flex;justify-content:space-between;align-items:baseline}
@@ -7517,6 +7519,7 @@ function renderStart(){
         <button class="mbtn ${hasSave?"":"primary"}" data-t="new">새 사무소 개업</button>
         <button class="mbtn" data-t="ach">업적</button>
       </div>
+      <div class="spoiler"><b>스포일러 경고</b>로보토미 코퍼레이션과 라이브러리 오브 루이나, 림버스 컴퍼니의 관련 이야기가 나올 수 있습니다.</div>
       <div class="ver">v${VERSION}</div>
     </div>
     <div class="name-panel" id="np" hidden>
