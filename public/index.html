@@ -169,6 +169,8 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .report-btn{position:fixed;top:12px;right:14px;z-index:140;padding:6px 14px;border:1px solid #e8b24a;border-radius:3px;background:rgba(24,16,6,.88);color:#f2c25e;font-size:13px;font-weight:700;letter-spacing:.1em;text-decoration:none;box-shadow:0 0 14px rgba(232,178,74,.25);transition:background .2s,color .2s}
 .bgm-btn{position:fixed;top:12px;right:92px;z-index:140;padding:6px 12px;border:1px solid #6d6556;border-radius:3px;background:rgba(18,15,12,.88);color:#d9cdb6;font-size:13px;cursor:pointer}
 .bgm-btn.off{color:#6d675e;text-decoration:line-through}
+.bgm-pop{position:fixed;top:48px;right:14px;z-index:141;width:230px;padding:10px 12px;border:1px solid #6d6556;border-radius:4px;background:rgba(18,15,12,.96);color:#d9cdb6;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.bgm-row{display:flex;align-items:center;gap:8px;margin:4px 0}.bgm-row span{width:34px;color:#a69e90}.bgm-row input{flex:1;accent-color:#e8b24a}.bgm-row b{width:34px;text-align:right;font-weight:600}.bgm-row button{padding:2px 10px}
 .report-btn:hover{background:#e8b24a;color:#1a1208}
 .spoiler{margin-top:28px;max-width:300px;padding:10px 14px;border:1px solid rgba(232,178,74,.55);border-left:3px solid #e8b24a;background:rgba(20,14,6,.72);color:#e9dcc2;font-size:12.5px;line-height:1.6;border-radius:3px;box-shadow:0 0 18px rgba(232,178,74,.12)}
 .spoiler b{display:block;color:#f2c25e;font-size:13px;letter-spacing:.12em;margin-bottom:3px}
@@ -712,7 +714,8 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 </style>
 </head>
 <body>
-<button class="bgm-btn" id="bgmbtn" title="배경 음악 켜기 · 끄기">♪ 음악</button>
+<button class="bgm-btn" id="bgmbtn" title="배경 음악 · 소리 크기">♪ 음악</button>
+<div class="bgm-pop" id="bgmpop" hidden><div class="bgm-row"><span>음악</span><button id="bgmmute">켜짐</button></div><div class="bgm-row"><span>크기</span><input type="range" id="bgmvol" min="0" max="100" step="1"><b id="bgmvv"></b></div></div>
 <a class="report-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSfIf5geuiauFB4ArTdeMoJAZbp2oOnyZvX_Bm5K1Aj5K1ETUg/viewform?usp=publish-editor" target="_blank" rel="noopener" title="버그 · 오류 · 의견 제보">[제보]</a>
 <div class="wrap" id="app"></div>
 <footer>이 게임은 Project Moon 세계관을 바탕으로 비영리적인 목적으로 만들어진 팬게임입니다. 플레이를 제외한 일체의 수익성 행위를 금지합니다.<br>또한 모든 환상체와 번호는 팬게임을 위해 일시적으로 부여되거나 원작 번호를 바탕으로 허구로 재구성되었습니다. 그리고 모든 수치와 사건은 이 게임을 위해 만든 허구입니다.</footer>
@@ -2162,7 +2165,7 @@ function genRequestsInner(){
 const PARTY = {9:[1,2],8:[1,2],7:[2,3],6:[2,3],5:[2,4],4:[3,4],3:[3,5],2:[3,5],1:[4,5],0:[4,5]};
 const partyRec = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][0];
 const partyMax = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][1];
-function gearList(f){ return [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.ab && f.ab.coatOff && S && S.day <= f.ab.coatOff ? null : f.gear.armor, f.gear.acc].filter(Boolean); }
+function gearList(f){ return bodyItems(f).concat(augItems(f), [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.ab && f.ab.coatOff && S && S.day <= f.ab.coatOff ? null : f.gear.armor, f.gear.acc].filter(Boolean)); }
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
@@ -2270,7 +2273,7 @@ const BGM = (function(){
     push(k, bg){ if(!SRC[k]) return null; const tok = {k, bg}; stack.push(tok); clearTimeout(relT); apply(); return tok; },
     pop(tok){ const i = stack.indexOf(tok); if(i>=0) stack.splice(i,1); clearTimeout(relT); relT = setTimeout(apply, 450); },
     toggle(){ opt.on = !opt.on; try{ localStorage.setItem(KEY, JSON.stringify(opt)); }catch(_){} apply(); return opt.on; },
-    setVol(v){ opt.vol = Math.max(0, Math.min(1, v)); try{ localStorage.setItem(KEY, JSON.stringify(opt)); }catch(_){} if(cur) el(cur).volume = opt.vol; },
+    setVol(v){ opt.vol = Math.max(0, Math.min(1, v)); try{ localStorage.setItem(KEY, JSON.stringify(opt)); }catch(_){} if(cur){ const a = el(cur); cancelAnimationFrame(a._f); a.volume = opt.vol; } },
     tick(){ if(stack.some(t=>t.bg && !t.bg.isConnected)) apply(); },
     kick(){ if(!cur || el(cur).paused) apply(); },
     get on(){ return opt.on; }, get vol(){ return opt.vol; }, get cur(){ return cur; }, get depth(){ return stack.length; }
@@ -6546,7 +6549,7 @@ async function endDayInner(reason){
   if(S && !S.over) S.fixers.forEach(checkOmen);
   if(S && !S.over) await colorMailCheck();
 }
-async function weekly(){ ac("week");
+async function weekly(){ ac("week"); bodyUpkeep();
   if(!S.over && S.scarCard && !S.scarJobPosted && S.day - S.scarCard >= 6){ S.scarJobPosted = S.day; const q = scarRequest(); S.requests.unshift(q); addLog(`남겨진 흉터가 의뢰를 맡기고 갔다 — ${q.text}`); }
   if(!S.over && S.debt<=0 && S.officeGrade<=2 && !S.wingAsked && S.repaidDay && S.day - S.repaidDay >= 6){ await wingOffer(); if(!S || S.over) return; }
   if(!S.over && S.debt<=0 && !S.wsAsked && S.repaidDay && S.day - S.repaidDay >= 6 && uniqueHolder()){ await workshopOffer(); if(!S || S.over) return; }
@@ -6721,7 +6724,7 @@ async function openManage(){
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
       ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
-      ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}
+      ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
       <span>기술</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
         return `<select data-tech="1">${list.map(id=>`<option value="${id}" ${(f.tech||"allout")===id?"selected":""} ${techFits(id, wt)?"":"disabled"}>${TECHS[id].n}${techFits(id, wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
           <br><span class="muted" style="font-weight:400">${esc(TECHS[f.tech && techFits(f.tech, wt) ? f.tech : "allout"].d)}${(f.techs||[]).length ? "" : " · 무기를 오래 쓰거나 능력치가 높아지면 기술을 깨우친다."}</span>`; })()}</b>
@@ -6813,7 +6816,8 @@ async function openShop(startTab){
   const lockMsg = t => t===1 ? (tierMax<1 ? "6급 사무소부터 거래할 수 있다." : "") : t===2 ? (tierMax<2 ? "3급 사무소부터 거래할 수 있다." : "") : t===3 ? (uniqs().length ? "" : "고유 무기를 받거나 특색이 된 해결사가 생기면 열린다.") : "";
   const draw = () => {
     const f = S.fixers.find(x=>x.id===who);
-    const tabs = `<div class="tabs">${TIER_NAME.map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${lockMsg(i)?" 🔒":""}</button>`).join("")}</div>`;
+    const tabs = `<div class="tabs">${TIER_NAME.map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${lockMsg(i)?" 🔒":""}</button>`).join("")}<button data-tab="4" class="${tab===4?"on":""}">의체 · 시술</button></div>`;
+    if(tab===4) return `<div class="field"><label>시술받을 사람</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>${tabs}${bodyShopHtml(f, tierMax)}`;
     if(tab===3){
       const cs = uniqs();
       return tabs + `<p class="muted" style="font-size:12px"><b>고유 무기</b>는 살 수 없다. 정식 공방 이상의 무기를 최대 내구도만큼 쓴 4급 이상 해결사에게, 드물게 공방이 그 사람만의 무기로 다시 벼려 준다. 능력치는 넷 다 고르게 오르고, 공방마다 다른 특수 능력이 하나 붙는다. 받은 뒤에는 생김새를 손질할 수 있다(이름은 받을 때만 짓는다).<br><b>고유 방어구</b>는 특색이 된 해결사만 주문 제작한다.</p>
@@ -6846,12 +6850,94 @@ async function openShop(startTab){
       else if(d.buy){ const it=SHOP.find(i=>i.id===d.buy), f=S.fixers.find(x=>x.id===who); if(!it||!f||S.money<it.price) return;
         S.money-=it.price; ac("buy"); const old=f.gear[it.slot]; f.gear[it.slot]=initDur(JSON.parse(JSON.stringify(it))); if(old){ S.inventory=S.inventory||[]; S.inventory.push(old);} addLog(`${f.name}: ${it.name} 장착${it.slot==="weapon" ? ` (내구도 ${f.gear[it.slot].durMax})` : ""}`); }
       else if(d.forge){ const f = S.fixers.find(x=>x.id===+d.forge); if(f) await openForge(f, d.slot, d.mode); }
+      else if(d.part || d.full || d.aug){ const f = S.fixers.find(x=>x.id===who); if(f) await bodyAction(f, d); }
       else return;
       paint(box); save(); render();
     });
   });
 }
 
+/* ================= 의체 · 강화 시술 =================
+   원작 설정: 도시에서 신체 개조는 둥지 시민부터 뒷골목 노동자까지 흔하고, 해결사 일에는 거의 필수로 여겨진다. 뇌만은 손댈 수 없다.
+   · 의체(대체): 몸의 한 부위를 기계로 갈아 끼운다. 싸구려는 감각을 잃는다(→ 정신력 피해가 커진다). 비싼 것일수록 감각 기관이 붙어 있다.
+   · 전신 의체: 뇌만 옮겨 담는다. 되돌릴 수 없고, 뇌수 · 연료 · 정비로 매주 유지비가 든다.
+   · 강화 시술: 있는 몸을 더 단단하고 빠르게 만든다(인공 근섬유, 경화 문신, 심장 강화 …). 몸이 익힌 기술을 따라가게 해 줄 뿐 실력이 저절로 늘지는 않는다 — 한 사람당 3번까지.
+   이름과 수치는 이 게임을 위해 만든 것이다. 의체 · 시술 효과는 장비처럼 능력치 · 피해 감소에 더해진다. */
+const BODY_SLOTS = {arm:"팔", leg:"다리", eye:"눈", organ:"장기", nerve:"신경"};
+const BODY_PARTS = [
+  // 팔
+  {id:"pa0", slot:"arm", tier:0, maker:"뒷골목 의체 상점", name:"고철 의수",            price:9000,   bonus:{str:3},          mpRed:-0.05, d:"싸게 덧댄 쇳덩이 팔. 감각이 거의 없다."},
+  {id:"pa1", slot:"arm", tier:1, maker:"정식 의체 공방",   name:"정밀 작업용 의수",     price:90000,  bonus:{tec:5, str:1},   d:"손가락 관절마다 미세 조정 장치가 들어간 팔."},
+  {id:"pa2", slot:"arm", tier:1, maker:"정식 의체 공방",   name:"전투용 강화 의수",     price:140000, bonus:{str:6},          hpRed:0.04, d:"충격 흡수 장치가 든 두꺼운 전투용 팔."},
+  {id:"pa3", slot:"arm", tier:2, maker:"둥지 의체 공방",   name:"감각 이식 고급 의수",  price:900000, bonus:{str:5, tec:4},   d:"촉각 센서를 이식해 제 팔과 다르지 않다."},
+  // 다리
+  {id:"pl0", slot:"leg", tier:0, maker:"뒷골목 의체 상점", name:"보급형 의족",           price:9000,   bonus:{agi:3},          mpRed:-0.05, d:"걷고 뛰는 데는 문제없다. 발바닥에 감각이 없다."},
+  {id:"pl1", slot:"leg", tier:1, maker:"정식 의체 공방",   name:"도약용 관절 의족",     price:110000, bonus:{agi:5, str:1},   d:"무릎과 발목에 스프링 관절을 넣은 다리."},
+  {id:"pl2", slot:"leg", tier:2, maker:"둥지 의체 공방",   name:"인공 근섬유 다리",     price:1100000, bonus:{agi:8},         d:"근육 대신 인공 근섬유를 엮은 다리. 원작에도 이런 다리를 단 해결사가 있다."},
+  // 눈
+  {id:"pe0", slot:"eye", tier:0, maker:"뒷골목 의체 상점", name:"싸구려 의안",           price:7000,   bonus:{tec:2},          mpRed:-0.04, d:"색이 바래 보인다. 오래 보면 두통이 온다."},
+  {id:"pe1", slot:"eye", tier:1, maker:"정식 의체 공방",   name:"조준 보정 의안",       price:80000,  bonus:{tec:5},          d:"거리와 궤적을 계산해 시야에 띄운다."},
+  {id:"pe2", slot:"eye", tier:2, maker:"둥지 의체 공방",   name:"열상 · 야간 의안",     price:750000, bonus:{tec:4, agi:3},   d:"어둠 속 체온까지 읽는 눈."},
+  // 장기
+  {id:"po1", slot:"organ", tier:1, maker:"정식 의체 공방", name:"인공 심장",            price:160000, hpRed:0.08,             d:"멈추지 않는 펌프. 피를 많이 흘려도 버틴다."},
+  {id:"po2", slot:"organ", tier:1, maker:"정식 의체 공방", name:"여과 폐",              price:100000, hpRed:0.04, bonus:{wil:2}, d:"뒷골목의 매연과 독기를 걸러 낸다."},
+  {id:"po3", slot:"organ", tier:2, maker:"둥지 의체 공방", name:"재생 촉진 간",          price:850000, hpRed:0.1, bonus:{str:2}, d:"상처가 빨리 아물도록 피를 바꿔 준다."},
+  // 신경
+  {id:"pn1", slot:"nerve", tier:1, maker:"정식 의체 공방", name:"욕구 자극 칩",          price:120000, mpRed:0.06,             d:"싸구려 의체로 잃은 감각을 칩이 대신 채워 준다."},
+  {id:"pn2", slot:"nerve", tier:2, maker:"둥지 의체 공방", name:"감정 조율 칩",          price:1300000, mpRed:0.14, bonus:{wil:-2}, d:"공포와 욕구를 꺼 버린다. 흔들리지 않지만, 무언가를 원하는 마음도 무뎌진다."}
+];
+// 전신 의체: 다른 의체를 모두 대신한다. 되돌릴 수 없다. 매주 유지비
+const FULL_BODY = {id:"full", slot:"full", tier:1, maker:"정식 의체 공방", name:"전신 의체", price:450000, bonus:{str:10, agi:4}, hpRed:0.25, mpRed:-0.15, upkeep:8000,
+  d:"뇌만 옮겨 담는 몸. 배고픔도 병도 없지만 감각이 무디고, 다시는 살로 된 몸으로 돌아갈 수 없다. 매주 뇌수 · 연료 · 정비 비용이 든다."};
+const AUGS = [
+  {id:"ag_fiber", name:"인공 근섬유 이식",  price:30000,  days:2, bonus:{str:3},           d:"팔다리 근육 사이에 인공 근섬유를 엮어 넣는다."},
+  {id:"ag_nerve", name:"신경 반응 가속",    price:30000,  days:2, bonus:{agi:3},           d:"척수 신호를 빠르게 해 몸이 먼저 반응한다."},
+  {id:"ag_reflex",name:"손끝 신경 재배선",  price:30000,  days:2, bonus:{tec:3},           d:"손끝 감각을 세밀하게 다시 잇는다."},
+  {id:"ag_skin",  name:"경화 문신 시술",    price:45000,  days:1, bonus:{str:1}, hpRed:0.05, d:"살갗을 강철처럼 굳히는 문신. 예전엔 특허 기술이었지만 이젠 흔하다."},
+  {id:"ag_bone",  name:"골격 강화",         price:60000,  days:3, hpRed:0.07,              d:"뼈에 합금을 덧입혀 쉽게 부러지지 않게 한다."},
+  {id:"ag_heart", name:"심장 강화 시술",    price:55000,  days:2, bonus:{wil:2}, hpRed:0.03, d:"심장 근육을 보강해 오래 버틴다."},
+  {id:"ag_adren", name:"부신 조절 시술",    price:50000,  days:2, mpRed:0.06,              d:"공포에 몸이 굳지 않도록 호르몬 분비를 조절한다."}
+];
+const AUG_MAX = 3;
+const bodyItems = f => { const b = f.body || {}; return b.full ? [b.full] : Object.values(b).filter(Boolean); };
+const augItems = f => (f.augs||[]).map(id=>AUGS.find(a=>a.id===id)).filter(Boolean);
+function bodyDesc(it){ const p = []; if(it.bonus) Object.entries(it.bonus).forEach(([k,v])=>p.push(`${ATTR_NAME[k]}${v>=0?"+":""}${v}`));
+  if(it.hpRed) p.push(`체력 피해 ${it.hpRed>0?"-":"+"}${Math.abs(Math.round(it.hpRed*100))}%`); if(it.mpRed) p.push(`정신력 피해 ${it.mpRed>0?"-":"+"}${Math.abs(Math.round(it.mpRed*100))}%${it.mpRed<0 ? "(감각 저하)" : ""}`);
+  return p.join(" · "); }
+function bodyShopHtml(f, tierMax){
+  if(!f) return "";
+  const b = f.body || {}, full = !!b.full, augs = f.augs || [];
+  const tierLock = t => t > tierMax ? (t===1 ? "6급 사무소부터" : "3급 사무소부터") : "";
+  const partRow = it => { const cur = full ? b.full : b[it.slot], lock = tierLock(it.tier), mine = cur && cur.id===it.id;
+    return `<div class="item sh-item"><div class="wicon sh-slot">${BODY_SLOTS[it.slot]}</div><div style="flex:1"><b>${esc(it.name)}</b> <span class="badge">${esc(it.maker)}</span>
+      <div class="d">${bodyDesc(it)}</div><div class="d muted">${esc(it.d)}</div><div class="d">${won(it.price)}${cur && !full ? ` · 지금: ${esc(cur.name)}` : ""}</div></div>
+      <button class="primary" data-part="${it.id}" ${lock || full || mine || S.money < it.price ? "disabled" : ""}>${full ? "전신 의체" : mine ? "이식됨" : lock || "이식"}</button></div>`; };
+  const augRow = a => { const has = augs.includes(a.id), busy = f.unavailUntil >= S.day || f.lastDispatch===S.day;
+    return `<div class="item sh-item"><div class="wicon sh-slot">시술</div><div style="flex:1"><b>${esc(a.name)}</b> <span class="badge">회복 ${a.days}일</span>
+      <div class="d">${bodyDesc(a)}</div><div class="d muted">${esc(a.d)}</div><div class="d">${won(a.price)}</div></div>
+      <button class="primary" data-aug="${a.id}" ${has || augs.length >= AUG_MAX || busy || S.money < a.price ? "disabled" : ""}>${has ? "받음" : augs.length >= AUG_MAX ? "한도" : busy ? "오늘은 불가" : "시술"}</button></div>`; };
+  return `<p class="muted" style="font-size:12px">도시에서 몸을 고치는 건 흔한 일이다. 뇌만은 손댈 수 없다. 의체는 부위마다 하나씩 — 새로 이식하면 예전 것은 떼어 낸다(되팔 수 없다). 싸구려 의체는 감각을 잃어 정신력 피해가 커진다.</p>
+    <div class="kv"><span>${esc(f.name)}의 몸</span><b>${full ? `<span style="color:#9fb0c8">전신 의체</span> · 매주 유지비 ${won(FULL_BODY.upkeep)}` : Object.keys(BODY_SLOTS).map(k=>`${BODY_SLOTS[k]} ${b[k] ? esc(b[k].name) : "<span class='muted'>제 몸</span>"}`).join(" · ")}</b>
+      <span>강화 시술</span><b>${augs.length ? augItems(f).map(a=>esc(a.name)).join(" · ") : "<span class='muted'>없음</span>"} <span class="muted">(${augs.length}/${AUG_MAX})</span></b></div>
+    <h4 class="sh-mk">의체 <span class="muted">부위를 기계로 갈아 끼운다</span></h4><div class="list">${BODY_PARTS.map(partRow).join("")}</div>
+    <h4 class="sh-mk">전신 의체 <span class="muted">되돌릴 수 없다</span></h4><div class="list"><div class="item sh-item"><div class="wicon sh-slot">전신</div><div style="flex:1"><b>${FULL_BODY.name}</b> <span class="badge">${FULL_BODY.maker}</span>
+      <div class="d">${bodyDesc(FULL_BODY)} · 매주 유지비 ${won(FULL_BODY.upkeep)}</div><div class="d muted">${FULL_BODY.d}</div><div class="d">${won(FULL_BODY.price)}</div></div>
+      <button class="primary" data-full="1" ${full || tierLock(1) || S.money < FULL_BODY.price ? "disabled" : ""}>${full ? "이식됨" : tierLock(1) || "몸을 옮긴다"}</button></div></div>
+    <h4 class="sh-mk">강화 시술 <span class="muted">있는 몸을 강화한다 · 한 사람당 ${AUG_MAX}번 · 시술 뒤 며칠 쉬어야 한다</span></h4><div class="list">${AUGS.map(augRow).join("")}</div>`;
+}
+async function bodyAction(f, d){
+  if(d.part){ const it = BODY_PARTS.find(x=>x.id===d.part); if(!it || S.money < it.price) return; f.body = f.body || {}; const old = f.body[it.slot];
+    S.money -= it.price; f.body[it.slot] = JSON.parse(JSON.stringify(it)); ac("body"); addLog(`${f.name}: ${BODY_SLOTS[it.slot]}에 ${it.name} 이식${old ? ` (${old.name} 떼어 냄)` : ""}`); return; }
+  if(d.full){ if(S.money < FULL_BODY.price) return;
+    const ok = await confirmBox("전신 의체", `${esc(f.name)}의 뇌를 기계 몸으로 옮긴다.<br><b>다시는 살로 된 몸으로 돌아갈 수 없다.</b> 지금 이식한 의체는 모두 떼어 내고, 매주 ${won(FULL_BODY.upkeep)}의 유지비가 든다.`); if(!ok) return;
+    S.money -= FULL_BODY.price; f.body = {full: JSON.parse(JSON.stringify(FULL_BODY))}; ac("body"); ac("fullBody");
+    S.records.push({day:S.day, name:f.name, what:"전신 의체", note:"뇌만 남기고 몸을 옮겼다"}); addLog(`${f.name}: 전신 의체로 몸을 옮겼다`); return; }
+  if(d.aug){ const a = AUGS.find(x=>x.id===d.aug); f.augs = f.augs || []; if(!a || f.augs.includes(a.id) || f.augs.length >= AUG_MAX || S.money < a.price) return;
+    S.money -= a.price; f.augs.push(a.id); f.unavailUntil = Math.max(f.unavailUntil||0, S.day + a.days - 1); ac("aug");
+    addLog(`${f.name}: ${a.name} — ${a.days}일 동안 회복한다`); }
+}
+function bodyUpkeep(){ let cost = 0; S.fixers.forEach(f=>{ if(f.body && f.body.full){ cost += f.body.full.upkeep || FULL_BODY.upkeep; } });
+  if(cost){ S.money -= cost; addLog(`전신 의체 유지비(뇌수 · 연료 · 정비) -${won(cost)}`); } }
 /* ---- 고유 무기: 공방이 다시 벼려 준다 ----
    조건: 정식 공방 이상 무기 · 그 무기를 처음 받은 최대 내구도만큼 출동 · 해결사 4급 이상. 조건이 처음 갖춰지는 출동에서 한 번만 10%로 굴린다. */
 const UPGRADE_P = 0.17, UPGRADE_STAT = [0, 3, 4];
@@ -10512,7 +10598,12 @@ S = null;
 renderStart();
 setInterval(()=>BGM.tick(), 1500);
 ["pointerdown","keydown","touchstart"].forEach(ev=>window.addEventListener(ev, ()=>BGM.kick(), {capture:true}));
-{ const b = document.getElementById("bgmbtn"); if(b){ b.classList.toggle("off", !BGM.on); b.onclick = () => b.classList.toggle("off", !BGM.toggle()); } }
+{ const b = document.getElementById("bgmbtn"), pop = document.getElementById("bgmpop"), mu = document.getElementById("bgmmute"), vol = document.getElementById("bgmvol"), vv = document.getElementById("bgmvv");
+  const sync = () => { b.classList.toggle("off", !BGM.on); mu.textContent = BGM.on ? "켜짐" : "꺼짐"; vol.value = Math.round(BGM.vol*100); vv.textContent = vol.value; };
+  if(b){ sync(); b.onclick = e => { e.stopPropagation(); pop.hidden = !pop.hidden; };
+    mu.onclick = () => { BGM.toggle(); sync(); };
+    vol.oninput = () => { BGM.setVol(vol.value/100); vv.textContent = vol.value; if(!BGM.on && +vol.value > 0){ BGM.toggle(); sync(); } };
+    document.addEventListener("click", e => { if(!pop.hidden && !pop.contains(e.target) && e.target!==b) pop.hidden = true; }); } }
 fxTestPanel();
 </script>
 </body>
