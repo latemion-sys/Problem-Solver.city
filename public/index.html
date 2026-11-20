@@ -43,31 +43,47 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .req.relic{position:relative;border:1px solid transparent;background:linear-gradient(#17171c,#17171c) padding-box,conic-gradient(from var(--ra,0deg),#8a6a2a,#f2d27a,#7fd8c8,#fff6d8,#8a6a2a) border-box;animation:relicBorder 6s linear infinite;box-shadow:0 0 18px rgba(242,210,122,.18)}
 @property --ra{syntax:"<angle>";inherits:false;initial-value:0deg}
 @keyframes relicBorder{to{--ra:360deg}}
-.relic-fx{position:fixed;inset:0;z-index:120;overflow:hidden;cursor:pointer;background:radial-gradient(ellipse at 50% 40%,#1d1a12,#060507 72%);transition:opacity .8s;font-family:"Noto Serif KR","Nanum Myeongjo",serif;opacity:0}
+.relic-fx{position:fixed;inset:0;z-index:120;overflow:hidden;cursor:pointer;background:radial-gradient(ellipse at 50% 40%,#17140e,#040305 75%);transition:opacity .8s;font-family:"Noto Serif KR","Nanum Myeongjo",serif;opacity:0}
 .relic-fx.in{opacity:1}.relic-fx.out{opacity:0}
 .rl-cv{position:absolute;inset:0;width:100%;height:100%}
-.rl-core{position:absolute;left:50%;top:40%;width:260px;height:260px;margin:-130px 0 0 -130px}
-.rl-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(242,210,122,.45);opacity:0;transition:opacity 1.2s}
+.rl-gl{position:absolute;inset:0;width:100%;height:100%;display:block}.relic-fx.gl .rl-cv,.relic-fx.gl .rl-core{display:none}.relic-fx.gl{background:#000}
+.rl-cap{position:absolute;left:0;right:0;top:12%;text-align:center;color:#cfc2a6;font-size:16px;line-height:2;pointer-events:none}
+.rl-cap div{opacity:0;transition:opacity 1.2s}
+.relic-fx.c1 .rl-cap .c1,.relic-fx.c2 .rl-cap .c2{opacity:1}.relic-fx.rise .rl-cap .c1,.relic-fx.rise .rl-cap .c2{opacity:0}
+.rl-cap .c3{position:absolute;left:0;right:0;top:0}.relic-fx.c3 .rl-cap .c3{opacity:1}.relic-fx.res .rl-cap .c3,.relic-fx.rej .rl-cap .c3{opacity:0}
+.rl-core{position:absolute;left:50%;top:40%;width:260px;height:260px;margin:-130px 0 0 -130px;opacity:0;transform:translateY(40px) scale(.85);transition:opacity 1.4s,transform 2s cubic-bezier(.2,.8,.3,1)}
+.relic-fx.rise .rl-core{opacity:1;transform:none}
+.rl-ring{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(242,210,122,.45)}
 .rl-ring.r1{animation:rlspin 18s linear infinite;border-style:dashed}.rl-ring.r2{inset:22px;animation:rlspin 11s linear infinite reverse;border-width:2px;border-color:rgba(127,216,200,.35)}.rl-ring.r3{inset:48px;animation:rlspin 7s linear infinite;border-style:dotted}
 @keyframes rlspin{to{transform:rotate(360deg)}}
-.relic-fx.in .rl-ring{opacity:1}.relic-fx.miss.crack .rl-ring{opacity:.15;filter:grayscale(1)}
+.relic-fx.res .rl-ring{border-color:rgba(255,236,170,.85);box-shadow:0 0 18px rgba(242,210,122,.45)}
+.relic-fx.rej .rl-ring{border-color:rgba(200,80,60,.5);animation-duration:1.2s}
 .rl-item{position:absolute;inset:30px;width:200px;height:200px}
-.rl-head{position:absolute;left:0;right:0;top:7%;text-align:center;color:#b89a5a;letter-spacing:.6em;font-size:12px;opacity:0;transition:opacity 1s}
-.relic-fx.in .rl-head{opacity:1}
-.rl-name{position:absolute;left:0;right:0;top:63%;text-align:center;font-size:44px;letter-spacing:.12em;opacity:0;transform:scale(1.4);transition:opacity .4s,transform .5s cubic-bezier(.2,1.4,.4,1)}
-.relic-fx.item .rl-name{opacity:.35;transform:scale(1)}.relic-fx.name .rl-name{opacity:1;filter:drop-shadow(0 0 14px rgba(242,210,122,.55))}
-.relic-fx.miss.crack .rl-name{opacity:.25;filter:grayscale(1) blur(1px);animation:none}
-.rl-origin{position:absolute;left:0;right:0;top:calc(63% + 66px);text-align:center;color:#b8ad98;font-size:13px;opacity:0;transition:opacity 1s}
+.rl-head{position:absolute;left:0;right:0;top:6%;text-align:center;color:#b89a5a;letter-spacing:.5em;font-size:12px;opacity:0;transition:opacity 1s}
+.relic-fx.rise .rl-head{opacity:1}
+.rl-name{position:absolute;left:0;right:0;top:61%;text-align:center;font-size:44px;letter-spacing:.12em;opacity:0;transform:scale(1.4);transition:opacity .4s,transform .5s cubic-bezier(.2,1.4,.4,1)}
+.relic-fx.item .rl-name{opacity:.3;transform:scale(1)}.relic-fx.res .rl-name{opacity:1;filter:drop-shadow(0 0 14px rgba(242,210,122,.6))}
+.relic-fx.rej .rl-name{opacity:.25;filter:grayscale(1) blur(1px);animation:none}
+.rl-origin{position:absolute;left:0;right:0;top:calc(61% + 66px);text-align:center;color:#b8ad98;font-size:13px;opacity:0;transition:opacity 1s}
 .relic-fx.item .rl-origin{opacity:1}
-.rl-fit{position:absolute;left:50%;top:calc(63% + 96px);transform:translateX(-50%);width:min(380px,80vw);display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;color:#cfc4ae;font-size:12px;opacity:0;transition:opacity .6s}
-.relic-fx.fit .rl-fit{opacity:1}
-.rl-bar{position:relative;height:6px;background:#2a2620;border-radius:3px;overflow:visible}.rl-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;width:0}.rl-bar b{position:absolute;top:-4px;bottom:-4px;width:2px;background:#e7a07c}
+.rl-fit{position:absolute;left:50%;top:calc(61% + 96px);transform:translateX(-50%);width:min(420px,84vw);display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;color:#cfc4ae;font-size:12px;opacity:0;transition:opacity .6s}
+.relic-fx.fit .rl-fit{opacity:1}.relic-fx.card .rl-fit{opacity:0}
+.rl-bar{position:relative;height:6px;background:#2a2620;border-radius:3px}.rl-bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;width:0}.rl-bar b{position:absolute;top:-4px;bottom:-4px;width:2px;background:#e7a07c}
 .rl-fit em{font-style:normal;font-size:18px;font-weight:800;color:#f2d27a;min-width:2em;text-align:right}
 .rl-fit small{grid-column:1/-1;text-align:center;color:#8f8676}
-.rl-text{position:absolute;left:0;right:0;bottom:5%;text-align:center;color:#ddd5c8;font-size:15px}
-.rl-text div{opacity:0;transition:opacity 1.4s;margin-top:8px}.rl-text .g{color:#f2d27a}
-.relic-fx.miss .rl-text .g{color:#a79a88}
-.relic-fx.t1 .rl-text div:nth-child(1),.relic-fx.t2 .rl-text div:nth-child(2){opacity:1}
+.rl-verdict{position:absolute;left:0;right:0;top:calc(40% - 20px);text-align:center;font-size:40px;font-weight:900;letter-spacing:.6em;opacity:0;transform:scale(2.2);transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1);pointer-events:none}
+.relic-fx.res .rl-verdict{opacity:1;transform:none;color:#fff2c4;text-shadow:0 0 22px rgba(242,210,122,.9)}.relic-fx.rej .rl-verdict{opacity:1;transform:none;color:#e0604a;text-shadow:0 0 18px rgba(200,60,40,.8)}
+.relic-fx.card .rl-verdict{opacity:0;transition:opacity 1s}
+.rl-core{transition:opacity 1.4s,transform 2s cubic-bezier(.2,.8,.3,1),top 1s cubic-bezier(.2,.8,.3,1)}.rl-name{transition:opacity .4s,transform .5s cubic-bezier(.2,1.4,.4,1),top 1s cubic-bezier(.2,.8,.3,1)}
+.relic-fx.card .rl-core{top:30%}.relic-fx.card .rl-name{top:calc(30% + 140px)}.relic-fx.card .rl-origin{opacity:0}
+.rl-card{position:absolute;left:50%;bottom:6%;width:min(460px,90vw);transform:translate(-50%,30px);opacity:0;transition:opacity .9s,transform .9s cubic-bezier(.2,.8,.3,1);background:linear-gradient(180deg,#f1e7cf,#e2d3b0);color:#2a2219;border-radius:4px;padding:14px 18px;box-shadow:0 14px 40px rgba(0,0,0,.6)}
+.rl-card:before{content:"";position:absolute;inset:6px;border:1px solid rgba(90,64,30,.35);pointer-events:none}
+.relic-fx.card .rl-card{opacity:1;transform:translate(-50%,0)}
+.rl-card .rc-h{text-align:center;letter-spacing:.5em;font-size:13px;color:#6a5434;margin-bottom:8px}
+.rl-card .rc-g{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px;line-height:1.5}.rl-card .rc-g span{color:#7a6446}
+.rl-card .rc-g .relic-name{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:#7a5410!important;animation:none;font-size:15px}
+.rl-card .rc-seal{position:absolute;right:16px;top:12px;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 40% 35%,#d8b45a,#7a5a20 75%);color:#fff6dc;font-weight:900;font-size:12px;transform:rotate(-12deg)}
+.rl-card.miss{background:linear-gradient(180deg,#2a1e1a,#1a1210);color:#e0d0c4}.rl-card.miss .rc-h{color:#e0604a}.rl-card.miss .rc-t{font-size:14px;line-height:1.8;text-align:center}
 .req.hana-star{border:1px solid #e8c98a;background:linear-gradient(160deg,#241e12,#17171c 60%);box-shadow:0 0 0 1px rgba(232,201,138,.25),0 0 22px rgba(232,201,138,.18)}
 .req.arc{border-left:3px solid #e8c98a}
 .acc-story{background:#15151a;border-left:3px solid #5a5048;padding:10px 14px;margin-bottom:12px;font-family:"Noto Serif KR","Nanum Myeongjo",serif;font-size:14px;line-height:1.8;color:#ddd5c8}
@@ -126,6 +142,14 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .chip small{color:var(--muted);font-size:10px}
 .chip.on{border-color:var(--accent);background:#3a2f1c;color:#f3e3c0}
 .req .est{font-size:12px;color:var(--muted);min-height:18px}
+.req.open{grid-column:1/-1;border-color:#8a7a5a;box-shadow:0 0 0 1px #8a7a5a33}
+.req-open{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:8px;animation:reqOpen .18s ease-out}
+@keyframes reqOpen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.acc-story.mini{font-size:13px;line-height:1.65;padding:8px 12px;margin:0}
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.modes button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:6px 10px;opacity:.65}
+.modes button small{color:var(--muted);font-size:11px}
+.modes button.on{opacity:1;border-color:var(--accent);background:#3a2f1c}
 .fixers{display:flex;flex-direction:column;gap:8px}
 .fx{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px}
 .fx .n{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
@@ -1855,6 +1879,52 @@ const repairBtn = (g, attr) => !needsRepair(g) ? "" : g.durMax <= 1 ? `<button c
 // 고유 장비(특색 전용): 무기 위력 30, 방어구 피해 감소 크게
 const UNIQUE_POWER = 30;
 const UNIQUE_ARMOR = {hpRed:0.45, mpRed:0.3, bonus:{wil:3}};
+/* ================= 특수 전리품(장신구) =================
+   의뢰에 붙는 '소문'으로 나타나고, 의뢰에 성공하면 그때 40% 확률로 손에 들어온다. 장신구는 공방에서 팔지 않는다 — 특수 전리품 · 환상체 기프트 · 유물로만 얻는다.
+   원작의 물건을 그대로 옮기지 않고, 착상만 빌려 이 게임의 규칙(휴식 · 피로 · 강행군 · 부상 단계 · 신체 부위 · 주급)에 걸리게 만들었다.
+   t: 0 = 9~7급 · 1 = 6~4급 · 2 = 3급 이상. who: 사람 상대 의뢰 / site: 현장 의뢰에서 쓰는 개연성 문장. got: 얻었을 때 [사람, 현장] */
+const LOOT_P = 0.4, INJ_COST = 30000, ADDICT_CLEAN = 5;
+const LOOT_ACC = [
+  {id:"sleep", t:0, name:"수면 패치", effect:"출동하지 않고 쉰 날 체력 회복 +10%p", desc:"목 뒤에 붙이면 깊이 잠든다. 뒷골목 약국에서 낱장으로 판다.",
+   who:"상대가 늘 목덜미에 패치를 붙이고 다닌다고 한다. 하루만 쉬면 멀쩡해진다나.", site:"근처 약국 창고가 털렸는데, 수면 패치 몇 장은 아직 그 근처에 굴러다닐 거라고 한다.",
+   got:["상대의 주머니에서 쓰다 만 수면 패치 묶음이 나왔다.","창고 구석에 떨어진 패치 묶음을 주웠다."]},
+  {id:"lighter", t:0, name:"낡은 라이터", effect:"의뢰에 성공할 때마다 정신력 +4%", desc:"일이 끝나면 한 대 붙이는 게 버릇이던 사람이 쓰던 것.",
+   who:"상대가 일을 끝낼 때마다 같은 라이터로 담배를 붙인다고 한다.", site:"그곳 창틀에 누군가 두고 간 낡은 라이터가 있었다고 한다.",
+   got:["쓰러진 상대 곁에 낡은 라이터가 떨어져 있었다.","창틀의 라이터는 아직 불이 붙었다."]},
+  {id:"lining", t:0, name:"덧댄 안감", effect:"의뢰 결과가 '경상'이면 '안정'만큼만 깎인다", desc:"옷 안쪽에 덧대는 질긴 천. 공방 원단 자투리로 만든 싸구려다.",
+   who:"상대가 옷 안에 질긴 천을 덧대 칼이 잘 안 먹힌다는 말이 있다.", site:"근처 수선집에서 원단 자투리 한 꾸러미가 사라졌다고 한다.",
+   got:["상대의 외투 안쪽에서 덧댄 안감을 뜯어냈다.","수선집 뒷문 쪽에서 안감 꾸러미를 찾았다."]},
+  {id:"bandage", t:0, name:"간이 보존 붕대", effect:"체력이 20% 이하일 때 깎일 일이 생기면 한 번 막아 주고 소멸", desc:"감아 두면 상처를 그 상태 그대로 붙잡아 둔다. 오래는 못 간다.",
+   who:"상대가 다친 데를 이상한 붕대로 감고 버틴다고 한다. 쓰러질 듯 쓰러지지 않는다고.", site:"그곳 응급함에 감아 두면 피가 멎는 붕대가 남아 있다는 말이 있다.",
+   got:["상대가 감고 있던 것과 같은 붕대 한 롤이 품에서 나왔다.","응급함 바닥에 붕대 한 롤이 남아 있었다."]},
+  {id:"calm", t:1, name:"정신 안정 키트", effect:"피로 상태여도 받는 피해가 늘지 않는다(성공률 감소는 그대로)", desc:"진정제 몇 알과 호흡 마스크. 지친 머리를 억지로 가라앉힌다.",
+   who:"상대가 며칠 밤을 새우고도 멀쩡하다고 한다. 약통 같은 걸 늘 지니고 다닌다고.", site:"그 건물 의무실에 안정 키트가 하나 남아 있을 거라고 한다.",
+   got:["상대의 허리춤에서 정신 안정 키트가 나왔다.","의무실 서랍에서 키트를 찾았다."]},
+  {id:"march", t:1, name:"피로 회복 앰플", effect:"강행군 때 깎이는 양이 2.5배에서 1.8배로", desc:"지친 몸을 하루 더 끌고 나가게 하는 싸구려 앰플. 뒤끝이 남는다.",
+   who:"상대가 하루에 두 탕씩 뛰고도 버틴다고 한다. 목에 앰플을 꽂는 걸 봤다는 사람이 있다.", site:"그곳 탈의실 사물함에 앰플 상자가 숨겨져 있다는 말이 있다.",
+   got:["상대의 소매에서 앰플 몇 개가 굴러 나왔다.","사물함 안쪽에서 앰플 상자를 찾았다."]},
+  {id:"buffer", t:1, name:"신경 완충재", effect:"신경을 의체로 바꾼 사람만: 합에서 질 때 정신력 감소 절반", desc:"의체 신경 이음매에 끼우는 완충재. 맞을 때 머릿속이 덜 울린다.",
+   who:"상대가 신경 의체를 달았는데, 맞아도 눈 하나 깜짝 안 한다고 한다.", site:"근처 의체 정비소 폐기함에 쓸 만한 완충재가 버려져 있다고 한다.",
+   got:["상대의 목덜미 이음매에서 완충재를 빼냈다.","폐기함에서 멀쩡한 완충재를 골라냈다."]},
+  {id:"enk", t:1, name:"엔케팔린 덩어리", effect:"하루 끝 체력·정신력 회복 +10%p. 세 번째 사용부터 중독 — 모든 회복량 절반(떼고 5일이 지나면 풀린다)", desc:"무너진 회사에서 흘러나온 연료 찌꺼기. 쥐고 자면 몸이 가볍다. 그게 문제다.",
+   who:"상대가 푸르스름하게 빛나는 덩어리를 쥐고 잠든다고 한다. 그것 없이는 잠을 못 잔다고.", site:"그곳 지하에서 빛나는 찌꺼기를 봤다는 사람이 있다.",
+   got:["상대가 쥐고 있던 푸른 덩어리를 거뒀다.","지하 배관 틈에서 빛나는 덩어리를 긁어냈다."]},
+  {id:"inject", t:2, name:"강화 주입기", effect:`의뢰로 깎이는 체력 −12%. 매주 약값 ${(30000).toLocaleString()}안 — 못 내면 그 주는 반대로 +12%`, desc:"약을 꾸준히 넣어야 유지되는 강화. 끊으면 몸이 먼저 안다.",
+   who:"상대가 팔에 주입기를 차고 다닌다. 약이 떨어지면 사람이 달라진다고.", site:"그 건물 어딘가에 주입기와 약통을 쌓아 둔 창고가 있다고 한다.",
+   got:["상대의 팔에서 주입기를 풀어냈다.","창고 선반에서 주입기 하나와 약통을 챙겼다."]},
+  {id:"rewind", t:2, name:"시간 되돌림 장치", effect:"한 번 써서 지닌 사람을 하루 전 상태로 되돌린다 — 그동안 얻은 것도 함께 돌아간다. 쓰면 소멸", desc:"시간을 다루는 기술의 부스러기로 만든 장치. 어디서 났는지는 묻지 않는 게 좋다.",
+   who:"상대가 분명 쓰러졌는데 다음 날 멀쩡히 돌아다녔다는 말이 돈다.", site:"그곳에서 시곗바늘이 거꾸로 도는 작은 장치를 봤다는 목격담이 있다.",
+   got:["상대의 품에서 시곗바늘이 거꾸로 도는 장치가 나왔다.","바닥 틈에서 거꾸로 도는 장치를 주웠다."]}];
+const LOOT_BY = Object.fromEntries(LOOT_ACC.map(x=>[x.id, x]));
+function rollLoot(grade){ const t = grade>=7 ? 0 : grade>=4 ? 1 : 2, own = LOOT_ACC.filter(x=>x.t===t), low = LOOT_ACC.filter(x=>x.t<t);
+  return {id: pick(low.length && Math.random() < 0.4 ? low : own).id}; }
+function makeLootAcc(id){ const L = LOOT_BY[id]; if(!L) return null; const it = {slot:"acc", id:"loot-"+id, fx:id, name:L.name, effect:L.effect, desc:L.desc, maker:"특수 전리품", tier:L.t};
+  if(id==="sleep" || id==="enk") it.uses = 0; return it; }
+const lootName = q => q.loot ? (q.loot.id && LOOT_BY[q.loot.id] ? LOOT_BY[q.loot.id].name : q.loot.name) : "";
+const lootPerson = q => q.kind==="호위" || (q.kind==="일반" && (q.attrs||[])[0]!=="tec");
+function lootRumor(q){ const L = q.loot && LOOT_BY[q.loot.id]; if(!L) return q.loot ? `현장에서 「${q.loot.name}」를 봤다는 말이 있다.`.replace(`「${q.loot.name}」를`, `「${q.loot.name}」${jo(q.loot.name,"을").slice(q.loot.name.length)}`) : ""; return lootPerson(q) ? L.who : L.site; }
+const accFx = (f, fx) => f && f.gear && f.gear.acc && f.gear.acc.fx === fx ? f.gear.acc : null;
+const recK = f => f && f.addict ? 0.5 : 1;   // 엔케팔린 중독: 모든 회복량 절반
 const LOOT = [
  {slot:"acc",name:"이름 없는 은반지",bonus:{agi:2,tec:2}},
  {slot:"acc",name:"누군가의 낡은 회중시계",mpRed:0.12,bonus:{wil:2}},
@@ -1904,7 +1974,7 @@ const MAJOR_EVENTS = [
  "백야와 흑주 뒤, L사 둥지 한가운데 거대한 도서관이 나타났었다는 이야기가 다시 돈다.",
  "도서관에서 초대장을 받고 찾아간 사람들은 책이 되어 돌아오지 않았다는 소문이 있다.",
  "도서관이 사라지던 날, 그 안에 모여 있던 빛이 도시로 다시 흩어졌다는 말이 협회 안에서도 오간다.",
- "사람이 괴물로 변하는 '뒤틀림'이 퍼지기 시작한 게 그 빛기둥 이후부터라는 말이 골목에 돈다."
+ "사람이 괴물로 변하는 일이 잦아진 게 그 빛기둥 이후부터라는 말이 골목에 돈다."
 ];
 /* 개업 구역: A~C사와 무너진 L사의 12구를 뺀 나머지 구역 가운데 하나. 소문에 나오는 가장 위험한 자들은 발톱까지 — 그 위는 일반인이 알 수 없다 */
 const DISTRICTS = [4,5,6,7,8,9,10,11,13,14,15,16,17,18,19,20,21,22,23,24,25].map(n=>{ const L = String.fromCharCode(64 + n);
@@ -1975,6 +2045,20 @@ function newGame(leaderName, officeName, partnerName, lead){
 }
 
 /* ================= 의뢰 생성 ================= */
+/* ================= 단골 · 지명 의뢰 =================
+   단골: 같은 의뢰인의 일을 3번 해내면 단골(보수 +10%), 6번이면 오랜 단골(+20%). 게시판에 그 의뢰인의 일이 조금 더 자주 올라온다.
+   맡았다가 실패하거나, 받아 놓고 기한을 넘기면 실망한 의뢰인이 5일 동안 일을 맡기지 않는다(쌓은 횟수 -2).
+   지명 의뢰: 사무소 등급보다 한 단계 높은 일을 이 사무소를 콕 집어 맡긴다. 보수 1.5배 · 해내면 이번 주 심사 실적을 두 번 친다. */
+const REG_NEED = 3, NOM_P = 0.3, CLIENT_BAN = 5;
+function clientOf(name){ S.clients = S.clients || {}; return S.clients[name] || (S.clients[name] = {n:0, ban:0}); }
+const regTier = name => { const c = S && S.clients && S.clients[name]; return !c ? 0 : c.n >= REG_NEED*2 ? 2 : c.n >= REG_NEED ? 1 : 0; };
+const clientBanned = name => { const c = S && S.clients && S.clients[name]; return !!(c && c.ban >= S.day); };
+function pickRow(rows){ if(!rows || !rows.length) return null; const ok = rows.filter(r=>!clientBanned(r[1])), pool = ok.length ? ok : rows, reg = pool.filter(r=>regTier(r[1]));
+  return reg.length && Math.random() < 0.3 ? pick(reg) : pick(pool); }
+function clientResult(q, success){ if(!S || !q.client || q.prescript || q.kind==="특색 심사" || q.scarJob || q.hanaStar || q.trio) return null; const c = clientOf(q.client), t0 = regTier(q.client);
+  if(success){ c.n++; const t1 = regTier(q.client); return t1 > t0 ? `<span style="color:#e8d27a">${esc(q.client)} — ${t1===1 ? "단골이 되었다. 앞으로 이 의뢰인의 보수가 10% 늘어난다" : "오랜 단골이 되었다. 앞으로 보수 +20%"}</span>` : null; }
+  c.n = Math.max(0, c.n - 2); c.ban = S.day + CLIENT_BAN; return `<span style="color:#e7a07c">${esc(q.client)} — 실망한 의뢰인은 한동안(${CLIENT_BAN}일) 이 사무소에 일을 맡기지 않는다</span>`; }
+function nominate(q){ q.nom = true; q.reward = Math.round(q.reward*1.5/100)*100; if(q.deadline!=null) q.deadline = Math.min(q.deadline, 2); return q; }
 function makeRequest(grade, opts={}){
   let kind = "일반", attrs;
   if(opts.kind){ kind = opts.kind; attrs = opts.attrs; }
@@ -1992,17 +2076,17 @@ function makeRequest(grade, opts={}){
   const key = attrs[0];
   let text, client, foe = null, chase = null, row;
   const ab = kind==="환상체" ? pickAbno(grade) : null;
-  if(kind==="호위"){ row = pick(P.esc); }
-  else if(kind==="수색"){ row = pick(P.srch); }
-  else if(kind==="환상체"){ row = pick(P.wil); }
-  else if(P[key]){ row = pick(P[key]); }
+  if(kind==="호위"){ row = pickRow(P.esc); }
+  else if(kind==="수색"){ row = pickRow(P.srch); }
+  else if(kind==="환상체"){ row = pickRow(P.wil); }
+  else if(P[key]){ row = pickRow(P[key]); }
   if(row){ text = row[0]; client = row[1]; if(key==="str") foe = row[2] || null; else chase = row[2] || null; }
   if(ab){ const A = ABNO_BY[ab.id]; text = A.kill ? A.rumor : `${A.rumor}. 확인하고 처리해 달라`; }
   else if(!row){ text = pick(TEXTS[key] || TEXTS.str); client = pick(CLIENTS[key] || CLIENTS.str); }
   // 물리 일반 의뢰는 제압 / 사살로 나뉜다(낮은 등급은 대부분 제압)
   let goal = null;
   if(ab && ABNO_BY[ab.id].kill) goal = "사살";
-  if(kind==="일반" && key==="str"){ goal = opts.goal || (Math.random()<P.kill ? "사살" : "제압"); if(goal==="사살"){ const k2 = pick(P.str_kill); text = k2[0]; client = k2[1]; foe = k2[2]; } }
+  if(kind==="일반" && key==="str"){ goal = opts.goal || (Math.random()<P.kill ? "사살" : "제압"); if(goal==="사살"){ const k2 = pickRow(P.str_kill); text = k2[0]; client = k2[1]; foe = k2[2]; } }
   const lootChance = kind==="수색"?0.07:kind==="환상체"?0.05:0.03;
   // 환상체 의뢰 일부는 고위험(75% 기준을 넘김)
   const hazard = kind==="환상체" && !opts.kind && Math.random()<0.25;
@@ -2010,7 +2094,7 @@ function makeRequest(grade, opts={}){
     id:S.nextId++, kind, attrs, grade, threat, risk: ab ? ABNO_BY[ab.id].risk : null, abno: ab, hazard, goal, foe, chase,
     client, text, reward: Math.round(base*(hazard?1.5:1)*(0.85+Math.random()*0.3)/100)*100,
     req: Math.round(req*(hazard?1.25:1)) + rnd(-1,1), deadline: rnd(1,3),
-    loot: Math.random()<lootChance*(hazard?2:1) ? Object.assign({},pick(LOOT)) : null, special:false
+    loot: Math.random()<lootChance*(hazard?2:1) ? rollLoot(grade) : null, special:false
   };
   if(opts.synd) applySyndicate(q, opts.synd);
   else if(!opts.kind && !ab && grade <= 8 && grade >= 2 && Math.random() < SYN_P) applySyndicate(q);
@@ -2018,35 +2102,75 @@ function makeRequest(grade, opts={}){
   if(!opts.kind && !ab && !q.synd && !q.distFoe && grade <= 7 && Math.random() < ASSOC_P) return Object.assign(assocRequest(grade), opts.over||{});
   if(!opts.kind && IDX_THREATS.includes(threat) && !(S.idx && S.idx.closed) && Math.random() < IDX_P) return Object.assign(prescriptReq(q), opts.over||{});
   if(!opts.noRelic) markRelic(q);
+  { const t = regTier(q.client); if(t && !q.prescript){ q.reg = t; q.reward = Math.round(q.reward*(1 + 0.1*t)/100)*100; } }
   return Object.assign(q, opts.over||{});
 }
 /* ================= 이상 의뢰 · 뒤틀림 처리 =================
    도시 질병급 이상의 의뢰 중 일부가 '뒤틀림 처리'로 바뀐다. 상대는 늘 「이름없는 뒤틀림」 — 도감에 남지 않는다.
    재해 등급에 따라 체력 · 기술 · 정신 피해가 정해진다. 뒤틀림은 사람이었던 것이라, 해치운 뒤에도 마음에 무언가 남는다. */
 const DIST_P = 0.14;
+/* 뒤틀림의 공격 위력 — 원작의 재해 등급 기준:
+   뒤틀림 현상 자체는 도시 악몽급으로 분류되지만, 뒤틀림 하나하나는 도시 질병을 넘는 경우가 드물다(Library of Ruina).
+   · 도시 질병: 흔히 마주치는 '보통의' 뒤틀림 — 같은 등급 사람 상대보다 한 수 위
+   · 도시 악몽: 드물게 나타나는 강한 뒤틀림 — 같은 등급 상대보다 확실히 세다
+   · 도시의 별: 피아니스트처럼 구역 하나를 삼키는 극소수 — 가장 세다 */
 const DIST_TIER = {
-  "도시 질병": {lvl:1, hp:1.7, req:3, pay:1.45, mp:10, col:"#e2bf5c", cards:[{n:"꺾여 자란 팔",a:5,b:12},{n:"찢어지는 비명",a:5,b:10},{n:"살점 방패",a:4,b:9,def:true}],
+  "도시 질병": {lvl:1, hp:1.7, req:3, pay:1.45, mp:10, col:"#e2bf5c", cards:[{n:"꺾여 자란 팔",a:4,b:9},{n:"찢어지는 비명",a:5,b:8},{n:"살점 방패",a:4,b:7,def:true}],
     note:"사람이던 무언가다. 팔다리가 제멋대로 꺾여 자랐다."},
-  "도시 악몽": {lvl:2, hp:2.2, req:4, pay:1.55, mp:14, col:"#c47ae0", cards:[{n:"뒤엉킨 사지 연타",a:6,b:15},{n:"목소리의 메아리",a:6,b:13},{n:"갈라진 껍질",a:5,b:11,def:true}],
+  "도시 악몽": {lvl:2, hp:2.2, req:4, pay:1.55, mp:14, col:"#c47ae0", cards:[{n:"뒤엉킨 사지 연타",a:5,b:11},{n:"목소리의 메아리",a:5,b:10},{n:"갈라진 껍질",a:4,b:9,def:true}],
     note:"여러 겹의 목소리가 한꺼번에 운다. 맞을 때마다 몸이 다른 모양으로 일그러진다."},
-  "도시의 별": {lvl:3, hp:2.8, req:5, pay:1.7, mp:20, col:"#ff6a5e", cards:[{n:"형체 없는 포식",a:8,b:18},{n:"구역을 삼키는 울음",a:7,b:16},{n:"끝없이 다시 자라는 살",a:6,b:13,def:true}],
+  "도시의 별": {lvl:3, hp:2.8, req:5, pay:1.7, mp:20, col:"#ff6a5e", cards:[{n:"형체 없는 포식",a:6,b:12},{n:"구역을 삼키는 울음",a:6,b:11},{n:"끝없이 다시 자라는 살",a:5,b:10,def:true}],
     note:"구역 하나를 집어삼킬 만한 것. 똑바로 보고 있기만 해도 정신이 깎인다."}};
 const DIST_PLACES = ["날개 둥지 한가운데","뒷골목 시장 골목","지하철 환승역 승강장","하나 협회 지부 앞 광장","공방 거리 한복판","둥지 경계의 검문소","폐공장 지대","재개발 구역의 빈 아파트","강변 화물 부두","야시장 천막 사이"];
 const DIST_CLIENT = ["하나 협회 긴급 공고","구역 관리청","날개 경비 하청 업체","인근 상인 연합","익명의 제보자"];
+/* ================= 뒤틀림을 겪은 사람 =================
+   f.dk: 뒤틀림 처치 횟수(성공한 뒤틀림 처리에 함께한 사람마다 +1). f.distEye: 뒤틀림을 보는 눈(드문 기질). */
+const DIST_EXP = [[10,"사냥꾼",2,1],[3,"익숙함",2,0],[1,"마주했음",1,0]];
+function distExp(f){ const k = f.dk||0; const r = DIST_EXP.find(x=>k >= x[0]); return r ? {n:r[1], base:r[2], cp:r[3], k} : null; }
+function distEdge(f, th){ let base = 0, cp = 0; const why = [];
+  const gb = f.grade!=null && ((f.grade <= 2 && (th==="도시 질병" || th==="도시 악몽")) || (f.grade === 3 && th==="도시 질병")) ? 1 : 0;
+  if(gb){ base += gb; why.push(`${gName(f.grade)}`); }
+  const e = distExp(f); if(e){ base += e.base; cp += e.cp; why.push(`${e.n}(처치 ${e.k})`); }
+  base = Math.min(3, base); return base || cp ? {base, cp, why: why.join(" · ")} : null; }
+const DIST_EYE_P = 0.03;
+const distEyeText = "뒤틀림을 보는 눈 — 남들 눈엔 멀쩡한 사람에게서 비늘이나 비틀린 그림자가 먼저 보인다. 마음이 비어져 나오는 결이 보인다";
+/* 원작: 뒤틀림은 대중에게 알려져 있지 않다 — '뒤틀림'이라는 말은 하나 협회 공고에서만 쓴다. 일반 의뢰인은 "사람이 괴물로 변했다"고만 말한다.
+   개별 뒤틀림은 도시 질병~악몽급이 대부분(최초의 뒤틀림 피아니스트도 도시 악몽). 도시의 별급은 아주 드물게만(뒤틀림 의뢰 가운데 1/10).
+   뒤틀림은 사람의 마음이 비어져 나온 것 — 한 사람 한 사람이 다른 모습이다. 누구였는지는 쓰러뜨린 뒤에야 안다. */
+const DIST_JOBS = ["골목 국밥집 주인","택배 기사","의수 정비공","야간 경비원","학원 강사","사진관 주인","재봉사","버스 운전사","공방 견습생","성가대원","장례식장 염습사","시장 생선 장수","전당포 점원","둥지 하청 연구원","은퇴한 해결사","세탁소 주인"];
+const DIST_EMO = [
+  {e:"상실", p:"잃은 것을 부르는", look:"팔이 수십 갈래로 갈라져 무언가를 끝없이 더듬고 있었다"},
+  {e:"굶주림", p:"굶주린", look:"입이 가슴팍까지 찢어져 열린 채 다물어지지 않았다"},
+  {e:"질투", p:"남의 얼굴을 탐하는", look:"얼굴 위로 남의 얼굴이 겹겹이 덧씌워져 있었다"},
+  {e:"수치", p:"숨고 싶은", look:"몸을 감싼 껍질이 자꾸 안쪽으로 말려 들어갔다"},
+  {e:"외로움", p:"기다리는", look:"그림자가 사람 수만큼 늘어나 곁에 붙어 서 있었다"},
+  {e:"분노", p:"끓어오르는", look:"피부 아래에서 쇳물 같은 빛이 끓고 있었다"},
+  {e:"미련", p:"되감기는", look:"같은 동작을 몇 번이고 되풀이하며 뒤로 걷고 있었다"},
+  {e:"권태", p:"멈춰 선", look:"온몸에 시곗바늘 같은 가시가 돋아 있었다"}];
+const copula = w => { const c = w.charCodeAt(w.length-1) - 0xAC00; return w + (c >= 0 && c < 11172 && c % 28 ? "이었다" : "였다"); };
+const DIST_PUBLIC = ["인근 상인 연합","익명의 제보자","날개 경비 하청 업체","구역 관리청"];
 function applyDistort(q, force){
-  const th = threatOf(q), T = DIST_TIER[th]; if(!T) return q;
+  let th = threatOf(q);
+  if(th==="도시의 별" && !force && Math.random() >= 0.1) return q;          // 별급 뒤틀림은 아주 드물다
+  const T = DIST_TIER[th]; if(!T) return q;
   if(!force && (q.kind!=="일반" || Math.random() >= DIST_P)) return q;
   q.kind = "뒤틀림 처리"; q.cat = "이상"; q.attrs = ["str","wil"]; q.goal = "사살"; q.foe = "이름없는 뒤틀림"; q.chase = null; q.synd = null; q.loot = null;
-  q.distFoe = {lvl:T.lvl, hp:T.hp, cards:T.cards, mp:T.mp, th};
-  q.text = `'${th}급 뒤틀림'이 ${pick(DIST_PLACES)}에 나타났다는 소식이 들려왔다. 급하게 이를 처리할 사무소를 구함.`;
-  q.client = pick(DIST_CLIENT); q.req += T.req; q.reward = Math.round(q.reward*T.pay/100)*100; q.deadline = Math.min(q.deadline||2, 2);
+  const E = pick(DIST_EMO), job = pick(DIST_JOBS);
+  const place = pick(DIST_PLACES);
+  q.distFoe = {lvl:T.lvl, hp:T.hp, cards:T.cards, mp:T.mp, th, place, who:{job, e:E.e, name:`${E.p} ${job}`, look:E.look}};
+  q.client = pick(DIST_CLIENT);
+  q.text = q.client==="하나 협회 긴급 공고" ? `${th}급 '뒤틀림'으로 분류된 위협이 ${place}에 나타났다. 급히 처리할 사무소를 구함.`
+    : `${place}에서 사람 하나가 괴물로 변했다. 이미 다친 사람이 여럿이다. 급하게 처리해 줄 사무소를 구함.`;
+  q.req += T.req; q.reward = Math.round(q.reward*T.pay/100)*100; q.deadline = Math.min(q.deadline||2, 2);
   return q; }
 function distAfter(q, team, success, lines){
-  const D = q.distFoe; if(!D) return;
+  const D = q.distFoe; if(!D) return; const W = D.who, col = DIST_TIER[D.th].col;
   const v = success ? D.mp : Math.round(D.mp*1.5);
   team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.round(f.mpMax*v/100)); });
-  lines.push(`<span style="color:${DIST_TIER[D.th].col}">이름없는 뒤틀림</span> — ${success ? "쓰러진 것은 끝내 사람의 모습으로 돌아오지 않았다. 누구였는지 아는 사람은 없었다." : "그것은 골목 깊숙이 사라졌다. 울음소리가 한동안 따라왔다."} <span style="color:#ff8a7a">(출동한 이들 정신력 -${v}%)</span>`);
-  if(success){ ac("distort"); try{ pushRumor(`${D.th}급 뒤틀림을 ${jo(S.officeName,"이")} 처리했다는 소식이 돈다.`, D.lvl>=2, performance.now(), D.lvl>=2 ? "major" : "minor"); }catch(_){} }
+  lines.push(success && W ? `<span style="color:${col}">${esc(W.name)}</span> — 쓰러진 뒤에야 알았다. ${esc(W.look.replace(/([가-힣])다$/, "$1던"))} 그것은 ${esc(copula(W.job))}. 끝내 사람의 모습으로는 돌아오지 않았다. <span style="color:#ff8a7a">(출동한 이들 정신력 -${v}%)</span>`
+    : `<span style="color:${col}">이름없는 뒤틀림</span> — ${success ? "쓰러진 것은 끝내 사람의 모습으로 돌아오지 않았다. 누구였는지 아는 사람은 없었다." : "그것은 골목 깊숙이 사라졌다. 울음소리가 한동안 따라왔다."} <span style="color:#ff8a7a">(출동한 이들 정신력 -${v}%)</span>`);
+  if(success){ if(W) S.records.push({day:S.day, name:W.name, what:"뒤틀림 처리", note:`${copula(W.job)} — ${W.look}`});
+    ac("distort"); try{ pushRumor(`괴물이 된 사람을 ${jo(S.officeName,"이")} 처리했다는 소식이 돈다.`, D.lvl>=2, performance.now(), D.lvl>=2 ? "major" : "minor"); }catch(_){} }
 }
 // 뒤틀림 그림: 사람 실루엣이 어긋난 잔상으로 갈라지고, 가시 같은 살점이 돋는다
 function drawDistortFx(c, x, gy, h, lvl, t, hurt){
@@ -2272,6 +2396,34 @@ const REQ_POOL = [
   srch:[["폐쇄된 둥지 구역에 남은 생존자를 찾아 달라","작은 교회 신부"]],
   wil:[["밤마다 장례 행렬이 지나가는 거리를 확인해 달라","장례식장 야간 관리인"]]}
 ];
+/* 의뢰 문구 보강 — 등급대마다 같은 문장이 덜 겹치도록. [문구, 의뢰인, 상대 또는 추적 대상] */
+[ { // 9~8급
+  str_kill:[["버스 정류장에서 노인들 지갑만 노리는 쥐를 다시는 못 나오게 해 달라","버스 정류장 노점상","뒷골목 쥐"],["가게 뒤 창고에 불을 지른 놈을 찾아 끝내 달라. 두 번은 없다","골목 세탁소 사장","방화범"]],
+  tec:[["누가 가게 간판 전구를 하나씩 빼 가는지 알아내 달라","골목 사진관","item"],["엘리베이터에 붙은 협박 쪽지를 누가 붙였는지 알아내 달라","오래된 아파트 관리소","item"]],
+  esc:[["밤 장사를 마친 포장마차 주인을 골목 끝까지 바래다 달라","시장 생선 가게"],["학원 끝난 아이들을 버스 정류장까지 데려다 달라","골목 학원 원장"]],
+  srch:[["어제 골목에서 흘린 가게 열쇠 꾸러미를 찾아 달라","골목 슈퍼"],["폐건물 어딘가에 버려진 손수레를 찾아 달라","고물상 '두 바퀴'"],["아침마다 사라지는 신문 뭉치가 어디로 가는지 찾아 달라","오래된 아파트 관리소"]]},
+ { // 7~6급
+  str:[["가게 앞을 막고 자릿세를 요구하는 조직원들을 쫓아내 달라","배달 조합","조직 행동대원"],["불법 개조 의수로 행패를 부리는 자를 붙잡아 달라","의수 정비소 '손끝'","개조 의수 깡패"],["밤마다 창고 셔터를 뜯는 일당을 제압해 달라","택배 중개소","창고털이 일당"]],
+  str_kill:[["배달원 셋을 다치게 한 강도를 끝내 달라. 증거는 이미 넘겼다","배달 조합","현상금 걸린 강도"],["장기를 노리고 골목을 도는 자를 처리해 달라","장례식장 야간 관리인","장기 사냥꾼"]],
+  agi:[["감정을 맡긴 시계를 들고 사라진 손님을 붙잡아 달라","합법 경매장 감정사","person"],["시장 바닥을 휘젓고 달아난 개조 들개를 붙잡아 달라","시장 생선 가게","beast"]],
+  tec:[["가게 금고만 정확히 비우고 사라진 수법을 밝혀 달라","전당포 '둥근 저울'","item"],["의뢰서마다 같은 필체로 적힌 가짜 서명을 추적해 달라","택배 중개소","item"]],
+  esc:[["경매에서 낙찰된 물건을 고객에게 전달하는 길을 지켜 달라","합법 경매장 감정사"],["빚 독촉을 피해 이사 가는 가족의 짐차를 지켜 달라","오래된 아파트 관리소"],["의수 부품 상자를 다른 정비소까지 옮겨 달라","의수 정비소 '손끝'"]],
+  srch:[["지하 주차장 어딘가에 숨겨진 장물 상자를 찾아 달라","전당포 '둥근 저울'"],["배달 도중 사라진 화물 상자를 찾아 달라","배달 조합"]]},
+ { // 5~4급
+  str:[["협회 등록을 빼앗기고 날뛰는 사무소 하나를 정리해 달라","협회 지부 연락관","폐업한 사무소 해결사"],["둥지 경계 검문소를 무단 점거한 무리를 몰아내 달라","둥지 하청 연구소","검문소 점거단"],["밀수품 창고를 지키는 공방제 장비 경비를 뚫어 달라","합법 경매장 감정사","공방제 장비 경비"]],
+  str_kill:[["뒷골목 경매에 사람을 올리는 자를 처리해 달라","작은 교회 신부","인신매매 중개인"],["해결사를 사칭해 의뢰인만 노리는 자를 끝내 달라","협회 지부 연락관","사칭 해결사"]],
+  agi:[["둥지 출입증을 위조해 넘기고 달아난 자를 붙잡아 달라","둥지 하청 연구소","person"],["증인을 태우고 달아난 차량을 따라붙어 멈춰 세워 달라","협회 지부 연락관","cart"]],
+  tec:[["사무소 셋이 같은 함정에 빠진 이유를 의뢰 기록에서 찾아내 달라","협회 지부 연락관","item"],["가짜 공방 각인이 찍힌 무기의 출처를 밝혀 달라","합법 경매장 감정사","item"],["의수에 심어진 추적 장치가 어디로 신호를 보내는지 알아내 달라","의수 정비소 '손끝'","item"]],
+  esc:[["협회 감사관을 사무소 순회 내내 지켜 달라","협회 지부 연락관"],["둥지 안 병원으로 이송되는 환자를 지켜 달라","작은 교회 신부"]],
+  srch:[["조직이 숨겨 둔 인질이 있는 건물을 찾아 달라","작은 교회 신부"],["둥지 하청 연구소에서 빠져나간 시료 상자를 찾아 달라","둥지 하청 연구소"]]},
+ { // 3급 이상
+  str:[["날개의 물류 기지를 노리는 무장 집단을 막아 달라","익명의 의뢰인","무장 집단 지휘관"],["특색을 노린다는 해결사 사냥꾼을 제압해 달라","협회 지부 연락관","해결사 사냥꾼"],["둥지 하나의 출입을 틀어쥔 조직의 간부진을 무너뜨려 달라","둥지 하청 연구소","조직 간부진"],["협회 지부를 습격한 자들을 붙잡아 넘겨 달라","협회 지부 연락관","지부 습격대"]],
+  str_kill:[["구역 하나를 공포에 몰아넣은 연쇄 살인마를 끝내 달라","장례식장 야간 관리인","연쇄 살인마"],["날개의 기밀을 팔아넘기고 사람을 묻어 온 중개인을 처리해 달라","익명의 의뢰인","피 묻은 중개인"]],
+  agi:[["협회 호송 중 탈주한 현상금 해결사를 다시 붙잡아 달라","협회 지부 연락관","person"],["둥지 경계를 넘어 달아나는 밀수 차량을 멈춰 세워 달라","둥지 하청 연구소","cart"],["폐쇄 구역으로 숨어든 실험체를 붙잡아 달라","익명의 의뢰인","beast"]],
+  tec:[["사라진 특색 해결사의 마지막 의뢰서를 복원해 달라","협회 지부 연락관","item"],["날개 계약서에 숨겨진 조항의 진짜 뜻을 밝혀 달라","익명의 의뢰인","item"],["둥지 하나가 통째로 비어 버린 날의 출입 기록을 맞춰 달라","작은 교회 신부","item"]],
+  esc:[["날개 이사회에 나서는 증인을 끝까지 지켜 달라","익명의 의뢰인"],["협회가 압수한 유물 상자를 지부까지 옮겨 달라","협회 지부 연락관"]],
+  srch:[["뒷골목의 밤에 사라진 사무소 하나의 흔적을 찾아 달라","협회 지부 연락관"],["폐쇄 구역 깊은 곳의 지하 금고를 찾아 달라","익명의 의뢰인"],["행방이 끊긴 수송대가 마지막으로 멈춘 곳을 찾아 달라","둥지 하청 연구소"]]}
+].forEach((A,i)=>Object.entries(A).forEach(([k,v])=>{ REQ_POOL[i][k] = (REQ_POOL[i][k]||[]).concat(v); }));
 const reqTier = g => g>=8 ? 0 : g>=6 ? 1 : g>=4 ? 2 : 3;
 /* 마감 기한: 처음 2주(EARLY_DL_DAYS)는 사무소 인원에 맞춰 넉넉하게 — 하루에 마감되는 의뢰가 해결사 수를 넘지 않도록 2일부터 차례로 늘린다.
    그 뒤로는 본격적으로 1~3일. 새로 올라오는 의뢰에만 적용한다. */
@@ -2300,6 +2452,7 @@ function genRequestsInner(){
     const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9);
     S.requests.push(makeRequest(g));
   }
+  if(S.officeGrade > 1 && Math.random() < NOM_P && !S.requests.some(q=>q.nom)) S.requests.push(nominate(makeRequest(S.officeGrade - 1)));
   // 1급 사무소: 가끔 도시의 별 지명 의뢰
   if(S.officeGrade===1 && Math.random()<0.1 && !S.requests.some(q=>q.grade===0&&q.kind==="지명")){
     const a = pick(ATTRS), b = pick(ATTRS.filter(x=>x!==a));
@@ -2317,17 +2470,27 @@ function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
   if(f.ego){ p += {weapon:8, armor:3, both:6, tool:5}[f.ego.type] || 3; if(f.ego.bonus) p += attrs.reduce((s,a)=>s+(f.ego.bonus[a]||0),0)/attrs.length; }
-  if(f.shin) p += 4;
   if(f.ab && f.ab.flame) p += attrs.filter(a=>a==="agi").length*2*f.ab.flame.lv/attrs.length;   // 부서져 가는 갑옷의 용기의 불꽃
   return p;
 }
 // 팀 전력: 가장 강한 1명 + 나머지의 40%
 function teamPower(team, attrs){ const ps = team.map(f=>power(f,attrs)).sort((a,b)=>b-a); return ps[0] + 0.4*ps.slice(1).reduce((s,v)=>s+v,0); }
 function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.1}[f.ego.type] || 0; return Math.min(r,0.7); }
-function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.25}[f.ego.type] || 0; if(f.shin) r+=0.15; return Math.min(r,0.75); }
+function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.25}[f.ego.type] || 0; return Math.min(r,0.75); }
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
 const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 사람이 끼면 성공률 -10%p
-function rate(team, q){ const P = teamPower(team,q.attrs); return clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)) - tiredPen(team), 5, 97); }
+/* 신(心) · 망(望)
+   신: 그 해결사가 나서면 의뢰 성공률 +1%p(상한 97%를 넘어설 수 있다), 전투 위력 +1. 쓸 때마다 정신력 -5.
+   신을 자주 쓰다 보면(나선 횟수) 무기에 망(望)을 감을 수 있다 — 망 하나마다 신과 따로 위력 +1, 대신 쓸 때 정신력이 더 든다(1~5망: 8 · 15 · 21 · 26 · 50). 최대 5망.
+   관리에서 신 · 망을 켜고 끌 수 있다(끄면 효과도 대가도 없다). */
+const SHIN_RATE = 1, SHIN_POW = 1, SHIN_MP = 5, MANG_MAX = 5, MANG_MP = [8, 15, 21, 26, 50], MANG_NEED = [8, 20, 35, 55, 80];
+const shinOn = f => !!(f && f.shin && f.shinOff !== true);
+const mangN = f => shinOn(f) && f.mangOff !== true ? Math.min(MANG_MAX, f.mang||0) : 0;
+const shinPow = f => (shinOn(f) ? SHIN_POW : 0) + mangN(f);
+const shinCost = f => (shinOn(f) ? SHIN_MP : 0) + (mangN(f) ? MANG_MP[mangN(f)-1] : 0);
+const shinRate = team => team.filter(shinOn).length * SHIN_RATE;
+const mangReady = f => !!(f && f.shin && (f.mang||0) < MANG_MAX && (f.shinUses||0) >= MANG_NEED[f.mang||0]);
+function rate(team, q){ const P = teamPower(team,q.attrs); return Math.min(100, clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)) - tiredPen(team), 5, 97) + shinRate(team)); }
 function isMental(q){ return q.attrs.includes("wil") && (q.kind==="환상체"||q.kind==="뒤틀림 토벌"||q.attrs[0]==="wil"); }
 function dmgFactor(team,q){ const P = teamPower(team,q.attrs); return clamp(1 + (q.req-P)/Math.max(10,q.req)*2, 0.5, 2.5); }
 const shareMul = n => n<=1 ? 1 : 1/(0.7*n);
@@ -2355,7 +2518,8 @@ function wGear(f){ return f.ego && f.ego.type!=="armor" && f.ego.look ? {name:f.
 function aGear(f){ return f.ego && f.ego.type==="armor" && f.ego.look ? {name:f.ego.name, look:f.ego.look, ego:true} : f.ego && f.ego.type==="both" && f.ego.look ? {name:f.ego.name, look:Object.assign({type:2, pad:1, collar:1, trim:f.ego.look.glow||null}, f.ego.look2||{}), ego:true} : f.gear.armor; }
 function leadGear(f){
   if(!f) return null; const w = wGear(f), acc = f.gear.acc, ar = aGear(f);
-  return { wtype: weaponTypeOf(w), weaponName: w ? w.name : null, spec: weaponSpecOf(w), armorSpec: armorSpecOf(ar), armor: !!ar, acc: !!acc,
+  const sp0 = weaponSpecOf(w), sp = sp0 && mangN(f) ? Object.assign({}, sp0, {mang: mangN(f)}) : sp0;
+  return { wtype: weaponTypeOf(w), weaponName: w ? w.name : null, spec: sp, armorSpec: armorSpecOf(ar), armor: !!ar, acc: !!acc,
            accColor: acc && acc.mpRed ? "180,150,255" : "150,230,255", ego: !!f.ego };
 }
 
@@ -2365,7 +2529,7 @@ function leadGear(f){
    성공하면 모두 안정(최소 감소). 실패하면 사람마다 자기 등급에 따라 부상 단계를 뽑는다 — 낮은 등급일수록 중상 이상이 잘 나온다. */
 function autoRate(team, q){
   const best = Math.min(...team.map(f=>f.grade)), qg = q.grade!=null ? q.grade : 9, d = qg - best;
-  return clamp(Math.round(75 + (d>=0 ? 12*d : 15*d) + 4*(team.length-1)) - tiredPen(team), 5, 97);
+  return Math.min(100, clamp(Math.round(75 + (d>=0 ? 12*d : 15*d) + 4*(team.length-1)) - tiredPen(team), 5, 97) + shinRate(team));
 }
 function autoWound(f){
   const g = clamp(f.grade, 1, 9), k = (9-g)/8;                    // 9급 0 → 1급 1
@@ -2373,6 +2537,7 @@ function autoWound(f){
   const P = P9.map((v,i)=>v + (P1[i]-v)*Math.pow(k, 0.6)); let r = Math.random()*P.reduce((a,b)=>a+b,0);
   for(let i=0;i<4;i++){ r -= P[i]; if(r<=0) return i; } return 3;
 }
+const CLEAN_WIN = 0.8;   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 const MG_NAME = {abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
 const gamesFor = q => q.kind==="환상체" ? ["abno"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : q.attrs.filter(a=>a!=="wil");
 function chooseMode(q, team){
@@ -2940,7 +3105,9 @@ function mgCombat(ctx){
     const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 남은 코인으로 친다. 쓰러뜨린 뒤 ${goal}하면 성공, 모두 쓰러지면 실패 — 턴 제한은 없다.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100, shownHp:100, max:100, lg:leadGear(f), wt: weaponTypeOf(wGear(f)) || "none", spec: weaponSpecOf(wGear(f)), armor: armorSpecOf(aGear(f)), sp2: f.ego && f.ego.special || null, wsp: (wspOf(wGear(f))||{}).id || null, ye:0, wchg:0, hits:0, charge:0, shield:0, endured:false}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
-    const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null, kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
+    const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null,
+      reqC = DF && DIST_TIER[DF.th] ? Math.max(1, q.req - DIST_TIER[DF.th].req) : q.req,   // 뒤틀림: 합 전투는 그 등급의 본래 요구치로 겨룬다(가산된 요구치는 자동 진행 성공률에만)
+      kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
     const foe = {name: q.foe || FOE_NAMES[g0] || "적", wt:fwt, kit, spec: fwt==="none" ? null : Object.assign(defaultSpec(fwt), {v:kit.v, metal: kit.worn ? pick(RUST_METALS) : pick(["#b9aca9","#aab5b1","#8e959e","#5f6670"]), len: kit.worn ? 0.85 + Math.random()*0.15 : 0.95 + Math.random()*0.15}), parts:{}, cards: AB ? AB.cards.map(c=>Object.assign({},c)) : DF ? DF.cards.map(c=>Object.assign({},c)) : CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1-(kit.worn?1:0)), b:c.b-1-(kit.worn?1:0)}))};
     foe.aug = kit.aug;
     /* ---- 림버스식 합 ----
@@ -2952,13 +3119,16 @@ function mgCombat(ctx){
     const skillOf = c => { const multi = /연속|삼연|연타/.test(c.n), coins = c.def ? 1 : multi ? 3 : (c.b - c.a >= 6 ? 2 : 2);
       const cp = Math.max(1, Math.round((c.b - c.a) / coins)); return {n:c.n, base:c.a, coins, cp, def:!!c.def, cleave:!!c.cleave}; };
     foe.skills = foe.cards.map(c=>skillOf(c));
+    /* 등급 보정: 권장 인원이 뒤에서 거드는 만큼 상대도 기본 위력이 붙는다(4급 이상 의뢰는 +1~2, 3·2급은 체력·피해가 이미 커서 +1, 1급 이상 +2). 무기 숙련 감점(-1)은 그대로 둔다 */
+    { const rec = (PARTY[q.grade!=null ? q.grade : 9]||[1])[0], sOff = g0 >= 4 ? Math.min(2, rec - 1) : g0 >= 2 ? 1 : 2, fOff = DF ? 0 : AB ? Math.min(2, sOff) : sOff;   // 뒤틀림은 이미 체력·카드가 따로 세다
+      foe.off = fOff; if(fOff) foe.skills.forEach(k=>{ k.base = Math.max(1, k.base + fOff); }); }
     const fg = q.grade!=null ? q.grade : 9, augMul = foe.aug ? Object.values(foe.aug.mul).reduce((a,b)=>a+b,0)/Object.values(foe.aug.mul).length : 1;
     // 전투 길이: 상대가 쓰러지기까지 맞아야 하는 횟수(명중)를 정하고, 우리 대표가 한 번 칠 때의 평균 위력을 곱해 체력으로 삼는다
-    const CT = combatTier(q, AB, DF), lead = party[0], ldCards = ((CARDS[lead.wt]||CARDS.none)||[]).filter(c=>!c.def), ldBonus = clamp(Math.round((power(lead.f,["str"])/Math.max(1,q.req) - 1)*4), -2, 4) + Math.min(3, party.length-1);
+    const CT = combatTier(q, AB, DF), lead = party[0], ldCards = ((CARDS[lead.wt]||CARDS.none)||[]).filter(c=>!c.def), ldBonus = clamp(Math.round((power(lead.f,["str"])/Math.max(1,reqC) - 1)*5), -4, 4) + Math.min(3, party.length-1);
     const perHit = ldCards.length ? ldCards.map(c=>{ const k = skillOf(c); return Math.max(1, k.base + ldBonus) + k.coins*k.cp*0.5; }).reduce((a,b)=>a+b,0)/ldCards.length : 6;
     foe.hits = CT.hits; foe.hitK = CT.k;
     foe.max = Math.max(1, Math.round(CT.hits * perHit * (foe.aug ? 0.85 + 0.15*augMul : 1))); foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = 0;
-    const bonus = me => clamp(Math.round((power(me.f,["str"])/Math.max(1,q.req) - 1)*4), -2, 4);
+    const bonus = me => clamp(Math.round((power(me.f,["str"])/Math.max(1,reqC) - 1)*5), -4, 4);   // 요구치에 못 미치면 크게 밀린다(최대 -4)
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
     const woundOf = hp => hp>75 ? 0 : hp>45 ? 1 : hp>18 ? 2 : 3;
@@ -2979,6 +3149,7 @@ function mgCombat(ctx){
     if(AB && AB.fx==="spiral") AXN.push(`<span style="color:#e8d27a">합을 이길 때마다 시선이 쌓여 피해가 오른다. 7이 되면 경멸받는다. 두 턴마다 누군가를 움켜쥔다</span>`);
     if(AB && AB.fx==="knives") AXN.push(`<span style="color:#ff8a7a">칼날 산 위에서 싸운다 — 턴이 끝날 때마다 모두가 발밑의 칼날에 베인다(사살한 만큼 더 깊이)</span>`);
     if(DF) AXN.push(`<span style="color:${DIST_TIER[DF.th].col}">${DF.th}급 뒤틀림 — ${DIST_TIER[DF.th].note}</span>`);
+    if(DF){ const eye = party.find(p=>p.f.distEye); if(eye) AXN.push(`<span style="color:#c9b0ff">${esc(eye.name)}의 눈에는 저것이 무엇을 하려는지가 한 박자 먼저 보인다 — 다음 두 수가 드러난다</span>`); }
     if(AB && AB.possessed) AXN.push(`<span style="color:#ff8a7a">구두에 홀린 동료다. 쓰러뜨려 발목째 구두를 벗겨 내야 한다</span>`);
     if(AB && AB.fx==="coat") AXN.push(`<span style="color:#ffb35a">햇살이 턴마다 뜨거워진다 — 외투(방어구)를 걸친 이는 갑절로 탄다</span>`);
     if(AB && AB.fx==="tower") AXN.push(`<span style="color:#e8d27a">두 턴마다 작은 거인이 가장 튼튼한 이에게 탑을 떠넘긴다 — 짊어진 이는 칼끝이 무뎌지고 턴마다 짓눌린다. 합을 이겨 쳐야 되돌려 준다</span>`);
@@ -2994,9 +3165,12 @@ function mgCombat(ctx){
     const SPN = id => { const x = EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor).find(e=>e.id===id); return x ? x.n : id; };
     const support = ()=> party.filter((p,i)=>i!==act && p.hp>0);
     const supBase = ()=> Math.min(3, support().length), supCp = ()=> support().length>=2 ? 1 : 0;
-    const wMod = (me, sk) => { const o = {base:0, cp:0};
+    /* 뒤틀림 대응은 무기가 아니라 사람에게서 온다(원작: 3급 에즈라 · 2급 한희준 · 뒤틀림 탐정 모제스).
+       등급: 3급은 도시 질병급에 +1, 2급 이상은 도시 질병·악몽급에 +1. 경험: 처치 1회 +1 · 3회 +2 · 10회 +2와 코인 위력 +1. 합쳐서 기본 위력 최대 +3 */
+    const antiDist = me => DF ? distEdge(me.f, DF.th) : null;
+    const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } }
       if(me.wsp==="cloud") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
-    const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base), cp: sk.cp + supCp() + w.cp}); };
+    const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base + shinPow(me.f)), cp: sk.cp + supCp() + w.cp}); };   // 신 +1 · 망 하나당 +1
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
     const techOf = me => { const id = me.f.tech && techFits(me.f.tech, me.wt) ? me.f.tech : "allout"; return Object.assign({id}, TECHS[id]); };
@@ -3029,20 +3203,29 @@ function mgCombat(ctx){
     let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
     const longK = () => turn > 12 ? 1 + 0.1*(turn - 12) : 1;   // 합이 아주 길어지면 양쪽 모두 지쳐 한 대가 무거워진다(끝없이 이어지지 않게)
     const S2 = {log:[]};
-    function pickFoeSkill(){ if(AB && AB.movement) foe.allow = rnd(0,2); const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def); foeSkill = Math.random()<0.22 && df.length ? pick(df) : pick(at); }
+    function rollFoeSkill(t){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def);
+      /* 강공: 세 턴마다 가장 센 공격에 힘을 싣는다(기본 위력 +3). 미리 드러나므로 방어로 받거나, 기술로 맞받아칠지 고른다 */
+      if(t % 3 === 0 && at.length){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a); return Object.assign({}, hv, {n:`${hv.n}(강공)`, base: hv.base + 3, heavy:true}); }
+      return Math.random()<0.22 && df.length ? pick(df) : pick(at); }
+    // 뒤틀림은 다음 두 수까지 미리 정해 둔다 — '뒤틀림을 보는 눈'을 가진 이가 있으면 그것이 보인다
+    function pickFoeSkill(){ if(AB && AB.movement) foe.allow = rnd(0,2);
+      if(DF){ foe.q = foe.q || []; while(foe.q.length < 3) foe.q.push(rollFoeSkill(turn + foe.q.length)); foeSkill = foe.q.shift(); }
+      else foeSkill = rollFoeSkill(turn); }
     const coinStr = sk => "●".repeat(sk.coins);
     function statusLine(){ const me = party[act], a = [], b = [];
       if(foe.clock != null) a.push(`징벌 새의 시간 ${Math.max(0, foe.clock - turn + 1)}턴`); if(AB && AB.movement) a.push(`이번 악장: <b>${["공격","방어","기술"][foe.allow]}</b>만 닿는다`);
       if(me.ember) b.push(`불씨 ${me.ember}`); if(me.gaze) b.push(`시선 ${me.gaze}${me.contempt ? " · 경멸" : ""}`); { const gp = party.find(p=>p.grasp); if(gp) a.push(`${esc(gp.name)}를 움켜쥐고 있다(${gp.grasp})`); }
       if(AB && AB.fuse && foe.fuseMark) a.push(`성냥불 ${Math.max(0, AB.fuse - turn + 1)}턴 남음 → ${esc(foe.fuseMark.name)}`); if(foe.lampMark) a.push(`등불에 홀림: ${esc(foe.lampMark.name)} (${Math.max(0, 3 - turn + 1)}턴 남음)`);
       if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push("휘청임");
+      { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
+      if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
       if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? ` 충전 ${me.wchg}/10` : ""}`); }
       if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.sp2==="charge") b.push(`충전 ${me.charge||0}/10`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
       return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
       m.info.innerHTML = `<div class="pk-text"><b>${turn}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp)]}">${WOUND[woundOf(me.hp)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
-        <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>${jo(foeSkill.n,"을").slice(foeSkill.n.length)} 쓰려 한다(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""}).</span>
+        <span class="muted">· 적은 <b style="color:#ffb0a0">${foeSkill.n}</b>${jo(foeSkill.n,"을").slice(foeSkill.n.length)} 쓰려 한다(기본 ${foeSkill.base} · 코인 ${coinStr(foeSkill)} +${foeSkill.cp}${foeSkill.def?" · 방어":""}).</span>${foeSkill.heavy ? `<br><b style="color:#ff8a7a">${esc(jo(foe.name,"이"))} 크게 힘을 싣는다 — 합에서 지면 크게 다친다. 맞받아칠지, 방어로 받아 낼지 골라라.</b>` : ""}
         ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}
         ${statusLine()}${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
       const chg = me.sp2==="charge" ? (me.charge||0) : null, ak = atkCards(me.wt), dc = defCard(me.wt), tk = techSkill(me);
@@ -3082,7 +3265,7 @@ function mgCombat(ctx){
       const won = R.win==="me", wSk = won ? R.a : fk, bonusK = 1 + 0.04*Math.max(0, R.count-1); me.spBefore = me.sp; me.lastWonPrev = me.lastWon;
       // 합 결과로 정신력이 움직인다
       if(won){ me.sp = clamp(me.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); foe.sp = clamp(foe.sp - 4, -45, 45); }
-      else { if(me.sp2!=="mind") me.sp = clamp(me.sp - 5, -45, 45); else me.sp = Math.max(0, me.sp); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
+      else { if(me.sp2!=="mind") me.sp = clamp(me.sp - (accFx(me.f,"buffer") && me.f.body && (me.f.body.nerve || me.f.body.full) ? 2 : 5), -45, 45); else me.sp = Math.max(0, me.sp); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
       lines.push(won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${jo(foe.name,"이")} 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       // 피해: 이긴 쪽이 남은 코인을 한 번 더 던져 나온 최종 위력만큼 한 번에 준다
@@ -3156,7 +3339,7 @@ function mgCombat(ctx){
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
           foe.cards = [{n:"큰 부리로 물기",a:6,b:14},{n:"집어삼키기",a:7,b:12},{n:"붉은 깃 세우기",a:5,b:9,def:true}]; foe.skills = foe.cards.map(c=>skillOf(c));
           abNote.push(`<b style="color:#ff8a7a">맞은 새가 붉게 변했다 — 가슴의 커다란 부리가 열렸다. 이제 물리면 쓰러진다</b>`); } }
-      else { let dmg = Math.round(P*3*Math.pow(q.req/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*(foe.hitK||1)*longK()*(me.f.tired ? TIRED_DMG : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+      else { let dmg = Math.round(P*3*Math.pow(reqC/Math.max(1,power(me.f,["str"])),0.4)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*(foe.hitK||1)*longK()*(me.f.tired && !accFx(me.f,"calm") ? TIRED_DMG : 1)); if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(me.wsp==="meztil"){ dmg = Math.round(dmg*1.2); wNote.push("과속 — 몸이 따라가지 못했다(받는 피해 +20%)"); }
         if(me.wsp==="ranga" && me.rend){ me.rend = 0; wNote.push("벌려 둔 상처가 아물었다"); }
         if(T && T.id==="allout"){ dmg = Math.round(dmg*1.5); tNote.push("전력 공격 — 빈틈을 그대로 맞았다(받는 피해 ×1.5)"); }
@@ -3173,6 +3356,7 @@ function mgCombat(ctx){
         if(dmg && me.shield){ const ab = Math.min(me.shield, dmg); dmg -= ab; me.shield -= ab; egoNote.push(`보호막이 ${jo(ab,"을")} 막았다`); }
         if(me.sp2==="endure" && !me.endured && dmg >= me.hp){ dmg = Math.max(0, me.hp - 1); me.endured = true; egoNote.push("인내 — 쓰러질 공격을 버텼다"); }
         if(me.sp2==="thorns" && dmg>0){ const th = Math.max(1, Math.round(dmg*0.2)); foe.hp = Math.max(0, foe.hp - th); egoNote.push(`가시 — ${foe.name}에게 ${th} 되돌려 줌`); }
+        if(dmg > 0 && me.hp <= 20 && accFx(me.f,"bandage")){ dmg = 0; me.f.gear.acc = null; egoNote.push("간이 보존 붕대 — 상처를 그대로 붙잡았다(붕대는 삭아 없어졌다)"); }
         const w0 = woundOf(me.hp); me.hp = Math.max(0, me.hp - dmg); total = dmg; me.woundUp = woundOf(me.hp) > w0 || me.hp<=0; st.crit = false; attack("foe", Math.max(1,dmg), fk);
         if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       await wait(900);
@@ -3252,6 +3436,7 @@ function mgCombat(ctx){
       else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다 — 의뢰 실패"; }
       else if(why==="fuse"){ score = 0.1; text = "성냥불이 터졌다 — 소녀는 재가 되어 흩어졌다. 의뢰 실패"; }
       else { score = 0.4*prog; text = "목표를 이루지 못했다 — 의뢰 실패"; }
+      if(win && score < CLEAN_WIN && !AB) text = text.replace(/ — (의뢰|제압) 성공$/, "") + " — 다만 상처가 깊다. 마무리는 판정으로 정해진다";
       const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:p.hp, sp:p.sp, fought: p.fought, death: p.death || null, wound: p.hp<=0 ? 3 : woundOf(p.hp)}))};
       setTimeout(()=>{ mgResult(m, res.score, text).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
@@ -3545,7 +3730,7 @@ function mgTrack(ctx){
       G.done = true; G.win = win; G.endAt = performance.now(); ui(); m.ctrl.innerHTML = "";
       const score = win ? 0.6 + 0.4*(1 - G.turn/T) : 0.3*clamp(1 - G.d/(LOST+1), 0, 1);
       const res = {win, score: clamp(score,0,1), battle: [{f:lead, fought:true, wound: Math.min(3, G.wound), sp:0}]};
-      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, `${text} — 의뢰 ${win?"성공":"실패"}`).then(()=>resolve(res)); }, 1800);
+      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, win && res.score < CLEAN_WIN ? `${text} — 시간이 걸렸다. 마무리는 판정으로 정해진다` : `${text} — 의뢰 ${win?"성공":"실패"}`).then(()=>resolve(res)); }, 1800);
       return true;
     }
     m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout) scout(); };
@@ -5308,14 +5493,14 @@ function mgEscort(ctx){
 }
 
 /* ================= 출동 ================= */
-async function dispatch(qid, fids){
+async function dispatch(qid, fids, modeArg){
   const q = S.requests.find(x=>x.id===qid);
   const team = fids.map(id=>S.fixers.find(x=>x.id===id)).filter(f=>f && canSend(f));
   if(!q || !team.length || team.length>partyMax(q)) return;
   let mental = isMental(q);
   const marching = team.filter(f=>!canGo(f) && canMarch(f));
   if(marching.length){ const nm = mental ? "정신력" : "체력";
-    const ok = await confirmBox("강행군", `${marching.map(f=>`<b>${esc(f.name)}</b>(${nm} ${Math.floor(LOSS_OK0*(1-(mental ? redMP(f) : redHP(f))*0.5)*MARCH_K)}%)`).join(", ")}${jo(marching[marching.length-1].name,"은").slice(-1)} 오늘 이미 의뢰를 다녀왔다. 한 번 더 내보내면 성공이든 실패든 ${nm}이 크게 깎인다. 그래도 보내겠는가?`);
+    const ok = await confirmBox("강행군", `${marching.map(f=>`<b>${esc(f.name)}</b>(${nm} ${Math.floor(LOSS_OK0*(1-(mental ? redMP(f) : redHP(f))*0.5)*(accFx(f,"march") ? 1.8 : MARCH_K))}%)`).join(", ")}${jo(marching[marching.length-1].name,"은").slice(-1)} 오늘 이미 의뢰를 다녀왔다. 한 번 더 내보내면 성공이든 실패든 ${nm}이 크게 깎인다. 그래도 보내겠는가?`);
     if(!ok) return; }
   const risky = team.filter(f=>{ const lh=level(f.hp,f.hpMax)[1], lm=level(f.mp,f.mpMax)[1]; return lh==="d" || (mental && lm==="d"); });
   if(risky.length){
@@ -5330,7 +5515,7 @@ async function dispatch(qid, fids){
   // 출동 방식: 직접 수행(기본-25%p에서 미니게임으로 최대 +25%p) / 자동 진행(기본 성공률, 보수 80%)
   const hasGame = gamesFor(q).length > 0;
   let mode = "auto";
-  if(hasGame){ mode = await chooseMode(q, team); if(!mode) return; }
+  if(hasGame){ mode = modeArg || await chooseMode(q, team); if(!mode) return; }
   marching.forEach(f=>{ f.marchDay = S.day; ac("march"); }); team.forEach(f=>f.lastDispatch = S.day);
   const base = rate(team,q); let pr = base, payMul = 1, mgLine = "", combat = null;
   let decisive = null, abnoR = null, mgScore = null;
@@ -5340,10 +5525,16 @@ async function dispatch(qid, fids){
     if(abnoR && !team.length){ const L = []; const lost = abnoApply(q, team, Object.assign({}, abnoR, {battle: combat && combat.battle}), L); S.requests = S.requests.filter(x=>x.id!==qid);
       stageLog(`[${q.kind} 의뢰 실패]`, q.client, false); await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${L.join("<br>")}<br>아무도 돌아오지 못했다.</p>`, [{t:"확인",primary:true}]);
       for(const x of lost){ await abnoLose(x.f, x.kind, x.why); if(!S || S.over) return; } save(); render(); return; }
-    if(r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
-    else if(r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
-    else { mgScore = r.score; pr = clamp(Math.round(base - 25 + 25*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
-  else { pr = autoRate(team, q); if(hasGame) payMul = 0.8; if(q.kind==="환상체" && abnoOf(q)) codexMeet(abnoOf(q).vid); mgLine = `자동 진행 · 해결사 등급 판정 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
+    /* 성공률 하나로: 직접 수행은 기본 성공률을 고친다.
+       · 이기고 지는 게임(합 전투 · 추격 · 호위): 지면 실패. 압승(점수 80 이상)이면 확정 성공. 겨우 이기면 기본 성공률 + 15 + 점수×30 으로 마무리 판정.
+       · 점수 게임(단서 · 방벽 · 장부): 기본 성공률 − 25 + 점수×40 (만점이면 기본 +15%p).
+       · 환상체는 통제·제압 결과가 곧 성패(기믹이 많아 그대로 둔다) */
+    if(q.kind==="환상체" && r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
+    else if(r.decisive===false || r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
+    else if(r.decisive===true){ mgScore = r.score; if(r.score >= CLEAN_WIN){ decisive = true; mgLine = `직접 수행 <b>압승</b>(${Math.round(r.score*100)}점) — 확정 성공`; }
+      else { pr = clamp(Math.round(base + 15 + 30*r.score), 50, 97); mgLine = `직접 수행 승리(${Math.round(r.score*100)}점) · 상처가 깊어 마무리는 판정 — 성공률 ${base}% → <b>${pr}%</b>`; } }
+    else { mgScore = r.score; pr = clamp(Math.round(base - 25 + 40*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
+  else { pr = base; if(hasGame) payMul = 0.8; if(q.kind==="환상체" && abnoOf(q)) codexMeet(abnoOf(q).vid); mgLine = `자동 진행 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
   let pay = Math.round(q.reward*payMul/100)*100;
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
   const success = decisive!=null ? decisive : Math.random()*100 < pr;
@@ -5354,7 +5545,7 @@ async function dispatch(qid, fids){
       if(th==="도시의 별") ac("star"); if(th==="도시 악몽") ac("nightmare"); if(mgScore!=null && mgScore>=0.9) ac("clean");
       S.st.streak = (S.st.streak||0) + 1; acMax("streakBest", S.st.streak); S.st.dayOk = S.st.dayD===S.day ? (S.st.dayOk||0) + 1 : 1; S.st.dayD = S.day; acMax("dayBest", S.st.dayOk); }
     else { ac("fail"); S.st.streak = 0; } }
-  { const sc = mode==="play" ? (decisive!=null ? (success ? 0.85 : 0.2) : mgScore!=null ? mgScore : 0.5) : (success ? 0.6 : 0.15), add = (w, hard) => { w.n++; w.sc += sc; if(success){ w.ok++; if(hard) w.hi++; } };
+  { const sc = mode==="play" ? (decisive!=null ? (success ? 0.85 : 0.2) : mgScore!=null ? mgScore : 0.5) : (success ? 0.6 : 0.15), add = (w, hard) => { w.n++; w.sc += sc; if(success){ w.ok++; if(hard) w.hi++; if(q.nom){ w.ok++; w.hi++; } } };
     S.wk = S.wk || {n:0, ok:0, hi:0, sc:0}; add(S.wk, q.grade!=null && q.grade <= S.officeGrade);
     team.forEach(f=>{ f.wk = f.wk || {n:0, ok:0, hi:0, sc:0}; add(f.wk, q.grade!=null && q.grade <= f.grade); }); }
   const k = dmgFactor(team,q)*shareMul(team.length);
@@ -5375,18 +5566,25 @@ async function dispatch(qid, fids){
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
     // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 2.5배
-    let pct = march ? Math.floor(LOSS.ok[0] * (1 - red*0.5) * MARCH_K) : abnoR && abnoR.doom ? 0 : gentleQ && !success ? 3 : Math.floor((success ? LOSS.ok : LOSS.fail)[w] * (1 - red*0.5));
+    const wq = w===1 && accFx(f,"lining") ? 0 : w;   // 덧댄 안감: 경상이면 안정만큼만
+    let pct = march ? Math.floor(LOSS.ok[0] * (1 - red*0.5) * (accFx(f,"march") ? 1.8 : MARCH_K)) : abnoR && abnoR.doom ? 0 : gentleQ && !success ? 3 : Math.floor((success ? LOSS.ok : LOSS.fail)[wq] * (1 - red*0.5));
     if(LIGHT_THREATS.includes(threatOf(q))) pct = Math.floor(pct/2);   // 뜬소문 · 도시 괴담 의뢰는 입는 피해가 절반
-    if(f.tired) pct = Math.floor(pct*TIRED_DMG);                        // 피로하면 받는 피해 +20%
+    if(f.tired && !accFx(f,"calm")) pct = Math.floor(pct*TIRED_DMG);   // 피로하면 받는 피해 +20%(정신 안정 키트가 있으면 없음)
+    if(!mental && accFx(f,"inject")) pct = Math.floor(pct*(f.injLack ? 1.12 : 0.88));   // 강화 주입기
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
     const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
     let dH = mental ? 0 : main, dM = mental ? main : 0;
     if(spPct) dM += Math.floor(f.mpMax * spPct/100);
     const bl = f.ab && f.ab.bless && S.day <= f.ab.bless.until; if(bl){ dH = Math.floor(dH/2); dM = Math.floor(dM/2); }
+    if(dH > 0 && f.hp <= f.hpMax*0.2 && accFx(f,"bandage")){ dH = 0; f.gear.acc = null; lines.push(`<span style="color:#9fe8b0">${esc(f.name)}: 간이 보존 붕대가 상처를 붙잡았다 — 체력이 깎이지 않았다(붕대는 삭아 없어졌다)</span>`); }
     f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax); f._w = w;
     lines.push(`${esc(f.name)}: ${march ? `<b style="color:#e8b07a">강행군</b> — ` : ""}${W_NAME[w]} — ${mental?"정신력":"체력"} -${pct}%(${main})${spPct?` · 정신력 -${spPct}%`:""} → 체력 -${dH}, 정신력 -${dM}${bl ? " (기사의 축복 — 절반)" : ""}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
   team.forEach(f=>{ const k = weaponTypeOf(wGear(f)) || "none"; f.wuse = f.wuse || {}; f.wuse[k] = (f.wuse[k]||0) + 1; });
+  // 신(心) · 망(望)을 쓴 대가: 정신력. 신을 쓴 횟수가 쌓이면 무기에 망을 감을 수 있다
+  team.forEach(f=>{ if(!shinOn(f)) return; const c = shinCost(f), m = mangN(f); f.mp = Math.max(1, f.mp - c); f.shinUses = (f.shinUses||0) + 1;
+    lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 신(心)${m ? ` · 망(望) ${m}` : ""}</span> — 정신력 -${c}`);
+    if(mangReady(f) && f.mangHint !== (f.mang||0)){ f.mangHint = f.mang||0; lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`); addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`); } });
   // 환상체 기믹: 쇳물에 녹는 무기 · 따라붙은 요정 · 고양이의 회수
   if(abnoR && abnoR.fought && abnoOf(q) && abnoOf(q).fx==="molten") team.forEach(f=>{ const b = combat && combat.battle.find(x=>x.f===f), g = f.gear.weapon; if(b && b.fought && isWornable(g) && g.durMax){ g.dur = Math.max(0, g.dur-1); lines.push(`${esc(f.name)}의 ${esc(g.name)}: 쇳물에 날이 녹았다 — 내구도 -1`); } });
   team.forEach(f=>{ const A = f.ab; if(!A) return;
@@ -5397,11 +5595,15 @@ async function dispatch(qid, fids){
     g.dur = Math.max(0, g.dur-1); g.uses = (g.uses||0) + 1;
     lines.push(`${esc(f.name)}의 ${esc(g.name)}: 내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? (g.durMax<=1 ? " — <b>더는 고칠 수 없다</b>" : " — <b>수리가 필요하다</b>(관리)") : ""}`); });
   S.requests = S.requests.filter(x=>x.id!==qid || (!success && q.kind==="뒤틀림 토벌"));
+  { const cl = clientResult(q, success); if(cl) lines.push(cl); }
+  if(q.distFoe && success) team.forEach(f=>{ const e0 = distExp(f); f.dk = (f.dk||0) + 1; const e1 = distExp(f);
+    if(e1 && (!e0 || e0.n!==e1.n)) lines.push(`<span style="color:#c9b0ff">${esc(f.name)}: 뒤틀림 경험 — <b>${e1.n}</b>(처치 ${f.dk}) · 이제 뒤틀림을 상대로 기본 위력 +${e1.base}${e1.cp ? `, 코인 위력 +${e1.cp}` : ""}</span>`); });
   idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); hanaStarAfter(q, success, lines);
   if(success){
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
     lines.push(`보수 +${won(pay)}`);
+    team.forEach(f=>{ if(accFx(f,"lighter") && S.fixers.includes(f)){ const v = Math.round(f.mpMax*0.04); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: 낡은 라이터로 한 대 붙였다 — 정신력 +${v}`); } });
     if(q.grade===S.officeGrade) S.reviewSuccess++;
     team.forEach(f=>{
       f.done++;
@@ -5410,7 +5612,10 @@ async function dispatch(qid, fids){
       // 성장: 능력치에 맞는 의뢰(근력-물리 · 민첩-속도 · 재주-정밀 · 의지-이상)를 4번 해내면 +1. 지금 등급에서는 능력치마다 한 번뿐, 승급하면 다시 센다
       growTick(f, q.attrs, lines);
     });
-    if(q.loot){ lines.push(`전리품: <b>${esc(q.loot.name)}</b> 획득(관리에서 장착)`); S.inventory = S.inventory||[]; S.inventory.push(q.loot); }
+    if(q.loot){ const L = LOOT_BY[q.loot.id], nm = lootName(q);
+      if(Math.random() < LOOT_P || window.__forceLoot){ const it = L ? makeLootAcc(L.id) : Object.assign({}, q.loot); S.inventory = S.inventory||[]; S.inventory.push(it);
+        lines.push(`<span style="color:#e8d27a">특수 전리품</span> — ${L ? esc(L.got[lootPerson(q) ? 0 : 1]) : ""} <b>${esc(nm)}</b> 획득(관리에서 장착)`); }
+      else lines.push(`<span class="muted">소문으로 듣던 ${esc(jo(nm,"은"))} 끝내 찾지 못했다. 누가 먼저 가져갔거나, 처음부터 없었는지도 모른다.</span>`); }
     if(q.kind==="환상체" && abnoOf(q) && abnoR){ const A = abnoOf(q), w = team.find(x=>x.id===abnoR.last) || team[0];
       if(A.fx==="letter" && abnoR.how==="ctrl"){ if(Math.random() < 0.6){ const nq = makeRequest(Math.max(q.grade, Math.min(9, q.grade+1))); nq.client = "뜯겨진 편지의 사연"; nq.text = `편지 속 사연: ${nq.text}`; S.requests.push(nq); lines.push(`<span style="color:#e8d27a">남겨진 편지 한 통 — 그 사연이 의뢰가 되어 게시판에 올라왔다</span>`); }
         else { const v = Math.floor(w.mpMax*0.05); w.mp = Math.max(1, w.mp - v); lines.push(`${esc(w.name)}: 남겨진 편지를 읽었다. 모르는 이의 사연이 마음에 걸린다 — 정신력 -${v}`); } }
@@ -5448,8 +5653,10 @@ async function dispatch(qid, fids){
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f); }
   if(S && !S.over) team.forEach(f=>{ if(S.fixers.includes(f)) checkOmen(f); });
   if(!S) return;
-  delete teamSel[qid];
+  delete teamSel[qid]; q.accepted = false;
+  openQ = nextOpenable(); if(openQ!=null){ const nq = S.requests.find(x=>x.id===openQ); if(nq && !(teamSel[openQ]||[]).length) autoPick(nq); }
   save(); render();
+  if(openQ!=null){ const el = document.querySelector(`.req[data-q="${openQ}"]`); if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest", behavior:"smooth"}); }
   if(S && !S.over) await maybeEndDay();
 }
 
@@ -6641,7 +6848,19 @@ async function colorReview(f){
 function assocWeekly(){ const wk = Math.floor((S.day-1)/7);
   if(S.requests.some(q=>q.assoc)) S.assocWk = wk;
   if(S.assocWk !== wk && (S.day-1)%7 >= 3){ const q = assocRequest(Math.max(S.officeGrade, 2)); S.requests.unshift(q); S.assocWk = wk; } }
+/* 시간 되돌림 장치: 아침마다 지닌 사람의 상태를 기록해 두고, 쓰면 하루 전 아침으로 되돌린다(그사이 얻은 것도 함께). 출동 여부 · 오늘 날짜에 묶인 값은 그대로 둔다 */
+const RW_KEEP = ["id","isLeader","lastDispatch","marchDay","unavailUntil","rw","gear"];
+function rwSnap(){ if(!S) return; S.fixers.forEach(f=>{ if(!accFx(f,"rewind")){ delete f.rw; return; } const c = JSON.parse(JSON.stringify(Object.assign({}, f, {rw:null})));
+  f.rw = (f.rw||[]).filter(x=>x.day >= S.day - 1).concat([{day:S.day, s:c}]).slice(-2); }); }
+async function useRewind(f){ const dev = accFx(f,"rewind"); if(!dev || !f.rw || !f.rw.length) return toast("되돌릴 기록이 아직 없다 — 하루가 지나야 한다");
+  const snap = f.rw.find(x=>x.day===S.day-1) || f.rw[0];
+  if(!await confirmBox("시간 되돌림 장치", `${esc(f.name)}의 몸과 기록을 ${snap.day}일차 아침으로 되돌린다. 그사이 다친 것도, 얻은 것(능력치 · 경험 · 승급 등)도 모두 돌아간다. 장치는 쓰고 나면 사라진다.`)) return;
+  const keep = {}; RW_KEEP.forEach(k=>keep[k] = f[k]); Object.keys(f).forEach(k=>{ if(!RW_KEEP.includes(k)) delete f[k]; });
+  Object.entries(snap.s).forEach(([k,v])=>{ if(!RW_KEEP.includes(k)) f[k] = v; });
+  Object.assign(f, keep); f.gear = Object.assign({}, keep.gear, {acc:null}); delete f.rw;   // 장비는 사무소 물건이라 그대로(장치만 사라진다)
+  addLog(`${f.name}: 시간 되돌림 장치를 썼다 — ${snap.day}일차 아침으로 돌아갔다`); save(); render(); toast(`${f.name} — ${snap.day}일차 아침으로 돌아갔다`); }
 function startDay(first){
+  rwSnap();
   genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn();
   genRecruits();
   spawnRumors();
@@ -6830,13 +7049,18 @@ async function endDayInner(reason){
     due.forEach(p=>{ S.money += p.amt; addLog(`${jo(p.from,"이")} 미뤄 둔 보수 ${won(p.amt)}을 가져왔다`); }); } S.st = S.st || {}; S.st.days = ended; acSet("weather", S.weather && S.weather.w);
   { const inc = S.todayIncome||0; acMax("dayPayBest", inc); if(S.scars===2 && S.st.edgeDay && ended - S.st.edgeDay >= 7) acMax("edge7", 1); }
   // 회복
-  S.fixers.forEach(f=>{ f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*0.2)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*0.2)); });
-  const abLines = abnoNightFx();
+  const accLines = [];
+  S.fixers.forEach(f=>{ let kH = 0.2, kM = 0.2; const en = accFx(f,"enk");
+    if(en){ en.uses = (en.uses||0) + 1; kH += 0.1; kM += 0.1; if(en.uses >= 3 && !f.addict){ f.addict = true; accLines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 엔케팔린 덩어리에 중독됐다 — 모든 회복량 절반(떼어 놓고 ${ADDICT_CLEAN}일이 지나면 풀린다)</span>`); } f.addictClean = 0; }
+    else if(f.addict){ f.addictClean = (f.addictClean||0) + 1; if(f.addictClean >= ADDICT_CLEAN){ f.addict = false; f.addictClean = 0; accLines.push(`<span style="color:#9fe8b0">${esc(f.name)}: 엔케팔린 중독이 풀렸다</span>`); } }
+    const k = recK(f); f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*kH*k)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*kM*k)); });
+  const abLines = abnoNightFx().concat(accLines);
   // 템포: 사흘 연속 출동하면 피로가 붙고, 하루 쉬면 풀린다
   const tiredNew = [], rested = [];
   S.fixers.forEach(f=>{ const worked = f.lastDispatch===ended;
     if(worked){ f.streak = (f.streak||0) + 1; if(f.streak >= STREAK_MAX && !f.tired){ f.tired = true; tiredNew.push(f.name); } }
-    else { if((f.streak||0) > 0 || f.tired){ const was = f.tired; f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*REST_BONUS)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*REST_BONUS)); if(was) rested.push(f.name); }
+    else { if((f.streak||0) > 0 || f.tired){ const was = f.tired; f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*REST_BONUS*recK(f))); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*REST_BONUS*recK(f))); if(was) rested.push(f.name); }
+      if(accFx(f,"sleep")){ f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*0.1*recK(f))); }
       f.streak = 0; f.tired = false; } });
   if(tiredNew.length){ abLines.push(`<span style="color:#e7a07c">${tiredNew.map(esc).join(", ")}: 사흘 연속 출동 — 피로 (출동 시 성공률 -${TIRED_RATE}% · 받는 피해 +${Math.round((TIRED_DMG-1)*100)}%, 하루 쉬면 풀린다)</span>`); addLog(`${tiredNew.join(", ")}: 피로가 쌓였다`); }
   if(rested.length){ abLines.push(`<span style="color:#9fe8b0">${rested.map(esc).join(", ")}: 하루 쉬어 피로가 풀렸다 (체력·정신력 +${Math.round(REST_BONUS*100)}% 추가 회복)</span>`); }
@@ -6844,6 +7068,7 @@ async function endDayInner(reason){
   const expired = [];
   S.requests.forEach(q=>{ if(q.deadline!=null){ q.deadline--; if(q.deadline<=0) expired.push(q);} });
   S.requests = S.requests.filter(q=>!expired.includes(q));
+  const letDown = expired.filter(q=>q.accepted).map(q=>clientResult(q, false)).filter(Boolean);
   const idxMiss = expired.filter(q=>q.prescript); if(idxMiss.length) idxFail();
   const fee = officeFees(ended);
   let html = `<p class="muted">${reason||""}</p><div class="kv">
@@ -6851,7 +7076,7 @@ async function endDayInner(reason){
     <span>보유 자금</span><b>${won(S.money)}</b>
     <span>남은 빚</span><b>${won(S.debt)}</b>
     <span>회복</span><b>전원 체력·정신력 20% 회복</b>
-    <span>마감된 의뢰</span><b>${expired.length}건</b>${fee}</div>${idxMiss.length ? `<p style="color:#ff8a7a;font-size:13px">지령의 기한이 지났다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%</p>` : ""}${abLines.length ? `<p style="font-size:13px">${abLines.join("<br>")}</p>` : ""}`;
+    <span>마감된 의뢰</span><b>${expired.length}건</b>${fee}${ended%7===0 ? `<span>주간 보고</span><b>흉터 경고 ${S.scars} / 3 · 소속 해결사 ${S.fixers.length}명 · 이번 주 심사 실적 ${(S.wk||{}).ok||0}건</b>` : ""}</div>${letDown.length ? `<p style="font-size:13px">맡아 놓고 기한을 넘겼다 — ${letDown.join("<br>")}</p>` : ""}${idxMiss.length ? `<p style="color:#ff8a7a;font-size:13px">지령의 기한이 지났다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%</p>` : ""}${abLines.length ? `<p style="font-size:13px">${abLines.join("<br>")}</p>` : ""}`;
   const distortExpired = expired.filter(q=>q.kind==="뒤틀림 토벌");
   if(distortExpired.length){
     S.fixers.forEach(f=>{ if(!f.isLeader) f.mp = Math.max(1, f.mp - Math.round(f.mpMax*0.15)); });
@@ -6881,7 +7106,7 @@ async function weekly(){ ac("week"); bodyUpkeep();
   if(!S.over && !endCool()){ await assocOffer(); if(!S || S.over) return; }
   if(!S.over){ await idxVisit(false); if(!S || S.over) return; }
   if(colorHeld() >= COLOR_MAX && !S.over){ const q = trioRequest(); S.requests.unshift(q); addLog(`하나 협회 지명 의뢰가 올라왔다 — ${q.text}`); }
-  await modal("주간 보고", `<div class="kv"><span>보유 자금</span><b>${won(S.money)}</b><span>남은 빚</span><b>${won(S.debt)}</b><span>흉터 경고</span><b>${S.scars} / 3</b><span>소속 해결사</span><b>${S.fixers.length}명</b></div>`, [{t:"확인"}]);
+  // 주간 보고는 그날 밤 정산 창에 함께 싣는다(창 하나 줄이기)
 }
 // 매주 수금: 그 주에 스스로 갚은 돈이 '최소 수금액'(보유 자금의 35%, 최소 1만 안)에 못 미치면 모자란 만큼 뜯어 간다
 function scarDue(){ return Math.min(S.debt, Math.max(Math.floor(S.money*0.35), 10000)); }
@@ -6974,6 +7199,8 @@ async function officeMove(){
     <span>앞으로</span><b>${RENT_DAYS}일마다 월세 · 뒷골목의 밤 처리 — 그때 가진 돈의 ${Math.round(RENT_K*100)}%</b></div>`, [{t:"확인", primary:true}]);
   save(); render(); }
 function officeFees(ended){ let h = "";
+  if(ended % 7 === 0){ S.fixers.filter(f=>accFx(f,"inject")).forEach(f=>{ if(S.money >= INJ_COST){ S.money -= INJ_COST; f.injLack = false; h += `<span>약값</span><b>-${won(INJ_COST)} (${esc(f.name)}의 강화 주입기)</b>`; }
+    else { f.injLack = true; h += `<span></span><b style="color:#ff8a7a">${esc(f.name)}: 약값을 못 냈다 — 이번 주는 강화 주입기가 오히려 몸을 갉아먹는다(체력 피해 +12%)</b>`; } }); }
   if(ended % 7 === 0){ const pay = S.fixers.filter(f=>!f.isLeader && f.wage > 0), due = pay.reduce((a,f)=>a+f.wage, 0);
     if(due > 0){ const t = Math.min(S.money, due); S.money -= t; h += `<span>주급</span><b>-${won(t)} (${pay.length}명)</b>`;
       if(t < due){ pay.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.round(f.mpMax*0.1)); }); h += `<span></span><b style="color:#ff8a7a">주급을 다 주지 못했다 — 받지 못한 이들 정신력 -10%</b>`; addLog(`주급이 ${won(due - t)} 모자랐다`); } } }
@@ -7025,11 +7252,12 @@ function genRecruits(){
     const base = Math.round(HIRE_COST[g]*(0.9+Math.random()*0.2)/100)*100;   // 예전 고용비 — 그중 20%(소수점 버림)는 고용비에서 빠지고 주급이 된다
     f.wage = Math.floor(base*WAGE_K); f.cost = base - f.wage;
     f.precious = rollPrecious(f);
+    if(Math.random() < DIST_EYE_P) f.distEye = true;
     S.recruitPool.push(f);
   }
 }
 async function openRecruit(){
-  const draw = () => S.recruitPool.length ? S.recruitPool.map(f=>`<div class="item"><div><b>${esc(f.name)}</b> <span class="badge">${gName(f.grade)}</span> <span class="badge">${f.personality}</span>
+  const draw = () => S.recruitPool.length ? S.recruitPool.map(f=>`<div class="item"><div><b>${esc(f.name)}</b> <span class="badge">${gName(f.grade)}</span> <span class="badge">${f.personality}</span>${f.distEye ? ` <span class="badge" style="color:#c9b0ff;border-color:currentColor" title="${esc(distEyeText)}">뒤틀림을 보는 눈</span>` : ""}
     <div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">${esc(hairText(f.look||{}))} · ${esc(eyeText(f.look||{}))}</div><div class="d">간직한 것: ${esc(f.precious ? f.precious.text : "—")}</div><div class="d">고용비 ${won(f.cost)}</div></div>
     <div class="d" style="color:#e8c98a">고용비 ${won(f.cost)} · 주급 ${won(f.wage||0)}</div><button class="primary" data-hire="${f.id}" ${S.money<f.cost||S.fixers.length>=10?"disabled":""}>고용</button></div>`).join("") : `<p class="muted">오늘은 더 이상 찾아온 해결사가 없다. 명단은 매일 아침 바뀐다.</p>`;
   await modal("영입", `<p class="muted">${gName(S.officeGrade)} 사무소 · 최대 ${gName(Math.max(2,S.officeGrade-1))}까지 찾아온다. 1급과 특색은 영입으로 오지 않는다. 소속 ${S.fixers.length}/10명.</p><div class="list" id="rlist">${draw()}</div>`, [{t:"닫기"}], false, root=>{
@@ -7066,7 +7294,9 @@ async function openManage(){
       <span>간직한 것</span><b style="${f.precious&&f.precious.lost?"color:#e7a07c":""}">${esc(preciousText(f))}</b>
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
-      ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">${esc(shinLabel(f.shin.name ? f.shin : Object.assign({name:givenName(f.name)}, f.shin)))} — “${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">· 돌아본 죄: ${esc(f.shin.sin)} · 전투력 +4 · 정신력 피해 -15% · 망(望) ${MANG_N(f)}</span></b>`:""}
+      ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">${esc(shinLabel(f.shin.name ? f.shin : Object.assign({name:givenName(f.name)}, f.shin)))} — “${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">· 돌아본 죄: ${esc(f.shin.sin)}</span>
+        <br><span style="font-weight:400;font-size:12px">신: 성공률 +${SHIN_RATE}% · 전투 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? ` · 다음 망까지 ${Math.max(0, MANG_NEED[f.mang||0] - (f.shinUses||0))}회` : " · 망을 모두 감았다"}</span>
+        <br><button data-shintog="1" style="padding:2px 8px">${shinOn(f) ? "신 끄기" : "신 켜기"}</button>${(f.mang||0) ? ` <button data-mangtog="1" style="padding:2px 8px">${f.mangOff ? "망 켜기" : "망 끄기"}</button>` : ""}${mangReady(f) ? ` <button class="primary" data-mangwind="1" style="padding:2px 8px">무기에 망(望)을 감는다</button>` : ""}</b>`:""}
       <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</b>
       <span>성장</span><b class="muted">${(growOf(f), ATTRS.map(a=>`${ATTR_NAME[a]} ${f.gk[a] ? "✓" : `${f.gc[a]||0}/${GROW_N}`}`).join(" · "))}</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
@@ -7116,6 +7346,13 @@ async function openManage(){
       else if(d.relook && f){ const L = Object.assign({}, f.look);
         const ok = await modal("대표 외형 변경", `<div id="rl">${lookFields(L)}</div>`, [{t:"취소",v:false},{t:"바꾸기",v:true,primary:true}], true, r=>bindLook(r.querySelector("#rl"), L));
         if(ok){ f.look = L; ac("relook"); } }
+      else if(d.shintog && f){ f.shinOff = shinOn(f); }
+      else if(d.mangtog && f){ f.mangOff = !f.mangOff; }
+      else if(d.mangwind && f && mangReady(f)){ const w = wGear(f) || f.gear.weapon;
+        if(!w){ toast("망(望)을 감을 무기가 없다"); return; }
+        const n = (f.mang||0) + 1;
+        if(!await confirmBox("망(望)", `${esc(jo(f.name,"은"))} 소망을 실처럼 꼬아 ${esc(w.name||"무기")}에 한 겹 더 감는다.<br><b style="color:#ffd27a">망 ${n}</b> — 전투 위력 +${n}(신과 따로), 대신 쓸 때 정신력 -${MANG_MP[n-1]}${n>1 ? ` (지금 -${MANG_MP[n-2]})` : ""}.`)) return;
+        f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
       else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; const v = pawnPrice(g);
         if(!await confirmBox("전당포", `<b>${esc(jo(g.name,"을"))}</b> 전당포에 맡긴다. 받는 돈 <b>${won(v)}</b> — 되찾을 수 없다.`)) return;
         S.inventory.splice(i, 1); S.money += v; ac("pawn"); addLog(`전당포: ${g.name} → +${won(v)}`); }
@@ -7130,12 +7367,13 @@ function gearDesc(g){
   const p=[]; if(g.bonus) Object.entries(g.bonus).filter(([,v])=>v).forEach(([k,v])=>p.push(v<0 ? `<span style="color:#ff8a7a">${ATTR_NAME[k]}${v}</span>` : `${ATTR_NAME[k]}+${v}`));
   const pc = (lab, v) => p.push(v<0 ? `<span style="color:#ff8a7a">${lab} 피해 +${Math.abs(Math.round(v*100))}%</span>` : `${lab} 피해 -${Math.abs(Math.round(v*100))}%`);
   if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed);
+  if(g.effect) p.push(`<span style="color:#cfe2ff">${esc(g.effect)}</span>${g.fx==="enk" ? ` <span class="muted">(사용 ${g.uses||0}회)</span>` : ""}`, g.desc && !g.relic ? `<span class="muted">${esc(g.desc)}</span>` : "");
   if(g.selfUp && g.gift) p.push(`${g.gift.from.replace(/ \(아종:.*\)$/,"")} 관측 시 행동 성공률 +${Math.round(g.selfUp*100)}%p`);
-  if(g.relic) p.push(`<span style="color:#d8b45a">${esc(g.origin)} · ${esc(g.boundName||"")}에게 귀속</span>`, `<span class="muted">${esc(g.desc||"")}</span>`);
+  if(g.relic) p.push(`<span style="color:#d8b45a">유적 출토 · ${esc(g.origin)} · ${esc(g.boundName||"")}에게 귀속</span>`, g.trait ? `<span style="color:#9fe8c8">성질: ${esc(g.trait)}</span>` : "", g.flaw ? `<span style="color:#e7a07c">흠: ${esc(g.flaw)}</span>` : "", `<span class="muted">${esc(g.desc||"")}</span>`);
   if(g.gunNote) p.push(`<span style="color:#9ad0ff">원거리 사격(위력 ×1.6 · 체력 피해 -${Math.round(GUN_HP_RED*100)}% 포함) · 값 4배</span>`);
   if(g.traits) p.push(`<span style="color:#9fe8b0">이점 ${g.traits.adv.join(", ")}</span>`, `<span style="color:#ff8a7a">결점 ${g.traits.bad.join(", ")}</span>`);
   if(g.slot==="weapon" && g.unique){ p.push("고유 무기 · 닳지 않음"); const w = wspOf(g); if(w) p.push(`[${w.n}] ${w.d}`); } else if(durText(g)) p.push(durText(g));
-  return p.join(" · ");
+  return p.filter(Boolean).join(" · ");
 }
 
 /* ================= 공방 ================= */
@@ -7182,7 +7420,7 @@ async function openShop(startTab){
             <div style="display:flex;gap:6px;flex-wrap:wrap">${w && w.unique ? `<button data-forge="${x.id}" data-slot="weapon" data-mode="retouch">무기 손질</button>` : ""}${x.grade===0 ? `<button class="primary" data-forge="${x.id}" data-slot="armor">${u.armor?"방어구 다시 만들기":"방어구 제작"}</button>` : ""}</div></div>`; }).join("")}</div>`
           : `<p class="muted">${lockMsg(3)}</p>`}`;
     }
-    const items = SHOP.filter(i=>i.tier===tab), locked = !!lockMsg(tab), makers = [...new Set(items.map(i=>i.maker))];
+    const items = SHOP.filter(i=>i.tier===tab && i.slot!=="acc"), locked = !!lockMsg(tab), makers = [...new Set(items.map(i=>i.maker))];
     return `<div class="field"><label>장착할 사람</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>
     ${tabs}
     <p class="muted" style="font-size:12px">${["보통 7급 의뢰까지 쓸 만한 양산품. 무기 내구도 3~6.","원작 세계관의 공방 제품. 보통 4급 의뢰까지 쓸 만하다. 무기 내구도 7~12 — 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다.","원작 세계관의 상급 공방·인더스트리·아틀리에 제품. 1급 의뢰까지 쓸 만하다. 무기 내구도 13~20 — 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다."][tab]}<br>무기는 출동할 때마다 내구도가 1씩 닳고, 절반 이하가 되면 고쳐야 쓸 수 있다. 고칠 때마다 최대 내구도가 1 줄고, 다 닳으면 부서진다.</p>
@@ -7712,7 +7950,11 @@ function relicItem(R, f){
   if(R.slot==="weapon"){ Object.assign(it, {wtype:R.kind, look:Object.assign({kind:R.kind}, R.look), power:R.power, bonus:profBonus(R.kind, R.power)});
     Object.entries(R.bonusAdd||{}).forEach(([k,v])=>{ it.bonus[k] = (it.bonus[k]||0) + v; }); }
   else { if(R.look) it.look = Object.assign({}, R.look); if(R.bonus) it.bonus = Object.assign({}, R.bonus); }
-  if(R.hpRed) it.hpRed = R.hpRed; if(R.mpRed) it.mpRed = R.mpRed; return it; }
+  if(R.hpRed) it.hpRed = R.hpRed; if(R.mpRed) it.mpRed = R.mpRed;
+  const Lo = RELIC_LORE[R.id]; if(Lo){ it.trait = Lo.trait; it.flaw = Lo.flaw;   // 원작의 유물처럼 귀할수록 흠이 있다
+    if(Lo.hpRed) it.hpRed = +((it.hpRed||0) + Lo.hpRed).toFixed(2); if(Lo.mpRed) it.mpRed = +((it.mpRed||0) + Lo.mpRed).toFixed(2);
+    if(Lo.bonus){ it.bonus = it.bonus || {}; Object.entries(Lo.bonus).forEach(([k,v])=>{ it.bonus[k] = (it.bonus[k]||0) + v; }); } }
+  return it; }
 const relicLocked = (f, slot) => !!(f && f.gear[slot] && f.gear[slot].relic);
 function relicFit(f){ const fate = rnd(-30, 40), str = clamp(Math.round(total(f)/6), 0, 30), gr = (9 - (f.grade==null ? 9 : f.grade))*2;
   return {fate, str, gr, v: Math.max(0, fate + str + gr)}; }
@@ -7726,7 +7968,7 @@ const ABNO_HITS = {ZAYIN:[7,0.7], TETH:[9,0.85], HE:[11,1.0], WAW:[13,1.2], ALEP
 function combatTier(q, AB, DF){
   if(q.hanaStar) return {hits:20, k:1.6};
   if(AB){ const A = abnoOf(q); if(A && A.kill) return {hits:5, k:0.9}; const R = ABNO_HITS[q.risk || (A && A.risk)] || ABNO_HITS.TETH; return {hits:R[0], k:R[1]}; }
-  if(DF){ const L = DF.lvl||0; return {hits:7 + 2*L, k:1 + 0.15*L}; }
+  if(DF){ const L = DF.lvl||0; return {hits:4 + L, k:1}; }
   const b = clamp(9 - (q.grade==null ? 9 : q.grade), 0, 9); return {hits:1 + b + (q.goal==="사살" ? 1 : 0), k:HIT_K[b]}; }
 async function relicTry(q, team){
   if(!team.length || Math.random() >= RELIC_GET_P) return;
@@ -7735,50 +7977,443 @@ async function relicTry(q, team){
   const R = pick(pool), f = team.slice().sort((a,b)=>total(b)-total(a))[0], fit = relicFit(f), ok = fit.v > RELIC_FIT_MIN;
   await relicScene(R, f, fit, ok);
   if(!S || S.over) return;
-  if(!ok){ addLog(`유물 「${R.name}」이(가) ${f.name}을(를) 주인으로 고르지 않았다 (적합도 ${fit.v})`.replace(`「${R.name}」이(가)`, `「${R.name}」${jo(R.name,"이").slice(R.name.length)}`).replace(`${f.name}을(를)`, jo(f.name,"을")));
-    S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 적합도 ${fit.v}, 손에서 빠져나갔다`}); ac("relicMiss"); save(); render(); return; }
+  if(!ok){ const v = Math.max(1, Math.round(f.hpMax*RELIC_BACKLASH)); f.hp = Math.max(1, f.hp - v);
+    addLog(`유물 「${R.name}」${jo(R.name,"이").slice(R.name.length)} ${jo(f.name,"을")} 거부했다 — 적성이 없는 손을 태웠다 (적합도 ${fit.v}, 체력 -${v})`);
+    S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 적합도 ${fit.v}, 거부당했다`}); ac("relicMiss"); save(); render(); return; }
   const it = relicItem(R, f), old = f.gear[R.slot]; f.gear[R.slot] = it;
   if(old && !old.relic){ S.inventory = S.inventory || []; S.inventory.push(old); }
-  S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — 적합도 ${fit.v}, 귀속`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic"); save(); render(); }
-function relicScene(R, f, fit, ok){
-  const el = document.createElement("div"); el.className = "relic-fx" + (ok ? "" : " miss"); el.dataset.jolt = ok ? "name|#f2d27a|1" : "crack|#7a6a5a";
-  const SLOT = {weapon:"무기", armor:"방어구", acc:"장신구"}[R.slot];
-  el.innerHTML = `<canvas class="rl-cv"></canvas>
-    <div class="rl-core"><div class="rl-ring r1"></div><div class="rl-ring r2"></div><div class="rl-ring r3"></div><canvas class="rl-item"></canvas></div>
-    <div class="rl-head">遺 物 · RELIC</div>
-    <div class="rl-name relic-name">${esc(R.name)}</div><div class="rl-origin">${esc(R.origin)} · ${SLOT}</div>
-    <div class="rl-fit"><span>유물 적합도</span><div class="rl-bar"><i></i><b style="left:${RELIC_FIT_MIN}%"></b></div><em>0</em>
-      <small>운명 ${fit.fate>=0?"+":""}${fit.fate} · 강함 +${fit.str} · 등급 +${fit.gr}</small></div>
-    <div class="rl-text">${ok ? `<div>${esc(f.name)}의 손에 닿는 순간, 유물이 조용히 무게를 바꾸었다.</div><div class="g">「${esc(R.name)}」 — ${esc(f.name)}에게 귀속되었다.</div>`
-      : `<div>유물은 ${esc(jo(f.name,"을"))} 한참 바라보다가, 손가락 사이로 빠져나갔다.</div><div class="g">주인을 고르지 않았다.</div>`}</div>`;
-  const cv = el.querySelector(".rl-cv"), c = cv.getContext("2d"), ic = el.querySelector(".rl-item"), ix = ic.getContext("2d"), t0 = performance.now();
-  const P = Array.from({length:140}, (_,i)=>({a:Math.random()*6.283, r:0.35+Math.random()*0.65, s:0.4+Math.random()*1.4, z:Math.random()}));
+  S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — 적합도 ${fit.v}, 귀속`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic");
+  try{ pushRumor(`${S.officeName}의 누군가가 유적에서 올라온 진짜 유물을 손에 넣었다는 말이 돈다.`, true, performance.now(), "major"); }catch(_){}
+  save(); render(); }
+/* 유물 연출 — 원작의 유물: 도시 아래 '유적'에서 나오는, 드물고 손에 넣기 어려운 물건. 별과 얽혀 있다고 하며(별에서 벼려졌다는 것도 있다),
+   아무나 쥘 수 없고 적성을 요구한다. 적성 없이 쥐면 다치기도 한다. 귀할수록 강하고 까다로우며 흠이 있다. 가짜도 많이 돈다.
+   ① 하강 — 도시 아래, 유적으로 ② 출현 — 성운 속에서 별빛이 모여 물건이 떠오른다 ③ 적성 — 유물이 손을 시험한다(공명 파동 · 적합도)
+   ④ 공명(귀속) 또는 거부(반동) ⑤ 감정서 — 이름 · 출토 · 성질 · 흠 · 적합도 · 귀속 */
+const RELIC_LORE = {
+  astrape:{trait:"자루를 따라 번개가 흐르고, 던져도 손으로 돌아온다", flaw:"쥔 손에 늘 전기가 남는다 — 정신력 피해 +4%", mpRed:-0.04},
+  claiomh:{trait:"뽑으면 둘레가 한낮처럼 밝아진다", flaw:"한 번 뽑힌 칼은 베기 전에는 칼집으로 돌아가지 않는다 — 체력 피해 +3%", hpRed:-0.03},
+  gyeongui:{trait:"칼등의 두 글귀가 쥔 이의 마음을 곧게 세운다", flaw:"글귀가 망설임을 허락하지 않는다 — 민첩 -1", bonus:{agi:-1}},
+  ruyi:{trait:"쥔 이의 뜻에 따라 길이와 무게가 바뀐다", flaw:"뜻이 흐트러지면 무게도 흐트러진다 — 재주 -1", bonus:{tec:-1}},
+  drepanon:{trait:"지나간 자리에서 이듬해 무언가가 자란다", flaw:"거둔 것의 무게가 마음에 남는다 — 정신력 피해 +3%", mpRed:-0.03},
+  sleipnir:{trait:"걸치면 발걸음이 한 박자씩 빨라진다", flaw:"말은 멈추는 법을 모른다 — 의지 -1", bonus:{wil:-1}},
+  aegis:{trait:"새겨진 얼굴과 눈이 마주친 자는 잠시 굳는다", flaw:"무겁다 — 민첩 -2", bonus:{agi:-2}},
+  kavacha:{trait:"살갗처럼 몸에 붙어 웬만한 칼날을 튕겨 낸다", flaw:"한 번 입으면 몸이 기억해 무뎌진다 — 민첩 -1", bonus:{agi:-1}},
+  karakawa:{trait:"가문이 무너져도 주인을 찾아 떠돈 갑옷", flaw:"호랑이의 성미가 남아 있다 — 정신력 피해 +4%", mpRed:-0.04},
+  bell:{trait:"흔들면 소리가 여덟 갈래로 퍼져 다른 목소리를 덮는다", flaw:"방울 소리가 발소리를 드러낸다 — 민첩 -1", bonus:{agi:-1}},
+  scarab:{trait:"어두운 날에도 목에 건 자리가 따뜻하다", flaw:"빛이 새어 손끝이 둔해진다 — 재주 -1", bonus:{tec:-1}},
+  horus:{trait:"먼 곳의 움직임이 한 박자 먼저 보인다", flaw:"오래 보면 눈이 달아오른다 — 체력 피해 +3%", hpRed:-0.03}};
+const RELIC_BACKLASH = 0.1;   // 적성이 없는 손으로 쥐면 다친다 — 체력 -10%
+/* ================= 유물 SDF 렌더러(RelicSDF) =================
+   도형을 이어 붙이지 않고, 조각마다 '거리장(SDF)'과 높이(둥근 단면)를 셰이더에서 계산해 가장 위에 있는 면을 고른다.
+   높이장에서 법선을 얻어 금 · 푸른 금속 · 쇠 외피의 광택을 계산하고, 금속 안쪽 번개 결과 갈래 사이 아크는 노이즈로 움직인다.
+   결과는 무기 좌표(손 = x 0)에 맞춘 스프라이트로 저장해 그린다. 단계: 0 원본 · 1 한 겹 봉인 · 2 두 겹 봉인 */
+const RelicSDF = (()=>{
+  let gl = null, cv = null, prog = null, uni = {}, state = null; const sprites = {};
+  const VS = `#version 300 es
+in vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
+  const FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes; uniform vec4 uView; uniform float uT, uState, uL;
+out vec4 o;
+float h21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x*p.y); }
+float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f); return mix(mix(h21(i), h21(i + vec2(1,0)), f.x), mix(h21(i + vec2(0,1)), h21(i + vec2(1,1)), f.x), f.y); }
+float fbm(vec2 p){ float a = .5, s = 0.; for(int i=0;i<4;i++){ s += a*n2(p); p *= 2.03; a *= .5; } return s; }
+struct Hit { float z; float mat; float e; float eb; };
+void tube2(inout Hit H, vec2 p, vec2 a, vec2 b, float ra, float rb, float za, float zb, float mat, float facet){
+  vec2 pa = p - a, ba = b - a; float t = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.); float r = mix(ra, rb, t); float d = length(pa - ba*t);
+  float e = d - r; H.e = min(H.e, e); if(mat==2.) H.eb = min(H.eb, e);
+  if(e < 0.){ float z = facet > .5 ? (r - d)*1.7 + r*.25 : sqrt(max(r*r - d*d, 0.)); z += mix(za, zb, t); if(z > H.z){ H.z = z; H.mat = mat; } } }
+void tube(inout Hit H, vec2 p, vec2 a, vec2 b, float ra, float rb, float zo, float mat, float facet){ tube2(H, p, a, b, ra, rb, zo, zo, mat, facet); }
+float prad(float t, float bul){ return bul*pow(sin(3.14159*t), .85)*(1. - .12*t) + .008*(1. - t); }
+void prong(inout Hit H, vec2 p, float xb, float xt, float bul, float yf, float zf, float r0, int N){
+  if(p.x < min(xb, xt) - .03 || p.x > max(xb, xt) + .03 || abs(p.y) > bul + .03) return;
+  float t0 = 0.; vec3 A = vec3(xb, prad(0., bul)*yf, prad(0., bul)*zf);
+  for(int i=1;i<=16;i++){ if(i > N) break; float t = float(i)/float(N); vec3 B = vec3(mix(xb, xt, t), prad(t, bul)*yf, prad(t, bul)*zf);
+    tube2(H, p, A.xy, B.xy, r0*(1. - .55*t0), r0*(1. - .55*t), A.z, B.z, 2., 0.); A = B; t0 = t; } }
+void vajra(inout Hit H, vec2 p, float xb, float xt0, float bul, float r0, float rc, int N){
+  tube(H, p, vec2(xb, 0.), vec2(xt0, 0.), rc, .0012, 0., 2., 1.);
+  float xt = mix(xb, xt0, .8);   // 네 갈래는 창끝 앞에서 가운데 날로 모이고, 그 앞은 곧은 날 하나가 뻗는다
+  // 네 갈래(축을 20° 돌려 본 모습): 바깥 위 · 앞 안쪽 · 바깥 아래 · 뒤 안쪽
+  prong(H, p, xb, xt, bul, .94, .34, r0, N); prong(H, p, xb, xt, bul, -.34, .94, r0, N);
+  prong(H, p, xb, xt, bul, -.94, -.34, r0, N); prong(H, p, xb, xt, bul, .34, -.94, r0, N); }
+void link(inout Hit H, vec2 p, vec2 c, float ang, float zo, bool face){
+  vec2 q = p - c; float cs = cos(ang), sn = sin(ang); q = vec2(cs*q.x + sn*q.y, -sn*q.x + cs*q.y);
+  if(face){ float R = .0062, th = .0021; float d = abs(length(q*vec2(1., 1.5)) - R) - th; H.e = min(H.e, d);
+    if(d < 0.){ float z = zo + sqrt(max(th*th - (d + th)*(d + th), 0.)) + th; if(z > H.z){ H.z = z; H.mat = 5.; } } }
+  else { vec2 a = vec2(-.0072, 0.), b = vec2(.0072, 0.); vec2 pa = q - a, ba = b - a; float t = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.); float d = length(pa - ba*t) - .0022; H.e = min(H.e, d);
+    if(d < 0.){ float z = zo + .002 + sqrt(max(.0022*.0022 - (d + .0022)*(d + .0022), 0.)); if(z > H.z){ H.z = z; H.mat = 5.; } } } }
+float cW(float t){ t = clamp(t, 0., 1.); return .046*pow(sin(3.14159*min(t*1.12, 1.)), .7) + .018*(1. - t) + .003; }
+Hit scene(vec2 p){
+  Hit H; H.z = -1e9; H.mat = 0.; H.e = 1e9; H.eb = 1e9;
+  float xb = .085, xt = xb + .5*uL, gx0 = -.118, gx1 = .078;
+  // 금 손잡이: 곧은 자루 + 양 끝의 금테 + 가운데 구슬 매듭(장식 꽃 없음)
+  tube(H, p, vec2(gx0, 0.), vec2(gx1, 0.), .0152, .0152, 0., 1., 0.);
+  tube(H, p, vec2(gx0 - .007, 0.), vec2(gx0 + .006, 0.), .021, .021, .002, 1., 0.);
+  tube(H, p, vec2(gx1 - .006, 0.), vec2(gx1 + .007, 0.), .021, .021, .002, 1., 0.);
+  tube(H, p, vec2(-.023, 0.), vec2(-.017, 0.), .0195, .0195, .002, 1., 0.);
+  // 뒤 끝: 짧은 금강저
+  vajra(H, p, gx0 - .005, -.29, .02, .0062, .0095, 8);
+  if(uState < 1.5){
+    float bul = uState > .5 ? .026 : .038;
+    vajra(H, p, xb, xt, bul, .0108, .021, 14);
+    if(uState > .5){
+      // 한 겹 봉인: 끝을 모은 자리에 쇠 고리, 가운데 날을 감는 나선 사슬
+      float tr = .62, xr = mix(xb, mix(xb, xt, .8), tr), rr = prad(tr, bul) + .012;
+      { vec2 q = p - vec2(xr, 0.); float d = max(abs(q.x) - .0075, abs(q.y) - rr); H.e = min(H.e, d);
+        if(d < 0.){ float z = rr*sqrt(max(1. - (q.y/rr)*(q.y/rr), 0.)) + .004; if(z > H.z){ H.z = z; H.mat = 4.; } } }
+      for(int w=0;w<3;w++){ float x0 = mix(xb, xt, .1 + float(w)*.16), R = prad(.12 + float(w)*.16, bul) + .006;   // 갈래 위로 비스듬히 감긴 사슬(앞면만 보인다)
+        for(int i=0;i<9;i++){ float f = float(i)/8.; vec2 c = vec2(x0 + f*.045, mix(-R, R, f)); link(H, p, c, atan(2.*R, .045), .03, (i % 2) == 0); } }
+    }
+  } else {
+    // 두 겹 봉인: 금강저 모양을 따라 만든 쇠 외피 + 절연 띠 둘(볼트) + 감아 도는 사슬 + 봉인 띠지
+    float t = (p.x - xb)/(xt - xb), W = cW(t), e;
+    if(t < 0.) e = length(vec2(p.x - xb, p.y)) - cW(0.); else if(t > 1.) e = length(vec2(p.x - xt, p.y)) - .004; else e = abs(p.y) - W;
+    H.e = min(H.e, e); if(e < 0.){ float z = W*sqrt(max(1. - (p.y/W)*(p.y/W), 0.)); if(z > H.z){ H.z = z; H.mat = 3.; } }
+    for(int k=0;k<2;k++){ float tb = k==0 ? .3 : .64, xc = mix(xb, xt, tb), Wb = cW(tb) + .007; vec2 q = p - vec2(xc, 0.); float d = max(abs(q.x) - .009, abs(q.y) - Wb); H.e = min(H.e, d);
+      if(d < 0.){ float z = Wb*sqrt(max(1. - (q.y/Wb)*(q.y/Wb), 0.)) + .004; if(z > H.z){ H.z = z; H.mat = 4.; } }
+      for(int s=-1;s<=1;s+=2){ vec2 bq = p - vec2(xc, float(s)*(Wb - .006)); float bd = length(bq) - .0042; H.e = min(H.e, bd);
+        if(bd < 0.){ float z = .02 + sqrt(max(.0042*.0042 - dot(bq, bq), 0.)); if(z > H.z){ H.z = z; H.mat = 4.; } } } }
+    for(int w=0;w<3;w++){ float ta = .1 + float(w)*.29, tb2 = ta + .1, Wa = cW(ta) + .004, Wb2 = cW(tb2) + .004; vec2 A = vec2(mix(xb, xt, ta), -Wa), B = vec2(mix(xb, xt, tb2), Wb2);
+      float len = length(B - A); int n = int(len/.0118); float ang = atan(B.y - A.y, B.x - A.x);
+      for(int i=0;i<16;i++){ if(i > n) break; float f = float(i)/float(max(n, 1)); vec2 c = mix(A, B, f); float Wc = cW(mix(ta, tb2, f)); float zz = Wc*sqrt(max(1. - (c.y/(Wc + .004))*(c.y/(Wc + .004)), 0.)) + .004; link(H, p, c, ang, zz, (i % 2) == 0); } }
+    { float xc = mix(xb, xt, .64), Wb = cW(.64) + .007; vec2 q = p - vec2(xc + .004, -Wb - .036); float cs = cos(.12), sn = sin(.12); q = vec2(cs*q.x + sn*q.y, -sn*q.x + cs*q.y);
+      float d = max(abs(q.x) - .011, abs(q.y) - .034); H.e = min(H.e, d);
+      if(d < 0.){ float z = .03; if(z > H.z){ H.z = z; H.mat = (abs(q.x) < .0022 && q.y < .02 && q.y > -.022) || (abs(q.y - .024) < .0028 && abs(q.x) < .007) ? 8. : 7.; } }
+      link(H, p, vec2(xc + .001, -Wb - .004), 1.57, .03, true); }
+  }
+  return H; }
+void main(){
+  vec2 uv = gl_FragCoord.xy/uRes; vec2 p = vec2(mix(uView.x, uView.z, uv.x), mix(uView.y, uView.w, uv.y));
+  float px = (uView.z - uView.x)/uRes.x;
+  Hit H = scene(p);
+  float a = clamp(.5 - H.e/px, 0., 1.);
+  vec3 col = vec3(0.); vec3 glow = vec3(0.); float gA = 0.;
+  if(H.mat > 0.){
+    float dx = px*.9; Hit Hx = scene(p + vec2(dx, 0.)), Hy = scene(p + vec2(0., dx));
+    float zx = Hx.mat == H.mat ? Hx.z : H.z, zy = Hy.mat == H.mat ? Hy.z : H.z;
+    vec3 n = normalize(vec3(-clamp((zx - H.z)/dx, -4., 4.), -clamp((zy - H.z)/dx, -4., 4.), 1.));
+    vec3 L = normalize(vec3(-.35, .55, .75)), V = vec3(0., 0., 1.), Hh = normalize(L + V);
+    float dif = max(dot(n, L), 0.), nh = max(dot(n, Hh), 0.), fr = pow(1. - n.z, 2.), env = .5 + .5*n.y;
+    if(H.mat == 1.){ vec3 al = vec3(.86, .63, .24)*(.9 + .1*n2(p*vec2(420., 30.)));
+      col = al*(.22 + .7*dif) + al*env*.28 + vec3(1., .9, .62)*pow(nh, 55.)*1.25 + vec3(1., .8, .45)*fr*.25;
+      if(p.x > -.112 && p.x < .072) col *= .9 + .1*smoothstep(.3, .7, fract(p.x*260.)); }
+    else if(H.mat == 2.){ vec3 al = vec3(.06, .19, .52);
+      col = al*(.28 + .72*dif) + vec3(.2, .45, 1.)*env*.18 + vec3(.65, .88, 1.)*pow(nh, 90.)*1.5 + vec3(.25, .55, 1.)*fr*.55;
+      float v = abs(fbm(vec2(p.x*58. - uT*1.7, p.y*170. + uT*5.)) - .5), vein = smoothstep(.035, 0., v)*(.55 + .45*sin(uT*21. + p.x*95.));
+      col += vec3(.55, .88, 1.)*vein*(uState > .5 ? .55 : 1.15); }
+    else if(H.mat == 3.){ vec3 al = vec3(.17, .18, .2)*(.82 + .32*fbm(p*vec2(320., 60.)));
+      col = al*(.25 + .75*dif) + vec3(.7, .75, .8)*pow(nh, 40.)*.6 + al*env*.2;
+      float seam = smoothstep(.0016, .0, abs(p.y + (fbm(vec2(p.x*70., 3.)) - .5)*.004)), crk = smoothstep(.012, .0, abs(fbm(p*vec2(80., 260.)) - .5))*.6;
+      float pulse = .55 + .45*sin(uT*3.1 + p.x*20.);
+      glow += vec3(.45, .8, 1.)*(seam*1.3 + crk*.5)*pulse; }
+    else if(H.mat == 4.){ vec3 al = vec3(.55, .58, .62); col = al*(.25 + .75*dif) + vec3(1.)*pow(nh, 70.)*.9 + al*env*.2; }
+    else if(H.mat == 5.){ vec3 al = vec3(.48, .5, .54); col = al*(.2 + .8*dif) + vec3(1.)*pow(nh, 60.)*.8; }
+    else if(H.mat == 7.){ col = vec3(.9, .86, .74)*(.55 + .45*dif)*(.9 + .1*n2(p*900.)); }
+    else if(H.mat == 8.){ col = vec3(.62, .08, .06)*(.6 + .4*dif); }
+    if(uState > 1.5 && H.mat == 1. && p.x > -.03 && p.x < .072){ float s2 = smoothstep(.35, .5, fract((p.x + p.y*.9)*150.)); col = vec3(.05, .05, .06)*(.5 + .5*dif) + vec3(.35)*pow(nh, 30.) + vec3(.03)*s2; }   // 절연 테이프
+    col *= mix(1., .3, smoothstep(-px*1.6, 0., H.e));   // 그림 같은 어두운 윤곽
+  }
+  // 번개: 원본은 갈래 사이를 아크가 오가고, 한 겹 봉인은 고리 · 사슬에 부딪혀 불꽃이 튄다
+  float xb = .085, xt = xb + .5*uL;
+  if(uState < .5){
+    for(int k=0;k<4;k++){ float sd = floor(uT*9.) + float(k)*17.; if(h21(vec2(sd, 1.)) < .3) continue;
+      float xp = mix(xb, xt, .8), x0 = mix(xb + .04, xp - .05, h21(vec2(sd, 2.))), side = h21(vec2(sd, 3.)) < .5 ? -1. : 1., tt = (x0 - xb)/(xp - xb), top = prad(tt, .038)*.94;
+      float yy = p.y*side; if(yy > -.002 && yy < top + .002){ float jit = (n2(vec2(p.y*150., sd)) - .5)*.016 + (n2(vec2(p.y*420., sd + 4.)) - .5)*.005; float d = abs(p.x - x0 - jit);
+        float g = exp(-d*1100.)*1.4 + exp(-d*200.)*.3; glow += vec3(.62, .9, 1.)*g; } }
+    glow += vec3(.25, .55, 1.)*exp(-max(H.eb, 0.)*110.)*.35*(.7 + .3*sin(uT*13.));   // 날 둘레의 푸른 기운
+  } else if(uState < 1.5){
+    float xr = mix(xb, mix(xb, xt, .8), .62);
+    for(int k=0;k<6;k++){ float sd = floor(uT*12.) + float(k)*7.; vec2 c = vec2(xr + (h21(vec2(sd, 5.)) - .5)*.03, (h21(vec2(sd, 6.)) - .5)*.08); float f = h21(vec2(sd, 7.));
+      if(f > .45){ float d = length((p - c)*vec2(1., 1.)); glow += vec3(.65, .92, 1.)*(exp(-d*900.)*1.2 + exp(-d*220.)*.2); } }
+    glow += vec3(.25, .55, 1.)*exp(-max(H.eb, 0.)*160.)*.18;
+  }
+  float ga = clamp(max(glow.r, max(glow.g, glow.b)), 0., 1.);
+  o = vec4(col*a + glow*(1. - a*.3), clamp(a + ga*.85, 0., 1.)); }`;
+  function init(){ if(state !== null) return state; state = false;
+    try{ cv = document.createElement("canvas"); gl = cv.getContext("webgl2", {premultipliedAlpha:true, alpha:true, antialias:false, preserveDrawingBuffer:true}); if(!gl) return false;
+      const sh = (t, s)=>{ const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if(!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
+      prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+      if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      ["uRes","uView","uT","uState","uL"].forEach(k=>uni[k] = gl.getUniformLocation(prog, k)); state = true;
+    }catch(e){ console.warn("RelicSDF", e); state = false; } return state; }
+  // 무기 좌표의 그릴 범위(손 = 0): 뒤 끝 금강저부터 창끝까지
+  const viewOf = L => { const x1 = .085 + .5*L + .03; return {x0:-.31, x1, y:.1}; };
+  function render(stage, L, t, W){ if(!init()) return null; const v = viewOf(L), H = Math.round(W*(2*v.y)/(v.x1 - v.x0));
+    if(cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
+    gl.viewport(0, 0, W, H); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(prog);
+    gl.uniform2f(uni.uRes, W, H); gl.uniform4f(uni.uView, v.x0, -v.y, v.x1, v.y); gl.uniform1f(uni.uT, t); gl.uniform1f(uni.uState, stage); gl.uniform1f(uni.uL, L);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); return {cv, v, H}; }
+  // 스프라이트: 단계마다 하나. 움직임은 1/15초마다(느린 그래픽 환경이면 한 번만) 다시 그린다
+  function sprite(id, stage, L){ if(!init()) return null; const soft = softGL(), W = soft ? 640 : 1280, key = id + "|" + stage + "|" + L.toFixed(2) + "|" + W;
+    let e = sprites[key]; const now = performance.now();
+    if(!e){ e = sprites[key] = {c: document.createElement("canvas"), t: -1e9}; }
+    if((soft ? e.t < 0 : now - e.t > 66)){ const r = render(stage, L, now/1000, W); if(e.c.width !== W || e.c.height !== r.H){ e.c.width = W; e.c.height = r.H; }
+      const x = e.c.getContext("2d"); x.clearRect(0, 0, W, r.H); x.drawImage(r.cv, 0, 0); e.t = now; e.v = r.v; }
+    return e; }
+  return {sprite, init, viewOf, render};
+})();
+/* ================= 유물 연출 — 셰이더 층(RelicGL) =================
+   개화·전투 연출처럼 WebGL2로 그린다. 장면 버퍼에 ① 배경(유적 갱도 → 성운 · 별) ② 절차적 봉인 고리 메시 ③ 유물(노이즈 디졸브 · 금빛 녹은 테두리 · 별빛 흐름 · 보로노이 균열/파편)
+   ④ 별먼지 입자(나선 수렴 → 공명 분출 / 거부 불씨)를 그리고, ⑤ 후처리(공명 파동 굴절 · 충격파 · 방사형 빛줄기 · 색수차 · 비네트 · 입자감)로 화면에 낸다. */
+const RelicGL = (()=>{
+const NOISE = `
+float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+vec2 h22(vec2 p){float n=h21(p);return vec2(n,h21(p+n*17.3));}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
+float fbm(vec2 p){float s=0.,a=.5;mat2 m=mat2(1.6,1.2,-1.2,1.6);for(int i=0;i<5;i++){s+=a*vn(p);p=m*p;a*=.5;}return s;}`;
+const QV = `#version 300 es
+in vec2 aP;out vec2 vUv;void main(){vUv=aP*.5+.5;gl_Position=vec4(aP,0.,1.);}`;
+// ① 배경: 유적 갱도(하강) → 성운 · 별
+const BG = `#version 300 es
+precision highp float;in vec2 vUv;out vec4 o;uniform vec2 uRes;uniform float uT,uFall,uNeb,uRej,uOk;uniform vec2 uC;${NOISE}
+void main(){vec2 p=(gl_FragCoord.xy-uC*uRes)/uRes.y;float r=length(p),a=atan(p.y,p.x);
+ // 갱도: 원통 좌표로 감싼 비틀린 노이즈가 아래(안쪽)로 빨려 든다
+ float z=.32/(r+.04)+uT*1.35;vec2 tq=vec2(a*1.9099,z);vec2 w=vec2(fbm(tq*1.2+3.1),fbm(tq*1.2-1.7));float rock=fbm(tq*vec2(2.,1.)+w*1.6);
+ float strata=smoothstep(.45,.75,fbm(vec2(z*2.4,a*.6)));vec3 shaft=mix(vec3(.025,.02,.016),vec3(.21,.16,.11),rock)*(.55+.45*strata);
+ float dust=pow(vn(vec2(a*14.,z*6.)),18.)*1.6;shaft+=vec3(.9,.78,.55)*dust*smoothstep(.05,.5,r);
+ shaft*=smoothstep(.0,.55,r)*.9+.1;shaft+=vec3(1.,.86,.55)*exp(-r*7.)*.9;
+ // 성운: 도메인 워핑 구름 + 별
+ vec2 q=p*1.7;vec2 w1=vec2(fbm(q+uT*.04),fbm(q+vec2(5.2,1.3)-uT*.03));vec2 w2=vec2(fbm(q+2.*w1+vec2(1.7,9.2)),fbm(q+2.*w1+vec2(8.3,2.8)));
+ float n=fbm(q+2.4*w2);vec3 vio=vec3(.32,.2,.55),tea=vec3(.16,.5,.48),gol=vec3(.95,.75,.38);
+ vec3 neb=mix(vio,tea,clamp(w2.x*1.4-.2,0.,1.));neb=mix(neb,gol,smoothstep(.55,.0,r)*.75);neb*=pow(n,2.2)*2.4*smoothstep(1.4,.1,r);
+ vec3 st=vec3(0);for(int l=0;l<3;l++){float k=34.+float(l)*41.;vec2 g=p*k+float(l)*7.;vec2 id=floor(g);vec2 f=fract(g)-.5;float h=h21(id);
+  if(h>.965){vec2 off=(h22(id)-.5)*.7;float d=length(f-off);float tw=.55+.45*sin(uT*(2.+h*5.)+h*40.);st+=vec3(1.,.95,.85)*smoothstep(.09,.0,d)*tw*(1.-float(l)*.25);}}
+ neb+=st*(.4+.6*uNeb);
+ vec3 col=mix(shaft*uFall,neb,uNeb);
+ // 거부: 붉게 식으며 색이 빠진다
+ float g=dot(col,vec3(.299,.587,.114));col=mix(col,vec3(g)*vec3(1.15,.62,.5),uRej*.75);
+ o=vec4(col,1.);}`;
+// ② 절차적 봉인 고리 메시: 고리 3겹, 마디마다 두께 · 틈 · 눈금이 노이즈로 정해진다
+const RV = `#version 300 es
+in vec3 aR;uniform vec2 uRes,uC;uniform float uT,uAlign,uJit,uRing,uRej,uScale;out vec3 vR;
+float h(float x){return fract(sin(x*127.1)*43758.5453);}
+void main(){float ri=aR.x,u=aR.y,sd=aR.z;float R=(.118+ri*.046)*uScale;float sp=(ri==1.?-1.:1.)*(.35+ri*.22);
+ float rot=(h(ri+1.)*6.283+uT*sp)*(1.-uAlign)+uJit*sin(uT*31.+ri*5.)*.06;float an=u*6.2832+rot;
+ float seg=floor(u*(24.+ri*12.));float th=(.0018+.0042*h(seg+ri*50.))*uScale*(1.+uAlign*.5);
+ float rr=R+sd*th+uRej*(h(seg+ri*9.)-.3)*.25*uScale;
+ vec2 p=vec2(cos(an),sin(an)*.72)*rr;p.x*=uRes.y/uRes.x;gl_Position=vec4(p*2.+(uC*2.-1.),0.,1.);vR=vec3(ri,u,sd);}`;
+const RF = `#version 300 es
+precision highp float;in vec3 vR;uniform float uT,uAlign,uRing,uRej,uOk;out vec4 o;
+float h(float x){return fract(sin(x*127.1)*43758.5453);}
+void main(){float ri=vR.x,u=vR.y,sd=vR.z;float N=24.+ri*12.;float seg=floor(u*N),fu=fract(u*N);
+ float on=step(.22,h(seg+ri*31.));on=max(on,uAlign);float gap=smoothstep(0.,.06,fu)*smoothstep(1.,.94,fu);
+ float tick=smoothstep(.12,.0,abs(fract(u*N*4.)-.5)-.38)*.8;float prof=pow(1.-abs(sd),1.6);
+ float run=.5+.5*sin(u*6.2832*3.-uT*2.+ri);vec3 gold=vec3(1.,.82,.45),tea=vec3(.5,.95,.85),red=vec3(1.,.32,.22);
+ vec3 c=mix(gold,tea,ri==1.?.6:.15)*(prof*(.55+.45*run)+tick*.6);c=mix(c,gold*1.6,uAlign*prof*.8);c=mix(c,red*prof,uRej);
+ float a=uRing*on*gap*(.3+.7*prof)*.75;o=vec4(c*a,a);}`;
+// ③ 유물: 노이즈 디졸브 · 녹은 금빛 테두리 · 별빛 흐름 · 보로노이 균열과 파편
+const IV = `#version 300 es
+in vec2 aP;uniform vec2 uRes,uC;uniform float uSize,uLift;out vec2 vUv;
+void main(){vUv=aP*.5+.5;vec2 p=aP*uSize/uRes*2.;p.y+=uLift/uRes.y*2.;gl_Position=vec4(p+(uC*2.-1.),0.,1.);}`;
+const IF = `#version 300 es
+precision highp float;in vec2 vUv;out vec4 o;uniform sampler2D uTex;uniform float uT,uMat,uRej,uCrack,uRes2,uPass;${NOISE}
+const float K=5.;
+vec2 cellC(vec2 id){return (id+.2+.6*h22(id))/K;}
+vec4 tex(vec2 uv){if(uv.x<0.||uv.y<0.||uv.x>1.||uv.y>1.)return vec4(0);return texture(uTex,vec2(uv.x,1.-uv.y));}
+void main(){vec2 uv=vUv;vec4 c=vec4(0);float edgeD=1.;
+ if(uRej>0.){vec2 base=floor(uv*K);bool got=false;
+  for(int j=-1;j<=1&&!got;j++)for(int i=-1;i<=1&&!got;i++){vec2 id=base+vec2(i,j);vec2 cc=cellC(id);vec2 dir=normalize(cc-.5+1e-4);
+   vec2 d=dir*uRej*(.25+.35*h21(id))+vec2(0.,-uRej*uRej*.35);float rot=(h21(id+7.)-.5)*uRej*1.2;
+   vec2 pp=uv-d-cc;pp=mat2(cos(rot),sin(rot),-sin(rot),cos(rot))*pp;pp+=cc;
+   vec2 b2=floor(pp*K);float best=9.;vec2 bid=vec2(0);for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 id2=b2+vec2(x,y);float dd=length(pp-cellC(id2));if(dd<best){best=dd;bid=id2;}}
+   if(bid==id){c=tex(pp);c.rgb=mix(c.rgb,vec3(1.,.35,.15),uRej*.6);c*=1.-uRej*.6;got=true;}}}
+ else{c=tex(uv);
+  // 균열: 보로노이 경계가 붉게 달아오른다
+  vec2 b2=floor(uv*K);float d1=9.,d2=9.;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){float dd=length(uv-cellC(b2+vec2(x,y)));if(dd<d1){d2=d1;d1=dd;}else if(dd<d2)d2=dd;}
+  edgeD=d2-d1;}
+ float a=c.a;
+ // 물질화: 노이즈 문턱 아래부터 차오르고, 문턱 근처는 녹은 금빛으로 빛난다
+ float n=fbm(uv*6.+3.);float e=uMat*1.15-n;float vis=smoothstep(0.,.03,e);float band=smoothstep(.16,.0,abs(e-.05))*step(.0,e+.05);
+ vec3 col=c.rgb*vis;
+ // 별빛 흐름 · 테두리
+ float flow=fbm(uv*vec2(7.,4.)+vec2(0.,-uT*.6));float rim=0.;vec2 px=vec2(1./256.);
+ rim=clamp(a*4.-(tex(uv+px*3.).a+tex(uv-px*3.).a+tex(uv+vec2(px.x,-px.y)*3.).a+tex(uv+vec2(-px.x,px.y)*3.).a),0.,1.);
+ vec3 gold=vec3(1.,.82,.45);col+=gold*flow*.22*a*vis*(.5+.5*uPass);col+=gold*rim*(.3+.6*uRes2)*vis;
+ float halo=0.;for(int k=0;k<8;k++){float an=float(k)*.785;halo+=tex(uv+vec2(cos(an),sin(an))*.035).a;}halo=halo/8.*(1.-a)*smoothstep(.0,1.,uMat)*(1.-uRej);
+ col+=vec3(1.,.7,.3)*band*a*2.2;
+ float crk=uCrack*(1.-uRej)*smoothstep(.02,.0,edgeD)*a;col=mix(col,vec3(1.,.38,.16)*2.,crk);
+ col+=gold*uRes2*a*.6;
+ float A=a*max(vis,band*.8);vec3 hc=gold*halo*(.35+.5*uRes2+.2*uPass);o=vec4(col*A+hc*.8,A+halo*.25);}`;
+// ④ 별먼지 입자
+const PV = `#version 300 es
+in vec4 aS;uniform vec2 uRes,uC;uniform float uT,uConv,uBurst,uRej,uOk,uScale;out vec3 vC;out float vA;
+void main(){float an=aS.x*6.2832+uT*(.25+aS.y*.9)*(1.-uConv*.4);float rad=mix(1.5+aS.z*.6,.07+.12*aS.z,uConv);
+ rad+=uBurst*(.35+aS.z*1.1)*uOk;vec2 p=vec2(cos(an),sin(an)*.72)*rad*uScale;p.y+=uBurst*uOk*aS.y*.25;
+ if(uRej>0.){p+=vec2(cos(an),sin(an))*uRej*(.2+aS.z*.5)*uScale;p.y-=uRej*uRej*.35*(.5+aS.y);}
+ p.x*=uRes.y/uRes.x;gl_Position=vec4(p*2.+(uC*2.-1.),0.,1.);
+ float tw=.6+.4*sin(uT*(3.+aS.w*7.)+aS.w*50.);vA=tw*min(1.,uConv*2.+.15)*(1.-uRej*.5)*(.4+.6*aS.z);
+ vC=uRej>0.?mix(vec3(1.,.85,.6),vec3(1.,.3,.12),uRej):mix(vec3(1.,.86,.55),vec3(.6,1.,.9),step(.8,aS.y));
+ gl_PointSize=(1.4+aS.z*3.2)*uRes.y/720.*(1.+uBurst*uOk);}`;
+const PF = `#version 300 es
+precision highp float;in vec3 vC;in float vA;out vec4 o;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,.0,d)*vA;if(a<.004)discard;o=vec4(vC*a,a);}`;
+// ⑤ 후처리: 공명 파동 굴절 · 충격파 · 방사형 빛줄기 · 색수차 · 비네트 · 입자감
+const PP = `#version 300 es
+precision highp float;in vec2 vUv;out vec4 o;uniform sampler2D uScene;uniform vec2 uRes,uC;uniform float uT,uWave,uShock,uRays,uRej,uFlash,uShake;
+float h(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+void main(){vec2 uv=vUv+vec2(sin(uT*61.),cos(uT*53.))*uShake*.004;float asp=uRes.x/uRes.y;vec2 d=(uv-uC)*vec2(asp,1.);float r=length(d);vec2 nd=d/(r+1e-4);
+ float rip=0.;for(int k=0;k<4;k++){float ph=fract(uT*.85+float(k)*.25);float rr=.07+ph*.6;rip+=sin((r-rr)*90.)*exp(-pow((r-rr)*16.,2.))*(1.-ph);}
+ uv+=nd/vec2(asp,1.)*rip*.0045*uWave;
+ float sr=uShock*1.1;uv-=nd/vec2(asp,1.)*exp(-pow((r-sr)*10.,2.))*(1.-uShock)*.05*step(.001,uShock);
+ float ca=.0015+.004*(uWave*.5+uRej+(1.-uShock)*step(.001,uShock));vec2 cd=nd/vec2(asp,1.)*ca*r;
+ vec3 col=vec3(texture(uScene,uv+cd).r,texture(uScene,uv).g,texture(uScene,uv-cd).b);
+ if(uRays>0.){vec3 acc=vec3(0);vec2 stp=(uC-uv)/18.;vec2 s=uv;float w=1.;for(int i=0;i<18;i++){s+=stp;vec3 c=texture(uScene,s).rgb;acc+=max(c-.35,0.)*w;w*=.9;}col+=acc*.07*uRays;}
+ col+=vec3(1.,.93,.75)*uFlash*exp(-r*4.)*.55;col=1.-exp(-col*1.25);
+ col*=smoothstep(1.25,.25,r*.95);col+=(h(gl_FragCoord.xy+uT)-.5)*.035;
+ o=vec4(col,1.);}`;
+function sh(g,t,s){const x=g.createShader(t);g.shaderSource(x,s);g.compileShader(x);if(!g.getShaderParameter(x,g.COMPILE_STATUS)){console.warn("RelicGL",g.getShaderInfoLog(x));return null;}return x;}
+function prog(g,v,f){const a=sh(g,g.VERTEX_SHADER,v),b=sh(g,g.FRAGMENT_SHADER,f);if(!a||!b)return null;const p=g.createProgram();g.attachShader(p,a);g.attachShader(p,b);g.linkProgram(p);if(!g.getProgramParameter(p,g.LINK_STATUS)){console.warn("RelicGL",g.getProgramInfoLog(p));return null;}return p;}
+function create(canvas, sprite){
+  let g=null;try{g=canvas.getContext("webgl2",{antialias:false,alpha:false,premultipliedAlpha:false,preserveDrawingBuffer:false,powerPreference:"high-performance"});}catch(_){}
+  if(!g) return null;
+  const P={bg:prog(g,QV,BG),ring:prog(g,RV,RF),item:prog(g,IV,IF),pt:prog(g,PV,PF),post:prog(g,QV,PP)}; if(Object.values(P).some(x=>!x)) return null;
+  const U={};Object.entries(P).forEach(([k,p])=>{U[k]=new Proxy({},{get:(o,n)=>o[n]!==undefined?o[n]:(o[n]=g.getUniformLocation(p,n))});});
+  const quad=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,quad);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),g.STATIC_DRAW);
+  const vaoQ={};["bg","item","post"].forEach(k=>{const v=g.createVertexArray();g.bindVertexArray(v);const l=g.getAttribLocation(P[k],"aP");g.enableVertexAttribArray(l);g.vertexAttribPointer(l,2,g.FLOAT,false,0,0);vaoQ[k]=v;});
+  // 고리 메시: 3겹 × 마디 384 × 안팎 2 — 삼각형 띠
+  const SEG=384,rd=[];for(let i=0;i<3;i++){for(let j=0;j<=SEG;j++)for(const s of[-1,1])rd.push(i,j/SEG,s);}
+  const rb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,rb);g.bufferData(g.ARRAY_BUFFER,new Float32Array(rd),g.STATIC_DRAW);
+  const vr=g.createVertexArray();g.bindVertexArray(vr);const lr=g.getAttribLocation(P.ring,"aR");g.enableVertexAttribArray(lr);g.vertexAttribPointer(lr,3,g.FLOAT,false,0,0);
+  const NP=1400,sd=new Float32Array(NP*4);for(let i=0;i<NP*4;i++)sd[i]=Math.random();
+  const pb=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,pb);g.bufferData(g.ARRAY_BUFFER,sd,g.STATIC_DRAW);
+  const vp=g.createVertexArray();g.bindVertexArray(vp);const lp=g.getAttribLocation(P.pt,"aS");g.enableVertexAttribArray(lp);g.vertexAttribPointer(lp,4,g.FLOAT,false,0,0);g.bindVertexArray(null);
+  const mk=(w,h,src)=>{const t=g.createTexture();g.bindTexture(g.TEXTURE_2D,t);if(src)g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,src);else g.texImage2D(g.TEXTURE_2D,0,g.RGBA8,w,h,0,g.RGBA,g.UNSIGNED_BYTE,null);
+    g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MIN_FILTER,g.LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_MAG_FILTER,g.LINEAR);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE);g.texParameteri(g.TEXTURE_2D,g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE);return t;};
+  g.pixelStorei(g.UNPACK_PREMULTIPLY_ALPHA_WEBGL,false);const itex=mk(0,0,sprite);
+  let scene=null,fbo=null,fw=0,fh=0,scale=.8;
+  function size(){const dpr=Math.min(1.5,devicePixelRatio||1),w=canvas.clientWidth||innerWidth,h=canvas.clientHeight||innerHeight;let W=Math.round(w*dpr*scale),H=Math.round(h*dpr*scale);const cap=1400/Math.max(W,H);if(cap<1){W=Math.round(W*cap);H=Math.round(H*cap);}
+    if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
+    if(fw!==W||fh!==H){if(scene)g.deleteTexture(scene);if(fbo)g.deleteFramebuffer(fbo);scene=mk(W,H);fbo=g.createFramebuffer();g.bindFramebuffer(g.FRAMEBUFFER,fbo);g.framebufferTexture2D(g.FRAMEBUFFER,g.COLOR_ATTACHMENT0,g.TEXTURE_2D,scene,0);fw=W;fh=H;}}
+  let last=0,acc=0,n=0;
+  function render(s){const now=performance.now();if(last){acc+=now-last;n++;if(n>=20){if(acc/n>34&&scale>.45){scale*=.82;}acc=0;n=0;}}last=now;
+    size();const W=canvas.width,H=canvas.height,C=[.5,s.cy||.6],uS=Math.min(1.25,H/W*1.1+.38);
+    g.bindFramebuffer(g.FRAMEBUFFER,fbo);g.viewport(0,0,W,H);g.disable(g.BLEND);
+    g.useProgram(P.bg);g.bindVertexArray(vaoQ.bg);let u=U.bg;g.uniform2f(u.uRes,W,H);g.uniform2f(u.uC,C[0],C[1]);g.uniform1f(u.uT,s.t);g.uniform1f(u.uFall,s.fall);g.uniform1f(u.uNeb,s.neb);g.uniform1f(u.uRej,s.rej);g.uniform1f(u.uOk,s.ok);g.drawArrays(g.TRIANGLE_STRIP,0,4);
+    g.enable(g.BLEND);g.blendFunc(g.ONE,g.ONE);
+    if(s.ring>0){g.useProgram(P.ring);g.bindVertexArray(vr);u=U.ring;g.uniform2f(u.uRes,W,H);g.uniform2f(u.uC,C[0],C[1]);g.uniform1f(u.uT,s.t);g.uniform1f(u.uAlign,s.align);g.uniform1f(u.uJit,s.jit);g.uniform1f(u.uRing,s.ring);g.uniform1f(u.uRej,s.rej);g.uniform1f(u.uScale,uS);
+      for(let i=0;i<3;i++)g.drawArrays(g.TRIANGLE_STRIP,i*(SEG+1)*2,(SEG+1)*2);}
+    if(s.mat>0){g.blendFunc(g.ONE,g.ONE_MINUS_SRC_ALPHA);g.useProgram(P.item);g.bindVertexArray(vaoQ.item);u=U.item;g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,itex);g.uniform1i(u.uTex,0);
+      g.uniform2f(u.uRes,W,H);g.uniform2f(u.uC,C[0],C[1]);g.uniform1f(u.uSize,H*.19);g.uniform1f(u.uLift,(Math.sin(s.t*1.4)*3-s.rej*40)*H/720);g.uniform1f(u.uT,s.t);g.uniform1f(u.uMat,s.mat);g.uniform1f(u.uRej,s.rej);g.uniform1f(u.uCrack,s.crack);g.uniform1f(u.uRes2,s.res);g.uniform1f(u.uPass,s.pass);
+      g.drawArrays(g.TRIANGLE_STRIP,0,4);}
+    if(s.conv>0){g.blendFunc(g.ONE,g.ONE);g.useProgram(P.pt);g.bindVertexArray(vp);u=U.pt;g.uniform2f(u.uRes,W,H);g.uniform2f(u.uC,C[0],C[1]);g.uniform1f(u.uT,s.t);g.uniform1f(u.uConv,s.conv);g.uniform1f(u.uBurst,s.burst);g.uniform1f(u.uRej,s.rej);g.uniform1f(u.uOk,s.ok);g.uniform1f(u.uScale,uS);g.drawArrays(g.POINTS,0,NP);}
+    g.disable(g.BLEND);g.bindFramebuffer(g.FRAMEBUFFER,null);g.viewport(0,0,W,H);g.useProgram(P.post);g.bindVertexArray(vaoQ.post);u=U.post;g.activeTexture(g.TEXTURE0);g.bindTexture(g.TEXTURE_2D,scene);g.uniform1i(u.uScene,0);
+    g.uniform2f(u.uRes,W,H);g.uniform2f(u.uC,C[0],C[1]);g.uniform1f(u.uT,s.t);g.uniform1f(u.uWave,s.wave);g.uniform1f(u.uShock,s.shock);g.uniform1f(u.uRays,s.rays);g.uniform1f(u.uRej,s.rej);g.uniform1f(u.uFlash,s.flash);g.uniform1f(u.uShake,s.shake);
+    g.drawArrays(g.TRIANGLE_STRIP,0,4);}
+  function dispose(){try{const e=g.getExtension("WEBGL_lose_context");if(e)e.loseContext();}catch(_){}}
+  return {render,dispose};}
+return {create};})();
+
+/* 셰이더 연출 경로 — 장면 시간표는 2D와 같다(하강 0~2.4 · 성운 2.4~ · 물질화 3.4~ · 적성 4.8~7.6 · 결과 7.6 · 감정서 9.2) */
+function relicSceneGL(el, R, f, fit, ok){
+  const spr = document.createElement("canvas"); spr.width = spr.height = 512; const sx = spr.getContext("2d");
+  sx.save(); sx.translate(256, 256); sx.scale(2.6, 2.6); sx.translate(-128, -128); try{ relicArt(sx, R, 256, 256, 0, 0); }catch(_){ } sx.restore();
+  const glc = document.createElement("canvas"); glc.className = "rl-gl"; el.insertBefore(glc, el.firstChild);
+  let G = null; try{ G = RelicGL.create(glc, spr); }catch(e){ console.warn(e); G = null; }
+  if(!G){ glc.remove(); return null; }
+  el.classList.add("gl");
+  const t0 = performance.now(), T = {res:7.6, card:9.2}; let skipAt = null, slow = 0, frames = 0;
   const em = el.querySelector(".rl-fit em"), bar = el.querySelector(".rl-bar i");
-  const loop = () => { if(!el.isConnected) return; const d = Math.min(2, devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight;
-    if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); } c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H);
-    const tt = (performance.now()-t0)/1000, k = clamp((tt-0.4)/2.6, 0, 1), cx = W/2, cy = H*0.4, R0 = Math.max(W,H)*0.6;
-    P.forEach(p=>{ const rr = R0*p.r*(1-k*0.92) + 30, a = p.a + tt*p.s*0.6; const x = cx + Math.cos(a)*rr, y = cy + Math.sin(a)*rr*0.75;
-      c.fillStyle = ok ? `rgba(242,210,122,${0.25+0.6*p.z})` : `rgba(160,150,140,${0.2+0.4*p.z})`; c.fillRect(x, y, 1.5+p.z*2, 1.5+p.z*2); });
-    if(k >= 1 && ok){ const g = c.createRadialGradient(cx, cy, 0, cx, cy, 220); g.addColorStop(0, `rgba(255,236,170,${0.25+0.1*Math.sin(tt*3)})`); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(0,0,W,H); }
-    // 유물 그림
-    const iw = ic.clientWidth, ih = ic.clientHeight; if(ic.width !== Math.round(iw*d)){ ic.width = Math.round(iw*d); ic.height = Math.round(ih*d); }
-    ix.setTransform(d,0,0,d,0,0); ix.clearRect(0,0,iw,ih); ix.globalAlpha = clamp((tt-1.6)/0.8, 0, 1) * (ok || tt < 7 ? 1 : 0.35);
-    if(R.slot==="weapon"){ ix.save(); ix.translate(iw/2, ih/2); ix.rotate(-0.6 + Math.sin(tt*0.8)*0.04); try{ const L0 = (WEAPON_REACH[R.kind]||0.6)*(R.look.len||1), u = iw*0.95/(L0+0.2); ix.translate(-L0*u*0.5, 0); drawWeaponSpec(ix, Object.assign(defaultSpec(R.kind), R.look), u, "#2a2c31"); }catch(_){ } ix.restore(); }
-    else if(R.slot==="armor"){ try{ drawFixer(ix, iw/2, ih*0.95, ih*0.85, {face:1, view:"front", state:"idle", col:"#4a4038", armor:R.look, t:tt}); }catch(_){ } }
+  const cl = (x)=>Math.max(0, Math.min(1, x)), ease = x => x*x*(3-2*x);
+  const loop = () => { if(!el.isConnected){ G.dispose(); return; }
+    const now = performance.now(); let tt = (now-t0)/1000; if(skipAt!=null) tt = Math.max(tt, 10 + (now-skipAt)/1000);
+    const fv = fit.v*cl((tt-4.8)/2.4), pass = fv > RELIC_FIT_MIN ? 1 : 0, aft = tt - T.res;
+    const st = {t: tt, ok: ok ? 1 : 0, pass,
+      fall: cl((tt-0.1)/0.5) * (1 - cl((tt-2.2)/0.8)), neb: ease(cl((tt-2.2)/1.6)), conv: ease(cl((tt-2.4)/2.2)), mat: cl((tt-3.4)/1.8),
+      ring: cl((tt-4.0)/0.8) * (ok ? 1 : 1 - cl((aft-0.8)/1.2)), align: ok ? ease(cl((tt-6.2)/1.4)) : 0, jit: !ok && tt > 5.6 ? 1 : 0,
+      wave: tt > 4.8 ? (aft < 0 ? 1 : Math.max(0, 1 - aft/1.5)) * cl((tt-4.8)/0.6) : 0,
+      crack: ok ? 0 : cl((tt-6.4)/1.2), rej: ok ? 0 : ease(cl(aft/1.3)), res: ok ? cl(aft/0.4) : 0,
+      shock: aft > 0 ? cl(aft/1.0) : 0, flash: ok && aft > 0 ? Math.max(0, 1 - aft/0.7) : 0, rays: ok && aft > 0 ? Math.min(1, aft/0.3) * (0.55 + 0.45*Math.max(0, 1 - aft/2)) : 0,
+      burst: ok ? ease(cl(aft/1.6)) : 0, shake: aft > 0 && aft < 0.6 ? (ok ? 0.5 : 1.2)*(1 - aft/0.6) : (tt < 2.4 ? 0.15 : 0),
+      cy: 0.6 + 0.1*ease(cl((tt - T.card)/1.0))};
+    try{ G.render(st); }catch(e){ console.warn(e); }
+    em.textContent = Math.round(fv); bar.style.width = Math.min(100, fv) + "%"; bar.style.background = pass ? "#f2d27a" : "#a35a4a";
+    requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+  const add = k => () => el.classList.add(k);
+  return runScene(el, [[150, add("in")], [400, add("c1")], [1300, add("c2")], [2500, add("rise")], [3600, add("item")], [4500, add("c3")], [4900, add("fit")],
+    [Math.round(T.res*1000), (all)=>{ if(all) skipAt = performance.now(); el.classList.add(ok ? "res" : "rej"); }], [Math.round(T.card*1000), add("card")]], 6000); }
+
+/* 유물 그림(무기 · 방어구 · 장신구) — 2D 연출과 셰이더 연출(텍스처)이 함께 쓴다 */
+function relicArt(ix, R, iw, ih, tt, away){ away = away || 0;
+    if(R.slot==="weapon"){ ix.save(); ix.translate(iw/2, ih/2); ix.rotate(-0.6 + Math.sin(tt*0.8)*0.04 + away*0.6); try{ const L0 = (WEAPON_REACH[R.kind]||0.6)*(R.look.len||1), ru = R.id==="ruyi", u = iw*0.95/(L0*(ru ? 1.3 : 1)+0.2); ix.translate(-L0*u*(ru ? 0.13 : 0.5), 0); drawWeaponSpec(ix, Object.assign(defaultSpec(R.kind), R.look, {relic:R.id, add:[], style:null}), u, "#2a2c31"); }catch(_){ } ix.restore(); }
+    else if(R.slot==="armor"){ try{ drawFixer(ix, iw/2, ih*0.95, ih*0.85, {face:1, view:"front", state:"idle", col:"#4a4038", armor:Object.assign({}, R.look, {relic:R.id, pad:0}), t:tt}); }catch(_){ } }
     else { const cx2 = iw/2, cy2 = ih/2, r = ih*0.22, g2 = ix.createRadialGradient(cx2 - r*0.3, cy2 - r*0.3, 2, cx2, cy2, r*1.2); g2.addColorStop(0, "#fff2c0"); g2.addColorStop(0.5, "#d8b45a"); g2.addColorStop(1, "#5a4520");
       ix.fillStyle = g2; ix.strokeStyle = "#3a2c14"; ix.lineWidth = 2;
       if(R.id==="bell"){ ix.beginPath(); ix.moveTo(cx2 - r, cy2 + r*0.8); ix.quadraticCurveTo(cx2 - r*0.9, cy2 - r, cx2, cy2 - r); ix.quadraticCurveTo(cx2 + r*0.9, cy2 - r, cx2 + r, cy2 + r*0.8); ix.closePath(); ix.fill(); ix.stroke();
-        for(let k=0;k<8;k++){ const a = k/8*6.283 + tt*0.3; ix.beginPath(); ix.arc(cx2 + Math.cos(a)*r*1.5, cy2 + Math.sin(a)*r*1.5, r*0.16, 0, 7); ix.fill(); ix.stroke(); } }
+        for(let q=0;q<8;q++){ const a = q/8*6.283 + tt*0.3; ix.beginPath(); ix.arc(cx2 + Math.cos(a)*r*1.5, cy2 + Math.sin(a)*r*1.5, r*0.16, 0, 7); ix.fill(); ix.stroke(); } }
       else if(R.id==="horus"){ ix.beginPath(); ix.ellipse(cx2, cy2, r*1.3, r*0.6, 0, 0, 7); ix.fill(); ix.stroke(); ix.fillStyle = "#1a1408"; ix.beginPath(); ix.arc(cx2, cy2, r*0.38, 0, 7); ix.fill();
         ix.strokeStyle = "#d8b45a"; ix.lineWidth = 3; ix.beginPath(); ix.moveTo(cx2 - r*0.2, cy2 + r*0.5); ix.quadraticCurveTo(cx2 - r*0.3, cy2 + r*1.3, cx2 + r*0.3, cy2 + r*1.2); ix.stroke(); }
       else { ix.beginPath(); ix.ellipse(cx2, cy2, r*0.75, r, 0, 0, 7); ix.fill(); ix.stroke(); ix.beginPath(); ix.moveTo(cx2, cy2 - r); ix.lineTo(cx2, cy2 + r); ix.stroke();
         ix.fillStyle = `rgba(255,170,60,${0.7+0.3*Math.sin(tt*2)})`; ix.beginPath(); ix.arc(cx2, cy2 - r*1.35, r*0.38, 0, 7); ix.fill(); } }
-    ix.globalAlpha = 1;
-    const fk = clamp((tt-3.4)/1.6, 0, 1), fv = Math.round(fit.v*fk); em.textContent = fv; bar.style.width = Math.min(100, fit.v*fk) + "%"; bar.style.background = fv > RELIC_FIT_MIN ? "#f2d27a" : "#a35a4a";
+}
+function relicScene(R, f, fit, ok){
+  const L = RELIC_LORE[R.id] || {}, SLOT = {weapon:"무기", armor:"방어구", acc:"장신구"}[R.slot];
+  const el = document.createElement("div"); el.className = "relic-fx" + (ok ? "" : " miss"); el.dataset.jolt = ok ? "res|#f2d27a|1,card|#7fd8c8" : "rej|#b83a2a|1";
+  el.innerHTML = `<canvas class="rl-cv"></canvas>
+    <div class="rl-cap"><div class="c1">도시 아래 — 유적.</div><div class="c2">어느 날개도 끝까지 내려가 보지 못한 곳에서, 물건 하나가 올라왔다.</div><div class="c3">유물은 아무 손에나 쥐어지지 않는다.</div></div>
+    <div class="rl-core"><div class="rl-ring r1"></div><div class="rl-ring r2"></div><div class="rl-ring r3"></div><canvas class="rl-item"></canvas></div>
+    <div class="rl-head">遺 跡 出 土 · 유 물</div>
+    <div class="rl-name relic-name">${esc(R.name)}</div><div class="rl-origin">${esc(R.origin)} · ${SLOT}</div>
+    <div class="rl-fit"><span>${esc(f.name)} — 적성</span><div class="rl-bar"><i></i><b style="left:${RELIC_FIT_MIN}%"></b></div><em>0</em>
+      <small>운명 ${fit.fate>=0?"+":""}${fit.fate} · 강함 +${fit.str} · 등급 +${fit.gr} · 적합도 ${RELIC_FIT_MIN} 이하는 거부</small></div>
+    <div class="rl-verdict">${ok ? "공 명" : "거 부"}</div>
+    ${ok ? `<div class="rl-card"><div class="rc-h">유물 감정서</div>
+      <div class="rc-g"><span>이름</span><b class="relic-name">${esc(R.name)}</b><span>출토</span><b>유적 · ${esc(R.origin)}</b><span>갈래</span><b>${SLOT}</b>
+      <span>성질</span><b>${esc(L.trait || R.d)}</b><span>흠</span><b style="color:#a0461e">${esc(L.flaw || "알 수 없다")}</b><span>적합도</span><b>${fit.v}</b><span>귀속</span><b>${esc(f.name)}</b></div>
+      <div class="rc-seal">歸屬</div></div>`
+    : `<div class="rl-card miss"><div class="rc-h">거부</div><div class="rc-t">유물은 ${esc(jo(f.name,"을"))} 한참 바라보다가, 손가락 사이로 빠져나갔다.<br>적성이 없는 손을 태우고서. <b style="color:#ff8a7a">(${esc(f.name)} 체력 -${Math.round(RELIC_BACKLASH*100)}%)</b></div></div>`}`;
+  const glOk = !!window.WebGL2RenderingContext && (window.__forceRelicGL || !softGL());
+  if(glOk){ const gl = relicSceneGL(el, R, f, fit, ok); if(gl) return gl; }
+  const cv = el.querySelector(".rl-cv"), c = cv.getContext("2d"), ic = el.querySelector(".rl-item"), ix = ic.getContext("2d"), t0 = performance.now();
+  let skipAt = null, nebKey = ""; const nebC = document.createElement("canvas");
+  const P = Array.from({length:160}, (_,i)=>({a:Math.random()*6.283, r:0.3+Math.random()*0.7, s:0.3+Math.random()*1.3, z:Math.random()}));
+  const ST = Array.from({length:70}, ()=>({x:Math.random(), y:Math.random(), v:0.6+Math.random()*1.6, l:20+Math.random()*90}));
+  const NEB = [[0.38,0.36,"242,210,122"],[0.62,0.44,"127,216,200"],[0.5,0.3,"150,110,220"]];
+  const em = el.querySelector(".rl-fit em"), bar = el.querySelector(".rl-bar i");
+  const T = {fall:[0.2,2.6], rise:[2.4,4.8], fit:[4.8,7.6], res:7.6};
+  const loop = () => { if(!el.isConnected) return; const d = Math.min(1.5, devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight;
+    if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); } c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H);
+    let tt = (performance.now()-t0)/1000; if(skipAt!=null) tt = Math.max(tt, 10 + (performance.now()-skipAt)/1000);
+    const cx = W/2, cy = H*0.4;
+    // ① 하강: 아래로 내려가는 듯 위로 스치는 줄
+    const fa = tt < T.fall[1] ? clamp((tt-T.fall[0])/0.5,0,1) * (1 - clamp((tt-T.fall[1]+0.6)/0.6,0,1)) : 0;
+    if(fa > 0){ c.strokeStyle = `rgba(200,180,140,${0.35*fa})`; c.lineWidth = 1; ST.forEach(s=>{ const y = (((s.y - tt*s.v*0.6) % 1) + 1) % 1 * H, x = s.x*W; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + s.l); c.stroke(); }); }
+    // ② 성운: 별빛이 엉긴 구름이 피어난다(유물은 별과 얽혀 있다)
+    const na = clamp((tt-T.rise[0])/1.6, 0, 1) * (ok || tt < T.res + 0.4 ? 1 : 0.35);
+    // 성운은 작은 캔버스에 한 번 그려 두고 늘려 찍는다(전체 화면 그라데이션을 매 프레임 세 번 칠하면 느린 기기에서 끊긴다)
+    if(na > 0){ const red = !ok && tt >= T.res, key = `${Math.round(W)}x${Math.round(H)}${red?"r":""}`;
+      if(nebKey !== key){ nebKey = key; nebC.width = Math.max(2, Math.round(W/4)); nebC.height = Math.max(2, Math.round(H/4)); const nx2 = nebC.getContext("2d"), w4 = nebC.width, h4 = nebC.height;
+        NEB.forEach(([nx,ny,col])=>{ const x = w4*nx, y = h4*ny, r = Math.max(w4,h4)*0.32, g = nx2.createRadialGradient(x, y, 0, x, y, r); g.addColorStop(0, `rgba(${red ? "120,60,50" : col},0.16)`); g.addColorStop(1, "rgba(0,0,0,0)"); nx2.fillStyle = g; nx2.fillRect(0,0,w4,h4); }); }
+      c.globalAlpha = na; c.drawImage(nebC, W*0.02*Math.sin(tt*0.3) - W*0.03, H*0.02*Math.cos(tt*0.25) - H*0.03, W*1.06, H*1.06); c.globalAlpha = 1; }
+    // 별 입자가 가운데로 모인다
+    const k = clamp((tt-T.rise[0])/2.2, 0, 1), R0 = Math.max(W,H)*0.6;
+    if(tt > T.rise[0]) P.forEach(p=>{ const fly = !ok && tt > T.res ? clamp((tt-T.res)/1.2,0,1) : 0, rr = (R0*p.r*(1-k*0.9) + 34) * (1 + fly*3*p.z), a = p.a + tt*p.s*0.5;
+      const x = cx + Math.cos(a)*rr, y = cy + Math.sin(a)*rr*0.72; c.fillStyle = !ok && tt > T.res ? `rgba(200,90,70,${(0.6*p.z)*(1-fly)})` : `rgba(255,232,170,${0.25+0.65*p.z})`; c.fillRect(x, y, 1.4+p.z*2, 1.4+p.z*2); });
+    // ③ 적성: 유물에서 공명 파동이 퍼진다 — 적합도가 문턱을 넘으면 파동이 금빛으로 맞물린다
+    const fk = clamp((tt-T.fit[0])/2.4, 0, 1), fv = fit.v*fk, pass = fv > RELIC_FIT_MIN;
+    if(tt > T.fit[0] && tt < T.res + 2.5){ for(let w=0; w<4; w++){ const ph = ((tt*0.9 + w/4) % 1); const rr = 60 + ph*Math.min(W,H)*0.45;
+        c.strokeStyle = tt > T.res && !ok ? `rgba(220,80,60,${0.5*(1-ph)})` : pass ? `rgba(242,210,122,${0.55*(1-ph)})` : `rgba(160,160,170,${0.35*(1-ph)})`;
+        c.lineWidth = pass ? 2 : 1; c.beginPath(); c.ellipse(cx, cy, rr, rr*0.72, 0, 0, 7); c.stroke(); } }
+    // ④ 결과
+    if(tt > T.res){ const rk = clamp((tt-T.res)/0.6, 0, 1);
+      if(ok){ const g = c.createRadialGradient(cx, cy, 0, cx, cy, 260); g.addColorStop(0, `rgba(255,240,190,${0.32 + 0.08*Math.sin(tt*3)})`); g.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = g; c.fillRect(0,0,W,H);
+        if(rk < 1){ c.strokeStyle = `rgba(255,236,170,${1-rk})`; c.lineWidth = 3; c.beginPath(); c.ellipse(cx, cy, 80+rk*500, (80+rk*500)*0.72, 0, 0, 7); c.stroke(); } }
+      else { c.strokeStyle = `rgba(230,90,70,${0.8*(1-clamp((tt-T.res-1.5)/1.5,0,1))})`; c.lineWidth = 2;
+        for(let i=0;i<9;i++){ const a = i/9*6.283 + 0.3; let x = cx, y = cy; c.beginPath(); c.moveTo(x, y); for(let j=1;j<=4;j++){ x = cx + Math.cos(a + (j%2?0.18:-0.14))*j*34*rk; y = cy + Math.sin(a + (j%2?0.18:-0.14))*j*26*rk; c.lineTo(x, y); } c.stroke(); } } }
+    // 유물 그림
+    const iw = ic.clientWidth, ih = ic.clientHeight; if(ic.width !== Math.round(iw*d)){ ic.width = Math.round(iw*d); ic.height = Math.round(ih*d); }
+    ix.setTransform(d,0,0,d,0,0); ix.clearRect(0,0,iw,ih);
+    const away = !ok && tt > T.res ? clamp((tt-T.res)/1.4, 0, 1) : 0, jit = tt > T.fit[0] && tt < T.res ? (pass ? 0 : (Math.random()-0.5)*2) : 0;
+    ix.globalAlpha = clamp((tt-T.rise[0]-0.8)/1.0, 0, 1) * (1 - away*0.85); ix.save(); ix.translate(jit, -away*40 + Math.sin(tt*1.4)*3);
+    relicArt(ix, R, iw, ih, tt, away);
+    ix.restore(); ix.globalAlpha = 1;
+    em.textContent = Math.round(fv); bar.style.width = Math.min(100, fv) + "%"; bar.style.background = pass ? "#f2d27a" : "#a35a4a";
     requestAnimationFrame(loop); };
   requestAnimationFrame(loop);
   const add = k => () => el.classList.add(k);
-  return runScene(el, [[200, add("in")], [1600, add("item")], [3200, add("fit")], [5400, add(ok ? "name" : "crack")], [6600, add("t1")], [8000, add("t2")]], 5000); }
+  return runScene(el, [[150, add("in")], [400, add("c1")], [1300, add("c2")], [2500, add("rise")], [3600, add("item")], [4500, add("c3")], [4900, add("fit")],
+    [Math.round(T.res*1000), (all)=>{ if(all) skipAt = performance.now(); el.classList.add(ok ? "res" : "rej"); }], [Math.round(T.res*1000)+1600, add("card")]], 6000); }
 /* ================= 사건 — 위협 등급별 스토리라인 =================
    뜬소문부터 도시의 별까지, 등급마다 세 장으로 된 사건이 하나씩 있다. 앞 사건을 끝내고 사무소가 그 등급에 닿으면 다음 사건이 열린다.
    사건 의뢰는 게시판에 '사건' 표시와 함께 하루에 한 장씩 오르고(35%), 실패하거나 기한이 지나도 다시 온다. 마지막 장을 끝내면 사건이 매듭지어진다. */
@@ -7896,21 +8531,24 @@ function reqStory(q){
   else if(q.trio){ L.push("하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다.", `"${String(q.text).replace(/^하나 협회의 지명 — /,"")}"`, STORY_THREAT[threatOf(q)]); }
   else if(q.scarJob){ L.push("흉터가 다시 왔다. 이번에는 금고 쪽을 보지 않았다.", `"${String(q.text).replace(/^남겨진 흉터의 의뢰 — /,"")}"`, "\"값은 넉넉히 치르지. 우리 사이에 그 정도는.\""); }
   else if(q.kind==="환상체"){ L.push(storyFill(pick(STORY_OPEN), q), `"${q.text}."`, "말로 설명하기 어려운 것이라고 했다. 가까이 간 사람이 무엇을 봤는지는 저마다 말이 다르다.", STORY_THREAT[threatOf(q)]); }
-  else if(q.distFoe){ L.push(storyFill(pick(STORY_OPEN), q), `"${q.text}."`, "사람이었던 무언가라고 했다. 이름을 부르면 돌아볼지도 모른다고, 의뢰인은 작게 덧붙였다."); }
+  else if(q.distFoe){ L.push(storyFill(pick(STORY_OPEN), q), `"${String(q.text).replace(/[.。]$/,"")}."`, "사람이었던 무언가라고 했다. 이름을 부르면 돌아볼지도 모른다고, 의뢰인은 작게 덧붙였다."); }
   else { const k = q.kind==="호위" || q.kind==="수색" ? q.kind : (q.attrs||["str"])[0];
     L.push(q.assoc && ASSOCS[q.assoc] ? `${ASSOCS[q.assoc].n} 지부의 직원이 서식에 맞춘 의뢰서를 들고 왔다. 귀퉁이에 ${ASSOCS[q.assoc].sig}의 문장이 찍혀 있다.` : storyFill(pick(STORY_OPEN), q));
     L.push(storyFill(pick(STORY_KIND[k] || STORY_KIND.str), q));
     if(q.goal && STORY_GOAL[q.goal]) L.push(STORY_GOAL[q.goal]);
     if(q.synd){ const sy = SYNDICATES.find(x=>x.id===q.synd); if(sy) L.push(`뒤에 ${sy.n}이(가) 있다는 말이 돈다. 그 이름을 듣자 사무소 안이 잠깐 조용해졌다.`.replace(`${sy.n}이(가)`, jo(sy.n,"이"))); }
     L.push(STORY_THREAT[threatOf(q)]); }
-  if(q.relic) L.push("의뢰서 맨 아래에 누군가 덧붙여 적어 두었다 — 현장에서 '오래된 물건'을 봤다는 사람이 있다고. 어느 공방도 만들지 않은 물건이라고.");
+  if(q.loot) L.push(lootRumor(q));
+  if(q.nom) L.push("이 사무소를 콕 집어 찾아왔다고 했다. 지금 급수로는 조금 버거운 일이라는 걸 의뢰인도 알고 있었다. 그래서 값을 더 쳐주겠다고.");
+  if(q.reg) L.push(q.reg===2 ? "이제는 얼굴만 봐도 아는 사이다. 의뢰인은 설명을 길게 하지 않았다." : "몇 번 일을 맡겼던 얼굴이다. 이번에도 믿고 맡긴다고 했다.");
+  if(q.relic) L.push("의뢰서 맨 아래에 누군가 덧붙여 적어 두었다 — 현장에서 유적에서 올라온 물건을 봤다는 사람이 있다고. 어느 공방도 만들지 않은 물건이라고.", "골목에는 가짜 유물이 흔하다. 진짜라면, 쥘 수 있는 사람은 더 드물다.");
   q.story = L.filter(Boolean); return q.story; }
 async function openAccept(qid){
   const q = S.requests.find(x=>x.id===qid); if(!q) return;
   const story = reqStory(q).map(t=>`<p>${esc(t)}</p>`).join(""); save();
   const v = await modal(`의뢰 — ${q.client}`, `<div class="acc-story${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${story}</div>
     <div class="kv"><span>의뢰</span><b>${esc(q.text)}</b><span>종류</span><b>${esc(q.kind)}${q.goal ? ` · ${q.goal}` : ""}</b><span>재해 등급</span><b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)} <span class="muted" style="font-weight:400">(${q.grade===0 ? "특색" : gName(q.grade)} 수준)</span></b>
-    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b><span>마감</span><b>${q.deadline}일</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품</span><b>${esc(q.loot.name)}</b>` : ""}</div>`,
+    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b><span>마감</span><b>${q.deadline}일</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품 소문</span><b>${esc(lootName(q))}</b>` : ""}</div>`,
     [{t:"닫기", v:"close", x:true}, {t:"거절한다", v:"no"}, {t:"사람을 보낸다", v:"yes", primary:true}]);
   if(!S || !S.requests.includes(q) || v==="close") return;
   if(v==="yes"){ q.accepted = true; ac("accept"); save(); render(); return; }
@@ -7938,19 +8576,15 @@ function render(){
   app.querySelector("#reqs").innerHTML = S.requests.length ? S.requests.map(q=>{
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
-    return `<div class="req ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
-      <div class="head">${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
+    return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
+      <div class="head">${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.reg ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="보수 +${q.reg*10}%">${q.reg===2 ? "오랜 단골" : "단골"}</span>` : ""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
       <div class="txt">${esc(q.text)}</div>
       <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${q.grade===0 ? "특색" : gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b></span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
-      ${q.loot?`<div class="loot">특수 전리품 가능: ${esc(q.loot.name)}</div>`:""}
-      ${!q.accepted && q.kind!=="특색 심사" ? `<div class="assign"><button class="primary" data-accept="${q.id}">의뢰를 받는다</button></div></div>` : `
-      <div class="est" id="est-${q.id}"></div>
-      <div class="party">출동 인원 <b id="pc-${q.id}">0</b> / 최대 ${partyMax(q)}명 <span class="muted">· 권장 ${partyRec(q)}명</span></div>
-      <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 — 강행군"}">${esc(f.name)} <small>${canGo(f) ? gName(f.grade) : "강행군"}${f.tired ? " · 피로" : ""}</small></button>`).join(""):`<span class="muted" style="font-size:12px">보낼 수 있는 해결사가 없다</span>`}</div>
-      <div class="assign"><button class="primary" data-go="${q.id}" disabled>출동</button></div></div>`}`;
+      ${q.loot?`<div class="loot">특수 전리품 소문: ${esc(lootName(q))}</div>`:""}
+      ${openQ!==q.id ? `<div class="assign"><button class="primary" data-open="${q.id}">의뢰를 받는다</button></div></div>` : reqPanel(q, opts)}`;
   }).join("") : `<p class="muted">게시판이 비었다.</p>`;
   // 해결사
   app.querySelector("#fxs").innerHTML = S.fixers.map(f=>{
@@ -7959,7 +8593,7 @@ function render(){
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     const nc = nameCol(f);
     return `<div class="fx"><div class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
-      ${colorBtn(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}
+      ${colorBtn(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${f.distEye?`<div class="title" style="color:#c9b0ff" title="${esc(distEyeText)}">뒤틀림을 보는 눈</div>`:""}${distExp(f)?`<div class="title muted">뒤틀림 경험 — ${distExp(f).n}(처치 ${f.dk})</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}${f.addict?`<div class="title" style="color:#ff8a7a">엔케팔린 중독 — 회복량 절반</div>`:""}${accFx(f,"rewind")?`<button class="hana-btn" data-rewind="${f.id}" ${f.rw && f.rw.length ? "" : "disabled"}>시간 되돌림 장치 사용</button>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
@@ -7970,6 +8604,36 @@ function render(){
   S.requests.forEach(q=>updateCard(q.id));
 }
 const teamSel = {};
+/* ================= 의뢰 카드 펼치기(접기식 파견) =================
+   [의뢰를 받는다]를 누르면 창을 띄우지 않고 그 카드가 아래로 펼쳐진다 — 의뢰 이야기 · 보낼 사람 · 수행 방식 · 출동이 한자리에.
+   한 번에 한 카드만 펼친다. 처음 펼칠 때는 오늘 출동할 수 있는 사람 가운데 그 의뢰에 맞는 이를 권장 인원만큼 미리 골라 둔다.
+   수행 방식(직접 / 자동)은 마지막으로 고른 것을 기억한다. 의뢰를 마치면 다음 의뢰 카드가 펼쳐진 채로 돌아온다.
+   레퍼런스: 커맨드 테이블식 파견 화면(목록에서 바로 인원을 배치하고 예상 성공률을 보여 주는 방식), 다키스트 던전의 출정 준비 화면. */
+let openQ = null;
+const modePref = () => (S && S.modePref) || "play";
+function autoPick(q){
+  const used = new Set(Object.entries(teamSel).filter(([k])=>+k!==q.id).flatMap(([,v])=>v));
+  const pool = S.fixers.filter(f=>canGo(f) && !used.has(f.id) && (q.kind!=="특색 심사" || f.id===q.target) && level(f.hp,f.hpMax)[1]!=="d");
+  pool.sort((a,b)=>(a.tired - b.tired) || (power(b,q.attrs) - power(a,q.attrs)));
+  teamSel[q.id] = pool.slice(0, Math.max(1, Math.min(partyRec(q), partyMax(q)))).map(f=>f.id); }
+function openCard(qid, scroll){ const q = S.requests.find(x=>x.id===qid); openQ = q ? qid : null; if(q && !(teamSel[qid]||[]).length) autoPick(q); render();
+  if(q && scroll){ const el = document.querySelector(`.req[data-q="${qid}"]`); if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest", behavior:"smooth"}); } }
+function nextOpenable(){ if(!S || !S.fixers.some(canGo)) return null; const q = S.requests.find(q=>q.kind!=="특색 심사" || S.fixers.some(f=>f.id===q.target && canGo(f))); return q ? q.id : null; }
+function reqPanel(q, opts){
+  const games = gamesFor(q), hasGame = games.length > 0, md = modePref();
+  return `<div class="req-open">
+      <div class="acc-story mini${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${reqStory(q).map(t=>`<p>${esc(t)}</p>`).join("")}</div>
+      <div class="party">출동 인원 <b id="pc-${q.id}">0</b> / 최대 ${partyMax(q)}명 <span class="muted">· 권장 ${partyRec(q)}명</span></div>
+      <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 — 강행군"}">${esc(f.name)} <small>${canGo(f) ? gName(f.grade) : "강행군"}${f.tired ? " · 피로" : ""}</small></button>`).join(""):`<span class="muted" style="font-size:12px">보낼 수 있는 해결사가 없다</span>`}</div>
+      ${hasGame ? `<div class="modes"><button class="${md==="play"?"on":""}" data-mode="play" data-q="${q.id}"><b>직접 수행</b><small>${games.map(a=>MG_NAME[a]).join(" → ")} · 압승하면 확정 성공</small></button><button class="${md==="auto"?"on":""}" data-mode="auto" data-q="${q.id}"><b>자동 진행</b><small>성공률로 판정 · 보수 80% · 성공하면 다치지 않는다</small></button></div>` : ""}
+      <div class="est" id="est-${q.id}"></div>
+      <div class="assign">${q.kind!=="특색 심사" ? `<button data-refuse="${q.id}">거절</button>` : ""}<button data-fold="${q.id}">접기</button><button class="primary" data-go="${q.id}" disabled>출동</button></div></div></div>`; }
+async function refuseReq(qid){ const q = S.requests.find(x=>x.id===qid); if(!q) return;
+  if(q.prescript && !await confirmBox("지령 거절", "지령을 거절하면 대가를 치른다. 그래도 거절하겠는가?")) return;
+  S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id]; if(openQ===qid) openQ = null;
+  if(q.prescript){ idxFail(); addLog("지령을 거절했다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%"); }
+  else addLog(`의뢰를 거절했다 — ${q.client}`);
+  save(); render(); }
 function updateCard(qid){
   const q = S.requests.find(x=>x.id==qid); if(!q) return;
   const sel = teamSel[qid]||[], app=document.getElementById("app");
@@ -7980,7 +8644,8 @@ function updateCard(qid){
   const team = sel.map(id=>S.fixers.find(f=>f.id===id)).filter(Boolean);
   if(!team.length){ est.innerHTML=`<span class="muted">해결사를 골라 출동시킨다.</span>`; go.disabled=true; return; }
   const m = estimate(team,q);
-  est.innerHTML = `예상 성공률 <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b> · 1인당 ${m.stat} 피해 성공 ${m.s[0]}~${m.s[1]} / 실패 ${m.l[0]}~${m.l[1]}`;
+  const auto = modePref()==="auto" || !gamesFor(q).length;
+  est.innerHTML = `${auto ? "성공률" : "기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto ? (gamesFor(q).length ? ` · 보수 ${won(Math.round(q.reward*0.8/100)*100)}` : "") : ` <span class="muted">(직접 수행: 압승 확정 · 겨우 이기면 +15%p 이상 · 지면 실패)</span>`} · 1인당 ${m.stat} 피해 성공 ${m.s[0]}~${m.s[1]} / 실패 ${m.l[0]}~${m.l[1]}`;
   go.disabled=false;
 }
 let shellBound=false;
@@ -8000,7 +8665,10 @@ function buildShell(){
   if(shellBound) return; shellBound=true;
   app.addEventListener("click", e=>{
     const d = e.target.dataset;
-    if(d.accept){ openAccept(+d.accept); return; }
+    if(d.accept || d.open){ openCard(+(d.accept || d.open), true); return; }
+    if(d.fold){ openQ = null; render(); return; }
+    if(d.refuse){ if(scene || document.querySelector(".modal-bg")) return; refuseReq(+d.refuse); return; }
+    const mb = e.target.closest("[data-mode]"); if(mb){ S.modePref = mb.dataset.mode; save(); mb.parentElement.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("on", x===mb)); updateCard(+mb.dataset.q); return; }
     const chip = e.target.closest(".chip");
     if(chip){
       const qid=+chip.dataset.q, fid=+chip.dataset.chip, q=S.requests.find(x=>x.id===qid); if(!q) return;
@@ -8012,8 +8680,9 @@ function buildShell(){
       }
       updateCard(qid); return;
     }
+    if(d.rewind){ if(scene || document.querySelector(".modal-bg")) return; const f = S.fixers.find(x=>x.id===+d.rewind); if(f) useRewind(f); return; }
     if(d.color){ if(scene || document.querySelector(".modal-bg")) return; const f = S.fixers.find(x=>x.id===+d.color); if(f) (async()=>{ await colorAttend(f, !!d.retry); save(); render(); })(); return; }
-    if(d.go){ if(scene || document.querySelector(".modal-bg")) return; const sel = teamSel[d.go]||[]; if(sel.length) dispatch(+d.go, sel.slice()); }
+    if(d.go){ if(scene || document.querySelector(".modal-bg")) return; const sel = teamSel[d.go]||[]; if(sel.length) dispatch(+d.go, sel.slice(), gamesFor(S.requests.find(x=>x.id===+d.go) || {attrs:[]}).length ? modePref() : null); }
     if(d.nav==="recruit") openRecruit(); if(d.nav==="manage") openManage(); if(d.nav==="shop") openShop(); if(d.nav==="records") openRecords(); if(d.nav==="ach") openAchievements(); if(d.nav==="repay") openRepay();
     if(e.target.id==="endday"){ (async()=>{ if(S.requests.length && S.fixers.some(canGo)){ if(!await confirmBox("하루 끝내기","아직 처리하지 않은 의뢰와 출동 가능한 해결사가 있다. 하루를 끝낼까?")) return; } await endDay("하루를 마쳤다."); })(); }
   });
@@ -8885,12 +9554,12 @@ function fig(c, x, gy, h, o={}){
 function weaponSpecOf(g){
   if(!g) return null; const kind = weaponTypeOf(g) || "blade";
   const s = g.look ? g : (SHOP.find(i=>i.id===g.id) || SHOP.find(i=>i.name===g.name) || {});
-  return Object.assign(defaultSpec(kind), s.look || {}, {kind});
+  return Object.assign(defaultSpec(kind), s.look || {}, {kind}, g.relic ? {relic: String(g.id).replace("relic-",""), add:[], style:null} : {});
 }
 function armorSpecOf(g){
   if(!g) return {type:1, pad:0, collar:0, trim:null};
   const s = g.look ? g : (SHOP.find(i=>i.id===g.id) || SHOP.find(i=>i.name===g.name) || {});
-  return Object.assign({type:1, pad:0, collar:0, trim:null}, s.look || {type:1, pad:1});
+  return Object.assign({type:1, pad:0, collar:0, trim:null}, s.look || {type:1, pad:1}, g.relic ? {relic: String(g.id).replace("relic-",""), pad:0} : {});
 }
 const poseV = s => !s ? 0 : s.kind==="gun" && s.v===3 ? 0 : (s.v||0);
 const carryOf = s => !s ? null : (s.kind==="gun" && poseV(s)>0) ? "back" : (WEAPON_KINDS[s.kind]||{}).carry;
@@ -9131,6 +9800,48 @@ function drawWeaponSpec(c, s, u, dark, opt){
     G = {x:X, top, bot};
   };
   const k = s.kind, v = s.v||0;
+  let sdfSp = null;
+  if(s.relic==="astrape" && !opt.noSDF && (sdfSp = RelicSDF.sprite("astrape", s.seal!=null ? s.seal : (window.__astrapeSeal ?? 0), L))){   // 아스트라페: 셰이더(SDF)로 그린 금강저형 단창 — 봉인 단계마다 모습이 다르다
+    const v = sdfSp.v; c.drawImage(sdfSp.c, v.x0*u, -v.y*u, (v.x1 - v.x0)*u, 2*v.y*u);
+    const xb = 0.085, xt = xb + 0.5*L; edges.length = 0; edges.push([[xb, 0],[xt, 0]]); G = {x:t=>xb + (xt-xb)*t, top:()=>-0.06, bot:()=>0.06}; gEnd = -0.12; }
+  else if(s.relic==="astrape"){ // 아스트라페: 제우스의 번개 — 청동 단창. 자루에 금실이 나선으로 감기고, 날 자체가 지그재그 번개 모양으로 벼려져 있다
+    const sh = 0.3*L; fs("#6b4a2a"); R(-0.36, -0.011, sh+0.36, 0.022); ln([[-0.34,-0.004],[sh-0.02,-0.006]], 0.002, "#8a6444");
+    c.strokeStyle = "#e0b85a"; c.lineWidth = lw(0.004); c.beginPath(); for(let i=0;i<=60;i++){ const x = -0.3 + i/60*(sh+0.24), y = Math.sin(i*0.9)*0.011; i ? Lt(x,y) : M(x,y); } c.stroke();
+    fs("#b0803a"); poly([[-0.36,-0.013],[-0.39,0],[-0.36,0.013]]); fs("#c9963e"); R(sh-0.03, -0.016, 0.05, 0.032); fs("#e8c070"); R(sh-0.03, -0.016, 0.05, 0.006);
+    fs("#c9963e"); poly([[sh+0.0,-0.016],[sh+0.03,-0.05],[sh+0.045,-0.044],[sh+0.022,-0.014]]); poly([[sh+0.0,0.016],[sh+0.03,0.05],[sh+0.045,0.044],[sh+0.022,0.014]]);   // 날개 모양 받침
+    const x0 = sh+0.02, Z = [[0,-0.02],[0.06,-0.026],[0.045,-0.004],[0.11,-0.016],[0.09,0.006],[0.17,-0.006],[0.15,0.012],[0.25,0.0],[0.15,0.022],[0.165,0.008],[0.085,0.024],[0.1,0.006],[0.04,0.02],[0.055,0.002],[0,0.02]].map(([x,y])=>[x0+x*L/0.95, y*Wd]);
+    fs("#d8ecff"); poly(Z); fs("#ffffff"); poly(Z.map(([x,y])=>[x0 + (x-x0)*0.97, y*0.45])); fs("#9fd8ff"); poly(Z.map(([x,y])=>[x0 + (x-x0)*0.9, y*0.2]));
+    edges.push(Z.slice(0,8)); G = {x:t=>x0+0.25*L*t, top:()=>-0.026, bot:()=>0.024}; gEnd = sh - 0.03; }
+  else if(s.relic==="claiomh"){ // 클라우 솔리스: 빛의 검 — 고리 십자(켈트) 코등이, 매듭 폼멜, 넓은 곧은 날 한가운데로 빛이 흐르는 홈
+    const gp = grip(0.17, 0.024, "ito"); fs("#c9b06a"); ell(gp-0.016, 0, 0.018*gW, 0.022*gW); c.strokeStyle = "#7a6a3a"; c.lineWidth = lw(0.003); c.beginPath(); c.ellipse((gp-0.016)*u, 0, 0.011*u, 0.013*u, 0, 0, 7); c.moveTo((gp-0.027)*u, -0.013*u); c.lineTo((gp-0.005)*u, 0.013*u); c.moveTo((gp-0.027)*u, 0.013*u); c.lineTo((gp-0.005)*u, -0.013*u); c.stroke();
+    fs("#c9b06a"); R(-0.006, -0.075*gW, 0.016, 0.15*gW); c.strokeStyle = "#e8d48a"; c.lineWidth = lw(0.006); c.beginPath(); c.arc(0.002*u, 0, 0.045*u, 0, 7); c.stroke(); fs("#e8d48a"); circ(0.002, -0.075*gW, 0.009); circ(0.002, 0.075*gW, 0.009);
+    const x0 = 0.012, len = 0.8*L, w = 0.03*Wd; blade(x0, len, t=>-w*(1-t*0.25), t=>w*(1-t*0.25), [[x0+len+0.07*L*Tw, 0]], {dbl:true, bev:0.3, ricasso:0.04});
+    const gl = c.createLinearGradient(x0*u, 0, (x0+len)*u, 0); gl.addColorStop(0, "rgba(255,250,220,0.95)"); gl.addColorStop(1, "rgba(255,240,170,0.2)"); c.fillStyle = gl; R(x0+0.05, -w*0.18, len-0.06, w*0.36);
+    fs("rgba(255,255,255,0.9)"); for(let i=0;i<5;i++) circ(x0+0.1+i*0.11*L, 0, 0.0035); }
+  else if(s.relic==="gyeongui"){ // 경의검: 남명 조식의 패검 — 살짝 휜 외날, 둥근 철 코등이, 붉은 끈 감개와 고리 폼멜(술), 칼등 쪽에 새긴 글귀
+    const gp = grip(0.11, 0.021); fs("#7a1c1c"); R(gp, -0.0105*gW, -gp, 0.021*gW); c.strokeStyle = "#c04a3a"; c.lineWidth = lw(0.003); for(let x=gp+0.006; x<0; x+=0.012){ c.beginPath(); M(x,-0.0105); Lt(x+0.008,0.0105); c.stroke(); }
+    ring(gp-0.012, 0, 0.012, 0.004, "#3a3a40"); c.strokeStyle = "#b8302a"; c.lineWidth = lw(0.004); c.beginPath(); M(gp-0.022, 0.006); Q(gp-0.05, 0.03, gp-0.04, 0.07); M(gp-0.02, 0.008); Q(gp-0.04, 0.04, gp-0.028, 0.072); c.stroke();
+    fs("#3d4248"); ell(0.0, 0, 0.012, 0.036*gW); fs("#5f6670"); ell(0.0, 0, 0.007, 0.03*gW);
+    const x0 = 0.012, len = 0.56*L, w = 0.017*Wd, B = 0.03*L, bend = t=>-B*Math.pow(t,1.6);
+    blade(x0, len, t=>bend(t)-w*0.75, t=>bend(t)+w*(1-t*0.3), [[x0+len+0.03*L*Tw, -B-w*0.2]], {bev:0.4});
+    c.save(); c.fillStyle = "rgba(20,20,26,0.75)"; c.font = `${Math.max(5, u*0.012)}px "Noto Serif KR",serif`; c.textBaseline = "middle"; const txt = "內明者敬 外斷者義";
+    [...txt].forEach((ch,i)=>{ const t = 0.08 + i*0.085, x = x0 + len*t; c.fillText(ch, x*u, (bend(t) - w*0.15)*u); }); c.restore(); }
+  else if(s.relic==="ruyi"){ // 여의봉: 검붉은 쇠봉 양 끝에 넓은 금테, 가운데 금빛 띠에 새긴 이름
+    const w = 0.03*Wd, x0 = -0.52*L, x1 = 0.78*L; fs("#2a1614"); R(x0, -w/2, x1-x0, w); fs("#4a2a24"); R(x0, -w*0.36, x1-x0, w*0.2);
+    [x0, x1-0.1].forEach(x=>{ const g2 = c.createLinearGradient(0, -w*0.7*u, 0, w*0.7*u); g2.addColorStop(0, "#fff0b0"); g2.addColorStop(0.5, "#d8a838"); g2.addColorStop(1, "#7a5418"); c.fillStyle = g2; R(x, -w*0.72, 0.1, w*1.44); fs("#8a6020"); R(x+0.012, -w*0.72, 0.004, w*1.44); R(x+0.084, -w*0.72, 0.004, w*1.44); });
+    const g3 = c.createLinearGradient(0, -w*0.6*u, 0, w*0.6*u); g3.addColorStop(0, "#f2d27a"); g3.addColorStop(1, "#8a6020"); c.fillStyle = g3; R(0.08, -w*0.6, 0.2, w*1.2);
+    c.save(); c.fillStyle = "#3a2008"; c.font = `${Math.max(5, u*0.016)}px "Noto Serif KR",serif`; c.textBaseline = "middle"; [..."如意金箍棒"].forEach((ch,i)=>c.fillText(ch, (0.09 + i*0.038)*u, 0)); c.restore();
+    edges.push([[x0,-w*0.72],[x1,-w*0.72]]); G = {x:t=>x1-0.3+0.3*t, top:()=>-w*0.72, bot:()=>w*0.72, k:0.8}; }
+  else if(s.relic==="drepanon"){ // 드레파논: 데메테르의 낫 — 짧은 자루에 크게 휜 초승달 날. 날면에 이삭 무늬
+    const gp = grip(0.17, 0.024); haft(gp, 0.0, 0.024); fs("#b9a46a"); R(-0.004, -0.016, 0.02, 0.032);
+    const P = []; const N = 30; for(let i=0;i<=N;i++){ const t = i/N, a = -0.2 - t*2.5; P.push([0.11 + Math.cos(a)*0.24*L - 0.06, -0.02 + Math.sin(a)*0.24*L*0.95]); }
+    const Pin = []; for(let i=N;i>=0;i--){ const t = i/N, a = -0.2 - t*2.5, r = 0.24*L - 0.05*Wd*(1-t*0.85); Pin.push([0.11 + Math.cos(a)*r - 0.06 + 0.01, -0.02 + Math.sin(a)*r*0.95 + 0.012]); }
+    const g4 = c.createLinearGradient(0, -0.2*u, 0, 0.02*u); g4.addColorStop(0, "#efe2b0"); g4.addColorStop(1, "#9a8448"); c.fillStyle = g4; poly([[0.0,-0.016],[0.0,0.016], ...P.slice(1), ...Pin]);
+    ln(Pin, 0.004, "#fff6d6"); edges.push(Pin);
+    c.strokeStyle = "rgba(90,70,30,0.6)"; c.lineWidth = lw(0.0025); for(let k2=0;k2<4;k2++){ const t = 0.2 + k2*0.17, a = -0.2 - t*2.5, r = 0.24*L - 0.025, cx = 0.11 + Math.cos(a)*r - 0.055, cy = -0.02 + Math.sin(a)*r*0.95 + 0.004;
+      c.beginPath(); M(cx, cy); Lt(cx + 0.02, cy - 0.006); c.stroke(); for(let j=0;j<3;j++){ c.beginPath(); c.ellipse((cx + 0.006 + j*0.005)*u, (cy - 0.003 - j*0.0015)*u, 0.003*u, 0.0015*u, -0.3, 0, 7); c.stroke(); } }
+    G = {x:t=>0.02+0.15*t, top:()=>-0.06, bot:()=>0.02}; }
+  else
   if(k==="blade"){
     if(v===0){ // 양날검(아밍소드): 바퀴 폼멜, 끝이 벌어진 곧은 코등이, 짧은 리카소, 긴 홈
       const gp = grip(0.085, 0.024); fs(col); ell(gp-0.011, 0, 0.012*gW, 0.026*gW); fs(dk); ell(gp-0.011, 0, 0.005*gW, 0.013*gW);
@@ -9399,8 +10110,14 @@ function drawWeaponSpec(c, s, u, dark, opt){
   drawAdds(c, u, G, s.add, col, edges, opt.far, k, gEnd, s.glow);
   drawStyle(c, u, G, s, col, opt.far, k, gEnd, edges);
   // 발광: 날 가장자리에 가는 빛
-  if(s.glow && !opt.noGlow){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round"; c.lineJoin="round";
+  if(s.glow && !opt.noGlow && !sdfSp){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round"; c.lineJoin="round";
     edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); c.restore(); }
+  // 망(望): 소망을 꼰 금빛 실이 손잡이에서 날 쪽으로 감겨 있다 — 하나에 한 가닥
+  if(s.mang){ const n = Math.min(5, s.mang), x0 = Math.max(0.02, (gEnd||0.18) - 0.1), span = 0.12 + n*0.035, tt = performance.now()/1000;
+    c.save(); c.lineCap = "round"; c.shadowColor = "#ffd27a"; c.shadowBlur = Math.max(3, u*0.03);
+    for(let k=0; k<n; k++){ c.strokeStyle = k%2 ? "#ffe6a8" : "#e8b850"; c.lineWidth = Math.max(0.8, u*0.006); c.beginPath();
+      for(let i=0;i<=40;i++){ const t = i/40, x = x0 + t*span, y = Math.sin(t*Math.PI*2*(2+n*0.5) + k*1.26 + tt*0.8)*0.017*(1-t*0.3); i ? c.lineTo(x*u, y*u) : c.moveTo(x*u, y*u); } c.stroke(); }
+    c.restore(); }
 }
 // 건틀릿은 손에 낀다: 판을 겹친 아래팔 덮개 + 손등 판 + 손가락 마디 판(앞). hand: 주먹 가운데, a: 아래팔 방향
 function drawGauntlet(c, s, hand, a, h, dark, far){
@@ -9959,10 +10676,43 @@ function drawFixerSD(c, x, gy, h, o){
   // 어깨 장갑: 작게 · 크게(중장갑은 최소 작게). 먼 어깨는 어둡게, 가까운 어깨는 팔 위에 얹는다
   { const pd = Math.max(ar.pad||0, aType===3 ? 1 : 0); if(pd){ const mc = hexMix(col, "#c9d2de", 0.35), rx = (pd===2 ? 0.05 : 0.038)*h, ry = (pd===2 ? 0.034 : 0.026)*h;
     [[S2, hexMix(mc, "#000000", 0.25), -0.25], [S1, mc, 0.25]].forEach(([sp, fc, rot])=>{ const P2 = new Path2D(); P2.ellipse(sp[0], sp[1] - ry*0.25, rx, ry, rot*(back?-1:1), Math.PI, 0); P2.closePath(); paint(P2, fc, {sh:0.006, hl:0.003, hlA:0.35, grad:false, lw:1}); }); } }
+  if(ar.relic){ try{ drawRelicArmor(c, ar.relic, R, h, back, S1, S2, t); }catch(_){ } }
   if(o.acc){ c.fillStyle = `rgb(${o.acc})`; c.beginPath(); c.arc(...R(-0.04,-0.15), 0.011*h, 0, 7); c.fill(); }
   c.restore();
   return {hand: a1[1]};
 }
+/* 유물 방어구는 기존 방어구 위에 고유한 모습을 따로 그린다(인물 그리기 안에서, 몸 좌표 R과 양 어깨 S1 · S2를 받는다) */
+function drawRelicArmor(c, id, R, h, back, S1, S2, t){
+  const P = pts => { const p = new Path2D(); pts.forEach((q,i)=> i ? p.lineTo(q[0], q[1]) : p.moveTo(q[0], q[1])); p.closePath(); return p; };
+  const metal = (x0,y0,x1,y1,a,b)=>{ const g = c.createLinearGradient(x0,y0,x1,y1); g.addColorStop(0,a); g.addColorStop(1,b); return g; };
+  c.save(); c.lineJoin = "round";
+  if(id==="sleipnir"){ // 여덟 다리 말이 새겨진 겹 견갑(북방식): 어깨마다 세 겹 판, 가까운 어깨에 말 문장
+    [[S2, 0.8, -1],[S1, 1, 1]].forEach(([sp, k, sd])=>{ for(let i=2;i>=0;i--){ const rx = (0.05+i*0.012)*h*k, ry = (0.03+i*0.008)*h*k, cy = sp[1] - 0.004*h + i*0.016*h;
+        const p = new Path2D(); p.ellipse(sp[0], cy, rx, ry, sd*0.2, Math.PI*1.05, Math.PI*1.95); p.lineTo(sp[0] + rx*0.6*sd, cy + ry*0.5); p.closePath();
+        c.fillStyle = metal(sp[0], cy-ry, sp[0], cy+ry, k<1 ? "#7b8a9a" : "#c9d6e2", k<1 ? "#39424c" : "#5a6878"); c.fill(p); c.strokeStyle = "#9fd8ff"; c.lineWidth = Math.max(1, h*0.003); c.stroke(p); } });
+    const m = [S1[0] + 0.004*h, S1[1] - 0.01*h], s2 = 0.0042*h; c.strokeStyle = "#e8f6ff"; c.fillStyle = "#e8f6ff"; c.lineWidth = Math.max(1, h*0.002);
+    c.beginPath(); c.ellipse(m[0], m[1], s2*2.2, s2*1.1, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(m[0]+s2*2, m[1]-s2*0.5); c.lineTo(m[0]+s2*3.2, m[1]-s2*2); c.stroke();
+    for(let i=0;i<8;i++){ const x = m[0] - s2*1.8 + i*s2*0.52; c.beginPath(); c.moveTo(x, m[1]+s2*0.7); c.lineTo(x + (i%2 ? 1 : -1)*s2*0.5, m[1]+s2*2.3); c.stroke(); } }
+  else if(id==="aegis"){ // 아이기스: 어깨를 덮는 비늘 망토와, 가운데에 메두사의 얼굴이 박힌 둥근 청동 방패
+    c.fillStyle = "#6b5a3a"; for(let r=0;r<3;r++) for(let i=0;i<7;i++){ const q = R(-0.06 + i*0.022 + (r%2)*0.011, -0.205 + r*0.018); c.beginPath(); c.ellipse(q[0], q[1], 0.009*h, 0.008*h, 0, 0, Math.PI); c.fillStyle = r%2 ? "#8a7448" : "#a8905a"; c.fill(); c.strokeStyle = "rgba(40,30,10,0.5)"; c.lineWidth = Math.max(1, h*0.0015); c.stroke(); }
+    const sc = back ? R(-0.02, -0.12) : R(-0.1, -0.11), r0 = 0.085*h; const g = c.createRadialGradient(sc[0]-r0*0.3, sc[1]-r0*0.3, r0*0.1, sc[0], sc[1], r0); g.addColorStop(0, "#f2d890"); g.addColorStop(0.6, "#b88a3a"); g.addColorStop(1, "#5a3a14");
+    c.fillStyle = g; c.beginPath(); c.arc(sc[0], sc[1], r0, 0, 7); c.fill(); c.strokeStyle = "#f2d27a"; c.lineWidth = Math.max(1, h*0.006); c.stroke(); c.strokeStyle = "rgba(60,40,10,0.6)"; c.lineWidth = Math.max(1, h*0.002); c.beginPath(); c.arc(sc[0], sc[1], r0*0.82, 0, 7); c.stroke();
+    if(!back){ c.strokeStyle = "#3a5a2a"; c.lineWidth = Math.max(1, h*0.003); for(let i=0;i<12;i++){ const a = i/12*6.283 + Math.sin(t*1.5+i)*0.06; c.beginPath(); c.moveTo(sc[0] + Math.cos(a)*r0*0.3, sc[1] + Math.sin(a)*r0*0.3);
+        for(let j=1;j<=6;j++){ const rr = r0*(0.3 + j*0.07), aa = a + Math.sin(j*1.7 + t*2 + i)*0.15; c.lineTo(sc[0] + Math.cos(aa)*rr, sc[1] + Math.sin(aa)*rr); } c.stroke(); }
+      c.fillStyle = "#e8d4a0"; c.beginPath(); c.arc(sc[0], sc[1], r0*0.3, 0, 7); c.fill(); c.fillStyle = "#2a1a08"; c.beginPath(); c.arc(sc[0]-r0*0.1, sc[1]-r0*0.04, r0*0.045, 0, 7); c.arc(sc[0]+r0*0.1, sc[1]-r0*0.04, r0*0.045, 0, 7); c.fill();
+      c.strokeStyle = "#2a1a08"; c.lineWidth = Math.max(1, h*0.002); c.beginPath(); c.moveTo(sc[0]-r0*0.08, sc[1]+r0*0.12); c.quadraticCurveTo(sc[0], sc[1]+r0*0.18, sc[0]+r0*0.08, sc[1]+r0*0.12); c.stroke(); } }
+  else if(id==="kavacha"){ // 카바차: 살갗에 붙은 황금 갑옷 — 가슴의 태양 원반, 배를 감싼 금빛 띠 마디
+    const ch = P([R(-0.06,-0.215), R(0.075,-0.21), R(0.07,-0.1), R(0.0,-0.075), R(-0.058,-0.1)]); c.fillStyle = metal(...R(-0.06,-0.215), ...R(0.07,-0.08), "#fff0b0", "#a8781c"); c.fill(ch); c.strokeStyle = "#7a5410"; c.lineWidth = Math.max(1, h*0.003); c.stroke(ch);
+    for(let i=0;i<3;i++){ const y = -0.07 + i*0.022, b = P([R(-0.055,y), R(0.065,y), R(0.062,y+0.017), R(-0.052,y+0.017)]); c.fillStyle = metal(...R(0,y), ...R(0,y+0.017), "#f2d27a", "#8a6018"); c.fill(b); c.stroke(b); }
+    if(!back){ const sc = R(0.01,-0.16), r0 = 0.028*h; c.fillStyle = "#fff6d0"; c.shadowColor = "#ffd27a"; c.shadowBlur = h*0.04*(0.7+0.3*Math.sin(t*2)); c.beginPath(); c.arc(sc[0], sc[1], r0, 0, 7); c.fill(); c.shadowBlur = 0;
+      c.strokeStyle = "#c08a20"; c.lineWidth = Math.max(1, h*0.003); for(let i=0;i<12;i++){ const a = i/12*6.283; c.beginPath(); c.moveTo(sc[0]+Math.cos(a)*r0*1.15, sc[1]+Math.sin(a)*r0*1.15); c.lineTo(sc[0]+Math.cos(a)*r0*1.6, sc[1]+Math.sin(a)*r0*1.6); c.stroke(); } } }
+  else if(id==="karakawa"){ // 카라카와(唐皮): 호랑이 가죽을 덧댄 미늘 갑옷 — 몸통을 두른 미늘 줄과 주홍 끈, 어깨의 네모난 소데, 가슴의 호랑이 가죽
+    for(let r=0;r<6;r++){ const y = -0.2 + r*0.034, b = P([R(-0.066,y), R(0.078,y), R(0.076,y+0.03), R(-0.064,y+0.03)]); c.fillStyle = metal(...R(0,y), ...R(0,y+0.03), "#5a4030", "#2a1a12"); c.fill(b);
+      c.fillStyle = "#d8502a"; for(let i=0;i<9;i++){ const q = R(-0.058 + i*0.016, y+0.015); c.fillRect(q[0]-0.002*h, q[1]-0.005*h, 0.004*h, 0.01*h); } }
+    if(!back){ const tp = P([R(-0.02,-0.205), R(0.06,-0.2), R(0.056,-0.13), R(-0.018,-0.135)]); c.fillStyle = "#e09a3a"; c.fill(tp); c.save(); c.clip(tp); c.strokeStyle = "#1a1008"; c.lineWidth = Math.max(1, h*0.006);
+      for(let i=0;i<5;i++){ const a = R(-0.02 + i*0.018, -0.21), b2 = R(-0.01 + i*0.018, -0.13); c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(a[0]+0.012*h, (a[1]+b2[1])/2, b2[0], b2[1]); c.stroke(); } c.restore(); }
+    [[S2, 0.85],[S1, 1]].forEach(([sp, k])=>{ for(let r=0;r<4;r++){ const w = 0.05*h*k, y = sp[1] - 0.006*h + r*0.014*h; c.fillStyle = r%2 ? "#3a2418" : "#4a3020"; c.fillRect(sp[0]-w/2, y, w, 0.013*h); c.fillStyle = "#d8502a"; for(let i=0;i<4;i++) c.fillRect(sp[0]-w/2 + (i+0.5)*w/4 - 0.0015*h, y+0.003*h, 0.003*h, 0.007*h); } }); }
+  c.restore(); }
 function drawFixer(c, x, gy, h, o={}){
   return drawFixerSD(c, x, gy, h, o);       // 모든 무기: 5등신 3/4 시점 인물(아군은 전투에서 뒷모습). 아래는 이전 방식(쓰지 않음)
   const t = o.t!=null ? o.t : performance.now()/1000, state = o.state || "idle", face = o.face || 1;
@@ -11127,7 +11877,7 @@ function fxTestPanel(){
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
    <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="assoc">협회 의뢰</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="streak">사흘 연속 출동 → 피로</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">도시의 별(0)</option></select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="nom">지명 의뢰 올리기</button><button data-adj="lootreq">특수 전리품 의뢰 올리기</button><select id="fxacc">${LOOT_ACC.map(x=>`<option value="${x.id}">${x.name}</option>`).join("")}</select><button data-adj="giveacc">대표에게 장신구 주기</button><button data-adj="lowhp">대표 체력·정신력 위험으로</button><button data-adj="dk">대표 뒤틀림 처치 +1</button><button data-adj="deye">대표에게 뒤틀림을 보는 눈</button><button data-adj="dreq">뒤틀림 처리 의뢰 올리기</button><button data-adj="reg">첫 의뢰 의뢰인을 단골로</button><button data-adj="regban">첫 의뢰 의뢰인 실망시키기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="astrape">아스트라페 봉인 단계</button><button data-adj="relicall">유물 생김새 모아 보기</button><button data-adj="shin80">대표 신 · 망 감기 준비</button><button data-adj="streak">사흘 연속 출동 → 피로</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
@@ -11155,6 +11905,16 @@ function fxTestPanel(){
       for(let i=0;i<n;i++){ const q = kd==="trio" ? trioRequest() : kd==="distort" ? makeRequest(Math.min(g, 5), {kind:"일반", attrs:["str"], distort:true}) : kd==="assoc" ? assocRequest(g) : kd==="synd" ? makeRequest(g, {synd: (SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])[0] ? pick(SYNDICATES.filter(x=>g<=x.g[0] && g>=x.g[1])) : pick(SYNDICATES)).id}) : kd.startsWith("syn:") ? makeRequest(g, {synd: kd.slice(4)}) : ["str","agi","tec"].includes(kd) ? makeRequest(g, {kind:"일반", attrs:[kd]}) : makeRequest(g, {kind:kd, attrs: kd==="호위" ? ["str","agi"] : kd==="수색" ? ["agi","tec"] : ["wil"]}); S.requests.unshift(q); }
       save(); render(); return toast(`의뢰 ${n}건을 올렸다`); }
     if(k==="clear"){ S.requests = []; save(); render(); return toast("게시판을 비웠다"); }
+    if(k==="dk"){ L.dk = (L.dk||0) + 1; save(); render(); const e = distExp(L); return toast(`${L.name}: 뒤틀림 처치 ${L.dk} — ${e ? e.n : "없음"}`); }
+    if(k==="deye"){ L.distEye = !L.distEye; save(); render(); return toast(`${L.name}: 뒤틀림을 보는 눈 ${L.distEye ? "켬" : "끔"}`); }
+    if(k==="dreq"){ S.requests.unshift(makeRequest(clamp(Math.max(S.officeGrade, 1), 1, 5), {kind:"일반", attrs:["str"], distort:true})); save(); render(); return toast("뒤틀림 처리 의뢰를 올렸다"); }
+    if(k==="lootreq"){ const q = makeRequest(S.officeGrade, {kind:"일반", attrs:["str"]}); q.loot = rollLoot(q.grade); S.requests.unshift(q); save(); render(); return toast(`특수 전리품 소문 의뢰: ${lootName(q)}`); }
+    if(k==="giveacc"){ const id = el.querySelector("#fxacc").value, it = makeLootAcc(id), old = L.gear.acc; if(old){ S.inventory = S.inventory||[]; S.inventory.push(old); } L.gear.acc = it; if(id==="rewind") rwSnap(); save(); render(); return toast(`${L.name}: ${it.name} 장착`); }
+    if(k==="lowhp"){ L.hp = Math.max(1, Math.floor(L.hpMax*0.15)); L.mp = Math.max(1, Math.floor(L.mpMax*0.15)); save(); render(); return toast(`${L.name}: 체력·정신력 15%`); }
+    if(k==="nom"){ if(S.officeGrade <= 1) return toast("1급 사무소에는 한 단계 위 지명 의뢰가 없다"); S.requests.unshift(nominate(makeRequest(S.officeGrade - 1))); save(); render(); return toast("지명 의뢰를 올렸다"); }
+    if(k==="reg" || k==="regban"){ const q = S.requests[0]; if(!q) return toast("게시판이 비었다"); const c = clientOf(q.client);
+      if(k==="reg"){ c.n = Math.max(c.n, REG_NEED); c.ban = 0; const t = regTier(q.client); q.reg = t; } else { clientResult(q, false); q.reg = 0; }
+      save(); render(); return toast(k==="reg" ? `${q.client} → 단골(새로 올라오는 의뢰부터 보수 +10%)` : `${q.client} → ${CLIENT_BAN}일 동안 의뢰를 맡기지 않는다`); }
     if(k==="week"){ S.fixers.forEach(f=>{ f.wk = {n:8, ok:8, hi:5, sc:6}; }); S.wk = {n:10, ok:10, hi:6, sc:7}; save(); return toast("이번 주 심사 기록을 채웠다 — 7일차 밤에 심사"); }
     const repayAll = () => { S.debt = 0; };
     if(k==="trio"){ closeAll(); repayAll(); S.repaidShown = false; await checkRepaid(); save(); render(); return; }
@@ -11174,6 +11934,18 @@ function fxTestPanel(){
     if(k==="arcnext"){ const X = arcState(); if(X.i >= ARCS.length){ X.i = 0; X.ch = 0; } const A = ARCS[X.i]; S.requests = S.requests.filter(q=>!q.arc); S.requests.unshift(arcReq(A, X.ch)); save(); render(); return toast(`사건 「${A.n}」 ${X.ch+1}장 게시`); }
     if(k==="hanastar"){ S.requests.unshift(hanaStarReq()); save(); render(); return toast("하나 협회 지정 도시의 별 게시"); }
     if(k==="relicreq"){ const q = makeRequest(3, {kind:"일반", attrs:["str"], noRelic:true}); q.relic = true; S.requests.unshift(q); save(); render(); return toast("유물 의뢰 게시"); }
+    if(k==="relicall"){ closeAll(); const cv = RELICS.filter(R=>R.slot!=="full").map(R=>`<div style="display:inline-block;margin:4px;text-align:center;font-size:12px"><canvas data-rv="${R.id}" width="180" height="180" style="background:#15161a;border-radius:6px;width:150px;height:150px"></canvas><br>${R.name}</div>`).join("");
+      modal("유물 생김새", `<div style="max-width:720px">${cv}</div>`, [{t:"닫기"}], null, el=>{ el.querySelectorAll("[data-rv]").forEach(cn=>{ const R = RELICS.find(r=>r.id===cn.dataset.rv), ix = cn.getContext("2d"); try{ relicArt(ix, R, 180, 180, 1.2, 0); }catch(e){ console.error(e); } }); }); return; }
+    if(k==="shin80"){ L.shin = true; L.shinOff = false; L.shinUses = Math.max(L.shinUses||0, MANG_NEED[Math.min(MANG_MAX-1, L.mang||0)]); L.mp = L.mpMax; save(); render(); toast(`${L.name}: 신을 감았고, 망을 감을 수 있다(관리 → 해결사).`); return; }
+    if(k==="astrape"){ closeAll(); const R = RELICS.find(r=>r.id==="astrape"), L0 = R.look.len || 0.85, labels = ["원본","한 겹 봉인","두 겹 봉인"];
+      let raf = 0, live = true;
+      modal("아스트라페 — 봉인 단계", `<div class="muted" style="margin-bottom:8px">위에서부터 두 겹 봉인 → 한 겹 봉인 → 원본. 셰이더로 그린 실시간 모습.</div>${[2,1,0].map(st=>`<div style="margin:6px 0"><b>${labels[st]}</b><canvas data-as="${st}" width="900" height="200" style="display:block;width:100%;background:#121218;border-radius:6px"></canvas></div>`).join("")}
+        <div style="display:flex;gap:6px;margin-top:8px">${[2,1,0].map(st=>`<button data-asq="${st}">대표에게 쥐여 보기(${labels[st]})</button>`).join("")}</div>`, [{t:"닫기"}], null, el=>{
+        const cvs = [...el.querySelectorAll("[data-as]")];
+        const tick = ()=>{ if(!live || !document.body.contains(el)){ live = false; return; } cvs.forEach(cn=>{ const x = cn.getContext("2d"); x.clearRect(0, 0, cn.width, cn.height); const sp = RelicSDF.sprite("astrape", +cn.dataset.as, L0); if(!sp) return; const v = sp.v, u = cn.width*0.94/(v.x1 - v.x0);
+          x.save(); x.translate(cn.width*0.03 - v.x0*u, cn.height/2); x.drawImage(sp.c, v.x0*u, -v.y*u, (v.x1 - v.x0)*u, 2*v.y*u); x.restore(); }); raf = requestAnimationFrame(tick); }; tick();
+        el.querySelectorAll("[data-asq]").forEach(b=>b.onclick = ()=>{ const st = +b.dataset.asq; window.__astrapeSeal = st; L.gear.weapon = Object.assign(relicItem(R, L), {seal: st}); L.gear.weapon.look = Object.assign({}, L.gear.weapon.look, {seal: st}); save(); render(); toast(`${L.name}: 아스트라페(${labels[st]})를 쥐었다`); });
+      }); return; }
     if(k==="relicok" || k==="relicno"){ closeAll(); const R = pick(RELICS), f = L, fit = k==="relicok" ? {fate:24, str:18, gr:6, v:48} : {fate:-22, str:14, gr:2, v:0};
       await relicScene(R, f, fit, k==="relicok"); if(k==="relicok"){ const it = relicItem(R, f), old = f.gear[R.slot]; f.gear[R.slot] = it; if(old && !old.relic){ S.inventory = S.inventory||[]; S.inventory.push(old); } S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 시험`}); } save(); render(); return; }
     if(k==="streak"){ S.fixers.forEach(f=>{ f.streak = STREAK_MAX - 1; f.lastDispatch = S.day; }); save(); render(); return toast("모두 이틀 연속 출동 + 오늘 출동 — 하루 끝내기를 누르면 피로가 붙는다"); }
