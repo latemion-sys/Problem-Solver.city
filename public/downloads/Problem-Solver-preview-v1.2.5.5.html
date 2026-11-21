@@ -2262,7 +2262,7 @@ function pickRow(rows){
 }
 // 1급 의뢰는 도시의 별로 설정되어 있으므로 적 표기와 개별 사연도 통일한다.
 // 원래 문구는 수작업 의뢰 상세 서사의 조회에만 남겨 기존 사연이 사라지지 않도록 한다.
-function gradeOneStarText(t){return typeof t==="string"?t.replace(/도시의 악몽/g,"도시의 별"):t;}
+function gradeOneStarText(t){return typeof t==="string"?t.replace(/도시(?:의)? 악몽/g,"도시의 별"):t;}
 function fixGrade1Threat(q){
   if(!q||Number(q.grade)!==1||q.threat!=="도시의 별"||q.hanaStar||q.distFoe)return q;
   if(typeof q.text==="string"){
