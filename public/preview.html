@@ -1535,7 +1535,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "1.2.5.3"; // 성장·사무소 심사 우선순위·네 능력치 효과 (저장 호환)
+const VERSION = "1.2.5.4"; // 대표 급수에 따른 사무소 승급 제한 (기존 저장 호환)
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -7996,12 +7996,14 @@ function reviewOf(w, g, needHi){ w = w || {n:0, ok:0, hi:0, sc:0}; const need = 
   if(w.ok < need) why.push("해낸 의뢰가 모자라다"); if(w.hi < (needHi!=null ? needHi : Math.ceil(need/2))) why.push("제 등급에 걸맞은 의뢰 실적이 모자라다");
   if(w.n && w.ok/w.n < 0.7) why.push("실패가 잦았다"); if(w.n && w.sc/w.n < 0.5) why.push("일 처리가 서툴렀다");
   return {ok: !why.length && w.n > 0, why}; }
-// 사무소 심사: 의뢰 해결 수 우선, 부족하면 직원 등급과 주간 성과로 대체.
+// 사무소 심사: 대표 급수 제한을 먼저 검사한다. 통과하면 의뢰 해결 수 우선, 부족하면 직원 등급과 주간 성과로 대체.
 const OFFICE_DIRECT_NEED = 5, OFFICE_ROSTER_NEED = 2, OFFICE_FALLBACK_OK = 2;
 function officeReviewStatus(w, officeGrade, fixers){
   w=w||{n:0,ok:0,hi:0,sc:0}; const n=Math.max(0,w.n||0), ok=Math.max(0,Math.min(n,w.ok||0));
-  const target=officeGrade-1, roster=(fixers||[]).filter(f=>f.grade<=target).length;
+  const target=officeGrade-1, members=fixers||[], roster=members.filter(f=>f.grade<=target).length;
+  const representative=members.find(f=>f.isLeader), representativeGrade=representative?.grade ?? 9;
   if(officeGrade<=1)return {ok:false,way:"max",target,roster,n,completed:ok,why:"사무소 최고 급수"};
+  if(representativeGrade>target)return {ok:false,way:"leader",target,roster,n,completed:ok,why:`대표가 ${gName(target)} 이상이어야 ${gName(target)} 사무소 승급 심사를 받을 수 있다 (현재 ${gName(representativeGrade)})`};
   if(ok>=OFFICE_DIRECT_NEED)return {ok:true,way:"count",target,roster,n,completed:ok,why:"주간 의뢰 해결 수 달성"};
   const why=[];
   if(roster<OFFICE_ROSTER_NEED)why.push(`다음 사무소 급수 이상 해결사 ${OFFICE_ROSTER_NEED}명 필요 (현재 ${roster}명)`);
@@ -8012,10 +8014,11 @@ function officeReviewStatus(w, officeGrade, fixers){
 }
 function reviewProgressHtml(){
   const W=S.wk||{n:0,ok:0,hi:0,sc:0}, n=W.n||0, ok=W.ok||0;
-  const r=officeReviewStatus(W,S.officeGrade,S.fixers), fx=S.fixers;
+  const r=officeReviewStatus(W,S.officeGrade,S.fixers), fx=S.fixers, repGrade=leader()?.grade ?? 9;
   const rate=n ? (ok/n*100).toFixed(1)+"%" : "—", score=n ? ((W.sc||0)/n).toFixed(2) : "—";
   return `<h4 style="margin:14px 0 6px">이번 주 등급 심사 <span class="muted" style="font-size:12px;font-weight:400">(${S.day}일차 · 다음 심사까지 ${7-((S.day-1)%7)}일)</span></h4>
-  <div class="kv"><span>사무소 해결 의뢰</span><b>${ok}/${OFFICE_DIRECT_NEED}건 · 5건이면 우선 승급</b>
+  <div class="kv"><span>사무소 해결 의뢰</span><b>${ok}/${OFFICE_DIRECT_NEED}건 · 5건이면 의뢰 실적 조건 충족</b>
+  <span>대표 급수 제한</span><b>${repGrade===0?"특색 · 1급 사무소까지 승급 가능":`대표 ${gName(repGrade)} · ${gName(repGrade)} 사무소까지 승급 가능`}</b>
   <span>해결 수 미달 시</span><b>${S.officeGrade<=1?'최고 급수 사무소 · 추가 승급 없음':`${gName(r.target)} 이상 해결사 ${r.roster}/${OFFICE_ROSTER_NEED}명 · 성공 ${ok}/${OFFICE_FALLBACK_OK}건`}</b>
   <span>보조 실적</span><b>성공률 ${rate}(70% 이상) · 수행 점수 ${score}(0.50 이상)</b>
   <span>사무소 판정</span><b style="color:${r.ok?'#9fe8b0':'#e7a07c'}">${r.ok ? (r.way==='count'?'의뢰 해결 수 충족':'인원 급수·보조 실적 충족') : r.why}</b></div>
@@ -8064,7 +8067,7 @@ async function review(){
       else if(f.wk && f.wk.n) wait.push(`${esc(f.name)}: 보류 — ${R.why[0]}`); }
     f.wk = {n:0, ok:0, hi:0, sc:0};
   });
-  // 사무소: 5건 성공 시 즉시 승인. 미달이면 직원 급수 -> 최소 성공·성공률·수행 점수 순으로 판정.
+  // 사무소: 대표 급수가 목표 급수에 먼저 도달해야 심사가 가능하다. 이후 의뢰 5건 또는 직원·주간 성과로 판정.
   let off = "";
   if(S.officeGrade>1){
     const R=officeReviewStatus(S.wk,S.officeGrade,S.fixers);
