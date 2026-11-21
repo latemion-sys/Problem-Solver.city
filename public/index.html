@@ -9102,6 +9102,8 @@ function renderStart(){
         ${hasSave?`<button class="mbtn primary" data-t="cont">이어하기</button>`:""}
         <button class="mbtn ${hasSave?"":"primary"}" data-t="new">새 사무소 개업</button>
         <button class="mbtn" data-t="ach">업적</button>
+        <button class="mbtn" data-t="backup">저장 파일 불러오기</button>
+        <input type="file" id="title-savefile" accept=".json,application/json" hidden>
       </div>
       <div class="spoiler"><b>스포일러 경고</b>로보토미 코퍼레이션과 라이브러리 오브 루이나, 림버스 컴퍼니의 관련 이야기가 나올 수 있습니다.</div>
       <div class="ver">v${VERSION}</div>
@@ -9127,12 +9129,30 @@ function renderStart(){
   Title.start(document.getElementById("tcv"));
   const ts = document.getElementById("ts");
   bindLook(ts.querySelector("#lkbox"), NEWLEAD.look, NEWLEAD);
+  ts.querySelector("#title-savefile").addEventListener("change", async e=>{
+    const file=e.target.files&&e.target.files[0];if(!file)return;
+    try{
+      if(file.size>15*1024*1024)throw Error("파일 크기가 15메가바이트를 넘습니다.");
+      const obj=JSON.parse(await file.text()), d=obj&&obj.format==="problem-solver-backup"?obj.game:obj;
+      if(!d||!Array.isArray(d.fixers)||!Array.isArray(d.requests)||!Number.isFinite(d.day)||!d.officeName)throw Error("사무소 저장 파일이 아닙니다.");
+      S=d;
+      if(obj.format==="problem-solver-backup"){
+        if(obj.achievements&&typeof obj.achievements==="object"){ ACH_LT=obj.achievements;ltSave(); }
+        if(obj.unlocked&&typeof obj.unlocked==="object")achSave(obj.unlocked);
+        if(obj.codex&&typeof obj.codex==="object")codexSave(obj.codex);
+        if(obj.city&&typeof obj.city==="object")citySave(obj.city);
+      }
+      save();leaveTitle();render();spawnRumors();toast(`${esc(S.officeName)} · ${S.day}일차 저장을 불러왔다.`);
+    }catch(err){await alertBox("불러오기 실패",esc(err&&err.message||"파일을 확인해 주세요."));}
+    finally{e.target.value="";}
+  });
   ts.onclick = async e=>{
     const t = e.target.dataset.t, r = e.target.dataset.r;
     if(r==="pt"){ const k = ts.querySelector("#pk").value, kk = k==="마음" ? pick(["사람","물건","목표"]) : k; ts.querySelector("#pk").value = kk; ts.querySelector("#pt").value = pick(PRECIOUS_POOL[kk]); return; }
     if(r==="s4"){ NEWLEAD.district = rollDistrict(); ts.querySelector("#s4").value = NEWLEAD.district.name + (NEWLEAD.district.note ? " — "+NEWLEAD.district.note : ""); return; }
     if(r){ ts.querySelector("#"+r).value = r==="s2"?randomOffice():randomName(); return; }
     if(t==="ach") return openAchievements();
+    if(t==="backup"){ts.querySelector("#title-savefile").click();return;}
     if(t==="cont"){ S = load(); leaveTitle(); render(); spawnRumors(); playFx("아침", `${S.day}일차`, `${districtOf().name} — 사무소에 돌아왔다.`, true); return; }
     if(t==="new"){ ts.querySelector("#tui").classList.add("hide"); ts.querySelector("#np").hidden=false; Title.focus(1); return; }
     if(t==="back"){ ts.querySelector("#tui").classList.remove("hide"); ts.querySelector("#np").hidden=true; Title.focus(0); return; }
