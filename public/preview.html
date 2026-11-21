@@ -3956,15 +3956,18 @@ function mgCombat(ctx){
       const chg = me.sp2==="charge" ? (me.charge||0) : null, ak = atkCards(me.wt), dc = defCard(me.wt), tk = techSkill(me);
       const ammoGun = (!me.f.ego || me.f.ego.type==="armor") ? ammoMagazine(me.f.gear.weapon) : null;
       const hasBullet = !ammoGun || ammoGun.mag>0;
+      const listedAmmoBonus = ammoGun ? (AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus : 0;
+      const baseShown = Math.round(equipDamage(me.f)+Math.min(3,support().length)) + listedAmmoBonus;
+      const techniqueShown = Math.round(baseShown*(TECH_DAMAGE_MUL[tk.T.id]||1));
       const ammunition = ammoGun ? `<br><span style="color:#f2d27a">탄창 ${ammoGun.mag}/${ammoCap(ammoGun)} · ${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).name} (+${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus})</span>` : "";
       const pA = foeSkill.def ? 1 : ak.reduce((s,c)=>s + odds(mySkill(skillOf(c)), mySp(me), foeSk(), foe.sp, chg), 0)/ak.length, [la, ca] = oddLabel(pA);
       const lo = Math.min(...ak.map(c=>mySkill(skillOf(c)).base)), hi = Math.max(...ak.map(c=>{ const k = mySkill(skillOf(c)); return k.base + k.coins*k.cp; }));
       const dk = mySkill(skillOf(dc));
       const tsk = mySkill(tk.sk), pT = foeSkill.def ? 1 : odds(tsk, mySp(me) + (tk.T.id==="afterimage" ? 15 : tk.T.id==="vault" ? 10 : 0) + (tk.T.id==="kiai" ? 15 : 0), foeSk(), foe.sp, chg), [lt, ct] = oddLabel(pT);
       m.ctrl.innerHTML = `<div class="pk-moves">
-        <button data-sk="0" ${!hasBullet?"disabled":""}><b>기본 공격</b><small>${ak.map(c=>c.n).join(" · ")} 가운데 하나가 나간다 · 위력 ${lo}~${hi}<br><span style="color:${ca}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${la} ${Math.round(pA*100)}%`}</span></small></button>
+        <button data-sk="0" ${!hasBullet?"disabled":""}><b>기본 공격</b><small>${ak.map(c=>c.n).join(" · ")} 가운데 하나가 나간다 · 합 위력 ${lo}~${hi} · 기본 피해 약 ${baseShown}<br><span style="color:${ca}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${la} ${Math.round(pA*100)}%`}</span></small></button>
         <button data-sk="1" ${foeSkill.def?"disabled":""}><b>방어</b><small>${dc.n} · 합 없음 · 받는 피해 50% 감소 · 반격 없음${foeSkill.def?"<br>적이 방어 중이므로 선택 불가":""}</small></button>
-        <button data-sk="2" class="pk-tech" ${!hasBullet&&!tk.sk.def?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp}<br><span style="color:${ct}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${lt} ${Math.round(pT*100)}%`}</span> · ${tk.T.d}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
+        <button data-sk="2" class="pk-tech" ${!hasBullet&&!tk.sk.def?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · ${tsk.def?"방어 기술":`피해 계수 ${(TECH_DAMAGE_MUL[tk.T.id]||1).toFixed(2)}배 · 기본 피해 약 ${techniqueShown}`}<br><span style="color:${ct}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${lt} ${Math.round(pT*100)}%`}</span> · ${tk.T.d}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
