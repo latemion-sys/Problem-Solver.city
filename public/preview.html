@@ -1535,7 +1535,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "1.2.4.7"; // 보수 일괄 10% 조정·수색 완화·회차 해결사 재등장·특색급 의뢰 삭제
+const VERSION = "1.2.4.9"; // 재장전 대 방어 피해 0 처리 · 기존 1.2.4.7 저장 보수 보존
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -2180,7 +2180,8 @@ function newGame(leaderName, officeName, partnerName, lead){
 /* 1.2.4.7: 이미 수락한 계약 금액은 변경하지 않는다. 이전 버전 미수락 의뢰만 10% 조정. */
 function migrate1247(d){
   if(!d || !Array.isArray(d.requests)) return d;
-  const old = d.v !== VERSION;
+  // 1.2.4.7에서 이미 10% 조정한 보수를 버전 갱신 때문에 다시 인하하지 않는다.
+  const old = !/^1\.2\.4\.(?:7|8|9)$/.test(String(d.v||""));
   d.requests = d.requests.filter(q=>Number(q.grade) !== 0);
   d.requests.forEach(fixGrade1Threat);
   if(old){
@@ -2189,8 +2190,9 @@ function migrate1247(d){
     d.requests.forEach(q=>{
       if(!q.accepted && Number.isFinite(q.reward)) q.reward=Math.round(q.reward*0.9/100)*100;
     });
-    d.v = VERSION;
   }
+  // 이전 버전 저장도 정상적으로 1.2.4.9로 승계한다. 보수 마이그레이션은 최대 한 번만 한다.
+  d.v = VERSION;
   return d;
 }
 const NOM_P = 0.3;
@@ -4010,7 +4012,7 @@ function mgCombat(ctx){
       const lines = [reloading ? `${esc(me.name)}의 재장전 — ${AMMO_BY[gun.ammoType].name} ${gun.mag}/${ammoCap(gun)}발` : guarding ? `${esc(me.name)}의 방어 — ${foe.name}의 ${fk.n}`
         : `${esc(me.name)}의 ${T ? `<b style="color:#9fd0ff">${c.n}</b>` : `기본 공격 — ${c.n}`} vs ${foe.name}의 ${fk.n}`];
       clash = guarding || foeGuarding ? null : {mine:{sk, coins:sk.coins, broken:0, heads:[], p:sk.base}, foe:{sk:fk, coins:fk.coins, broken:0, heads:[], p:fk.base}, t: performance.now(), res:null};
-      m.info.innerHTML = `<div class="pk-text">${lines[0]} — ${guarding?"합 없이 공격을 받아낸다":foeGuarding?"적이 합 없이 방어한다":"합!"}</div>`;
+      m.info.innerHTML = `<div class="pk-text">${lines[0]} — ${reloading && fk.def?"적도 방어 중이므로 공격 없이 재장전한다":guarding?"합 없이 공격을 받아낸다":foeGuarding?"적이 합 없이 방어한다":"합!"}</div>`;
       for(const e of R.ex){
         clash.mine.heads = e.ha; clash.mine.p = e.pa; clash.foe.heads = e.hb; clash.foe.p = e.pb; clash.flipAt = performance.now(); clash.res = null;
         st.crit = false; attack("tie", 0, c); await wait(560);
@@ -4024,7 +4026,7 @@ function mgCombat(ctx){
       if(guarding || foeGuarding){ /* 기본 방어는 합 승패로 취급하지 않는다. */ }
       else if(won){ me.sp = clamp(me.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); foe.sp = clamp(foe.sp - 4, -45, 45); }
       else { if(me.sp2!=="mind") me.sp = clamp(me.sp - (accFx(me.f,"buffer") && me.f.body && (me.f.body.nerve || me.f.body.full) ? 2 : 5), -45, 45); else me.sp = Math.max(0, me.sp); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
-      lines.push(guarding ? `합을 진행하지 않았다. ${foe.name}의 공격을 방어해 받는 피해를 절반으로 줄인다.` : foeGuarding ? `${jo(foe.name,"이")} 합 없이 방어한다. 공격 피해가 절반으로 줄어든다.` : won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${jo(foe.name,"이")} 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
+      lines.push(reloading && fk.def ? `합을 진행하지 않았다. ${foe.name}도 방어 중이라 공격하지 않는다.` : guarding ? `합을 진행하지 않았다. ${foe.name}의 공격을 방어해 받는 피해를 절반으로 줄인다.` : foeGuarding ? `${jo(foe.name,"이")} 합 없이 방어한다. 공격 피해가 절반으로 줄어든다.` : won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${jo(foe.name,"이")} 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       // 피해: 이긴 쪽이 남은 코인을 한 번 더 던져 나온 최종 위력만큼 한 번에 준다
       const heads = flip(R.left, won ? me.sp : foe.sp); const clashPower=Math.round(powOf(wSk, heads)*bonusK);
@@ -4104,8 +4106,12 @@ function mgCombat(ctx){
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
           foe.cards = [{n:"큰 부리로 물기",a:6,b:14},{n:"집어삼키기",a:7,b:12},{n:"붉은 깃 세우기",a:5,b:9,def:true}]; foe.skills = foe.cards.map(c=>skillOf(c));
           abNote.push(`<b style="color:#ff8a7a">맞은 새가 붉게 변했다 — 가슴의 커다란 부리가 열렸다. 이제 물리면 쓰러진다</b>`); } }
+      else if(reloading && fk.def){
+        // 서로 공격하지 않는다. 최소 피해 보정, 출혈·화상·피격 효과, 공격 연출도 발생하지 않는다.
+        total = 0;
+      }
       else { let dmg = Math.round(P*clamp(Math.pow(reqC/Math.max(1,power(me.f,["str"])),0.22),0.85,1.25)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*longK()*(me.f.tired && !accFx(me.f,"calm") ? TIRED_DMG : 1));
-        if(reloading && fk.def) dmg=0; if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+        if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(me.wsp==="meztil"){ dmg = Math.round(dmg*1.2); wNote.push("과속 — 몸이 따라가지 못했다(받는 피해 +20%)"); }
         if(me.wsp==="ranga" && me.rend){ me.rend = 0; wNote.push("벌려 둔 상처가 아물었다"); }
         if(T && T.id==="allout"){ dmg = Math.round(dmg*1.5); tNote.push("전력 공격 — 빈틈을 그대로 맞았다(받는 피해 ×1.5)"); }
@@ -4127,7 +4133,7 @@ function mgCombat(ctx){
         if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       await wait(900);
       clash = null;
-      lines.push(won ? `기본 피해 ${P}${ammoPlus?` · 탄환 추가 피해 최대 +${ammoPlus}`:""} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : guarding ? `${jo(esc(me.name),"이")} 막아 피해를 절반으로 줄였다(${total}) — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}`);
+      lines.push(reloading && fk.def ? "재장전 완료 — 피해 0, 체력 변화 없음." : won ? `기본 피해 ${P}${ammoPlus?` · 탄환 추가 피해 최대 +${ammoPlus}`:""} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : guarding ? `${jo(esc(me.name),"이")} 막아 피해를 절반으로 줄였다(${total}) — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp)]}`);
       if(R.fired) egoNote.unshift("충전 10 소모 — 이번 턴 코인 위력 +1");
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       if(abNote.length) lines.push(`<span style="color:#ff9a8a">환상체</span> ${abNote.join(" · ")}`);
