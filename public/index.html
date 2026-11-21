@@ -124,6 +124,10 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .panel h2{margin:0 0 10px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
 .panel h2 small{color:var(--muted);font-weight:400;font-size:12px}
 .reqs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.req-filters{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.req-filters button{padding:5px 10px;font-size:12px}
+.req-filters button.on{border-color:var(--accent);color:var(--accent);background:#332a20}
+.req .deadline-urgent{color:#ff9a79;border-color:#ff9a79}
 .req{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px}
 .req.special{border-color:var(--accent)} .req.distort{border-color:var(--red)}
 .req .head{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
@@ -1531,7 +1535,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "1.0.0";
+const VERSION = "1.1.0"; // 운영·판정 개선, 이전 저장 파일 호환
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -2490,16 +2494,58 @@ const shinPow = f => (shinOn(f) ? SHIN_POW : 0) + mangN(f);
 const shinCost = f => (shinOn(f) ? SHIN_MP : 0) + (mangN(f) ? MANG_MP[mangN(f)-1] : 0);
 const shinRate = team => team.filter(shinOn).length * SHIN_RATE;
 const mangReady = f => !!(f && f.shin && (f.mang||0) < MANG_MAX && (f.shinUses||0) >= MANG_NEED[f.mang||0]);
-function rate(team, q){ const P = teamPower(team,q.attrs); return Math.min(100, clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)) - tiredPen(team), 5, 97) + shinRate(team)); }
+/* 성격별 전문 분야. 해결사의 급수가 높기만 하면 모든 일을 도맡는 상황을 줄인다.
+   대표의 전문 분야는 전부, 동료는 절반만 더한다. 불리한 성격도 있을 수 있다. */
+function specialty(f,q){
+  const p=f.personality||"", a=q.attrs||[], str=a.includes("str"), agi=a.includes("agi"), tec=a.includes("tec"), wil=a.includes("wil");
+  const combat=q.kind==="일반" || q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리";
+  const rule={
+    "공격적":["정면 전투",combat&&str?5:0], "신중함":["조사·관찰",(tec||q.kind==="수색")?4:0],
+    "헌신":["호위",q.kind==="호위"?6:0], "냉소":["뒤틀림",q.kind.includes("뒤틀림")?4:0],
+    "충동적":["속전속결",combat&&str?5:0], "침착함":["환상체 관측",q.kind==="환상체"?5:0],
+    "집요함":["수색·추격",q.kind==="수색"||agi?5:0], "낙천적":["동료 협업",2],
+    "비관적":["위험 예측",q.hazard?4:0], "오만함":["고난도 의뢰",q.grade!=null&&f.grade>q.grade?5:0],
+    "소심함":["저위험 일",LIGHT_THREATS.includes(threatOf(q))?5:q.hazard?-3:0],
+    "정의감":["제압",q.goal==="제압"?5:0], "탐욕":["고액 의뢰",q.reward>=50000?4:0],
+    "다정함":["호위·보호",q.kind==="호위"?5:0], "무심함":["정신적 압박",wil?4:0],
+    "광기":["이상 현상",q.kind==="환상체"||q.kind.includes("뒤틀림")?5:0]
+  }[p]||["",0];
+  return {name:rule[0],bonus:rule[1]};
+}
+function specialtyRate(team,q){ return Math.max(-4,Math.min(9,Math.round(team.reduce((t,f,i)=>t+specialty(f,q).bonus*(i===0?1:0.5),0)))); }
+function rate(team, q){ const P = teamPower(team,q.attrs); return Math.min(100, clamp(Math.round(75 + (P-q.req)*4*15/Math.max(15,q.req)) - tiredPen(team) + specialtyRate(team,q), 5, 97) + shinRate(team)); }
 function isMental(q){ return q.attrs.includes("wil") && (q.kind==="환상체"||q.kind==="뒤틀림 토벌"||q.attrs[0]==="wil"); }
 function dmgFactor(team,q){ const P = teamPower(team,q.attrs); return clamp(1 + (q.req-P)/Math.max(10,q.req)*2, 0.5, 2.5); }
 const shareMul = n => n<=1 ? 1 : 1/(0.7*n);
+/* 출동 미리보기와 실전 정산은 같은 피해 계산을 사용한다.
+   전투 중 정신력 추가 피해·환상체 즉사 기믹 등은 별도로 발생한다. */
+const LOSS_PCT = {ok:[10,15,20,25],fail:[35,43,52,60]};
+function damagePercent(f,q,success,wound,mental,march,doom=false){
+  const red=mental ? redMP(f) : redHP(f), w=wound===1&&accFx(f,"lining")?0:Math.max(0,Math.min(3,wound));
+  const gentle=q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
+  let pct=march ? Math.floor(LOSS_PCT.ok[0]*(1-red*0.5)*(accFx(f,"march")?1.8:MARCH_K))
+    : doom ? 0 : gentle&&!success ? 3 : Math.floor((success?LOSS_PCT.ok:LOSS_PCT.fail)[w]*(1-red*0.5));
+  if(LIGHT_THREATS.includes(threatOf(q))) pct=Math.floor(pct/2);
+  if(f.tired&&!accFx(f,"calm")) pct=Math.floor(pct*TIRED_DMG);
+  if(!mental&&accFx(f,"inject")) pct=Math.floor(pct*(f.injLack?1.12:0.88));
+  return Math.max(0,pct);
+}
 function estimate(team,q){
-  const k = dmgFactor(team,q)*shareMul(team.length), mental = isMental(q);
-  const red = team.reduce((s,f)=>s+(mental?redMP(f):redHP(f)),0)/team.length;
-  const s = [Math.round(4*k*(1-red)), Math.round(9*k*(1-red))];
-  const l = [Math.round(14*k*(1-red)), Math.round(26*k*(1-red))];
-  return {rate:rate(team,q), stat: mental?"정신력":"체력", s, l};
+  const mental=isMental(q), profiles=team.map(f=>{
+    const march=!canGo(f)&&canMarch(f), mx=mental?f.mpMax:f.hpMax;
+    const dmg=(success,w)=>{
+      let d=Math.floor(mx*damagePercent(f,q,success,w,mental,march)/100);
+      if(f.ab&&f.ab.bless&&S.day<=f.ab.bless.until) d=Math.floor(d/2);
+      if(!mental&&d>0&&f.hp<=f.hpMax*0.2&&accFx(f,"bandage")) d=0;
+      return d;
+    };
+    const success=dmg(true,0), fail=[0,1,2,3].map(w=>dmg(false,w));
+    return {id:f.id,name:f.name,success,fail:[Math.min(...fail),Math.max(...fail)],
+      status:march?"강행군":f.tired?"피로":"",specialty:specialty(f,q)};
+  });
+  return {rate:rate(team,q),stat:mental?"정신력":"체력",profiles,
+    s:[Math.min(...profiles.map(x=>x.success)),Math.max(...profiles.map(x=>x.success))],
+    l:[Math.min(...profiles.map(x=>x.fail[0])),Math.max(...profiles.map(x=>x.fail[1]))]};
 }
 function canGo(f){ return f.lastDispatch!==S.day && f.unavailUntil < S.day; }
 /* 강행군: 오늘 이미 출동한 해결사를 하루 한 번 더 내보낸다. 결과와 상관없이 가장 적게 깎일 때(성공 · 안정)의 2.5배가 깎인다 */
@@ -2524,13 +2570,9 @@ function leadGear(f){
 }
 
 /* ================= 출동 방식 선택 ================= */
-/* 자동 진행: 해결사 등급만으로 단순하게 판정한다.
-   성공률 = 의뢰 등급과 출동한 사람 중 가장 높은 해결사 등급의 차이(같으면 75%, 한 등급 위면 +12%p, 한 등급 아래면 −15%p) + 동료 1명당 +4%p.
-   성공하면 모두 안정(최소 감소). 실패하면 사람마다 자기 등급에 따라 부상 단계를 뽑는다 — 낮은 등급일수록 중상 이상이 잘 나온다. */
-function autoRate(team, q){
-  const best = Math.min(...team.map(f=>f.grade)), qg = q.grade!=null ? q.grade : 9, d = qg - best;
-  return Math.min(100, clamp(Math.round(75 + (d>=0 ? 12*d : 15*d) + 4*(team.length-1)) - tiredPen(team), 5, 97) + shinRate(team));
-}
+/* 자동 진행: 의뢰 카드에 표시하는 팀 전력·성격 보정 성공률을 그대로 사용한다.
+   성공해도 최소 출동 피로가 남으며, 실패하면 해결사 등급에 따른 부상 단계를 뽑는다. */
+function autoRate(team, q){ return rate(team,q); } // 자동 진행도 화면과 동일한 능력치·장비·성격·피로 판정
 function autoWound(f){
   const g = clamp(f.grade, 1, 9), k = (9-g)/8;                    // 9급 0 → 1급 1
   const P9 = [0.05,0.25,0.45,0.25], P1 = [0.45,0.47,0.06,0.02];   // 안정·경상·중상·치명상 확률(9급: 중상 이상 70% · 4급: 경상 이하 약 77%)
@@ -2544,9 +2586,9 @@ function chooseMode(q, team){
   const base = rate(team, q), games = gamesFor(q);
   const lo = clamp(base-25,3,97), fight = games.includes("str") || (games.length===1 && ["agi","escort","search","abno"].includes(games[0]));
   return modal("출동 방식", `<div class="kv">
-      <span>기본 성공률</span><b>${base}%</b>
+      <span>예상 성공률</span><b>${base}%</b>
       <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="abno" ? "행동으로 알로 재우거나(통제), 폭주하거나 날뛰면 전투로 제압하면 성공. 즉사 기믹이 있는 환상체는 통제에 실패하면 끝이다." : games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : games[0]==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복은 합 전투." : games[0]==="search" ? "찾는 것의 자리를 확정하면 성공, 시간이 다하면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${jo(esc(team[0].name),"이")} 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
-      <span>자동 진행</span><b>해결사 등급으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
+      <span>자동 진행</span><b>팀 전력으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
 async function runMinigames(q, team){
@@ -5525,14 +5567,16 @@ async function dispatch(qid, fids, modeArg){
     if(abnoR && !team.length){ const L = []; const lost = abnoApply(q, team, Object.assign({}, abnoR, {battle: combat && combat.battle}), L); S.requests = S.requests.filter(x=>x.id!==qid);
       stageLog(`[${q.kind} 의뢰 실패]`, q.client, false); await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${L.join("<br>")}<br>아무도 돌아오지 못했다.</p>`, [{t:"확인",primary:true}]);
       for(const x of lost){ await abnoLose(x.f, x.kind, x.why); if(!S || S.over) return; } save(); render(); return; }
-    /* 성공률 하나로: 직접 수행은 기본 성공률을 고친다.
-       · 이기고 지는 게임(합 전투 · 추격 · 호위): 지면 실패. 압승(점수 80 이상)이면 확정 성공. 겨우 이기면 기본 성공률 + 15 + 점수×30 으로 마무리 판정.
+    /* 직접 수행: 목표가 있는 게임(합 전투 · 추격 · 호위)은 달성하면 성공, 미달성이면 실패.
+       · 압승(80점 이상)은 특수 전리품 확률이 늘어난다.
        · 점수 게임(단서 · 방벽 · 장부): 기본 성공률 − 25 + 점수×40 (만점이면 기본 +15%p).
        · 환상체는 통제·제압 결과가 곧 성패(기믹이 많아 그대로 둔다) */
     if(q.kind==="환상체" && r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
     else if(r.decisive===false || r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
-    else if(r.decisive===true){ mgScore = r.score; if(r.score >= CLEAN_WIN){ decisive = true; mgLine = `직접 수행 <b>압승</b>(${Math.round(r.score*100)}점) — 확정 성공`; }
-      else { pr = clamp(Math.round(base + 15 + 30*r.score), 50, 97); mgLine = `직접 수행 승리(${Math.round(r.score*100)}점) · 상처가 깊어 마무리는 판정 — 성공률 ${base}% → <b>${pr}%</b>`; } }
+    else if(r.decisive===true){ mgScore = r.score; decisive = true;
+      mgLine = r.score >= CLEAN_WIN ? `직접 수행 <b>압승</b>(${Math.round(r.score*100)}점) — 의뢰 확정 성공 · 추가 전리품 기회`
+        : r.score >= 0.45 ? `직접 수행 승리(${Math.round(r.score*100)}점) — 의뢰 확정 성공`
+        : `직접 수행 <b>간신히 승리</b>(${Math.round(r.score*100)}점) — 의뢰는 성공했지만 상처가 깊다`; }
     else { mgScore = r.score; pr = clamp(Math.round(base - 25 + 40*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
   else { pr = base; if(hasGame) payMul = 0.8; if(q.kind==="환상체" && abnoOf(q)) codexMeet(abnoOf(q).vid); mgLine = `자동 진행 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
   let pay = Math.round(q.reward*payMul/100)*100;
@@ -5545,7 +5589,7 @@ async function dispatch(qid, fids, modeArg){
       if(th==="도시의 별") ac("star"); if(th==="도시 악몽") ac("nightmare"); if(mgScore!=null && mgScore>=0.9) ac("clean");
       S.st.streak = (S.st.streak||0) + 1; acMax("streakBest", S.st.streak); S.st.dayOk = S.st.dayD===S.day ? (S.st.dayOk||0) + 1 : 1; S.st.dayD = S.day; acMax("dayBest", S.st.dayOk); }
     else { ac("fail"); S.st.streak = 0; } }
-  { const sc = mode==="play" ? (decisive!=null ? (success ? 0.85 : 0.2) : mgScore!=null ? mgScore : 0.5) : (success ? 0.6 : 0.15), add = (w, hard) => { w.n++; w.sc += sc; if(success){ w.ok++; if(hard) w.hi++; if(q.nom){ w.ok++; w.hi++; } } };
+  { const sc = mode==="play" ? (decisive!=null ? (success ? 0.85 : 0.2) : mgScore!=null ? mgScore : 0.5) : (success ? 0.6 : 0.15), add = (w, hard) => { w.n++; w.sc += sc; if(success){ w.ok++; if(hard) w.hi++; if(q.nom) w.hi++; } };
     S.wk = S.wk || {n:0, ok:0, hi:0, sc:0}; add(S.wk, q.grade!=null && q.grade <= S.officeGrade);
     team.forEach(f=>{ f.wk = f.wk || {n:0, ok:0, hi:0, sc:0}; add(f.wk, q.grade!=null && q.grade <= f.grade); }); }
   const k = dmgFactor(team,q)*shareMul(team.length);
@@ -5556,7 +5600,7 @@ async function dispatch(qid, fids, modeArg){
     if(fe){ lines.push(fe.line); if(success) pay = Math.max(0, Math.round(pay*fe.payMul/100)*100 + fe.payAdd); else if(fe.payAdd){ S.money += fe.payAdd; S.todayIncome = (S.todayIncome||0) + fe.payAdd; lines.push(`받은 돈 +${won(fe.payAdd)}`); } } }
   // 의뢰가 끝나면 체력(정신 의뢰는 정신력)이 최대치의 일정 비율만큼 깎인다.
   // 성공: 부상 단계에 따라 10~25% · 실패: 35~60%. 직접 싸운 사람은 전투 끝의 부상 단계, 아니면 무작위
-  const W_NAME = ["안정","경상","중상","치명상"], LOSS = {ok:[LOSS_OK0,15,20,25], fail:[35,43,52,60]}, gentleQ = q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
+  const W_NAME = ["안정","경상","중상","치명상"], LOSS = LOSS_PCT, gentleQ = q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
   let abLost = [];
   if(abnoR){ const A = abnoOf(q);
     abLost = abnoApply(q, team, Object.assign({}, abnoR, {battle: combat && combat.battle}), lines);
@@ -5566,11 +5610,7 @@ async function dispatch(qid, fids, modeArg){
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
     // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 2.5배
-    const wq = w===1 && accFx(f,"lining") ? 0 : w;   // 덧댄 안감: 경상이면 안정만큼만
-    let pct = march ? Math.floor(LOSS.ok[0] * (1 - red*0.5) * (accFx(f,"march") ? 1.8 : MARCH_K)) : abnoR && abnoR.doom ? 0 : gentleQ && !success ? 3 : Math.floor((success ? LOSS.ok : LOSS.fail)[wq] * (1 - red*0.5));
-    if(LIGHT_THREATS.includes(threatOf(q))) pct = Math.floor(pct/2);   // 뜬소문 · 도시 괴담 의뢰는 입는 피해가 절반
-    if(f.tired && !accFx(f,"calm")) pct = Math.floor(pct*TIRED_DMG);   // 피로하면 받는 피해 +20%(정신 안정 키트가 있으면 없음)
-    if(!mental && accFx(f,"inject")) pct = Math.floor(pct*(f.injLack ? 1.12 : 0.88));   // 강화 주입기
+    const pct = damagePercent(f,q,success,w,mental,march,!!(abnoR && abnoR.doom));
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
     const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
     let dH = mental ? 0 : main, dM = mental ? main : 0;
@@ -5602,6 +5642,8 @@ async function dispatch(qid, fids, modeArg){
   if(success){
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
+    S.incomeHistory = (S.incomeHistory||[]).filter(x=>x.day>=S.day-27);
+    S.incomeHistory.push({day:S.day,amount:pay});
     lines.push(`보수 +${won(pay)}`);
     team.forEach(f=>{ if(accFx(f,"lighter") && S.fixers.includes(f)){ const v = Math.round(f.mpMax*0.04); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: 낡은 라이터로 한 대 붙였다 — 정신력 +${v}`); } });
     if(q.grade===S.officeGrade) S.reviewSuccess++;
@@ -5613,7 +5655,7 @@ async function dispatch(qid, fids, modeArg){
       growTick(f, q.attrs, lines);
     });
     if(q.loot){ const L = LOOT_BY[q.loot.id], nm = lootName(q);
-      if(Math.random() < LOOT_P || window.__forceLoot){ const it = L ? makeLootAcc(L.id) : Object.assign({}, q.loot); S.inventory = S.inventory||[]; S.inventory.push(it);
+      if(Math.random() < Math.min(0.65, LOOT_P*(mode==="play"?(mgScore>=CLEAN_WIN?1.35:1):0.7)) || window.__forceLoot){ const it = L ? makeLootAcc(L.id) : Object.assign({}, q.loot); S.inventory = S.inventory||[]; S.inventory.push(it);
         lines.push(`<span style="color:#e8d27a">특수 전리품</span> — ${L ? esc(L.got[lootPerson(q) ? 0 : 1]) : ""} <b>${esc(nm)}</b> 획득(관리에서 장착)`); }
       else lines.push(`<span class="muted">소문으로 듣던 ${esc(jo(nm,"은"))} 끝내 찾지 못했다. 누가 먼저 가져갔거나, 처음부터 없었는지도 모른다.</span>`); }
     if(q.kind==="환상체" && abnoOf(q) && abnoR){ const A = abnoOf(q), w = team.find(x=>x.id===abnoR.last) || team[0];
@@ -5623,7 +5665,7 @@ async function dispatch(qid, fids, modeArg){
       await abnoReward(q, team, abnoR, lines); }
     if(q.kind==="환상체" && abnoOf(q)){ const A = abnoOf(q), how = abnoR && abnoR.how ? abnoR.how : (A.kill ? "sup" : "ctrl");
       ac(how); ac(how+"_"+A.risk); acSet(how, A.id); if(A.kill) ac("sinKill");
-      if(Math.random() < GIFT_P*(q.hazard?1.5:1)*(abnoR && abnoR.flame ? 6 : 1) || window.__forceGift){ const g = makeGift(A, how, q.grade);
+      if(Math.random() < GIFT_P*(q.hazard?1.5:1)*(abnoR && abnoR.flame ? 6 : 1)*(mode==="auto"?0.7:mgScore>=CLEAN_WIN?1.2:1) || window.__forceGift){ const g = makeGift(A, how, q.grade);
         if(g){ ac("gift"); S.inventory = S.inventory||[]; S.inventory.push(g); codexNote(A.vid, null, g.name); lines.push(`<span style="color:#e8d27a">기프트</span>: <b>${esc(g.name)}</b>(${g.gift.kind} · ${threatOf(q)}) 획득 — 관리에서 장신구로 장착`); } } }
     if(q.kind==="특색 심사") await passColor(team[0]);
   } else {
@@ -6622,10 +6664,14 @@ const obsRate = O => O.n ? (O.win||0)/O.n : 1;
 async function assocOffer(){
   if(!S || S.over || S.assocJoined || S.officeGrade > 4) return; S.assocAsked = S.assocAsked || {};
   const O = S.assocObs;
-  if(!O){ if(Math.random() >= ASSOC_OBS_P) return;
+  if(!O){
+    S.assocWaitWeeks = (S.assocWaitWeeks||0) + 1;
+    const most = Math.max(0,...Object.keys(ASSOCS).filter(k=>!S.assocAsked[k]).map(k=>(S.assoc||{})[k]||0));
+    const chance = Math.min(1,ASSOC_OBS_P + Math.max(0,S.assocWaitWeeks-1)*0.07);
+    if(most<ASSOC_NEED && Math.random() >= chance) return;
     const cands = Object.keys(ASSOCS).filter(k=>!S.assocAsked[k]); if(!cands.length) return;
     const best = cands.slice().sort((a,b)=>((S.assoc||{})[b]||0) - ((S.assoc||{})[a]||0))[0], id = (S.assoc||{})[best] ? best : pick(cands), A = ASSOCS[id];
-    S.assocObs = {id, day:S.day, ok:0, n:0, win:0, lost:0}; S.records.push({day:S.day, name:S.officeName, what:"협회 관찰", note:`${A.n}의 관찰 대상이 되었다`}); addLog(`[협회 관찰 — ${A.n}] 편지가 왔다`); save();
+    S.assocObs = {id, day:S.day, ok:0, n:0, win:0, lost:0}; S.assocWaitWeeks=0; S.records.push({day:S.day, name:S.officeName, what:"협회 관찰", note:`${A.n}의 관찰 대상이 되었다`}); addLog(`[협회 관찰 — ${A.n}] 편지가 왔다`); save();
     await modal(`협회 관찰 — ${A.n}`, assocLetter(id, ASSOC_FORM[id].title, ASSOC_FORM[id].body), [{t:"편지를 서랍에 넣는다", primary:true}]); return; }
   const A = ASSOCS[O.id];
   if((O.lost||0) >= 2 || ((O.n||0) > 15 && obsRate(O) < 0.5)){ S.assocObs = null; addLog(`${A.n}의 관찰이 중단되었다`);
@@ -6780,7 +6826,7 @@ function randomColorTitle(){
 /* 1급인 채로 도시의 별 의뢰를 STAR_FOR_COLOR건 이상 해내면 하나 협회의 편지가 상단 무대로 날아온다.
    출석하면 능력과 지금까지의 행적으로 심사한다. 붙으면 특색 인장과 칭호, 떨어지면 1주일 뒤 재심사를 요청할 수 있다. */
 const STAR_FOR_COLOR = 3, COLOR_PASS = 65;
-const LOSS_OK0 = 10;   // 의뢰를 마치고 가장 적게 깎일 때(성공 · 안정)의 비율
+const LOSS_OK0 = LOSS_PCT.ok[0];   // 의뢰를 마치고 가장 적게 깎일 때(성공 · 안정)의 비율
 async function colorMailCheck(){ const __m0 = S.fixers.filter(f=>f.colorMail).length; try{ return await colorMailCheck0(); } finally{ if(S && S.fixers.filter(f=>f.colorMail).length > __m0) ac("mail"); } }
 async function colorMailCheck0(){
   for(const f of S.fixers.slice()){ if(!S || S.over) return;
@@ -6860,6 +6906,8 @@ async function useRewind(f){ const dev = accFx(f,"rewind"); if(!dev || !f.rw || 
   Object.assign(f, keep); f.gear = Object.assign({}, keep.gear, {acc:null}); delete f.rw;   // 장비는 사무소 물건이라 그대로(장치만 사라진다)
   addLog(`${f.name}: 시간 되돌림 장치를 썼다 — ${snap.day}일차 아침으로 돌아갔다`); save(); render(); toast(`${f.name} — ${snap.day}일차 아침으로 돌아갔다`); }
 function startDay(first){
+  if(S.debt>0){ const week=Math.floor((S.day-1)/7);
+    if(!S.scarWeekDue||S.scarWeekDue.week!==week) S.scarWeekDue={week,amount:Math.min(S.debt,Math.max(Math.floor(S.money*0.35),10000))}; }
   rwSnap();
   genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn();
   genRecruits();
@@ -7109,7 +7157,10 @@ async function weekly(){ ac("week"); bodyUpkeep();
   // 주간 보고는 그날 밤 정산 창에 함께 싣는다(창 하나 줄이기)
 }
 // 매주 수금: 그 주에 스스로 갚은 돈이 '최소 수금액'(보유 자금의 35%, 최소 1만 안)에 못 미치면 모자란 만큼 뜯어 간다
-function scarDue(){ return Math.min(S.debt, Math.max(Math.floor(S.money*0.35), 10000)); }
+function scarDue(){
+  const w=Math.floor((S.day-1)/7), due=S.scarWeekDue && S.scarWeekDue.week===w ? S.scarWeekDue.amount : Math.max(Math.floor(S.money*0.35),10000);
+  return Math.min(S.debt+(S.paidThisWeek||0),due);
+}
 async function scarVisit(){
   let html;
   playFx("흉터", "남겨진 흉터", "수금하러 왔다.", false);
@@ -7182,13 +7233,19 @@ async function openRepay(){
 }
 /* 하나 협회 등급 심사(7일마다): 이번 주에 해낸 의뢰 수 · 자기 등급 이상 의뢰 실적 · 수행 점수 · 성공 비중으로 본다 */
 const REVIEW_NEED = g => 3 + Math.floor((9 - g)/2);
-function reviewOf(w, g, needHi){ w = w || {n:0, ok:0, hi:0, sc:0}; const need = REVIEW_NEED(g), why = [];
+function reviewOf(w, g, needHi){ w = w || {n:0, ok:0, hi:0, sc:0}; const need = REVIEW_NEED(g), why = []; w.ok = Math.min(w.n||0,w.ok||0);
   if(w.ok < need) why.push("해낸 의뢰가 모자라다"); if(w.hi < (needHi!=null ? needHi : Math.ceil(need/2))) why.push("제 등급에 걸맞은 의뢰 실적이 모자라다");
   if(w.n && w.ok/w.n < 0.7) why.push("실패가 잦았다"); if(w.n && w.sc/w.n < 0.5) why.push("일 처리가 서툴렀다");
   return {ok: !why.length && w.n > 0, why}; }
 /* 사무소가 5급이 되면 더 큰 건물로 옮겨야 한다(100만 안). 빚이 남아 있으면 흉터 수금이 먼저라, 빚을 다 갚은 뒤 첫 심사 때 옮긴다. 모자라면 있는 만큼 내고 나머지는 정산 때마다 떼 간다.
    옮긴 뒤로는 14일마다 월세와 뒷골목의 밤 처리 비용으로 그때 가진 돈의 20%가 빠져나간다(소수점 버림). */
-const MOVE_COST = 1000000, RENT_DAYS = 14, RENT_K = 0.2;
+const MOVE_COST = 1000000, RENT_DAYS = 14;
+const RENT_BASE = {5:100000,4:160000,3:250000,2:380000,1:550000,0:750000}, RENT_SALES = 0.04;
+function rentForecast(){
+  const grade=Math.max(0,Math.min(5,S.officeGrade)), base=RENT_BASE[grade]||0;
+  const sales=(S.incomeHistory||[]).filter(x=>x.day>=S.day-13&&x.day<=S.day).reduce((a,x)=>a+x.amount,0);
+  return {base,sales,variable:Math.floor(sales*RENT_SALES),total:base+Math.floor(sales*RENT_SALES)};
+}
 async function officeMove(){
   if(!S || S.over || S.moved || S.officeGrade > 5 || S.debt > 0) return;   // 빚(흉터 수금)이 남아 있으면 다 갚은 뒤 첫 심사 때 옮긴다
   const pay = Math.min(S.money, MOVE_COST), due = MOVE_COST - pay; S.money -= pay; S.moveDue = due; S.moved = S.day;
@@ -7196,7 +7253,7 @@ async function officeMove(){
   await modal("사무소 이전", `<p class="ledger-q">${gName(S.officeGrade)} 사무소가 되자 협회 지부에서 통지서가 왔다. 이 등급의 사무소가 쓰기에는 지금 건물이 좁다고.<br><br>
     짐을 싸서 한 블록 위, 간판을 두 개쯤 걸 수 있는 건물로 옮겼다. 새 건물에는 월세가 붙고, 이 구역의 뒷골목은 밤마다 따로 손을 봐 둬야 한다.</p>
     <div class="kv"><span>이전 비용</span><b>${won(MOVE_COST)}</b><span>지금 낸 돈</span><b>${won(pay)}</b>${due ? `<span>남은 비용</span><b style="color:#e7a07c">${won(due)} — 정산 때마다 떼 간다</b>` : ""}
-    <span>앞으로</span><b>${RENT_DAYS}일마다 월세 · 뒷골목의 밤 처리 — 그때 가진 돈의 ${Math.round(RENT_K*100)}%</b></div>`, [{t:"확인", primary:true}]);
+    <span>앞으로</span><b>${RENT_DAYS}일마다 등급별 기본비 + 최근 14일 보수의 ${Math.round(RENT_SALES*100)}%</b></div>`, [{t:"확인", primary:true}]);
   save(); render(); }
 function officeFees(ended){ let h = "";
   if(ended % 7 === 0){ S.fixers.filter(f=>accFx(f,"inject")).forEach(f=>{ if(S.money >= INJ_COST){ S.money -= INJ_COST; f.injLack = false; h += `<span>약값</span><b>-${won(INJ_COST)} (${esc(f.name)}의 강화 주입기)</b>`; }
@@ -7206,8 +7263,11 @@ function officeFees(ended){ let h = "";
       if(t < due){ pay.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.round(f.mpMax*0.1)); }); h += `<span></span><b style="color:#ff8a7a">주급을 다 주지 못했다 — 받지 못한 이들 정신력 -10%</b>`; addLog(`주급이 ${won(due - t)} 모자랐다`); } } }
   if(!S.moved) return h;
   if(S.moveDue > 0){ const t = Math.min(S.money, S.moveDue); S.money -= t; S.moveDue -= t; if(t) h += `<span>이전 비용</span><b>-${won(t)}${S.moveDue ? ` (남은 ${won(S.moveDue)})` : " (다 냈다)"}</b>`; }
-  if(ended % RENT_DAYS === 0){ const r = Math.floor(S.money*RENT_K); S.money -= r; S.st = S.st || {}; addLog(`월세 · 뒷골목의 밤 처리 — ${won(r)}`);
-    h += `<span>월세 · 밤 처리</span><b style="color:#e7a07c">-${won(r)} (자금의 ${Math.round(RENT_K*100)}%)</b>`; }
+  // 미납 월세는 다음 정산에서도 청구되므로, 급여를 내기 전에 정산 화면에 표시한다.
+  if(ended % RENT_DAYS === 0){ const R = rentForecast(); S.rentArrears = (S.rentArrears||0) + R.total;
+    const paid = Math.min(S.money,S.rentArrears); S.money -= paid; S.rentArrears -= paid; S.st = S.st || {};
+    addLog(`월세 · 밤 처리 — 청구 ${won(R.total)}, 납부 ${won(paid)}${S.rentArrears?`, 미납 ${won(S.rentArrears)}`:""}`);
+    h += `<span>월세 · 밤 처리</span><b style="color:#e7a07c">-${won(paid)} (기본 ${won(R.base)} + 최근 수입의 ${Math.round(RENT_SALES*100)}%)${S.rentArrears?` · 미납 ${won(S.rentArrears)}`:""}</b>`; }
   return h; }
 async function review(){
   const lines = [], wait = []; ac("review"); if(S.wk && S.wk.n >= 10 && S.wk.ok===S.wk.n) ac("cleanWeek");
@@ -7869,10 +7929,37 @@ async function openRecords(){
    ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}
    ${S.ledger && S.debt<=0 ? `<h4 style="margin:16px 0 6px">장부</h4><p class="muted" style="font-size:12px">서랍 속 낡은 장부. 원할 때 덮을 수 있다.</p><button class="primary" data-x="trio">장부를 펼친다</button>` : ""}
    <h4 style="margin:16px 0 6px">저장 관리</h4>
-   <p class="muted" style="font-size:12px">진행 상황은 이 브라우저에 자동 저장된다. 브라우저 저장소는 지워질 수 있으니 가끔 코드를 복사해 두자.</p>
-   <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-x="export">저장 코드 복사</button><button data-x="import">저장 코드 불러오기</button><button class="danger" data-x="reset">처음부터 다시</button></div>`, [{t:"닫기"}], false, root=>{
+   <p class="muted" style="font-size:12px">진행 상황은 이 브라우저에 자동 저장된다. 기기 변경·브라우저 데이터 삭제에 대비해 저장 파일을 별도로 보관할 수 있다.</p>
+   <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-x="download">저장 파일 내려받기</button><button data-x="file">저장 파일 불러오기</button><button data-x="export">기존 저장 코드 복사</button><button data-x="import">기존 저장 코드 불러오기</button><button class="danger" data-x="reset">처음부터 다시</button></div>
+   <input type="file" accept=".json,application/json" id="save-file" hidden>`, [{t:"닫기"}], false, root=>{
+    root.querySelector("#save-file").addEventListener("change",async e=>{
+      const file=e.target.files&&e.target.files[0]; if(!file)return;
+      try{
+        if(file.size>15*1024*1024)throw Error("파일이 너무 큽니다.");
+        const obj=JSON.parse(await file.text()),saved=obj&&obj.format==="problem-solver-backup"?obj.game:obj;
+        if(!saved||!Array.isArray(saved.fixers)||!Array.isArray(saved.requests)||!Number.isFinite(saved.day)||!saved.officeName)throw Error("사무소 저장 파일이 아닙니다.");
+        if(!await confirmBox("저장 파일 불러오기",`<b>${esc(saved.officeName)}</b> · ${saved.day}일차로 현재 사무소를 교체하시겠습니까?`))return;
+        S=saved;
+        if(obj.format==="problem-solver-backup"){
+          if(obj.achievements&&typeof obj.achievements==="object"){ACH_LT=obj.achievements;ltSave();}
+          if(obj.unlocked&&typeof obj.unlocked==="object")achSave(obj.unlocked);
+          if(obj.codex&&typeof obj.codex==="object")codexSave(obj.codex);
+          if(obj.city&&typeof obj.city==="object"){try{localStorage.setItem(CITY_KEY,JSON.stringify(obj.city));}catch(_){}}
+        }
+        save();closeAll();render();toast("저장 파일을 불러왔습니다.");
+      }catch(err){await alertBox("불러오기 실패",esc(err&&err.message?err.message:"파일을 확인해 주세요."));}
+      finally{e.target.value="";}
+    });
     root.addEventListener("click", async e=>{
       const x=e.target.dataset.x; if(!x) return;
+      if(x==="download"){
+        const backup={format:"problem-solver-backup",version:1,created:new Date().toISOString(),game:S,
+          achievements:typeof ltLoad==="function"?ltLoad():null,unlocked:achLoad(),codex:codexLoad(),city:typeof cityLoad==="function"?cityLoad():null};
+        const blob=new Blob([JSON.stringify(backup,null,2)],{type:"application/json;charset=utf-8"});
+        const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=`해결사사무소_${S.day}일차_저장.json`;document.body.appendChild(a);a.click();a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url),1500);ac("export");return;
+      }
+      if(x==="file"){root.querySelector("#save-file").click();return;}
       if(x==="export"){ ac("export"); const code=btoa(unescape(encodeURIComponent(JSON.stringify(S)))); try{ await navigator.clipboard.writeText(code); e.target.textContent="복사됨"; }catch(_){ await promptBox("저장 코드","아래 코드를 복사해 두자.",code,true);} }
       if(x==="import"){ const code=await promptBox("불러오기","저장 코드를 붙여 넣는다.","",true); if(!code) return; try{ const d=JSON.parse(decodeURIComponent(escape(atob(code.trim())))); if(!d.fixers) throw 0; S=d; save(); closeAll(); render(); }catch(_){ alertBox("불러오기 실패","코드가 올바르지 않다."); } }
       if(x==="trio"){ closeAll(); await ledgerOffer(false); return; }
@@ -7882,11 +7969,20 @@ async function openRecords(){
 }
 function clearSave(){ try{ localStorage.removeItem(SAVE_KEY); }catch(_){} }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
-function save(){ if(S && !FXTEST) try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S)); }catch(_){} if(S) achCheck(); }
+let saveWarningShown=false;
+function save(){
+  if(S&&!FXTEST){
+    try{ localStorage.setItem(SAVE_KEY,JSON.stringify(S));saveWarningShown=false; }
+    catch(e){if(!saveWarningShown){saveWarningShown=true;const w=document.getElementById("save-warning");
+      if(w){w.hidden=false;w.textContent="저장 공간이 부족하거나 차단되어 자동 저장하지 못했습니다. 기록 → 저장 파일 내려받기로 백업해 주세요.";}
+      else if(typeof toast==="function") toast("자동 저장 실패: 저장 파일을 내려받아 백업해 주세요."); } }
+  }
+  if(S) achCheck();
+}
 const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나무"],["랑가 공방","랑아 공방"],["클라우드 공방","구름 공방"],["아틀리에 로직","로직 아틀리에"]];
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); }
 function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); (d.requests||[]).forEach(q=>{ if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return d; }
-}catch(_){} return null; }
+}catch(e){ if(!saveWarningShown){saveWarningShown=true;try{console.warn("저장 불러오기 실패",e);}catch(_){}} } return null; }
 /* 전당포: 보관함의 물건을 산 값(값이 없는 전리품·기프트는 같은 칸에서 가장 비슷한 가치의 공방 물건 값)의 40%에 판다. 소수점 버림. */
 const PAWN_K = 0.4;
 function gearScore(g){ const b = g.bonus ? Object.values(g.bonus).reduce((a,v)=>a+v, 0) : 0; return (g.power||0) + b*2 + ((g.hpRed||0) + (g.mpRed||0))*100; }
@@ -7905,8 +8001,9 @@ function modal(title, body, buttons, returnValue, onMount){
     buttons.forEach(b=>{ const el=document.createElement("button"); el.textContent=b.x ? "×" : b.t; if(b.primary) el.className="primary"; if(b.danger) el.className="danger";
       el.onclick=()=>{ close(); res(b.v!==undefined?b.v:true); };
       if(b.x){ el.className = "mx"; el.title = b.t; el.setAttribute("aria-label", b.t); bg.querySelector(".mh").appendChild(el); } else mf.appendChild(el); });
-    const close = ()=>{ bg.remove(); modalStack = modalStack.filter(x=>x!==close); };
-    modalStack.push(()=>{ bg.remove(); res(null); });
+    const dispose=()=>{bg.remove();res(null);};
+    const close=()=>{bg.remove();modalStack=modalStack.filter(x=>x!==dispose);};
+    modalStack.push(dispose);
     document.getElementById("modal-root").appendChild(bg);
     if(onMount) onMount(bg);
   });
@@ -8570,22 +8667,31 @@ function render(){
     <span class="stat">남은 빚 <b>${won(S.debt)}</b></span>
     <span class="stat">${S.debt>0?`흉터 방문 <b>${nextVisit-1===0?"오늘 밤":(nextVisit-1)+"일 뒤"}</b>`:"<b style='color:var(--accent)'>빚 청산</b>"}</span>
     <span class="stat scars">흉터 경고 ${[0,1,2].map(i=>`<span class="${i<S.scars?"on":""}"></span>`).join("")}</span>
-    <span class="stat">등급 심사 <b>${(6-((S.day-1)%7))===0?"오늘 밤":(6-((S.day-1)%7))+"일 뒤"}</b></span>`;
-  // 의뢰
+    <span class="stat">등급 심사 <b>${(6-((S.day-1)%7))===0?"오늘 밤":(6-((S.day-1)%7))+"일 뒤"}</b></span>
+    ${S.officeGrade<=4&&!S.assocJoined ? `<span class="stat">협회 ${S.assocObs?`관찰 중 <b>${S.assocObs.ok||0}/${ASSOC_OBS_OK}점 · ${Math.max(0,ASSOC_OBS_DAYS-(S.day-S.assocObs.day))}일`:`관찰 제안 대기 <b>${S.assocWaitWeeks||0}주`}</b></span>`:""}
+    ${S.moved ? `<span class="stat">월세 ${RENT_DAYS}일마다 <b>${won(rentForecast().total)}</b>${S.rentArrears?` · 미납 ${won(S.rentArrears)}`:""}</span>`:""}`;
+  // 모든 분류는 기존 의뢰 목록을 그대로 가리키므로 보수·마감·이야기는 변경되지 않는다.
+  const tabs=["전체","일반","단골·지명","위험·특수","사건·이야기"], filterIds=["all","normal","regular","risk","story"];
+  const reqCategory=q=>q.arc||q.prescript||q.hanaStar?"story":q.nom||q.reg?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
   const avail = S.fixers.filter(canSend);
-  app.querySelector("#reqs").innerHTML = S.requests.length ? S.requests.map(q=>{
+  app.querySelector("#reqfilters").innerHTML = filterIds.map((k,i)=>`<button data-reqfilter="${k}" class="${reqFilter===k?"on":""}">${tabs[i]} <small>${S.requests.filter(q=>k==="all"||reqCategory(q)===k).length}</small></button>`).join("");
+  const shownRequests=S.requests.filter(q=>reqFilter==="all"||reqCategory(q)===reqFilter);
+  app.querySelector("#reqs").innerHTML = shownRequests.length ? shownRequests.slice().sort((a,b)=>{
+    const dl=q=>q.deadline==null?1e6:q.deadline;
+    return dl(a)-dl(b);
+  }).map(q=>{
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
       <div class="head">${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.reg ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="보수 +${q.reg*10}%">${q.reg===2 ? "오랜 단골" : "단골"}</span>` : ""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[q.kind]||"#999"}">${q.kind}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
-        <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
+        <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.deadline!=null&&q.deadline<=1?`<span class="badge deadline-urgent">오늘 마감</span>`:""}${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
       <div class="txt">${esc(q.text)}</div>
       <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${q.grade===0 ? "특색" : gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b></span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
       ${q.loot?`<div class="loot">특수 전리품 소문: ${esc(lootName(q))}</div>`:""}
       ${openQ!==q.id ? `<div class="assign"><button class="primary" data-open="${q.id}">의뢰를 받는다</button></div></div>` : reqPanel(q, opts)}`;
-  }).join("") : `<p class="muted">게시판이 비었다.</p>`;
+  }).join("") : `<p class="muted">${S.requests.length?"이 분류에 해당하는 의뢰가 없다.":"게시판이 비었다."}</p>`;
   // 해결사
   app.querySelector("#fxs").innerHTML = S.fixers.map(f=>{
     const lh=level(f.hp,f.hpMax), lm=level(f.mp,f.mpMax);
@@ -8603,6 +8709,7 @@ function render(){
   app.querySelector("#endday").disabled = S.over;
   S.requests.forEach(q=>updateCard(q.id));
 }
+let reqFilter = "all";
 const teamSel = {};
 /* ================= 의뢰 카드 펼치기(접기식 파견) =================
    [의뢰를 받는다]를 누르면 창을 띄우지 않고 그 카드가 아래로 펼쳐진다 — 의뢰 이야기 · 보낼 사람 · 수행 방식 · 출동이 한자리에.
@@ -8625,7 +8732,7 @@ function reqPanel(q, opts){
       <div class="acc-story mini${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${reqStory(q).map(t=>`<p>${esc(t)}</p>`).join("")}</div>
       <div class="party">출동 인원 <b id="pc-${q.id}">0</b> / 최대 ${partyMax(q)}명 <span class="muted">· 권장 ${partyRec(q)}명</span></div>
       <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 — 강행군"}">${esc(f.name)} <small>${canGo(f) ? gName(f.grade) : "강행군"}${f.tired ? " · 피로" : ""}</small></button>`).join(""):`<span class="muted" style="font-size:12px">보낼 수 있는 해결사가 없다</span>`}</div>
-      ${hasGame ? `<div class="modes"><button class="${md==="play"?"on":""}" data-mode="play" data-q="${q.id}"><b>직접 수행</b><small>${games.map(a=>MG_NAME[a]).join(" → ")} · 압승하면 확정 성공</small></button><button class="${md==="auto"?"on":""}" data-mode="auto" data-q="${q.id}"><b>자동 진행</b><small>성공률로 판정 · 보수 80% · 성공하면 다치지 않는다</small></button></div>` : ""}
+      ${hasGame ? `<div class="modes"><button class="${md==="play"?"on":""}" data-mode="play" data-q="${q.id}"><b>직접 수행</b><small>${games.map(a=>MG_NAME[a]).join(" → ")} · 목표를 달성하면 확정 성공</small></button><button class="${md==="auto"?"on":""}" data-mode="auto" data-q="${q.id}"><b>자동 진행</b><small>성공률로 판정 · 보수 80% · 성공해도 출동 피로 피해</small></button></div>` : ""}
       <div class="est" id="est-${q.id}"></div>
       <div class="assign">${q.kind!=="특색 심사" ? `<button data-refuse="${q.id}">거절</button>` : ""}<button data-fold="${q.id}">접기</button><button class="primary" data-go="${q.id}" disabled>출동</button></div></div></div>`; }
 async function refuseReq(qid){ const q = S.requests.find(x=>x.id===qid); if(!q) return;
@@ -8645,7 +8752,11 @@ function updateCard(qid){
   if(!team.length){ est.innerHTML=`<span class="muted">해결사를 골라 출동시킨다.</span>`; go.disabled=true; return; }
   const m = estimate(team,q);
   const auto = modePref()==="auto" || !gamesFor(q).length;
-  est.innerHTML = `${auto ? "성공률" : "기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto ? (gamesFor(q).length ? ` · 보수 ${won(Math.round(q.reward*0.8/100)*100)}` : "") : ` <span class="muted">(직접 수행: 압승 확정 · 겨우 이기면 +15%p 이상 · 지면 실패)</span>`} · 1인당 ${m.stat} 피해 성공 ${m.s[0]}~${m.s[1]} / 실패 ${m.l[0]}~${m.l[1]}`;
+  const spec=team.map(f=>{const p=specialty(f,q);return p.bonus?`${esc(f.name)}: ${p.name} ${p.bonus>0?"+":""}${p.bonus}%p`:"";}).filter(Boolean);
+  est.innerHTML = `${auto?"자동 성공률":"기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto?(gamesFor(q).length?` · 보수 ${won(Math.round(q.reward*0.8/100)*100)}`:""):` <span class="muted">(전투·추격·호위 목표 달성 시 확정 성공)</span>`}
+    <div style="margin-top:5px">${m.profiles.map(p=>`<div>${esc(p.name)}${p.status?` (${p.status})`:""}: 예상 ${m.stat} 손실 <b>성공 ${p.success}</b> / 실패 ${p.fail[0]}~${p.fail[1]}</div>`).join("")}</div>
+    ${spec.length?`<div class="muted">전문 분야: ${spec.join(" · ")} (팀 합산 최대 +9%p)</div>`:""}
+    <div class="muted">실제 부상 단계·환상체 기믹·전투 중 정신력 손실에 따라 추가 손실이 발생할 수 있다.</div>`;
   go.disabled=false;
 }
 let shellBound=false;
@@ -8656,15 +8767,16 @@ function buildShell(){
   app.innerHTML = `<div class="topbar"></div>
    <div class="stage"><canvas id="cv"></canvas><div class="cap"><div class="t" id="capt"></div><div class="s" id="caps"></div></div></div>
    <div class="main">
-     <div class="panel"><h2>의뢰 게시판 <small>해결사 1명은 하루 1건 · 강행군으로 1건 더</small></h2><div class="reqs" id="reqs"></div></div>
+     <div class="panel"><h2>의뢰 게시판 <small>해결사 1명은 하루 1건 · 강행군으로 1건 더</small></h2><div class="req-filters" id="reqfilters"></div><div class="reqs" id="reqs"></div></div>
      <div class="panel"><h2>해결사 <small>★ 대표</small></h2><div class="fixers" id="fxs"></div></div>
    </div>
    <div class="nav"><button data-nav="recruit">영입</button><button data-nav="manage">관리</button><button data-nav="shop">공방</button><button data-nav="records">기록</button><button data-nav="ach">업적</button><button data-nav="repay">상환</button><button id="endday" class="primary">하루 끝내기</button></div>
-   <div class="panel log" id="log"></div>`;
+   <div id="save-warning" class="warn" hidden></div><div class="panel log" id="log"></div>`;
   initStage();
   if(shellBound) return; shellBound=true;
   app.addEventListener("click", e=>{
     const d = e.target.dataset;
+    if(d.reqfilter){ reqFilter=d.reqfilter; render(); return; }
     if(d.accept || d.open){ openCard(+(d.accept || d.open), true); return; }
     if(d.fold){ openQ = null; render(); return; }
     if(d.refuse){ if(scene || document.querySelector(".modal-bg")) return; refuseReq(+d.refuse); return; }
@@ -8997,7 +9109,7 @@ function renderStart(){
     <div class="name-panel" id="np" hidden>
       <div class="np-h">개업 신고서 <span>하나 협회 제출용</span></div>
       <div class="np-body">
-        <p class="muted">사무소를 세우느라 진 빚 ${won(START_DEBT)}. 8급 사무소. 대표인 당신과 9급 해결사 한 명으로 시작한다.<br>매주 [남겨진 흉터]가 금고의 35%를 걷어 간다. 흉터가 세 번 새겨지면 끝이다.</p>
+        <p class="muted">사무소를 세우느라 진 빚 ${won(START_DEBT)}. 8급 사무소. 대표인 당신과 9급 해결사 한 명으로 시작한다.<br>매주 시작할 때 자금의 35%를 기준으로 최소 수금액이 정해진다. 흉터가 세 번 새겨지면 끝이다.</p>
         <div class="field"><label>대표 이름</label><input id="s1" maxlength="16" value="${esc(randomName())}"><button data-r="s1">랜덤</button></div>
         <div class="field"><label>사무소 이름</label><input id="s2" maxlength="20" value="${esc(randomOffice())}"><button data-r="s2">랜덤</button></div>
         <div class="field"><label>동료 이름</label><input id="s3" maxlength="16" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
@@ -11855,7 +11967,7 @@ function drawRumors(now, L){
 
 /* ================= 연출 테스트 패널 (#fxtest) ================= */
 /* 미리보기 사이트에서만 보이는 "새 시스템 미리보기" 버튼 — 본 사이트(workers.dev 등)에서는 숨긴다 */
-const IS_PROD = /workers\.dev$/i.test(location.hostname) || /problem-?solver/i.test(location.hostname);
+const IS_PROD = !/\/preview\.html$/i.test(location.pathname) && (/workers\.dev$/i.test(location.hostname) || /problem-?solver/i.test(location.hostname));
 function previewButton(){
   if(IS_PROD || document.getElementById("pvbtn")) return;
   const b = document.createElement("button"); b.id = "pvbtn"; b.className = "pvbtn"; b.textContent = location.hash==="#fxtest" ? "미리보기 패널 접기" : "새 시스템 미리보기";
