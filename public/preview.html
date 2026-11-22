@@ -789,6 +789,8 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .hv-gl-on .hv-title.mang{z-index:3}
 
 .aleph-fx{position:fixed;inset:0;width:100vw;height:100vh;z-index:9999;cursor:pointer;background:#000}
+
+.ruins-progress{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid #355453;border-radius:8px;background:#152323;margin-bottom:10px}.ruins-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;margin:8px 0}.ruins-node{border:1px solid #2d4f4c;border-radius:9px;background:linear-gradient(160deg,#1c2b2a,#11161a);padding:12px}.ruins-node b{color:#abd7cb}.ruins-node p{font-size:12px;line-height:1.6;margin:6px 0 0}
 </style>
 </head>
 <body>
@@ -1555,7 +1557,7 @@ const PROMO = {9:48,8:70,7:95,6:120,5:145,4:170,3:200,2:230};
 const COLOR_REQ_TOTAL = 250;
 const WAGE_K = 0.2;   // 고용비의 20%는 1주일마다 주는 주급
 const HIRE_COST = {9:10000,8:20000,7:40000,6:80000,5:160000,4:320000,3:640000,2:1280000,1:2560000}; // 1급은 이전 회차 출신만 영입 가능
-const KIND_COLOR = {"죄종":"#c86a55","뒤틀림 처리":"#d0506a","일반":"#c9a86a","호위":"#6aa0c9","수색":"#7fb069","환상체":"#a37ad1","뒤틀림 토벌":"#c94a4a","특색 심사":"#e8d27a","지명":"#e8d27a"};
+const KIND_COLOR = {"L사 지부 탐사":"#4f9a89","죄종":"#c86a55","뒤틀림 처리":"#d0506a","일반":"#c9a86a","호위":"#6aa0c9","수색":"#7fb069","환상체":"#a37ad1","뒤틀림 토벌":"#c94a4a","특색 심사":"#e8d27a","지명":"#e8d27a"};
 
 const PERSONALITIES = [
  ["공격적","weapon","들끓는 맹세"],["신중함","armor","겹겹의 숙고"],["헌신","armor","닳지 않는 등"],["냉소","weapon","식은 웃음"],
@@ -3144,7 +3146,7 @@ function genRequestsInner(){
   for(let i=0;i<n;i++){
     const r = Math.random();
     const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9);
-    S.requests.push(makeRequest(g));
+    S.requests.push(maybeRuinsRequest(makeRequest(g)));
   }
   if(S.officeGrade > 1 && Math.random() < NOM_P && !S.requests.some(q=>q.nom)) S.requests.push(nominate(makeRequest(S.officeGrade - 1)));
   // 1급 사무소: 기존의 드문 도시의 별 의뢰를 1급 기준으로 다시 게시한다(특색급 의뢰 생성 금지).
@@ -3272,9 +3274,9 @@ function autoWound(f){
 }
 const CLEAN_WIN = 0.8;   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
-const directOnly = q => !!(q && (q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
-const MG_NAME = {abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
-const gamesFor = q => q.kind==="환상체" ? ["abno"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : q.attrs.filter(a=>a!=="wil");
+const directOnly = q => !!(q && (q.ruins || q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
+const MG_NAME = {ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
+const gamesFor = q => q.ruins ? ["ruins"] : q.kind==="환상체" ? ["abno"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : q.attrs.filter(a=>a!=="wil");
 function chooseMode(q, team){
   if(directOnly(q)) return Promise.resolve("play");
   const base = rate(team, q), games = gamesFor(q);
@@ -3289,7 +3291,8 @@ async function runMinigames(q, team){
   const games = gamesFor(q); let sum = 0, combat = null, abno = null; const dec = [];
   for(let i=0;i<games.length;i++){
     const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
-    if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; dec.push(combat); }
+    if(a==="ruins"){ const r=await mgRuins(ctx);sum+=r.score;dec.push(r); }
+    else if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; dec.push(combat); }
     else if(a==="agi"){ const tr = await mgTrack(ctx); sum += tr.score; dec.push(tr); if(!combat) combat = tr; }
     else if(a==="escort"){ const r = await mgEscort(ctx); sum += r.score; dec.push(r); if(r.combat) combat = r.combat; }
     else if(a==="search"){ const r = await mgSearch(ctx); sum += r.score; dec.push(r); }
@@ -6401,6 +6404,7 @@ async function dispatch(qid, fids, modeArg){
     if(e1 && (!e0 || e0.n!==e1.n)) lines.push(`<span style="color:#c9b0ff">${esc(f.name)}: 뒤틀림 경험 — <b>${e1.n}</b>(처치 ${f.dk}) · 이제 뒤틀림을 상대로 기본 위력 +${e1.base}${e1.cp ? `, 코인 위력 +${e1.cp}` : ""}</span>`); });
   idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); mainlineAfter(q, success, lines); hanaStarAfter(q, success, lines);
   if(success){
+    if(q.ruins) ruinsReward(q,lines);
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
     S.incomeHistory = (S.incomeHistory||[]).filter(x=>x.day>=S.day-27);
@@ -7557,7 +7561,7 @@ const FIELD_EVENTS = [
          {t:"돌아간다", d:"출동한 사람 모두 체력 -4%(먼 길)", run:(c)=>{ c.team.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.floor(f.hpMax*0.04)); }); return "먼 길을 돌아서 왔다. 발바닥이 욱신거린다."; }}]},
 ];
 async function fieldEvent(q, team, success, pay){
-  if(q.kind==="환상체" || q.trio || q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리" || q.kind==="지명" || q.kind==="특색 심사") return null;
+  if(q.ruins || q.kind==="환상체" || q.trio || q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리" || q.kind==="지명" || q.kind==="특색 심사") return null;
   if(!window.__forceField && Math.random() >= FIELD_P) return null;
   const pool = FIELD_EVENTS.filter(e=>e.when==="any" || (e.when==="ok") === success); const E = window.__forceField && FIELD_EVENTS.find(e=>e.id===window.__forceField) || pick(pool);
   const c = {q, team, success, pay, payMul:1, payAdd:0, best: a => team.slice().sort((x,y)=>power(y,[a])-power(x,[a]))[0]};
@@ -8196,7 +8200,7 @@ async function openManage(){
       <button data-heal="mp" ${f.mp>=f.mpMax||S.money<hc?"disabled":""}>정신력 상담 +10</button>
       <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
     </div>
-    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${repairBtn(g, `data-repinv="${i}"`)}<button data-equipinv="${i}">${esc(f.name)}에게 장착</button><button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button></div></div>`).join("")}</div>`:""}
+    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button></div></div>`).join("")}</div>`:""}
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
   };
   await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
@@ -8235,8 +8239,8 @@ async function openManage(){
         f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
       else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; const v = pawnPrice(g);
         if(!await confirmBox("전당포", `<b>${esc(jo(g.name,"을"))}</b> 전당포에 맡긴다. 받는 돈 <b>${won(v)}</b> — 되찾을 수 없다.`)) return;
-        S.inventory.splice(i, 1); S.money += v; ac("pawn"); addLog(`전당포: ${g.name} → +${won(v)}`); }
-      else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; if(g && relicLocked(f, g.slot)){ toast("귀속된 유물은 다른 장비로 바꿀 수 없다"); return; } const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
+        S.inventory.splice(i, 1); S.money += v; ac("pawn"); if(g.ruinsItem)ac("ruinsSold"); addLog(`전당포: ${g.name} → +${won(v)}`); }
+      else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; if(!g||!["weapon","armor","acc"].includes(g.slot))return; if(g && relicLocked(f, g.slot)){ toast("귀속된 유물은 다른 장비로 바꿀 수 없다"); return; } const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
       else if(d.fire && f){ if(await confirmBox("해고", `${jo(esc(f.name),"을")} 내보낸다. 되돌릴 수 없다.`)){ removeFixer(f,"해고","사무소를 떠남"); sel=S.fixers[0]?.id; } }
       else return;
       box.innerHTML = draw(); prev(); save(); render();
@@ -8859,7 +8863,7 @@ const PAWN_K = 0.4;
 function gearScore(g){ const b = g.bonus ? Object.values(g.bonus).reduce((a,v)=>a+v, 0) : 0; return (g.power||0) + b*2 + ((g.hpRed||0) + (g.mpRed||0))*100; }
 function pawnValue(g){ if(g.price) return g.price; const sc = gearScore(g), peers = SHOP.filter(it=>it.slot===g.slot && it.price);
   if(!peers.length) return 0; return peers.slice().sort((a,b)=>Math.abs(gearScore(a)-sc) - Math.abs(gearScore(b)-sc))[0].price; }
-const pawnPrice = g => Math.floor(pawnValue(g)*PAWN_K);
+const pawnPrice = g => g && g.ruinsItem ? Math.max(0,Number(g.pawnFixed)||0) : Math.floor(pawnValue(g)*PAWN_K);
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
@@ -9563,6 +9567,123 @@ function mainlineHtml(){
  return `<h4>연속 사건 「검은 출근부」</h4><p class="muted">폐지부 회수대에서 사라진 사람들의 명단을 좇는 이야기다. 일상 의뢰 및 다른 연속 사건과 별도로 진행된다.</p><div class="kv"><span>진행</span><b>${L.step}/${MAINLINE.length}건${L.done?" · 완결":""}</b><span>다음 의뢰</span><b>${C?esc(C.title):"완결"}</b>${C?`<span>필요 사무소</span><b>${gName(C.grade)} 이상 · ${S.officeGrade>C.grade?"급수 부족":S.day<(L.nextDay||2)?"연락 대기":"수주 가능"}</b>`:""}</div><h4>완료한 이야기</h4>${hist?`<div class="list">${hist}</div>`:"<p class='muted'>아직 완료한 의뢰가 없다.</p>"}`;
 }
 const MAINLINE=[{"act":"1막 · 빈 출근부","title":"책상 밑의 출근부","grade":8,"kind":"수색","attrs":["agi","tec"],"client":"야간 청소부 지선","text":"폐쇄된 사무실에서 매일 밤 새로운 이름이 적히는 출근부를 찾아 달라","story":["지선은 물에 젖지 않도록 감싼 출근부 한 장을 꺼내 놓았다. 회사 이름이 있어야 할 자리는 가위로 도려낸 듯 비어 있었다.","마지막 줄에는 어젯밤 날짜와 모르는 사람의 이름이 적혀 있었다. 사무실은 몇 해째 비어 있었다고 한다.","청소부는 자신이 쉬었던 날에도 출근한 것으로 적혀 있었다고 말했다. 누군가 이 종이로 없는 사람을 만들어 내고 있었다."]},{"act":"1막 · 빈 출근부","title":"돌아오지 않는 청소부","grade":8,"kind":"호위","attrs":["str","agi"],"client":"야간 청소부 지선","text":"출근부를 발견한 청소부를 철거 구역 밖까지 안전하게 데려가 달라","story":["지선의 집 앞에 정체 모를 차량이 세워졌다. 운전석에 앉은 자는 출근부를 되돌려 달라고 했다.","청소부는 사무소에 작은 열쇠 하나를 건넸다. 출근부가 있던 사무실의 서랍 열쇠였다.","살아 돌아간다면 지선은 수상한 급여 명세서의 수령인을 찾아 주겠다고 약속했다."]},{"act":"2막 · 지워진 급여","title":"자리가 남은 봉급","grade":7,"kind":"수색","attrs":["agi","tec"],"client":"폐지부 하청 인사담당자","text":"임금을 받았으나 존재하지 않는 직원들의 급여 명세서를 조사해 달라","story":["명세서의 수령인에는 이름 대신 검은 선만 그어져 있었다. 회사는 이미 사라졌지만 월급은 계속 지급됐다.","계좌에 들어온 돈은 철거 차량과 경비원 고용에 쓰였다.","사람이 사라지면 명부에서 지우고, 다시 같은 이름으로 새로운 회수대를 계약하는 일이 반복되고 있었다."]},{"act":"2막 · 지워진 급여","title":"철거단의 영수증","grade":7,"kind":"일반","attrs":["str"],"goal":"제압","foe":"불법 철거단 대장","client":"폐지부 하청 인사담당자","text":"급여 서류를 빼앗아 간 철거단 대장을 제압하고 계약의 발행자를 알아내 달라","story":["철거단은 벽을 허물고 통로를 막으면 돈이 들어오는 일을 맡았다고 했다.","그런데 계약서의 공사 장소에는 존재하지 않는 지하층이 표시돼 있었다.","대장은 고용주 얼굴은 보지 못했다. 하지만 봉투 안에는 녹색 액체가 조금 묻어 있었다고 말했다."]},{"act":"3막 · 밀봉된 복도","title":"회수원의 마지막 증언","grade":5,"kind":"호위","attrs":["str","agi"],"client":"전 L사 하청 회수원 은호","text":"폐허가 된 L사 지부에서 살아 나온 하청 회수원을 안전한 협회 연락소로 호위해 달라","story":["은호는 회수 작업에 투입된 사람들의 이름이 적힌 장부를 갖고 있었다. 지부에서 돌아오지 못한 이들은 명단에서 바로 삭제됐다.","지부의 출입문은 안쪽에서 봉쇄됐다. 누군가 바깥에서 그것을 다시 열어 새 회수원들을 내려보냈다.","은호가 자신은 살고 싶다고 말했다. 그를 뒤쫓는 사람들은 이미 다음 회수대를 모으는 중이었다."]},{"act":"3막 · 밀봉된 복도","title":"냉각실 운송표","grade":5,"kind":"수색","attrs":["agi","tec"],"client":"전 L사 하청 회수원 은호","text":"폐지부에서 빼돌린 엔케팔린의 운송 경로와 회수대 계약을 대조해 달라","story":["운송표에는 구매자 대신 소규모 사무소들의 이름이 적혀 있었다. 몇 곳은 폐업한 지 오래다.","회수원을 보호하는 경비 비용이 물품 가격에서 빠져 있었지만, 현장에 호위는 없었다.","은호는 말했다. '사람이 돌아오지 않으면 주급도 줄 필요가 없잖아요.' 누군가 위험한 일을 일부러 싼값에 팔고 있었다."]},{"act":"4막 · 팔리지 않은 이름","title":"계약서를 쓴 손","grade":3,"kind":"일반","attrs":["str","wil"],"goal":"제압","foe":"폐지부 계약 집행인","client":"익명의 공증인","text":"폐지부 회수대 계약서를 조작한 집행인을 생포하고 사주를 밝혀 달라","story":["계약 집행인은 파산한 날개 계열 경비원의 의체를 달고 있었다. 죽은 사람의 이름으로 새 계약을 쓰는 법을 알고 있었다.","그가 지키는 금고에는 황금가지가 없었다. 대신 살아남은 회수원들의 주소가 빼곡히 적혀 있었다.","집행인은 자신 역시 명령을 받았을 뿐이라고 변명했다. 그러나 명령을 내린 사람의 이름은 끝까지 밝히지 않았다."]},{"act":"4막 · 팔리지 않은 이름","title":"도장이 찍힌 마지막 장","grade":3,"kind":"수색","attrs":["agi","tec"],"client":"익명의 공증인","text":"공증 문서에 남은 인장과 필적을 대조해 거짓 계약의 발행자를 찾아 달라","story":["계약서마다 같은 도장이 찍혀 있었다. 이미 문을 닫은 사무소의 이름이었다.","그 사무소가 있던 자리에는 빈 책상 하나와 의뢰인용 접수대가 남아 있었다.","서랍에는 여러 사무소의 직원 명단이 있었다. 그중에는 우리가 사무소를 개업한 날도 적혀 있었다."]},{"act":"5막 · 아직 살아 있는 자","title":"증인이 건너야 할 거리","grade":1,"kind":"호위","attrs":["str","agi"],"client":"하나 협회 특별 조사 담당","text":"삭제된 명부 원본과 살아남은 증인을 하나 협회 조사실까지 호위해 달라","story":["하나 협회 조사 담당자는 서류를 받기 전 물었다. '명부에 적힌 사람이 전부 살아 있습니까?'","은호는 이름을 하나씩 읽었다. 이미 돌아오지 못한 사람들의 이름도 있었다.","조사실까지의 길은 짧았다. 그러나 명부를 빼앗으려는 자들이 골목마다 기다리고 있었다."]},{"act":"5막 · 아직 살아 있는 자","title":"장부를 지우는 자","grade":1,"kind":"일반","attrs":["str","wil"],"goal":"제압","foe":"검은 장부의 관리인","client":"하나 협회 특별 조사 담당","text":"위험한 폐지부 회수 계약을 조작한 관리인을 붙잡아 원본 서류를 협회에 넘겨 달라","story":["관리인은 자기가 죽인 사람은 없다고 했다. 위험은 계약서에 분명 적혀 있었고 서명도 받았다는 것이다.","그러나 명부에 적힌 사람들 중 상당수는 계약서를 본 적조차 없었다. 약속한 보수를 기다리다 돌아오지 못했다.","사무소는 그에게 서명할 기회를 주었다. 이번에는 자신이 저지른 일 아래에 이름을 쓰게 할 차례였다."]}];
+
+function maybeRuinsRequest(q){
+  if(!q||!S||S.day<=3||q.special||q.arc||q.hanaStar||q.mainline!=null)return q;
+  const floor=RUINS_FLOORS[threatOf(q)];
+  if(!floor||Math.random()>=.001)return q;
+  const label=RUINS_AREAS[floor];
+  Object.assign(q,{
+    kind:"L사 지부 탐사",ruins:{floor},attrs:["str","tec"],client:floor>=4?"익명의 전직 L사 회수 관계자":"폐지부 인근의 회수 의뢰 중개인",
+    text:`폐쇄된 L사 지부의 ${label[0]}에 진입해 엔케팔린 회수 용기를 찾아 달라. 내부에는 회수업자와 환상체가 남아 있을 수 있다.`,
+    story:[`드문 의뢰 · ${label[0]}`,label[1],
+      "L사는 무너졌고 지부는 정지했지만 내부의 물자까지 사라진 것은 아니다. 지부를 찾는 여러 집단이 서로 충돌하고 있다.",
+      "수색 중 전투원, 경쟁 해결사, 격리시설의 환상체를 마주칠 수 있다. 갈림길에서 경로를 정해 가장 깊은 구역까지 탐사해야 한다.",
+      "계약상 기본 사례는 회수한 엔케팔린 통이다. 통당 전당포 매입가 50,000안이며, 깊은 곳에서는 다른 물건도 나올 수 있다."],
+    reward:0,deadline:4,goal:null,loot:null,abno:null,distFoe:null,prescript:null,relic:null,nom:false,
+    synd:null,assoc:null,cat:"이상",special:true,risk:null,hazard:false
+  });
+  return q;
+}
+function ruinsPickNode(floor,round){
+  const roll=Math.random(), danger=.22+.055*floor;
+  let kind=roll<danger*.45?"abno":roll<danger?"wing":roll<danger+.21?"fixer":roll<danger+.31?"trap":roll<danger+.39?"elite":roll<danger+.56?"cache":roll<danger+.78?"rest":"intel";
+  if(round===0&&kind==="elite")kind="wing";
+  return {kind,n:RUINS_ROOMS[kind].n,sub:RUINS_ROOMS[kind].sub};
+}
+function makeRuinsMap(floor){
+  const turns=2+Math.ceil(floor/2);
+  return Array.from({length:turns},(_,i)=>[ruinsPickNode(floor,i),ruinsPickNode(floor,i)]).concat([[{kind:"boss",n:"지부 깊숙한 곳의 최종 구역",sub:"가장 안쪽의 통로가 열렸다. 이곳을 돌파해야 전리품을 가지고 돌아갈 수 있다."}]]);
+}
+function ruinsEnemy(q,kind){
+  const floor=q.ruins.floor;
+  const isAbno=kind==="abno"||(kind==="boss"&&floor>=3&&Math.random()<.65);
+  if(isAbno){
+    const risk=({1:["죄종","ZAYIN"],2:["TETH"],3:["HE"],4:["WAW"],5:["ALEPH"]})[floor]||["TETH"];
+    const pool=ABNOS.filter(a=>risk.includes(a.risk)&&a.cards&&a.cards.length);
+    const A=pool.length?pool[Math.floor(Math.random()*pool.length)]:null;
+    if(A)return {kind:"환상체",grade:q.grade,attrs:["str","wil"],goal:A.kill?"사살":"제압",client:q.client,
+      req:Math.max(5,q.req+(kind==="boss"?2:0)),text:`폐지부 ${floor}층에서 ${A.n}와 조우했다.`,
+      foe:A.n,abno:{id:A.id},risk:A.risk,abnoFoe:A};
+  }
+  const foes={wing:"엔케팔린을 노리는 몰락한 날개 전투원",fixer:"동일한 회수 계약을 받은 해결사",
+    elite:"기계 의체를 두른 전직 날개 정예 경비원",boss:"지부의 회수품을 독점한 무장 집단 지휘관"};
+  return {kind:"일반",grade:q.grade,attrs:["str"],goal:"제압",client:q.client,
+    req:Math.max(4,q.req+(kind==="boss"?3:kind==="elite"?1:0)),foe:foes[kind]||foes.wing,text:`폐지부 지하 ${floor}층의 ${foes[kind]||foes.wing}을 상대한다.`};
+}
+function ruinsInjury(team,battle,floor,extra=0){
+  for(const f of team){
+    if(!S||S.over||!S.fixers.includes(f))continue;
+    const b=(battle||[]).find(x=>x.f===f),w=b?Math.max(0,b.wound||0):0;
+    const v=Math.floor(f.hpMax*(extra+5+w*4+Math.max(0,floor-2))/100);
+    f.hp=Math.max(1,f.hp-v);if(b&&b.sp<0)f.mp=Math.max(1,f.mp-Math.round(f.mpMax*.04));
+  }
+}
+function ruinsPartyStatus(team){return team.map(f=>`${esc(f.name)}: 체력 ${Math.round(f.hp)}/${f.hpMax} · 정신력 ${Math.round(f.mp)}/${f.mpMax}`).join("<br>");}
+async function mgRuins(ctx){
+ const q=ctx.q,team=ctx.team,floor=q.ruins.floor,area=RUINS_AREAS[floor];
+ const map=makeRuinsMap(floor),run={cans:0,intel:0,won:0,rooms:[],floor};
+ const done=(win)=>{q.ruinsResult={cans:win?Math.max(1,Math.min(5,1+run.cans+Math.floor(Math.random()*Math.ceil(floor/2)))):0,intel:run.intel,won:run.won,rooms:run.rooms};return {win,score:win?Math.min(1,.67+.035*run.won+.03*run.intel):.15};};
+ const header=await modal("폐쇄 L사 지부 탐사",`<h4>${esc(area[0])}</h4><p>${esc(area[1])}</p><p class="muted">갈림길을 선택해 안쪽으로 들어갑니다. 철수하거나 전투에 패배하면 회수 물자를 가져오지 못합니다. 가장 깊은 구역의 전투에 승리해야 엔케팔린 통 1~5개를 확보합니다.</p><p>${ruinsPartyStatus(team)}</p>`,[{t:"철수",v:false},{t:"진입",v:true,primary:true}]);
+ if(!header)return done(false);
+ for(let i=0;i<map.length;i++){
+   if(!S||S.over)return done(false);
+   const row=map[i],boss=row.length===1;
+   const mapText=`<div class="ruins-progress"><b>지하 ${floor}층 · ${i+1}/${map.length} 구역</b><span>회수 후보 ${run.cans}통 · 확보한 정보 ${run.intel}</span></div>
+     <div class="ruins-grid">${row.map((r,j)=>`<div class="ruins-node"><b>${j===0?"왼쪽 통로":"오른쪽 통로"} · ${esc(r.n)}</b><p class="muted">${esc(r.sub)}</p></div>`).join("")}</div>
+     <p class="muted">${ruinsPartyStatus(team)}</p>`;
+   const btns=row.map((r,j)=>({t:`${boss?"최종 구역 돌입":j===0?"왼쪽":"오른쪽"} · ${r.n}`,v:j,primary:boss&&j===0}));
+   if(!boss)btns.push({t:"철수 · 전리품 포기",v:-1});
+   const pickIndex=await modal("L사 지부 · 탐험 경로",mapText,btns);
+   if(pickIndex==null||pickIndex<0)return done(false);
+   const room=row[pickIndex];if(!room)return done(false);run.rooms.push(room.kind);
+   if(room.kind==="rest"){
+     team.forEach(f=>{f.hp=Math.min(f.hpMax,f.hp+Math.round(f.hpMax*.12));f.mp=Math.min(f.mpMax,f.mp+Math.round(f.mpMax*.08));});
+     await alertBox("휴식 구역","쓰러진 의자를 세우고 장비를 손봤다. 체력 12%, 정신력 8%를 회복했다.");
+   }else if(room.kind==="cache"){
+     const found=1+Math.floor(Math.random()*2);run.cans=Math.min(4,run.cans+found);
+     await alertBox("물품 보관 구역",`밀봉된 엔케팔린 용기 ${found}통을 발견했다. 남은 구역을 돌파해야 가져갈 수 있다.`);
+   }else if(room.kind==="intel"){
+     run.intel++;team.forEach(f=>f.mp=Math.min(f.mpMax,f.mp+Math.round(f.mpMax*.04)));
+     await alertBox("통제실 단말기","환상체 격리실의 배치와 비상 대피 경로를 확인했다. 정신력 4% 회복, 희귀 물품 발견 확률 소폭 상승.");
+   }else if(room.kind==="trap"){
+     const choice=await modal("누출된 냉각관","비상 경보기가 꺼져 있어 누출 위치를 쉽게 확인할 수 없다. 어느 쪽으로 지나가시겠습니까?",[{t:"되돌아 우회",v:"safe"},{t:"빠르게 돌파",v:"fast",primary:true}]);
+     if(!choice)return done(false);
+     const damage=choice==="safe"?2:10+floor*2;
+     if(choice==="safe")team.forEach(f=>f.mp=Math.max(1,f.mp-Math.round(f.mpMax*.03)));
+     else ruinsInjury(team,null,floor,damage);
+     await alertBox("통로 통과",choice==="safe"?"우회로로 돌아가느라 시간이 들었지만 상처는 입지 않았다. 정신력 3% 감소.":`균열이 난 통로를 돌파했다. 체력 피해를 입었다.`);
+   }else{
+     const foe=ruinsEnemy(q,room.kind);
+     await alertBox("조우",`${esc(room.sub)}<br><b>${esc(foe.foe)}</b>와 전투에 돌입한다.`);
+     const r=await mgCombat({q:foe,team,idx:1,total:1});
+     run.won+=r.win?1:0;ruinsInjury(team,r.battle,floor,r.win?0:7);
+     if(!r.win){await alertBox("탐사 실패","일행은 후퇴했다. 확보하지 못한 회수품은 시설 안에 남겨 두고 돌아왔다.");return done(false);}
+     if(room.kind==="boss")await alertBox("탐사 완료",`지부의 마지막 통로를 통과했다. 회수 물자를 정리해 사무소로 돌아간다.`);
+   }
+ }
+ return done(true);
+}
+function ruinsReward(q,lines){
+ if(!q||!q.ruins)return;
+ if(!q.ruinsResult){lines.push("탐사 결과를 확인할 수 없어 전리품을 지급하지 않았다.");return;}
+ const R=q.ruinsResult,count=Math.max(1,Math.min(5,Math.floor(R.cans||1)));
+ S.inventory=S.inventory||[];
+ for(let i=0;i<count;i++)S.inventory.push({id:"ruins-enk-"+S.day+"-"+q.id+"-"+i,name:"엔케팔린 통",slot:"material",ruinsItem:true,pawnFixed:50000,
+   effect:"폐지부에서 회수한 밀봉된 엔케팔린 용기",desc:"전당포에서 개당 50,000안에 매각할 수 있다."});
+ ac("ruinsClear");ac("ruinsEnk",count);ac("ruinsFloor"+q.ruins.floor);acSet("ruinsFloor",q.ruins.floor);
+ lines.push(`<span style="color:#9fe8b0">탐사 완료 · 지하 ${q.ruins.floor}층 · 엔케팔린 통 ${count}개 획득 (전당포 매각가 각 ${won(50000)})</span>`);
+ const rareP=.025+.015*q.ruins.floor+.01*(R.intel||0);
+ if(Math.random()<rareP){
+   S.inventory.push({id:"ruins-core-"+S.day+"-"+q.id,name:"봉인된 클리포트 제어핵",slot:"material",ruinsItem:true,ruinsRare:true,pawnFixed:350000,
+     effect:"희귀 탐사 전리품",desc:"폐쇄된 L사 지부의 제어기에서 떼어낸 것으로 보인다. 전당포 매각가 350,000안. 팬게임 고유 전리품."});
+   ac("ruinsRare");
+   lines.push(`<b style="color:#e8c98a">희귀 전리품 · 봉인된 클리포트 제어핵 획득</b>`);
+ }
+}
+const RUINS_FLOORS={"도시 괴담":1,"도시 전설":2,"도시 질병":3,"도시 악몽":4,"도시의 별":5};
+const RUINS_AREAS={"1":["지하 1층 · 폐쇄된 접수부","시설 외곽의 출입문은 찢겨 있었다. 엔케팔린 잔량을 노리는 사람들이 다녀간 흔적이 남아 있다."],"2":["지하 2층 · 냉각 회랑","냉각관이 벽에서 튀어나와 있었다. 녹색 액체가 배수로의 바닥을 적시고 있다."],"3":["지하 3층 · 지부 정비구역","중앙 복도의 비상등이 간헐적으로 빛났다. 오래된 작업복과 끊어진 유선 전화가 널려 있다."],"4":["지하 4층 · 격리구역 경계","철문마다 경고등이 붙어 있었다. 내부에 남은 것들이 철문을 두드리는 소리가 들린다."],"5":["지하 5층 · 중앙 격리실","지하 깊은 곳의 격리실이 열려 있었다. 무너진 시설 아래에서 아직 움직이는 것들이 있다."]};
+const RUINS_ROOMS={"wing":{"n":"몰락한 날개의 잔당","sub":"엔케팔린 용기를 빼내려는 전직 날개 전투원들이 통로를 점거하고 있다.","icon":"⚔"},"fixer":{"n":"회수 계약 해결사","sub":"다른 의뢰인에게서 같은 지부를 회수하라는 계약을 받은 해결사들이 접근한다.","icon":"⚔"},"abno":{"n":"격리실의 이상 현상","sub":"열려 있는 격리실에서 움직이는 것이 보인다. 여전히 격리됐어야 할 존재다.","icon":"☠"},"cache":{"n":"물품 보관 구역","sub":"잠금장치가 깨진 수납장에 엔케팔린 보관 용기가 남아 있다.","icon":"▣"},"rest":{"n":"버려진 휴게실","sub":"정수기와 비상 의약품이 남아 있다. 잠깐 쉬며 전열을 정비할 수 있다.","icon":"✚"},"trap":{"n":"균열이 생긴 통로","sub":"녹색 누출액이 바닥을 타고 흐른다. 방치된 시설이 언제 무너질지 알 수 없다.","icon":"!"},"intel":{"n":"통제실 단말기","sub":"전원이 남아 있는 단말기에서 격리구역의 배치 정보를 확인할 수 있다.","icon":"◇"},"elite":{"n":"특수 경비대 잔존 인원","sub":"철수 명령을 듣지 못한 정예 경비원이 시설 안에 남아 있다.","icon":"⚔"}};
 
 /* ================= 의뢰 받기 =================
    모든 의뢰는 게시판에서 [의뢰를 받는다]로 먼저 연다 → 의뢰 상세와 짧은 이야기 → [사람을 보낸다] / [거절한다].
@@ -10390,7 +10511,7 @@ function render(){
     ${S.moved ? `<span class="stat">월세 ${RENT_DAYS}일마다 <b>${won(rentForecast().total)}</b>${S.rentArrears?` · 미납 ${won(S.rentArrears)}`:""}</span>`:""}`;
   // 모든 분류는 기존 의뢰 목록을 그대로 가리키므로 보수·마감·이야기는 변경되지 않는다.
   const tabs=["전체","일반","지명","위험·특수","사건·이야기"], filterIds=["all","normal","regular","risk","story"];
-  const reqCategory=q=>q.arc||q.mainline!=null||q.prescript||q.hanaStar?"story":q.nom?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
+  const reqCategory=q=>q.arc||q.mainline!=null||q.prescript||q.hanaStar?"story":q.ruins?"risk":q.nom?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
   const avail = S.fixers.filter(canSend);
   app.querySelector("#reqfilters").innerHTML = filterIds.map((k,i)=>`<button data-reqfilter="${k}" class="${reqFilter===k?"on":""}">${tabs[i]} <small>${S.requests.filter(q=>k==="all"||reqCategory(q)===k).length}</small></button>`).join("");
   const shownRequests=S.requests.filter(q=>reqFilter==="all"||reqCategory(q)===reqFilter);
@@ -10401,7 +10522,7 @@ function render(){
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
-      <div class="head">${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.mainline!=null?`<span class="badge" style="color:#a5dcce;border-color:currentColor">주요 사건 · 검은 출근부 ${q.mainline+1}/${MAINLINE.length}</span>`:""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
+      <div class="head">${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.mainline!=null?`<span class="badge" style="color:#a5dcce;border-color:currentColor">주요 사건 · 검은 출근부 ${q.mainline+1}/${MAINLINE.length}</span>`:""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.ruins?`<span class="badge" style="color:#9fe8b0;border-color:currentColor">폐허 L사 지하 ${q.ruins.floor}층 · 갈림길 탐험</span>`:""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.deadline!=null&&q.deadline<=1?`<span class="badge deadline-urgent">오늘 마감</span>`:""}${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
