@@ -45,7 +45,7 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 @keyframes relicBorder{to{--ra:360deg}}
 .relic-fx{position:fixed;inset:0;z-index:120;overflow:hidden;cursor:pointer;background:radial-gradient(ellipse at 50% 40%,#17140e,#040305 75%);transition:opacity .8s;font-family:"Noto Serif KR","Nanum Myeongjo",serif;opacity:0}
 .relic-fx.in{opacity:1}.relic-fx.out{opacity:0}
-.rl-cv{position:absolute;inset:0;width:100%;height:100%}
+.rl-cv{position:absolute;inset:0;width:100%;height:100%}.rl-mode{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}.rl-obj{position:absolute;left:50%;top:40%;width:min(620px,94vw);height:300px;transform:translate(-50%,-50%);transition:top 1s cubic-bezier(.2,.8,.3,1);pointer-events:none}.rl-3d{width:100%;height:100%;display:block;pointer-events:auto;cursor:grab;touch-action:none}.relic-fx:not(.res) .rl-3d{cursor:inherit}.rl-lore{position:absolute;inset:-20px -10px;background:radial-gradient(ellipse at 50% 50%,rgba(4,3,5,.78),rgba(4,3,5,.55) 55%,rgba(4,3,5,0) 75%);display:flex;flex-direction:column;justify-content:center;gap:6px;text-align:center;color:#e8dcc0;font-size:15px;line-height:1.7;padding:0 6%;text-shadow:0 0 12px rgba(0,0,0,.9)}.rl-lore p{margin:0;opacity:0}.relic-fx.card .rl-obj .rl-lore{opacity:0;transition:opacity .6s}.relic-fx.card .rl-obj{top:28%}
 .rl-gl{position:absolute;inset:0;width:100%;height:100%;display:block}.relic-fx.gl .rl-cv,.relic-fx.gl .rl-core{display:none}.relic-fx.gl{background:#000}
 .rl-cap{position:absolute;left:0;right:0;top:12%;text-align:center;color:#cfc2a6;font-size:16px;line-height:2;pointer-events:none}
 .rl-cap div{opacity:0;transition:opacity 1.2s}
@@ -422,7 +422,24 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .as-sign{position:absolute;left:0;right:0;bottom:0;padding:16px 10px;text-align:center;background:#2c1d12;color:#e2c58e;border:3px solid #6b4a2a;font-size:22px;letter-spacing:.25em;box-shadow:0 10px 30px rgba(0,0,0,.6)}
 .as-stamp{position:absolute;left:50%;top:-30px;width:110px;height:110px;margin-left:-55px;color:var(--ac);opacity:0;transform:scale(3) rotate(-25deg);transition:transform .25s cubic-bezier(.2,1.6,.4,1),opacity .15s;filter:drop-shadow(0 0 12px var(--ac))}
 .as-fx.stamp .as-stamp{opacity:1;transform:scale(1) rotate(-8deg)}
-.as-cv{position:absolute;left:0;right:0;top:32%;width:100%;height:52%}
+.as-doc{position:absolute;left:50%;top:7%;width:min(420px,86vw);transform:translate(-50%,-30px);opacity:0;transition:opacity .9s,transform .9s;background:#e9e1cf;color:#2a2420;padding:22px 26px 18px;box-shadow:0 18px 50px rgba(0,0,0,.7);border-top:5px solid var(--ac)}
+.as-fx.in .as-doc{opacity:1;transform:translate(-50%,0)} .as-fx.docout .as-doc{opacity:0;transform:translate(-50%,-60px)}
+.as-dh{text-align:center;font-size:21px;font-weight:800;letter-spacing:.4em;margin-bottom:12px}
+.as-db p{margin:4px 0;font-size:13px;line-height:1.6}
+.as-sigs{margin-top:14px;border-top:1px solid #b8ab92;padding-top:8px}
+.as-sr{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid #cbbfa6;padding:5px 2px;font-size:12px;color:#6b6052}
+.as-sr span{width:44px} .as-sr b{font-size:19px;font-style:italic;font-weight:600;color:#1d1a2a;clip-path:inset(0 100% 0 0);transition:clip-path .6s ease-out}
+.as-sr.on b{clip-path:inset(0 0 0 0)}
+.as-doc .as-stamp{left:auto;right:6px;top:auto;bottom:-14px;margin-left:0;width:96px;height:96px}
+.as-rack{position:absolute;left:0;right:0;top:24%;height:56%;opacity:0;transition:opacity 1s}
+.as-fx.rack .as-rack{opacity:1}
+.as-rail{position:absolute;left:8%;right:8%;top:10px;height:8px;border-radius:4px;background:linear-gradient(#6b5a44,#3b3024);box-shadow:0 6px 14px rgba(0,0,0,.6)}
+.as-coats{position:absolute;left:8%;right:8%;top:4px;bottom:0;display:flex;justify-content:center;gap:2%}
+.as-coat{position:relative;width:min(120px,14vw);display:flex;flex-direction:column;align-items:center}
+.as-c0{width:100%} .as-c1{position:absolute;left:0;top:0;width:100%} .as-coat svg{width:100%;height:auto;display:block}
+.as-c1{clip-path:inset(0 0 100% 0);transition:clip-path .9s ease-in-out} .as-coat.on .as-c1{clip-path:inset(0 0 0 0)}
+.as-tag{margin-top:6px;background:#d8cfbb;color:#2a2420;font-size:12px;padding:3px 8px;white-space:nowrap;transition:background .6s,color .6s}
+.as-coat.on .as-tag{background:var(--ac);color:#fff}
 .as-text{position:absolute;left:0;right:0;bottom:5%;text-align:center;color:#ddd5c8;font-size:15px;pointer-events:none}
 .as-text div{opacity:0;transition:opacity 1.6s;margin-top:10px}
 .as-fx.t1 .as-text div:nth-child(1),.as-fx.t2 .as-text div:nth-child(2){opacity:1}
@@ -4024,13 +4041,24 @@ const TECHS = {
   crush:    {n:"짓누르기",  stat:"str", d:"막아도 소용없게 힘으로 누른다. 상대가 막는 동작이면 막기를 무시하고, 기본 위력 +2."},
   rush:     {n:"몰아치기",  stat:"agi", d:"틈을 주지 않고 몰아친다. 이기면 남은 코인 하나마다 피해 +2."},
   focus:    {n:"집중",      stat:"tec", d:"한 동작 한 동작을 또렷하게. 코인 위력 +1."},
+  // 유물 원본의 특수 기술 — 배우는 기술이 아니라, 원본 유물을 쥔 손에서만 나온다(봉인 중에는 쓸 수 없다)
+  r_astrape:{n:"벼락 던지기", relic:"astrape", kinds:["spear"], d:"던진 벼락은 빗나가지 않고 손으로 돌아온다. 기본 위력 +4, 이 합에서 앞면 확률 +10%. 맞히면 상대가 휘청이고 정신력 -12."},
+  r_claiomh:{n:"빛의 일섬", relic:"claiomh", kinds:["long"], d:"뽑힌 빛의 칼은 아무도 피하지 못한다. 상대의 방어를 무시하고 기본 위력 +3, 눈부신 빛에 상대의 앞면 확률 -10%."},
+  r_gyeongui:{n:"경의", relic:"gyeongui", kinds:["blade"], d:"안으로 밝히고(경 敬) 밖으로 끊어낸다(의 義). 합 전에 정신력 +15, 이기면 피해 ×1.5."},
+  r_ruyi:{n:"여의", relic:"ruyi", kinds:["staff"], d:"뜻대로 늘어나 먼저 닿고, 그 무게로 내리찍는다. 코인 +1, 기본 위력 +2, 맞히면 상대가 휘청인다."},
+  r_drepanon:{n:"추수", relic:"drepanon", kinds:["long"], d:"베어 거둔 자리에서 무언가가 자란다. 맞히면 출혈 +3, 준 피해의 30%만큼 체력을 되찾는다."},
   steadfast:{n:"불굴",      stat:"wil", def:true, d:"무너지지 않는다. 방어 기술 — 지면 받는 피해 절반에 정신력이 깎이지 않고, 이기면 반격 ×0.8과 함께 정신력 +8."}
 };
+const relicTechOf = f => { const w = f && f.gear && f.gear.weapon; return w && w.relic && (w.seal||0)===0 && TECHS["r_" + String(w.id).replace("relic-","")] ? "r_" + String(w.id).replace("relic-","") : null; };
+// 방어구 · 장신구 원본의 효과(전투에서 저절로)
+const relicFx = (f, id) => !!(f && f.gear && ["armor","acc"].some(sl=>{ const g = f.gear[sl]; return g && g.relic && g.id==="relic-"+id && (g.seal||0)===0; }));
+const RELIC_PASSIVE = {sleipnir:"전투의 첫 합에서 앞면 확률 +15%", aegis:"전투의 첫 합에서 상대 기본 위력 -3", kavacha:"전투마다 처음 받는 체력 피해를 막아 낸다", karakawa:"합에서 이기면 피해 +2",
+  bell:"정신력 피해를 절반만 받는다", scarab:"쓰러질 피해를 한 번 체력 1로 버티고 경상으로 회복한다(하루 한 번)", tyr:"상대와 쥔 이의 강함을 같은 수준으로 맞춘다(상대가 더 강하면 끌어내리고, 약하면 끌어올린다)"};
 const techFits = (id, wt) => { const T = TECHS[id]; return !!T && (!T.kinds || T.kinds.includes(wt)); };
 // 깨우침: 같은 갈래의 무기로 출동한 횟수(장비) + 등급(기량) · 능력치(능력). 조건을 갖춘 출동마다 35%로 자연스럽게
 const TECH_STAT_REQ = 28;   // 새 성장 곡선(승급 +4/+1~3)에 맞춰 낮춤
 function techCandidates(f){ const out = [], u = f.wuse || {}, know = f.techs || [];
-  Object.entries(TECHS).forEach(([id,T])=>{ if(id==="allout" || know.includes(id)) return;
+  Object.entries(TECHS).forEach(([id,T])=>{ if(id==="allout" || T.relic || know.includes(id)) return;
     if(T.kinds){ const n = T.kinds.reduce((s,k)=>s+(u[k]||0),0), order = Object.keys(TECHS).filter(x=>TECHS[x].kinds && TECHS[x].kinds.some(k=>T.kinds.includes(k)) && know.includes(x)).length;
       const need = 6 + order*8, gradeOk = f.grade <= 8 - Math.min(4, order*2); if(n >= need && gradeOk) out.push(id); }
     else if(T.stat && f.stats[T.stat] >= TECH_STAT_REQ && f.done >= 8) out.push(id); });
@@ -4149,7 +4177,7 @@ function mgCombat(ctx){
     foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = !AB&&!DF ? (FOE_SP_BALANCE[g0]||0) : 0;
     foe.baseDamage = foeDmgValue(q,AB,DF,g0);
     if(!AB&&!DF&&g0<=4)foe.skills.forEach(sk=>{sk.cp+=1;});
-    const bonus = me => clamp(Math.round((power(me.f,["str"])/Math.max(1,reqC) - 1)*5), -4, 4);   // 요구치에 못 미치면 크게 밀린다(최대 -4)
+    const bonus = me => relicFx(me.f,"tyr") ? 0 : clamp(Math.round((power(me.f,["str"])/Math.max(1,reqC) - 1)*5), -4, 4);   // 요구치에 못 미치면 크게 밀린다(최대 -4)
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
     const woundOf = (hp,max=100) => hp/max>0.75 ? 0 : hp/max>0.45 ? 1 : hp/max>0.18 ? 2 : 3;
@@ -4162,6 +4190,8 @@ function mgCombat(ctx){
       if(k7 === 7){ const t = pick(party); t.hp = 0; AXN.push(`<b style="color:#ff8a7a">어디선가 마탄이 날아왔다 — 일곱 번째 탄환이 ${esc(jo(t.name,"을"))} 골랐다</b>`); }
       else { const d = 3 + 3*k7; foe.hp = Math.max(1, foe.hp - d); AXN.push(`<span style="color:#e8d27a">${k7}번째 마탄이 ${esc(jo(foe.name,"을"))} 꿰뚫었다(고정 피해 ${d})</span>`); } }
     if(AB && AB.fuse){ foe.fuseMark = pick(party); AXN.push(`<span style="color:#ffb35a">${esc(jo(foe.name,"이"))} ${esc(foe.fuseMark.name)}에게 성냥불 표식을 붙였다 — ${AB.fuse}턴이 끝나기 전에 쓰러뜨려야 한다</span>`); }
+    party.forEach(p=>{ if(relicFx(p.f,"tyr")) AXN.push(`<span style="color:#d8d8e8">티르의 오른손 — 여섯 가닥 은실이 ${esc(p.name)}와 ${esc(foe.name)}의 몸에 감겼다. ${esc(p.name)}이(가) 나서는 동안 둘의 강함이 같아진다</span>`);
+      if(relicFx(p.f,"bell")) AXN.push(`<span style="color:#e8d27a">청동 방울이 여덟 갈래로 울린다 — ${esc(p.name)}의 마음에 다른 목소리가 들어오지 못한다</span>`); });
     if(AB && AB.aoe) AXN.push(`<span style="color:#e8d27a">${AB.aoe}턴마다 금빛 저울이 기운다 — 그 자리 모두가 심판받는다</span>`);
     if(AB && AB.enrage){ foe.clock = 4; AXN.push(`<span style="color:#e8d27a">징벌 새의 시간 4턴 — 다 지나면 스스로 알로 돌아간다. 건드리면 붉게 변해 큰 부리로 문다</span>`); }
     if(AB && AB.movement) AXN.push(`<span style="color:#e8d27a">악장마다 공격·방어·기술 가운데 하나만 지휘자에게 닿는다</span>`);
@@ -4194,7 +4224,7 @@ function mgCombat(ctx){
     const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base + shinPow(me.f)), cp: sk.cp + supCp() + w.cp}); };   // 신 +1 · 망 하나당 +1
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
-    const techOf = me => { const id = me.f.tech && techFits(me.f.tech, me.wt) ? me.f.tech : "allout"; return Object.assign({id}, TECHS[id]); };
+    const techOf = me => { const rt = relicTechOf(me.f); if(rt) return Object.assign({id:rt}, TECHS[rt]); const id = me.f.tech && techFits(me.f.tech, me.wt) ? me.f.tech : "allout"; return Object.assign({id}, TECHS[id]); };
     // 기술 스킬: 무기의 가장 센 공격(방어 기술이면 방어 동작)을 바탕으로 고친다
     function techSkill(me){ const T = techOf(me), base = T.def ? defCard(me.wt) : atkCards(me.wt).reduce((a,b)=>b.b>a.b?b:a); const sk = skillOf(base);
       const id = T.id;
@@ -4203,6 +4233,7 @@ function mgCombat(ctx){
       else if(id==="fanning"){ sk.coins = 5; sk.cp = Math.max(1, sk.cp-1); } else if(id==="flurry"){ sk.coins += 2; sk.cp = Math.max(1, sk.cp-1); }
       else if(id==="spin"){ sk.coins += 1; } else if(id==="onestrike"){ sk.base += sk.cp*(sk.coins-1) + 3; sk.coins = 1; } else if(id==="kiai"){ sk.base += 1; }
       else if(id==="drawcut"){ sk.base += 1; } else if(id==="momentum"){ sk.base += me.lastWon ? 4 : 1; } else if(id==="deadeye"){ sk.coins = Math.max(1, sk.coins-1); sk.cp += 3; sk.base += 1; } else if(id==="bind"){ sk.base += 1; }
+      else if(id==="r_astrape"){ sk.base += 4; } else if(id==="r_claiomh"){ sk.base += 3; } else if(id==="r_ruyi"){ sk.coins += 1; sk.base += 2; } else if(id==="r_drepanon"){ sk.base += 1; }
       else if(id==="impale" || id==="vault"){ sk.base += 2; } else if(id==="whirl"){ sk.coins += 1; } else if(id==="crush"){ sk.base += 2; } else if(id==="focus"){ sk.cp += 1; }
       sk.def = !!T.def; return {T, sk, card: Object.assign({}, base, {n:T.n, def:!!T.def})}; }
     const MOVES = ["기본 공격","방어","기술"];
@@ -4273,7 +4304,7 @@ function mgCombat(ctx){
       const pA = foeSkill.def ? 1 : ak.reduce((s,c)=>s + odds(mySkill(skillOf(c)), mySp(me), foeSk(), foe.sp, chg), 0)/ak.length, [la, ca] = oddLabel(pA);
       const lo = Math.min(...ak.map(c=>mySkill(skillOf(c)).base)), hi = Math.max(...ak.map(c=>{ const k = mySkill(skillOf(c)); return k.base + k.coins*k.cp; }));
       const dk = mySkill(skillOf(dc));
-      const tsk = mySkill(tk.sk), pT = foeSkill.def ? 1 : odds(tsk, mySp(me) + (tk.T.id==="afterimage" ? 15 : tk.T.id==="vault" ? 10 : 0) + (tk.T.id==="kiai" ? 15 : 0), foeSk(), foe.sp, chg), [lt, ct] = oddLabel(pT);
+      const tsk = mySkill(tk.sk), pT = foeSkill.def ? 1 : odds(tsk, mySp(me) + (tk.T.id==="afterimage" ? 15 : tk.T.id==="vault" || tk.T.id==="r_astrape" ? 10 : 0) + (tk.T.id==="kiai" || tk.T.id==="r_gyeongui" ? 15 : 0) + (relicFx(me.f,"sleipnir") && !me.slpUsed ? 15 : 0), foeSk(), foe.sp - (tk.T.id==="r_claiomh" ? 10 : 0), chg), [lt, ct] = oddLabel(pT);
       m.ctrl.innerHTML = `<div class="pk-moves">
         <button data-sk="0" ${!hasBullet?"disabled":""}><b>기본 공격</b><small>${ak.map(c=>c.n).join(" · ")} 가운데 하나가 나간다 · 합 위력 ${lo}~${hi} · 기본 피해 약 ${baseShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}<br><span style="color:${ca}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${la} ${Math.round(pA*100)}%`}</span></small></button>
         <button data-sk="1" ${foeSkill.def?"disabled":""}><b>방어</b><small>${dc.n} · 합 없음 · 받는 피해 50% 감소 · 민첩 고정 감소 ${statGuardMinus(me.f)} · 반격 없음${foeSkill.def?"<br>적이 방어 중이므로 선택 불가":""}</small></button>
@@ -4291,15 +4322,19 @@ function mgCombat(ctx){
       if(reloading) loadAmmo(gun,arguments[1]);
       phase = "anim"; m.ctrl.innerHTML = "";
       const guarding = si===1||reloading;
-      const c = si===0 ? pick(atkCards(me.wt)) : guarding ? defCard(me.wt) : tk.card, sk = mySkill(tk ? tk.sk : skillOf(c)), fk = foeSk(), wNote = [], tNote = [];
+      const c = si===0 ? pick(atkCards(me.wt)) : guarding ? defCard(me.wt) : tk.card, sk = mySkill(tk ? tk.sk : skillOf(c)), wNote = [], tNote = [], rNote = [];
+      let fk = foeSk(); const slpNow = !guarding && relicFx(me.f,"sleipnir") && !me.slpUsed;
+      if(slpNow){ me.slpUsed = true; rNote.push("슬레이프니르 — 여덟 다리가 한 박자 먼저 내달렸다(앞면 확률 +15%)"); }
+      if(!guarding && relicFx(me.f,"aegis") && !me.aegUsed){ me.aegUsed = true; fk = Object.assign({}, fk, {base: Math.max(1, fk.base - 3)}); rNote.push(`아이기스 — 눈이 뜨였다, ${josa(foe.name,"이","가")} 굳었다(기본 위력 -3)`); }
       const foeGuarding = fk.def && !guarding && !AB && !DF;
       if(T && T.id==="kiai"){ me.sp = clamp(me.sp + 15, -45, 45); tNote.push(`기합 — 정신력 ${me.sp>=0?"+":""}${me.sp}`); }
+      if(T && T.id==="r_gyeongui"){ me.sp = clamp(me.sp + 15, -45, 45); tNote.push(`경(敬) — 안을 밝혔다(정신력 ${me.sp>=0?"+":""}${me.sp})`); }
       if(T && T.id==="iai"){ me.iaiFirst = !me.iaiUsed; me.iaiUsed = true; }
       if(!guarding && !foeGuarding && foe.daze){ foe.daze = 0; wNote.push(`${josa(foe.name,"이","가")} 휘청이며 합에 나선다(기본 위력 -2)`); }
       if(!guarding && me.wsp==="screw" && me.wchg>=10){ me.wchg = 0; me.hp = Math.max(1, me.hp - 3); wNote.push("방전 — 코인 위력 +2, 손끝이 저릿하게 감전됐다"); }
       const R = guarding ? {ex:[], win:"foe", left:fk.coins, count:0, a:sk, chg:me.charge||null, fired:false}
         : foeGuarding ? {ex:[], win:"me", left:sk.coins, count:0, a:sk, chg:me.charge||null, fired:false}
-        : simClash(sk, mySp(me) + (T && T.id==="afterimage" ? 15 : T && T.id==="vault" ? 10 : 0), fk, foe.sp, me.sp2==="charge" ? (me.charge||0) : null, tecClashBonus());
+        : simClash(sk, mySp(me) + (T && T.id==="afterimage" ? 15 : T && (T.id==="vault" || T.id==="r_astrape") ? 10 : 0) + (slpNow ? 15 : 0), fk, foe.sp - (T && T.id==="r_claiomh" ? 10 : 0), me.sp2==="charge" ? (me.charge||0) : null, tecClashBonus());
       if(!guarding && me.wsp==="ye") me.ye = Math.min(10, me.ye + 2);
       if(!guarding && me.wsp==="screw") me.wchg = Math.min(10, me.wchg + 3);
       if(!guarding && me.sp2==="charge") me.charge = R.chg;
@@ -4319,7 +4354,7 @@ function mgCombat(ctx){
       // 합이 진행된 경우에만 승패로 정신력이 변한다.
       if(guarding || foeGuarding){ /* 기본 방어는 합 승패로 취급하지 않는다. */ }
       else if(won){ me.sp = clamp(me.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); foe.sp = clamp(foe.sp - 4, -45, 45); }
-      else { if(me.sp2!=="mind") me.sp = clamp(me.sp - (accFx(me.f,"buffer") && me.f.body && (me.f.body.nerve || me.f.body.full) ? 2 : 5), -45, 45); else me.sp = Math.max(0, me.sp); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
+      else { if(me.sp2!=="mind") me.sp = clamp(me.sp - Math.ceil((accFx(me.f,"buffer") && me.f.body && (me.f.body.nerve || me.f.body.full) ? 2 : 5)*(relicFx(me.f,"bell") ? 0.5 : 1)), -45, 45); else me.sp = Math.max(0, me.sp); foe.sp = clamp(foe.sp + 6 + 2*Math.max(0, R.count-1), -45, 45); }
       lines.push(reloading && fk.def ? `합을 진행하지 않았다. ${foe.name}도 방어 중이라 공격하지 않는다.` : guarding ? `합을 진행하지 않았다. ${foe.name}의 공격을 방어해 받는 피해를 절반으로 줄인다.` : foeGuarding ? `${jo(foe.name,"이")} 합 없이 방어한다. 공격 피해가 절반으로 줄어든다.` : won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${jo(foe.name,"이")} 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       // 피해: 이긴 쪽이 남은 코인을 한 번 더 던져 나온 최종 위력만큼 한 번에 준다
@@ -4333,9 +4368,15 @@ function mgCombat(ctx){
       me.lastWon = won;
       const DEFK = {riposte:1.5, zwerch:1.2, improv:1.0, brace:0.8, bind:1.2, counter:1.6, steadfast:0.8};
       if(won){ const damageMul=T?(TECH_DAMAGE_MUL[T.id]||1):1;
-        let dmg = Math.round(P*damageMul*(wSk.def ? (T && DEFK[T.id]!=null ? DEFK[T.id] : 0.6) : 1)*longK()); if(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush"))) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+        let dmg = Math.round(P*damageMul*(wSk.def ? (T && DEFK[T.id]!=null ? DEFK[T.id] : 0.6) : 1)*longK()); if(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(foe.crack) dmg += foe.crack;
+        if(relicFx(me.f,"karakawa")){ dmg += 2; rNote.push("카라카와 — 범의 힘이 실렸다(+2)"); }
         if(T){ const id = T.id;
+          if(id==="r_astrape"){ foe.daze = 1; foe.sp = clamp(foe.sp - 12, -45, 45); tNote.push(`벼락 던지기 — 꽂힌 벼락이 손으로 돌아왔다, ${josa(foe.name,"이","가")} 휘청인다(정신력 ${foe.sp})`); }
+          if(id==="r_claiomh") tNote.push("빛의 일섬 — 막는 손째로 베어 냈다");
+          if(id==="r_gyeongui"){ dmg = Math.round(dmg*1.5); tNote.push("의(義) — 밖으로 끊어냈다(×1.5)"); }
+          if(id==="r_ruyi"){ foe.daze = 1; tNote.push(`여의 — 늘어난 봉이 먼저 닿아 내리찍었다, ${josa(foe.name,"이","가")} 휘청인다`); }
+          if(id==="r_drepanon"){ foe.bleed = Math.min(9, foe.bleed + 3); me.drepHeal = true; tNote.push(`추수 — 출혈 ${foe.bleed}`); }
           if(id==="riposte") tNote.push("되찌르기 — 막은 그대로 찔러 들어갔다"); if(id==="zwerch") tNote.push("가로지르기 — 받으며 동시에 벴다");
           if(id==="zorn" || id==="sweep" || id==="throw"){ foe.daze = 1; } if(id==="zorn") tNote.push(`분노베기 — ${josa(foe.name,"이","가")} 휘청인다`);
           if(id==="sweep"){ foe.sp = clamp(foe.sp - 8, -45, 45); tNote.push("자루 걸기 — 발을 걸어 넘어뜨렸다"); }
@@ -4393,8 +4434,9 @@ function mgCombat(ctx){
         if(me.burden){ dmg = Math.max(1, Math.round(dmg*0.6)); me.burden = false; abNote.push(`<span style="color:#e8d27a">짊어진 탑 탓에 칼끝이 무뎠다 — 그래도 이겨 쳤다. 거인에게 탑을 되돌려 주었다</span>`); }
         // 탄환의 추가 피해는 마지막에 한 번만 더하며, 기술·고유 무기 배율로 증폭되지 않는다.
         // 적이 방어하거나 특수 면역 상태라면 탄환에도 동일한 제약이 걸린다.
-        const ammoNet=dmg>0?Math.min(6,Math.round(ammoEffective*(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush"))?0.5:1))):0;
+        const ammoNet=dmg>0?Math.min(6,Math.round(ammoEffective*(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))?0.5:1))):0;
         if(ammoNet) dmg+=ammoNet;
+        if(me.drepHeal){ me.drepHeal = false; const h = Math.max(1, Math.round(dmg*0.3)); me.hp = Math.min(me.max, me.hp + h); tNote.push(`거둔 만큼 되찾았다(체력 +${h})`); }
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
         if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = Math.round(foe.max*0.25); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
@@ -4404,7 +4446,7 @@ function mgCombat(ctx){
         // 서로 공격하지 않는다. 최소 피해 보정, 출혈·화상·피격 효과, 공격 연출도 발생하지 않는다.
         total = 0;
       }
-      else { let dmg = Math.round(P*clamp(Math.pow(reqC/Math.max(1,power(me.f,["str"])),0.22),0.85,1.25)*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*longK()*(me.f.tired && !accFx(me.f,"calm") ? TIRED_DMG : 1));
+      else { let dmg = Math.round(P*(relicFx(me.f,"tyr") ? 1 : clamp(Math.pow(reqC/Math.max(1,power(me.f,["str"])),0.22),0.85,1.25))*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*longK()*(me.f.tired && !accFx(me.f,"calm") ? TIRED_DMG : 1));
         if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(me.wsp==="meztil"){ dmg = Math.round(dmg*1.2); wNote.push("과속 — 몸이 따라가지 못했다(받는 피해 +20%)"); }
         if(me.wsp==="ranga" && me.rend){ me.rend = 0; wNote.push("벌려 둔 상처가 아물었다"); }
@@ -4421,10 +4463,13 @@ function mgCombat(ctx){
         if(me.sp2==="evade" && Math.random()<0.25){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
         if(guarding || (T && T.def)){ dmg=Math.max(0,dmg-statGuardMinus(me.f)); }
         if(dmg && me.shield){ const ab = Math.min(me.shield, dmg); dmg -= ab; me.shield -= ab; egoNote.push(`보호막이 ${jo(ab,"을")} 막았다`); }
+        if(dmg > 0 && relicFx(me.f,"kavacha") && !me.kavUsed){ me.kavUsed = true; dmg = 0; rNote.push("카바차 — 금 비늘이 칼날을 그대로 튕겨 냈다"); }
+        if(dmg >= me.hp && me.hp > 0 && relicFx(me.f,"scarab") && me.f.scarabDay !== S.day){ me.f.scarabDay = S.day; dmg = Math.max(0, me.hp - 1); me.scarabNow = true; }
         if(me.sp2==="endure" && !me.endured && dmg >= me.hp){ dmg = Math.max(0, me.hp - 1); me.endured = true; egoNote.push("인내 — 쓰러질 공격을 버텼다"); }
         if(me.sp2==="thorns" && dmg>0){ const th = Math.max(1, Math.round(dmg*0.2)); foe.hp = Math.max(0, foe.hp - th); egoNote.push(`가시 — ${foe.name}에게 ${th} 되돌려 줌`); }
         if(dmg > 0 && me.hp <= 20 && accFx(me.f,"bandage")){ dmg = 0; me.f.gear.acc = null; egoNote.push("간이 보존 붕대 — 상처를 그대로 붙잡았다(붕대는 삭아 없어졌다)"); }
-        const w0 = woundOf(me.hp,me.max); me.hp = Math.max(0, me.hp - dmg); total = dmg; me.woundUp = woundOf(me.hp,me.max) > w0 || me.hp<=0; st.crit = false; if(dmg>0) attack("foe", dmg, fk);
+        const w0 = woundOf(me.hp,me.max); me.hp = Math.max(0, me.hp - dmg); total = dmg;
+        if(me.scarabNow){ me.scarabNow = false; me.hp = Math.max(me.hp, Math.round(me.max*0.74)); rNote.push("태양 스카라베 — 쓰러질 상처를 1로 버티고, 가슴의 원반이 동틀 녘처럼 데워 경상까지 되돌렸다"); } me.woundUp = woundOf(me.hp,me.max) > w0 || me.hp<=0; st.crit = false; if(dmg>0) attack("foe", dmg, fk);
         if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       await wait(900);
       clash = null;
@@ -4433,6 +4478,7 @@ function mgCombat(ctx){
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       if(abNote.length) lines.push(`<span style="color:#ff9a8a">환상체</span> ${abNote.join(" · ")}`);
       if(wNote.length) lines.push(`<span style="color:#f2c27a">고유 무기</span> ${wNote.join(" · ")}`);
+      if(rNote.length) lines.push(`<span style="color:#d8b45a">유물</span> ${rNote.join(" · ")}`);
       if(T && T.id==="allout"){ me.sp = clamp(me.sp - 10, -45, 45); tNote.push(`숨이 차오른다(정신력 -10 → ${me.sp>=0?"+":""}${me.sp})`); }
       if(tNote.length) lines.push(`<span style="color:#9fd0ff">기술</span> ${tNote.join(" · ")}`);
       S2.log = lines.concat(S2.log).slice(0,4);
@@ -4618,13 +4664,13 @@ function mgCombat(ctx){
         c.restore();
       } else {
       if(DF && outcome!=="사살") drawDistortFx(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, DF.lvl, now/1000, 1-fworst);
-      drawFixer(c, POS.foe.x+fp.dx + (DF ? (Math.random()-0.5)*DF.lvl*1.5 : 0), POS.foe.gy+fp.dy, POS.foe.h*0.96*(DF ? 1 + 0.04*DF.lvl : 1), {face:-1, col: DF ? hexMix(fcol, "#2a0810", 0.45) : fcol, state: outcome==="제압" ? "hurt" : "combat", weapon: outcome ? null : foe.spec, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot, hurt: 1-fworst}); }
+      drawFixer(c, POS.foe.x+fp.dx + (DF ? (Math.random()-0.5)*DF.lvl*1.5 : 0), POS.foe.gy+fp.dy, POS.foe.h*0.96*(DF ? 1 + 0.04*DF.lvl : 1), {face:-1, spr: !DF, col: DF ? hexMix(fcol, "#2a0810", 0.45) : fcol, state: "combat", weapon: foe.spec, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot}); }
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
       const mcol = hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash);
       const mhp = me.shownHp==null ? me.hp : me.shownHp;
-      drawFixer(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, col:mcol, state:"combat", weapon: me.spec, armor: me.armor, sw:mp.sw, atk: mp.atk, rot: mp.rot + mrot,
-        hurt: mhp<50 ? (50-mhp)/50 : 0, acc: me.lg && me.lg.acc ? me.lg.accColor : null});
+      drawFixer(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, spr:true, col:mcol, state:"combat", weapon: me.spec, armor: me.armor, sw:mp.sw, atk: mp.atk, rot: mp.rot + mrot,
+        acc: me.lg && me.lg.acc ? me.lg.accColor : null});
     }
     function overlay(now, keep){
       const c = m.c, me = party[act]; if(!keep) c.clearRect(0,0,W,H);
@@ -4836,7 +4882,7 @@ function mgTrack(ctx){
         else { c.globalAlpha = rv;
           if(b.clue==="foot"){ c.fillStyle = "rgba(159,232,176,0.65)"; for(let j=0;j<6;j++){ const u = j/5, fx = VX + (o.x-VX)*u + (j%2?5:-5)*(1-u*0.6), fy = 285 - u*95; c.beginPath(); c.ellipse(fx, fy, 7*(1-u*0.6), 3.5*(1-u*0.6), 0, 0, 7); c.fill(); } }
           if(b.clue==="drop"){ const gx = o.x + 14, gy = 186, sp = 0.6 + 0.4*Math.sin(t*6); c.fillStyle = `rgba(255,236,170,${sp})`; c.beginPath(); c.moveTo(gx, gy-9); c.lineTo(gx+3, gy-2); c.lineTo(gx+10, gy); c.lineTo(gx+3, gy+2); c.lineTo(gx, gy+9); c.lineTo(gx-3, gy+2); c.lineTo(gx-10, gy); c.lineTo(gx-3, gy-2); c.fill(); }
-          if(b.clue==="wit"){ drawFixer(c, x0 - 10, 196, 62, {face:1, col:SIDE_COL.friend.fill, state:"idle", rim:SIDE_COL.friend.rim, t}); c.fillStyle = "rgba(195,235,255,0.85)"; c.font = `600 10px "Noto Sans KR",sans-serif`; c.fillText("저쪽으로…", x0 - 34, 122); }
+          if(b.clue==="wit"){ drawFixer(c, x0 - 10, 196, 62, {face:1, spr:true, col:SIDE_COL.friend.fill, state:"idle", rim:SIDE_COL.friend.rim, t}); c.fillStyle = "rgba(195,235,255,0.85)"; c.font = `600 10px "Noto Sans KR",sans-serif`; c.fillText("저쪽으로…", x0 - 34, 122); }
           if(b.clue==="noise"){ c.strokeStyle = "rgba(224,210,127,0.7)"; c.lineWidth = 2; for(let r=0;r<3;r++){ const rr = 10 + ((t*30 + r*12) % 36); c.globalAlpha = rv*(1 - rr/46); c.beginPath(); c.arc(o.x, 128, rr, -2.4, -0.7); c.stroke(); } c.globalAlpha = rv;
             c.fillStyle = "rgba(224,210,127,0.9)"; c.font = `800 12px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(TI.snd, o.x, 104); c.textAlign = "left"; }
           c.globalAlpha = 1; }
@@ -4929,7 +4975,7 @@ function mgCircles(ctx){
       c.strokeStyle="rgba(220,230,255,0.08)"; c.beginPath(); for(let i=0;i<24;i++){ const a=i/24*Math.PI*2, r0=60+((t*400+i*53)%300); c.moveTo(VX+Math.cos(a)*r0, VY+Math.sin(a)*r0*0.6); c.lineTo(VX+Math.cos(a)*(r0+40), VY+Math.sin(a)*(r0+40)*0.6); } c.stroke();
       // 표적(달아나는 뒷모습)
       const tg = target(), bob = Math.abs(Math.sin(t*9))*4;
-      fig(c, tg.x, tg.y - bob, 70*tg.s, {coat:true, rim:"rgba(255,90,90,0.55)"});
+      fig(c, tg.x, tg.y - bob, 70*tg.s, {spr:true, coat:true, rim:"rgba(255,90,90,0.55)"});
       c.fillStyle="#2a2018"; c.fillRect(tg.x+8*tg.s, tg.y-bob-45*tg.s, 14*tg.s, 10*tg.s);
       if(now < G.start){ c.font=`800 34px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.fillStyle="#9fd6ff"; c.shadowColor="#9fd6ff"; c.shadowBlur=18; c.fillText((G.start-now)>500?"놓치지 마라":"쫓아라!", W/2, 90); c.shadowBlur=0; c.textAlign="left"; }
       else if(!G.done){
@@ -4994,7 +5040,7 @@ function mgShield(ctx){
       c.strokeStyle="rgba(110,170,255,0.12)"; c.setLineDash([6,10]); c.beginPath(); c.moveTo(0,CY); c.lineTo(W,CY); c.moveTo(CX,0); c.lineTo(CX,H); c.stroke(); c.setLineDash([]);
       // 화물과 의뢰인
       c.fillStyle="#2a2620"; c.fillRect(CX-20,CY-14,40,28); c.strokeStyle="#5a4c38"; c.strokeRect(CX-20,CY-14,40,28); c.fillStyle="rgba(230,200,120,0.6)"; c.font=`700 9px "Noto Sans KR",sans-serif`; c.textAlign="center"; c.fillText("의뢰 화물",CX,CY+3); c.textAlign="left";
-      fig(c, CX+30, CY+16, 34, {side:"friend", face:-1});
+      fig(c, CX+30, CY+16, 34, {spr:true, side:"friend", face:-1});
       // 방벽(츠바이 결 푸른 육각 호)
       const a0 = ANG[G.dir]; c.save(); c.globalCompositeOperation="lighter"; c.strokeStyle="rgba(110,170,255,0.9)"; c.shadowColor="#6aa0ff"; c.shadowBlur=16; c.lineWidth=5;
       c.beginPath(); c.arc(CX,CY,SR,a0-0.75,a0+0.75); c.stroke();
@@ -6531,8 +6577,8 @@ function mgEscort(ctx){
       for(let i=0;i<=SEG;i++){ const done = i <= G.seg; c.fillStyle = i===SEG ? "#e8d39a" : done ? "#9fe8b0" : "#3a3644"; c.beginPath(); c.arc(sx(i), y, i===SEG ? 9 : 6, 0, 7); c.fill(); }
       c.fillStyle = "#cfc8bb"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText("출발", x0, y+28); c.fillText("목적지", x1, y+28);
       const wk = G.walk ? clamp((now-G.walk)/900, 0, 1) : 1, px = G.seg===0 ? x0 : sx(G.seg - 1 + wk), bob = wk<1 ? Math.abs(Math.sin(t*10))*2 : 0;
-      fig(c, px - 10, y - 4 - bob, 40, {side:"ally", face:1});
-      fig(c, px + 10, y - 4 - bob, 36, {side:"friend", face:1});
+      fig(c, px - 10, y - 4 - bob, 40, {spr:true, side:"ally", face:1});
+      fig(c, px + 10, y - 4 - bob, 36, {spr:true, side:"friend", face:1});
       // 경계: 일행을 감싸는 빛의 고리
       c.save(); c.globalCompositeOperation = "lighter"; const ar = 26 + G.al*0.35; const rg = c.createRadialGradient(px, y-24, ar*0.3, px, y-24, ar);
       rg.addColorStop(0, "rgba(0,0,0,0)"); rg.addColorStop(0.85, `rgba(120,200,255,${0.05 + G.al/700})`); rg.addColorStop(1, "rgba(0,0,0,0)"); c.fillStyle = rg; c.beginPath(); c.arc(px, y-24, ar, 0, 7); c.fill(); c.restore();
@@ -7698,35 +7744,31 @@ async function assocOffer(){
   if(v==="yes") return assocEnding(O.id);
   addLog(`${A.n}의 직속 제안을 사양했다.`); }
 function assocScene(id){
+  // 사람 그림 없이 — ① 직속 계약서에 이름이 하나씩 적히고 협회 도장이 찍힌다 ② 사무소 옷걸이의 코트가 하나씩 협회 제복으로 바뀐다
   const A = ASSOCS[id], el = document.createElement("div"); el.className = "as-fx"; el.style.setProperty("--ac", A.col); el.dataset.jolt = `stamp|${A.col}|1`;
-  const crew = S.fixers.slice(0, 5);
-  el.innerHTML = `<div class="as-board"><div class="as-sign">${esc(S.officeName)}</div><div class="as-stamp"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="60" cy="60" r="44" fill="none" stroke="currentColor" stroke-width="2"/>
-      <text x="60" y="72" text-anchor="middle" font-size="34" font-weight="900" fill="currentColor" font-family="serif">${A.sig}</text><path id="arc${id}" d="M 22 60 A 38 38 0 0 1 98 60" fill="none"/><text font-size="11" fill="currentColor" letter-spacing="3"><textPath href="#arc${id}" startOffset="50%" text-anchor="middle">${esc(A.n)}</textPath></text></svg></div></div>
-    <canvas class="as-cv"></canvas>
-    <div class="as-text"><div>간판 위에 ${esc(A.n)}의 문장이 찍혔다.</div><div>사무소 사람들은 그날 처음으로 같은 옷을 입었다.</div></div>`;
-  const cv = el.querySelector(".as-cv"), c = cv.getContext("2d"), t0 = performance.now(); let skip = false; const sprites = {};
-  const before = "#59545e", after = hexMix(A.col, "#1a1a22", 0.42);
-  const loop = () => { if(!el.isConnected) return; const d = Math.min(1.5, devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight; if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); }
-    c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H); const tt = skip ? 99 : (performance.now() - t0)/1000;
-    const n = crew.length, gap = Math.min(150, W/(n+1)), gy = H*0.92, fh = Math.min(H*0.8, 240);
-    crew.forEach((f,i)=>{ const x = W/2 + (i - (n-1)/2)*gap, lg = leadGear(f), on = clamp((tt - 5.6 - i*0.7)/0.9, 0, 1), app = clamp((tt - 3.6 - i*0.15)/0.6, 0, 1); if(app<=0) return;
-      c.save(); c.globalAlpha = app;
-      // 인물은 한 번만 그려 두고(옷 갈아입기 전 · 후 두 장) 매 프레임에는 그 그림만 옮겨 찍는다 — 다섯 명을 매번 새로 그리면 느린 기기에서 끊긴다
-      const key = `${i}|${Math.round(fh)}|${d}`, SP = sprites[key] = sprites[key] || {};
-      const sprite = (col, trim) => { const k2 = trim ? "a" : "b"; if(SP[k2]) return SP[k2]; const sw = Math.ceil(fh*2.2), sh = Math.ceil(fh*1.5), oc = document.createElement("canvas"); oc.width = Math.ceil(sw*d); oc.height = Math.ceil(sh*d);
-        const ox = oc.getContext("2d"); ox.setTransform(d,0,0,d,0,0); drawFixer(ox, sw/2, sh*0.95, fh, {face:1, view:"front", col, state:"idle", weapon: lg.spec, armor: Object.assign({}, lg.armorSpec, trim ? {type:1, collar:1, pad:1, trim:A.col} : {}), t: 0}); return SP[k2] = {oc, sw, sh}; };
-      const draw = (col, trim) => { const sp = sprite(col, trim); c.drawImage(sp.oc, x - sp.sw/2, gy - sp.sh*0.95, sp.sw, sp.sh); };
-      if(on < 1) draw(before, false);   // 다 갈아입은 뒤에는 새 제복만, 갈아입는 중에만 둘을 겹쳐 그린다
-      if(on >= 1) draw(after, true);
-      else if(on > 0){ const top = gy - fh*1.02, span = fh*1.12; c.save(); c.beginPath(); c.rect(x - fh, top, fh*2, span*on); c.clip(); draw(after, true); c.restore();
-        c.fillStyle = A.col; c.globalAlpha = 0.8; c.fillRect(x - fh*0.22, top + span*on - 1, fh*0.44, 2); }
-      c.restore();
-      c.fillStyle = on >= 1 ? A.col : "#b7b0a6"; c.globalAlpha = app; c.font = `600 13px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(f.name, x, gy + 18); c.globalAlpha = 1; });
-    requestAnimationFrame(loop); };
-  requestAnimationFrame(loop);
-  const add = k => () => el.classList.add(k);
-  const total = 5.6 + crew.length*0.7 + 1.2;
-  return runScene(el, [[300, add("in")], [1500, add("stamp")], [3300, add("line")], [Math.round(total*1000), ()=>{ skip = true; el.classList.add("t1"); }], [Math.round(total*1000)+2000, add("t2")]], 5000);
+  const crew = S.fixers.slice(0, 6), n = crew.length, after = hexMix(A.col, "#1a1a22", 0.42), trim = A.col;
+  const coat = (fill, col, band) => `<svg viewBox="0 0 100 230" aria-hidden="true">
+      <path d="M50 4 q9 0 9 8 q0 7 -9 9" fill="none" stroke="#8a8478" stroke-width="2.5"/><path d="M50 21 L12 42 L88 42 Z" fill="none" stroke="#8a8478" stroke-width="3"/>
+      <path d="M14 42 Q50 30 86 42 L95 70 L92 150 L84 150 L86 90 L90 222 L10 222 L14 90 L16 150 L8 150 L5 70 Z" fill="${fill}" stroke="#0c0c10" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M38 38 L50 70 L62 38" fill="none" stroke="${col}" stroke-width="4"/><path d="M50 70 L50 222" stroke="#0c0c10" stroke-width="1.6" opacity=".55"/>
+      <path d="M24 96 Q50 102 76 96" fill="none" stroke="#0c0c10" stroke-width="2" opacity=".45"/>
+      ${band ? `<rect x="85" y="86" width="9" height="16" rx="2" fill="${col}"/><path d="M10 220 L90 220" stroke="${col}" stroke-width="4"/>` : ""}</svg>`;
+  el.innerHTML = `<div class="as-doc"><div class="as-dh">직속 계약서</div>
+      <div class="as-db"><p>${esc(A.n)}(이하 협회)와 ${esc(S.officeName)}(이하 사무소)는 아래와 같이 약정한다.</p>
+        <p>1. 사무소는 협회의 직속으로서 ${esc(A.role)} 의뢰를 맡는다.</p><p>2. 협회는 사무소에 일을 끊이지 않게 내려보낸다.</p><p>3. 사무소의 사람은 협회의 옷을 입는다.</p></div>
+      <div class="as-sigs">${crew.map((f,i)=>`<div class="as-sr" data-i="${i}"><span>${f.isLeader ? "대표" : "해결사"}</span><b>${esc(f.name)}</b></div>`).join("")}</div>
+      <div class="as-stamp"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="54" fill="none" stroke="currentColor" stroke-width="5"/><circle cx="60" cy="60" r="44" fill="none" stroke="currentColor" stroke-width="2"/>
+        <text x="60" y="72" text-anchor="middle" font-size="34" font-weight="900" fill="currentColor" font-family="serif">${A.sig}</text><path id="arc${id}" d="M 22 60 A 38 38 0 0 1 98 60" fill="none"/><text font-size="11" fill="currentColor" letter-spacing="3"><textPath href="#arc${id}" startOffset="50%" text-anchor="middle">${esc(A.n)}</textPath></text></svg></div></div>
+    <div class="as-rack"><div class="as-rail"></div><div class="as-coats">${crew.map((f,i)=>`<div class="as-coat" data-i="${i}"><div class="as-c0">${coat("#59545e", "#3a363e", false)}</div><div class="as-c1">${coat(after, trim, true)}</div><div class="as-tag">${esc(f.name)}</div></div>`).join("")}</div></div>
+    <div class="as-text"><div>계약서 맨 아래에 ${esc(A.n)}의 도장이 찍혔다.</div><div>옷걸이에 걸린 코트가 모두 같은 색이 되었다.</div></div>`;
+  const add = k => () => el.classList.add(k), on = (sel, i) => () => { const x = el.querySelector(`${sel}[data-i="${i}"]`); if(x) x.classList.add("on"); };
+  const tS = 1300 + n*650 + 300, tR = tS + 3400, tE = tR + 700 + n*600;
+  const plan = [[300, add("in")]];
+  crew.forEach((_,i)=>plan.push([1300 + i*650, on(".as-sr", i)]));
+  plan.push([tS, add("stamp")], [tS + 900, add("t1")], [tS + 2700, add("docout")], [tR, add("rack")]);
+  crew.forEach((_,i)=>plan.push([tR + 700 + i*600, on(".as-coat", i)]));
+  plan.push([tE + 600, add("t2")]);
+  return runScene(el, plan, 4500);
 }
 async function assocEnding(id){
   if(!S) return; const A = ASSOCS[id];
@@ -8424,9 +8466,9 @@ async function openManage(){
   let sel = S.fixers[0]?.id, mview = null;
   const draw = () => {
     const f = S.fixers.find(x=>x.id===sel) || S.fixers[0]; if(!f) return "";
-    sel = f.id; if(!mview) mview = f.hp < f.hpMax*0.4 ? "hurt" : "idle";
+    sel = f.id; if(!mview) mview = "idle";
     const inv = (S.inventory||[]);
-    const gearRow = (slot,label) => { const g=f.gear[slot]; return `<span>${label}</span><b>${g?(g.relic ? `<span class="relic-name">${esc(g.name)}</span> <span class="badge" style="color:#d8b45a;border-color:currentColor">유물 · 귀속</span>` : esc(g.name))+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
+    const gearRow = (slot,label) => { const g=f.gear[slot]; return `<span>${label}</span><b>${g?(g.relic ? `<span class="relic-name">${esc(g.name)}</span> <span class="badge" style="color:#d8b45a;border-color:currentColor">유물 · 귀속</span>${g.seal!=null ? (g.sealFree ? ` <span class="fg-seg" style="display:inline-flex;margin-left:4px">${[0,1,2].map(k=>`<button data-seal="${k}" data-sslot="${slot}" class="${(g.seal||0)===k?"on":""}" style="padding:2px 8px">${SEAL_NAME[k]}</button>`).join("")}</span>` : ` <span class="badge">${SEAL_NAME[g.seal]}</span>`) : ""}` : esc(g.name))+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
     const hc = healCost(f);
     return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}">${esc(x.name)}</button>`).join("")}</div>
     <div class="mg-prev"><canvas class="mgp"></canvas><div><div class="fg-seg">${STATE_TABS.map(([k,n])=>`<button class="${mview===k?"on":""}" data-mview="${k}">${n}</button>`).join("")}</div>
@@ -8478,6 +8520,7 @@ async function openManage(){
       else if(d.repair && f){ if(!repairWeapon(f.gear.weapon, f)) return; }
       else if(d.repinv!==undefined){ if(!repairWeapon((S.inventory||[])[+d.repinv], null)) return; }
       else if(d.retouch && f){ await openForge(f, "weapon", "retouch"); }
+      else if(d.seal!==undefined && f && f.gear[d.sslot||"weapon"] && f.gear[d.sslot||"weapon"].relic && f.gear[d.sslot||"weapon"].sealFree){ const sl = d.sslot||"weapon", g = f.gear[sl], R = RELICS.find(r=>"relic-"+r.id===g.id); if(R){ const it = relicItem(R, {id:g.bound, name:g.boundName}, +d.seal); it.sealFree = true; f.gear[sl] = it; } save(); }
       else if(d.egoforge && f){ await openForge(f, null, "ego"); }
       else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.heal && f){
@@ -8516,7 +8559,7 @@ function gearDesc(g){
   if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed);
   if(g.effect) p.push(`<span style="color:#cfe2ff">${esc(g.effect)}</span>${g.fx==="enk" ? ` <span class="muted">(사용 ${g.uses||0}회)</span>` : ""}`, g.desc && !g.relic ? `<span class="muted">${esc(g.desc)}</span>` : "");
   if(g.selfUp && g.gift) p.push(`${g.gift.from.replace(/ \(아종:.*\)$/,"")} 관측 시 행동 성공률 +${Math.round(g.selfUp*100)}%p`);
-  if(g.relic) p.push(`<span style="color:#d8b45a">유적 출토 · ${esc(g.origin)} · ${esc(g.boundName||"")}에게 귀속</span>`, g.trait ? `<span style="color:#9fe8c8">성질: ${esc(g.trait)}</span>` : "", g.flaw ? `<span style="color:#e7a07c">흠: ${esc(g.flaw)}</span>` : "", `<span class="muted">${esc(g.desc||"")}</span>`);
+  if(g.relic) p.push(`<span style="color:#d8b45a">유적 출토 · ${esc(g.origin)} · ${esc(g.boundName||"")}에게 귀속</span>`, g.trait ? `<span style="color:#9fe8c8">성질: ${esc(g.trait)}</span>` : "", g.special ? `<span style="color:${(g.seal||0)===0 ? "#f2d27a" : "#8f8676"}">원본 특수: ${esc(g.special)}${(g.seal||0)===0 ? "" : " (봉인 중 — 쓸 수 없다)"}</span>` : "", `<span class="muted">${esc(g.desc||"")}</span>`);
   if(gunKind(g)){ const a=AMMO_BY[g.ammoType]||AMMO_TYPES[0];p.push(`<span style="color:#9ad0ff">탄창 ${g.mag||0}/${ammoCap(g)} · ${a.name} (공격 피해 +${a.bonus}, 공격마다 1발)</span>`); }
   if(g.traits) p.push(`<span style="color:#9fe8b0">이점 ${g.traits.adv.join(", ")}</span>`, `<span style="color:#ff8a7a">결점 ${g.traits.bad.join(", ")}</span>`);
   if(g.slot==="weapon" && g.unique){ p.push("고유 무기 · 닳지 않음"); const w = wspOf(g); if(w) p.push(`[${w.n}] ${w.d}`); } else if(durText(g)) p.push(durText(g));
@@ -8539,12 +8582,12 @@ function animPreview(cv, getOpts){
     if(o.state==="combat"){ const kd = o.weapon ? o.weapon.kind : "none", cat = (WEAPON_KINDS[kd]||{}).cat;
       const pool = kd==="gun" ? ["aim"] : kd==="staff" ? ["spin","smash"] : kd==="fist" || kd==="none" ? ["jab","upper"] : cat==="pierce" ? ["thrust"] : cat==="impact" ? ["smash","swing","upper"] : ["down","up","horiz","diag"];
       const cyc = Math.floor(t/1.8); atk = {style: pool[cyc % pool.length], ph: Math.min(3, atkPhase((t % 1.8) - 0.3, kd==="rapier" ? 3 : 1, timingOf(kd)))}; }
-    drawFixer(c, W/2 - (o.state==="combat" ? H*0.08 : 0), gy, H*0.82, {face:1, col:SIDE_COL.ally.fill, state:o.state, weapon:o.weapon, armor:o.armor, atk, acc:o.acc});
+    drawFixer(c, W/2 - (o.state==="combat" ? H*0.08 : 0), gy, H*0.82, {face:1, spr:true, col:SIDE_COL.ally.fill, state:o.state, weapon:o.weapon, armor:o.armor, atk, acc:o.acc});
     requestAnimationFrame(loop);
   };
   requestAnimationFrame(loop);
 }
-const STATE_TABS = [["idle","평상"],["combat","전투"],["hurt","부상"]];
+const STATE_TABS = [["idle","평상"],["combat","전투"]];
 const stateOpts = k => ({state:k});
 function fixerLook(f){ const lg = leadGear(f); return {weapon: lg.spec, armor: lg.armorSpec, acc: lg.acc ? lg.accColor : null}; }
 
@@ -9147,7 +9190,9 @@ function save(){
 }
 const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나무"],["랑가 공방","랑아 공방"],["클라우드 공방","구름 공방"],["아틀리에 로직","로직 아틀리에"]];
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.money = Math.max(0, Number(d.money)||0); pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); if(!Number.isFinite(d.officeTrust)){
+function relicRefresh(f){ if(!f || !f.gear) return; ['weapon','armor','acc'].forEach(sl=>{ const g = f.gear[sl]; if(!g || !g.relic) return; if(g.id==="relic-horus") g.id = "relic-tyr"; const R = RELICS.find(r=>"relic-"+r.id===g.id); if(!R) return;
+  const it = relicItem(R, {id:g.bound, name:g.boundName}, g.seal||0); if(g.sealFree!=null) it.sealFree = g.sealFree; f.gear[sl] = it; }); }
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.forEach(f=>{ try{ relicRefresh(f); }catch(_){ } }); d.money = Math.max(0, Number(d.money)||0); pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); if(!Number.isFinite(d.officeTrust)){
     const oldDone=Object.values(d.clients||{}).reduce((v,c)=>v+Math.max(0,Number(c&&c.n)||0),0);
     d.officeTrust=clamp(50+oldDone*2,0,100);
   }
@@ -9204,26 +9249,31 @@ function promptBox(title, label, def, allowRandom){
 const RELIC_REQ_P = 0.01, RELIC_GET_P = 0.05, RELIC_FIT_MIN = 20;
 const RELICS = [
   {id:"astrape", slot:"weapon", name:"아스트라페", origin:"번개가 흐르는 단창", kind:"spear", look:{v:0, len:0.85, metal:"#e4e7ea", glow:"#9fd8ff"}, power:27, bonusAdd:{agi:3}, hpRed:0.05, d:"자루를 쥐면 손바닥 아래로 희미한 번개가 흐른다. 던진 적이 없는데도, 늘 손으로 돌아와 있다."},
-  {id:"claiomh", slot:"weapon", name:"클라우 솔리스", origin:"빛의 양손검", kind:"long", look:{v:0, len:1.1, metal:"#f4f4ff", glow:"#fff2b0"}, power:29, bonusAdd:{str:2, wil:2}, d:"칼집에서 뽑으면 어두운 골목이 한낮처럼 밝아진다. 한 번 뽑힌 칼은 상대를 베기 전에는 쉽게 돌아가지 않는다고 한다."},
+  {id:"claiomh", slot:"weapon", name:"클라우 솔리스", origin:"빛의 양손검", kind:"long", look:{v:0, len:1.1, metal:"#f4f4ff", glow:"#fff2b0"}, power:29, bonusAdd:{str:2, wil:2}, d:"칼집에서 뽑으면 어두운 골목이 한낮처럼 밝아진다."},
   {id:"gyeongui", slot:"weapon", name:"경의검", origin:"남명 조식의 패검", kind:"blade", look:{v:4, len:1.0, metal:"#5f6670", glow:null}, power:26, bonusAdd:{wil:4, tec:2}, mpRed:0.12, d:"칼등에 두 글귀가 새겨져 있다 — 안으로 밝히는 것은 경(敬)이요, 밖으로 결단하는 것은 의(義)라. 칼보다 글귀가 먼저 사람을 벤다."},
   {id:"ruyi", slot:"weapon", name:"여의봉", origin:"뜻대로 늘고 주는 쇠봉", kind:"staff", look:{v:0, len:1.05, metal:"#c9a86a", glow:"#f2d27a"}, power:27, bonusAdd:{agi:2, str:2}, d:"양 끝에 금테가 둘린 쇠봉. 손에 쥐는 사람의 뜻에 따라 길이와 무게가 달라진다는데, 아직 아무도 끝까지 늘려 본 적은 없다."},
   {id:"drepanon", slot:"weapon", name:"드레파논", origin:"데메테르의 낫", kind:"long", look:{v:1, len:1.0, metal:"#b9a46a", glow:"#c6ff5a"}, power:26, bonusAdd:{wil:2, tec:2}, hpRed:0.06, d:"곡식을 거두던 낫. 이 날이 지나간 자리에서는 이듬해 반드시 무언가가 자란다고 한다. 무엇이 자라는지는 말하는 사람마다 다르다."},
-  {id:"sleipnir", slot:"armor", name:"슬레이프니르", origin:"여덟 다리 말이 그려진 견갑", look:{type:1, pad:2, collar:1, trim:"#9fd8ff"}, hpRed:0.4, bonus:{agi:4}, d:"견갑 위에서 다리가 여덟 개인 말이 달린다. 걸치면 발걸음이 한 박자씩 빨라진다."},
-  {id:"aegis", slot:"armor", name:"아이기스", origin:"방패", look:{type:3, pad:2, collar:1, trim:"#f2d27a"}, hpRed:0.48, mpRed:0.1, d:"한가운데 새겨진 얼굴과 눈이 마주치면, 덤벼들던 자가 잠시 굳는다. 막는 것보다 멈추게 하는 쪽에 가까운 방패."},
-  {id:"kavacha", slot:"armor", name:"카바차", origin:"황금 갑옷", look:{type:3, pad:1, collar:1, trim:"#d8b45a"}, hpRed:0.45, bonus:{wil:2}, d:"태어날 때부터 살갗에 붙어 있었다는 황금 갑옷. 벗겨 낸 자리는 끝내 아물지 않았다는 이야기가 함께 전해진다."},
-  {id:"karakawa", slot:"armor", name:"카라카와", origin:"호랑이 가죽 갑옷", look:{type:2, pad:1, collar:1, trim:"#e0a33a"}, hpRed:0.42, bonus:{str:3}, d:"호랑이 가죽으로 미늘을 엮은 갑옷. 한 가문이 대대로 물려 입었고, 가문이 무너진 뒤로는 주인을 찾아 떠돌았다."},
-  {id:"bell", slot:"acc", name:"청동 방울", origin:"여덟 갈래 청동 방울", mpRed:0.32, bonus:{wil:4}, d:"흔들면 소리가 여덟 갈래로 갈라져 퍼진다. 마음속에서 들리던 다른 목소리가 그 소리에 묻힌다."},
-  {id:"scarab", slot:"acc", name:"태양 스카라베", origin:"펜던트", hpRed:0.12, mpRed:0.18, bonus:{str:1, agi:1, tec:1, wil:1}, d:"태양을 굴리는 쇠똥구리를 새긴 펜던트. 어두운 날에도 목에 건 자리가 따뜻하다."},
-  {id:"horus", slot:"acc", name:"호루스의 눈", origin:"의안", mpRed:0.15, bonus:{tec:4, agi:2}, d:"눈두덩에 끼우면 먼 곳의 움직임이 한 박자 먼저 보인다. 원래 눈의 주인이 무엇을 봤는지도, 가끔 같이 보인다."}];
-function relicItem(R, f){
+  {id:"sleipnir", slot:"armor", name:"슬레이프니르", origin:"여덟 다리 말이 그려진 견갑", look:{type:1, pad:2, collar:1, trim:"#9fd8ff"}, hpRed:0.4, bonus:{agi:4}, d:"유적 중간 층의 무너진 마구간 터에서, 녹슨 말굽 쇠 더미에 깔린 채로 나왔다. 잿빛 쇠판을 비늘처럼 여러 겹 포갠 견갑 한 쌍으로, 맨 윗판에 다리가 여덟 개인 말이 돋을새김되어 있다. 걸치고 걸으면 말의 다리 사이로 가느다란 빛이 미끄러져 지나가고, 그때마다 걸음이 한 박자씩 앞서 나간다. 오래 달려도 숨이 차지 않는다는 말이 함께 전해진다."},
+  {id:"aegis", slot:"armor", name:"아이기스", origin:"방패", look:{type:3, pad:2, collar:1, trim:"#f2d27a"}, hpRed:0.48, mpRed:0.1, d:"유적 깊은 층, 물이 말라 버린 신전 바닥에서 올라온 둥근 청동 방패. 안쪽에 가죽 고리 두 개가 달려 왼팔에 찬다. 한가운데에는 머리카락 대신 뱀이 얽힌 얼굴이 새겨져 있는데, 평소에는 두 눈을 감고 있다. 싸움이 시작되면 그 눈이 천천히 뜨이고, 눈이 마주친 자는 덤벼들던 자세 그대로 잠시 굳는다. 막아 내는 방패라기보다 멈춰 세우는 방패에 가깝다."},
+  {id:"kavacha", slot:"armor", name:"카바차", origin:"황금 갑옷", look:{type:3, pad:1, collar:1, trim:"#d8b45a"}, hpRed:0.45, bonus:{wil:2}, d:"햇빛이 들 리 없는 유적 밑바닥의 방 한가운데에서, 스스로 빛을 내며 놓여 있었다는 황금 갑옷. 손톱만 한 금 비늘이 촘촘히 이어지고, 가슴 한가운데에 해를 본뜬 둥근 판이 박혀 있다. 입으면 비늘이 살갗에 녹아들 듯 붙어 맨몸처럼 가볍고, 웬만한 칼날은 그대로 튕겨 낸다. 한쪽 어깨에만 비늘이 억지로 뜯겨 나간 자국이 있는데, 누가 왜 뜯어냈는지는 전해지지 않는다."},
+  {id:"karakawa", slot:"armor", name:"카라카와", origin:"호랑이 가죽 갑옷", look:{type:2, pad:1, collar:1, trim:"#e0a33a"}, hpRed:0.42, bonus:{str:3}, d:"작은 미늘 수백 장을 끈으로 엮은 동체와 넓은 어깨 판으로 된 갑옷. 미늘 위로 호랑이 가죽을 씌워, 멀리서 보면 웅크린 범처럼 보인다. 유적 중간 층의 무너진 무기고에서 상자째 나왔고, 뚜껑에는 한 가문의 문장이 반쯤 지워져 있었다. 입으면 팔에 실리는 힘이 범처럼 묵직해진다. 엮은 끈 몇 가닥이 끊어져 있는데, 묘하게도 그 자리의 미늘은 한 장도 빠지지 않았다."},
+  {id:"bell", slot:"acc", name:"청동 방울", origin:"여덟 갈래 청동 방울", mpRed:0.32, bonus:{wil:4}, d:"유적 얕은 층의 무너진 제단에서, 본래 한 쌍이었을 것 중 하나만 올라왔다. 손바닥만 한 청동판이 여덟 갈래로 뻗고, 갈래 끝마다 속에 구슬이 든 방울이 달렸다. 판 한가운데에는 빛살 같은 금이 촘촘히 새겨져 있다. 흔들면 소리가 한 번에 나지 않고 여덟 갈래로 나뉘어 차례로 번지는데, 그 소리가 머릿속에서 들리던 다른 목소리를 덮는다. 짝이 되는 나머지 하나는 아직 아무도 찾지 못했다."},
+  {id:"scarab", slot:"acc", name:"태양 스카라베", origin:"펜던트", hpRed:0.12, mpRed:0.18, bonus:{str:3, agi:3, tec:3, wil:3}, bonusSeal:[3, 2, 1], d:"검게 그을린 돌에 쇠똥구리 한 마리가 금빛 원반을 앞발로 떠받친 모양으로 새겨진 펜던트. 뒷면은 평평하고, 닳아 지워진 글자가 빽빽하다. 유적 깊은 곳 오래된 관 속, 가슴이 있던 자리에 놓인 채로 나왔다고 한다. 목에 걸면 해가 들지 않는 날에도 그 자리가 동틀 녘처럼 따뜻하고, 크게 다친 몸이 조금 더 버틴다."},
+  {id:"tyr", slot:"acc", name:"티르의 오른손", origin:"의수", mpRed:0.15, bonus:{str:4, tec:2}, d:"검게 변색된 은빛 금속으로 이루어진 오른팔 의수. 손목부터 손가락 끝까지 정교한 관절 구조를 갖추고 있으며, 손등에는 늑대의 이빨 자국을 연상시키는 깊은 홈이 남아 있다. 특이하게도 손목 안쪽에는 여섯 가닥의 가느다란 은색 실이 감겨 있다. 이 실은 물리적으로 끊어낼 수 없으며, 의수의 능력이 발동하면 착용자와 상대의 신체에 나타난다. 의수를 장착하려면 기존 오른팔을 어깨 아래에서 절단해야 한다. 일반적인 의체와 마찬가지로 신경을 연결하여 움직일 수 있으나, 연결이 끝난 순간부터 착용자는 손바닥 안쪽에서 무언가가 이를 악물고 있는 듯한 압박감을 느끼게 된다."}];
+// 봉인 능력치: 원본 기준 — 두 겹 봉인 50%(소수점 올림), 한 겹 봉인 75%(소수점 버림). 피해 감소율은 % 단위로 계산한다
+const sealScale = (v, seal) => { if(!seal || !v) return v; const k = seal===2 ? 0.5 : 0.75, r = v*k; return seal===2 ? Math.ceil(r - 1e-9) : Math.floor(r + 1e-9); };
+const sealPct = (p, seal) => p ? sealScale(Math.round(p*100), seal)/100 : p;
+function relicItem(R, f, seal){
   const it = {id:"relic-"+R.id, tier:3, slot:R.slot, maker:"유물", name:R.name, relic:true, bound:f.id, boundName:f.name, origin:R.origin, desc:R.d, unbreakable:true};
   if(R.slot==="weapon"){ Object.assign(it, {wtype:R.kind, look:Object.assign({kind:R.kind}, R.look), power:R.power, bonus:profBonus(R.kind, R.power)});
     Object.entries(R.bonusAdd||{}).forEach(([k,v])=>{ it.bonus[k] = (it.bonus[k]||0) + v; }); }
   else { if(R.look) it.look = Object.assign({}, R.look); if(R.bonus) it.bonus = Object.assign({}, R.bonus); }
   if(R.hpRed) it.hpRed = R.hpRed; if(R.mpRed) it.mpRed = R.mpRed;
-  const Lo = RELIC_LORE[R.id]; if(Lo){ it.trait = Lo.trait; it.flaw = Lo.flaw;   // 원작의 유물처럼 귀할수록 흠이 있다
-    if(Lo.hpRed) it.hpRed = +((it.hpRed||0) + Lo.hpRed).toFixed(2); if(Lo.mpRed) it.mpRed = +((it.mpRed||0) + Lo.mpRed).toFixed(2);
-    if(Lo.bonus){ it.bonus = it.bonus || {}; Object.entries(Lo.bonus).forEach(([k,v])=>{ it.bonus[k] = (it.bonus[k]||0) + v; }); } }
+  const Lo = RELIC_LORE[R.id]; if(Lo) it.trait = Lo.trait;   // 유물에는 흠이 없다
+  seal = seal==null ? 0 : seal; it.seal = seal;
+  if(seal){ if(it.power) it.power = sealScale(it.power, seal); if(it.bonus) Object.keys(it.bonus).forEach(k=>{ it.bonus[k] = R.bonusSeal ? R.bonusSeal[seal] : sealScale(it.bonus[k], seal); });
+    if(it.hpRed) it.hpRed = sealPct(it.hpRed, seal); if(it.mpRed) it.mpRed = sealPct(it.mpRed, seal); }
+  const tid = "r_" + R.id; it.special = TECHS[tid] ? `${TECHS[tid].n} — ${TECHS[tid].d}` : RELIC_PASSIVE[R.id] || "";
   return it; }
 const relicLocked = (f, slot) => !!(f && f.gear[slot] && f.gear[slot].relic);
 function relicFit(f){ const fate = rnd(-30, 40), str = clamp(Math.round(total(f)/6), 0, 30), gr = (9 - (f.grade==null ? 9 : f.grade))*2;
@@ -9244,186 +9294,51 @@ async function relicTry(q, team){
   if(!team.length || Math.random() >= RELIC_GET_P) return;
   const owned = new Set(S.fixers.flatMap(f=>Object.values(f.gear).filter(g=>g && g.relic).map(g=>g.id)));
   const pool = RELICS.filter(R=>!owned.has("relic-"+R.id)); if(!pool.length) return;
-  const R = pick(pool), f = team.slice().sort((a,b)=>total(b)-total(a))[0], fit = relicFit(f), ok = fit.v > RELIC_FIT_MIN;
-  await relicScene(R, f, fit, ok);
+  const R = pick(pool), cands = team.map(m=>({f:m, fit:relicFit(m)})).sort((a,b)=>b.fit.v - a.fit.v), f = cands[0].f, fit = cands[0].fit, ok = fit.v > RELIC_FIT_MIN;
+  fit.tier = relicTier(fit.v);   // 무기 · 방어구 · 장신구 모두 적성 단계로 봉인 상태가 정해진다
+  const X = {mode: pick(RELIC_FIND), cands}; fit.mode = X.mode;
+  await relicScene(R, f, fit, ok, X);
   if(!S || S.over) return;
+  if(!ok){   // 주인을 고르지 않고 사라진다
+    addLog(`유물 「${R.name}」${jo(R.name,"이").slice(R.name.length)} ${jo(f.name,"을")} 주인으로 고르지 않고 사라졌다 (적합도 ${fit.v})`);
+    S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 적합도 ${fit.v}, 주인을 고르지 않고 사라졌다`}); ac("relicMiss"); save(); render(); return; }
   if(!ok){ const v = Math.max(1, Math.round(f.hpMax*RELIC_BACKLASH)); f.hp = Math.max(1, f.hp - v);
     addLog(`유물 「${R.name}」${jo(R.name,"이").slice(R.name.length)} ${jo(f.name,"을")} 거부했다 — 적성이 없는 손을 태웠다 (적합도 ${fit.v}, 체력 -${v})`);
     S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 적합도 ${fit.v}, 거부당했다`}); ac("relicMiss"); save(); render(); return; }
-  const it = relicItem(R, f), old = f.gear[R.slot]; f.gear[R.slot] = it;
+  const it = relicItem(R, f, fit.tier), old = f.gear[R.slot]; f.gear[R.slot] = it; it.sealFree = fit.tier===0;
   if(old && !old.relic){ S.inventory = S.inventory || []; S.inventory.push(old); }
-  S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — 적합도 ${fit.v}, 귀속`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic");
+  S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — ${RELIC_FIND_NOTE[X.mode]}, 적합도 ${fit.v}, 귀속 · ${SEAL_NAME[it.seal]}`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic");
   try{ pushRumor(`${S.officeName}의 누군가가 유적에서 올라온 진짜 유물을 손에 넣었다는 말이 돈다.`, true, performance.now(), "major"); }catch(_){}
   save(); render(); }
 /* 유물 연출 — 원작의 유물: 도시 아래 '유적'에서 나오는, 드물고 손에 넣기 어려운 물건. 별과 얽혀 있다고 하며(별에서 벼려졌다는 것도 있다),
-   아무나 쥘 수 없고 적성을 요구한다. 적성 없이 쥐면 다치기도 한다. 귀할수록 강하고 까다로우며 흠이 있다. 가짜도 많이 돈다.
+   아무나 쥘 수 없고 적성을 요구한다. 적성 없이 쥐면 다치기도 한다. 귀할수록 강하고 까다롭다. 가짜도 많이 돈다.
    ① 하강 — 도시 아래, 유적으로 ② 출현 — 성운 속에서 별빛이 모여 물건이 떠오른다 ③ 적성 — 유물이 손을 시험한다(공명 파동 · 적합도)
-   ④ 공명(귀속) 또는 거부(반동) ⑤ 감정서 — 이름 · 출토 · 성질 · 흠 · 적합도 · 귀속 */
+   ④ 공명(귀속) 또는 거부(반동) ⑤ 감정서 — 이름 · 출토 · 성질 · 적합도 · 귀속 */
 const RELIC_LORE = {
-  astrape:{trait:"자루를 따라 번개가 흐르고, 던져도 손으로 돌아온다", flaw:"쥔 손에 늘 전기가 남는다 — 정신력 피해 +4%", mpRed:-0.04},
-  claiomh:{trait:"뽑으면 둘레가 한낮처럼 밝아진다", flaw:"한 번 뽑힌 칼은 베기 전에는 칼집으로 돌아가지 않는다 — 체력 피해 +3%", hpRed:-0.03},
-  gyeongui:{trait:"칼등의 두 글귀가 쥔 이의 마음을 곧게 세운다", flaw:"글귀가 망설임을 허락하지 않는다 — 민첩 -1", bonus:{agi:-1}},
-  ruyi:{trait:"쥔 이의 뜻에 따라 길이와 무게가 바뀐다", flaw:"뜻이 흐트러지면 무게도 흐트러진다 — 재주 -1", bonus:{tec:-1}},
-  drepanon:{trait:"지나간 자리에서 이듬해 무언가가 자란다", flaw:"거둔 것의 무게가 마음에 남는다 — 정신력 피해 +3%", mpRed:-0.03},
-  sleipnir:{trait:"걸치면 발걸음이 한 박자씩 빨라진다", flaw:"말은 멈추는 법을 모른다 — 의지 -1", bonus:{wil:-1}},
-  aegis:{trait:"새겨진 얼굴과 눈이 마주친 자는 잠시 굳는다", flaw:"무겁다 — 민첩 -2", bonus:{agi:-2}},
-  kavacha:{trait:"살갗처럼 몸에 붙어 웬만한 칼날을 튕겨 낸다", flaw:"한 번 입으면 몸이 기억해 무뎌진다 — 민첩 -1", bonus:{agi:-1}},
-  karakawa:{trait:"가문이 무너져도 주인을 찾아 떠돈 갑옷", flaw:"호랑이의 성미가 남아 있다 — 정신력 피해 +4%", mpRed:-0.04},
-  bell:{trait:"흔들면 소리가 여덟 갈래로 퍼져 다른 목소리를 덮는다", flaw:"방울 소리가 발소리를 드러낸다 — 민첩 -1", bonus:{agi:-1}},
-  scarab:{trait:"어두운 날에도 목에 건 자리가 따뜻하다", flaw:"빛이 새어 손끝이 둔해진다 — 재주 -1", bonus:{tec:-1}},
-  horus:{trait:"먼 곳의 움직임이 한 박자 먼저 보인다", flaw:"오래 보면 눈이 달아오른다 — 체력 피해 +3%", hpRed:-0.03}};
-const RELIC_BACKLASH = 0.1;   // 적성이 없는 손으로 쥐면 다친다 — 체력 -10%
-/* ================= 유물 SDF 렌더러(RelicSDF) =================
-   도형을 이어 붙이지 않고, 조각마다 '거리장(SDF)'과 높이(둥근 단면)를 셰이더에서 계산해 가장 위에 있는 면을 고른다.
-   높이장에서 법선을 얻어 금 · 푸른 금속 · 쇠 외피의 광택을 계산하고, 금속 안쪽 번개 결과 갈래 사이 아크는 노이즈로 움직인다.
-   결과는 무기 좌표(손 = x 0)에 맞춘 스프라이트로 저장해 그린다. 단계: 0 원본 · 1 한 겹 봉인 · 2 두 겹 봉인 */
-const RelicSDF = (()=>{
-  let gl = null, cv = null, prog = null, uni = {}, state = null; const sprites = {};
-  const VS = `#version 300 es
-in vec2 a; void main(){ gl_Position = vec4(a, 0., 1.); }`;
-  const FS = `#version 300 es
-precision highp float;
-uniform vec2 uRes; uniform vec4 uView; uniform float uT, uState, uL;
-out vec4 o;
-float h21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x*p.y); }
-float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3. - 2.*f); return mix(mix(h21(i), h21(i + vec2(1,0)), f.x), mix(h21(i + vec2(0,1)), h21(i + vec2(1,1)), f.x), f.y); }
-float fbm(vec2 p){ float a = .5, s = 0.; for(int i=0;i<4;i++){ s += a*n2(p); p *= 2.03; a *= .5; } return s; }
-struct Hit { float z; float mat; float e; float eb; };
-void tube2(inout Hit H, vec2 p, vec2 a, vec2 b, float ra, float rb, float za, float zb, float mat, float facet){
-  vec2 pa = p - a, ba = b - a; float t = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.); float r = mix(ra, rb, t); float d = length(pa - ba*t);
-  float e = d - r; H.e = min(H.e, e); if(mat==2.) H.eb = min(H.eb, e);
-  if(e < 0.){ float z = facet > .5 ? (r - d)*1.7 + r*.25 : sqrt(max(r*r - d*d, 0.)); z += mix(za, zb, t); if(z > H.z){ H.z = z; H.mat = mat; } } }
-void tube(inout Hit H, vec2 p, vec2 a, vec2 b, float ra, float rb, float zo, float mat, float facet){ tube2(H, p, a, b, ra, rb, zo, zo, mat, facet); }
-float prad(float t, float bul){ return bul*pow(sin(3.14159*t), .85)*(1. - .12*t) + .008*(1. - t); }
-void prong(inout Hit H, vec2 p, float xb, float xt, float bul, float yf, float zf, float r0, int N){
-  if(p.x < min(xb, xt) - .03 || p.x > max(xb, xt) + .03 || abs(p.y) > bul + .03) return;
-  float t0 = 0.; vec3 A = vec3(xb, prad(0., bul)*yf, prad(0., bul)*zf);
-  for(int i=1;i<=16;i++){ if(i > N) break; float t = float(i)/float(N); vec3 B = vec3(mix(xb, xt, t), prad(t, bul)*yf, prad(t, bul)*zf);
-    tube2(H, p, A.xy, B.xy, r0*(1. - .55*t0), r0*(1. - .55*t), A.z, B.z, 2., 0.); A = B; t0 = t; } }
-void vajra(inout Hit H, vec2 p, float xb, float xt0, float bul, float r0, float rc, int N){
-  tube(H, p, vec2(xb, 0.), vec2(xt0, 0.), rc, .0012, 0., 2., 1.);
-  float xt = mix(xb, xt0, .8);   // 네 갈래는 창끝 앞에서 가운데 날로 모이고, 그 앞은 곧은 날 하나가 뻗는다
-  // 네 갈래(축을 20° 돌려 본 모습): 바깥 위 · 앞 안쪽 · 바깥 아래 · 뒤 안쪽
-  prong(H, p, xb, xt, bul, .94, .34, r0, N); prong(H, p, xb, xt, bul, -.34, .94, r0, N);
-  prong(H, p, xb, xt, bul, -.94, -.34, r0, N); prong(H, p, xb, xt, bul, .34, -.94, r0, N); }
-void link(inout Hit H, vec2 p, vec2 c, float ang, float zo, bool face){
-  vec2 q = p - c; float cs = cos(ang), sn = sin(ang); q = vec2(cs*q.x + sn*q.y, -sn*q.x + cs*q.y);
-  if(face){ float R = .0062, th = .0021; float d = abs(length(q*vec2(1., 1.5)) - R) - th; H.e = min(H.e, d);
-    if(d < 0.){ float z = zo + sqrt(max(th*th - (d + th)*(d + th), 0.)) + th; if(z > H.z){ H.z = z; H.mat = 5.; } } }
-  else { vec2 a = vec2(-.0072, 0.), b = vec2(.0072, 0.); vec2 pa = q - a, ba = b - a; float t = clamp(dot(pa, ba)/dot(ba, ba), 0., 1.); float d = length(pa - ba*t) - .0022; H.e = min(H.e, d);
-    if(d < 0.){ float z = zo + .002 + sqrt(max(.0022*.0022 - (d + .0022)*(d + .0022), 0.)); if(z > H.z){ H.z = z; H.mat = 5.; } } } }
-float cW(float t){ t = clamp(t, 0., 1.); return .046*pow(sin(3.14159*min(t*1.12, 1.)), .7) + .018*(1. - t) + .003; }
-Hit scene(vec2 p){
-  Hit H; H.z = -1e9; H.mat = 0.; H.e = 1e9; H.eb = 1e9;
-  float xb = .085, xt = xb + .5*uL, gx0 = -.118, gx1 = .078;
-  // 금 손잡이: 곧은 자루 + 양 끝의 금테 + 가운데 구슬 매듭(장식 꽃 없음)
-  tube(H, p, vec2(gx0, 0.), vec2(gx1, 0.), .0152, .0152, 0., 1., 0.);
-  tube(H, p, vec2(gx0 - .007, 0.), vec2(gx0 + .006, 0.), .021, .021, .002, 1., 0.);
-  tube(H, p, vec2(gx1 - .006, 0.), vec2(gx1 + .007, 0.), .021, .021, .002, 1., 0.);
-  tube(H, p, vec2(-.023, 0.), vec2(-.017, 0.), .0195, .0195, .002, 1., 0.);
-  // 뒤 끝: 짧은 금강저
-  vajra(H, p, gx0 - .005, -.29, .02, .0062, .0095, 8);
-  if(uState < 1.5){
-    float bul = uState > .5 ? .026 : .038;
-    vajra(H, p, xb, xt, bul, .0108, .021, 14);
-    if(uState > .5){
-      // 한 겹 봉인: 끝을 모은 자리에 쇠 고리, 가운데 날을 감는 나선 사슬
-      float tr = .62, xr = mix(xb, mix(xb, xt, .8), tr), rr = prad(tr, bul) + .012;
-      { vec2 q = p - vec2(xr, 0.); float d = max(abs(q.x) - .0075, abs(q.y) - rr); H.e = min(H.e, d);
-        if(d < 0.){ float z = rr*sqrt(max(1. - (q.y/rr)*(q.y/rr), 0.)) + .004; if(z > H.z){ H.z = z; H.mat = 4.; } } }
-      for(int w=0;w<3;w++){ float x0 = mix(xb, xt, .1 + float(w)*.16), R = prad(.12 + float(w)*.16, bul) + .006;   // 갈래 위로 비스듬히 감긴 사슬(앞면만 보인다)
-        for(int i=0;i<9;i++){ float f = float(i)/8.; vec2 c = vec2(x0 + f*.045, mix(-R, R, f)); link(H, p, c, atan(2.*R, .045), .03, (i % 2) == 0); } }
-    }
-  } else {
-    // 두 겹 봉인: 금강저 모양을 따라 만든 쇠 외피 + 절연 띠 둘(볼트) + 감아 도는 사슬 + 봉인 띠지
-    float t = (p.x - xb)/(xt - xb), W = cW(t), e;
-    if(t < 0.) e = length(vec2(p.x - xb, p.y)) - cW(0.); else if(t > 1.) e = length(vec2(p.x - xt, p.y)) - .004; else e = abs(p.y) - W;
-    H.e = min(H.e, e); if(e < 0.){ float z = W*sqrt(max(1. - (p.y/W)*(p.y/W), 0.)); if(z > H.z){ H.z = z; H.mat = 3.; } }
-    for(int k=0;k<2;k++){ float tb = k==0 ? .3 : .64, xc = mix(xb, xt, tb), Wb = cW(tb) + .007; vec2 q = p - vec2(xc, 0.); float d = max(abs(q.x) - .009, abs(q.y) - Wb); H.e = min(H.e, d);
-      if(d < 0.){ float z = Wb*sqrt(max(1. - (q.y/Wb)*(q.y/Wb), 0.)) + .004; if(z > H.z){ H.z = z; H.mat = 4.; } }
-      for(int s=-1;s<=1;s+=2){ vec2 bq = p - vec2(xc, float(s)*(Wb - .006)); float bd = length(bq) - .0042; H.e = min(H.e, bd);
-        if(bd < 0.){ float z = .02 + sqrt(max(.0042*.0042 - dot(bq, bq), 0.)); if(z > H.z){ H.z = z; H.mat = 4.; } } } }
-    for(int w=0;w<3;w++){ float ta = .1 + float(w)*.29, tb2 = ta + .1, Wa = cW(ta) + .004, Wb2 = cW(tb2) + .004; vec2 A = vec2(mix(xb, xt, ta), -Wa), B = vec2(mix(xb, xt, tb2), Wb2);
-      float len = length(B - A); int n = int(len/.0118); float ang = atan(B.y - A.y, B.x - A.x);
-      for(int i=0;i<16;i++){ if(i > n) break; float f = float(i)/float(max(n, 1)); vec2 c = mix(A, B, f); float Wc = cW(mix(ta, tb2, f)); float zz = Wc*sqrt(max(1. - (c.y/(Wc + .004))*(c.y/(Wc + .004)), 0.)) + .004; link(H, p, c, ang, zz, (i % 2) == 0); } }
-    { float xc = mix(xb, xt, .64), Wb = cW(.64) + .007; vec2 q = p - vec2(xc + .004, -Wb - .036); float cs = cos(.12), sn = sin(.12); q = vec2(cs*q.x + sn*q.y, -sn*q.x + cs*q.y);
-      float d = max(abs(q.x) - .011, abs(q.y) - .034); H.e = min(H.e, d);
-      if(d < 0.){ float z = .03; if(z > H.z){ H.z = z; H.mat = (abs(q.x) < .0022 && q.y < .02 && q.y > -.022) || (abs(q.y - .024) < .0028 && abs(q.x) < .007) ? 8. : 7.; } }
-      link(H, p, vec2(xc + .001, -Wb - .004), 1.57, .03, true); }
-  }
-  return H; }
-void main(){
-  vec2 uv = gl_FragCoord.xy/uRes; vec2 p = vec2(mix(uView.x, uView.z, uv.x), mix(uView.y, uView.w, uv.y));
-  float px = (uView.z - uView.x)/uRes.x;
-  Hit H = scene(p);
-  float a = clamp(.5 - H.e/px, 0., 1.);
-  vec3 col = vec3(0.); vec3 glow = vec3(0.); float gA = 0.;
-  if(H.mat > 0.){
-    float dx = px*.9; Hit Hx = scene(p + vec2(dx, 0.)), Hy = scene(p + vec2(0., dx));
-    float zx = Hx.mat == H.mat ? Hx.z : H.z, zy = Hy.mat == H.mat ? Hy.z : H.z;
-    vec3 n = normalize(vec3(-clamp((zx - H.z)/dx, -4., 4.), -clamp((zy - H.z)/dx, -4., 4.), 1.));
-    vec3 L = normalize(vec3(-.35, .55, .75)), V = vec3(0., 0., 1.), Hh = normalize(L + V);
-    float dif = max(dot(n, L), 0.), nh = max(dot(n, Hh), 0.), fr = pow(1. - n.z, 2.), env = .5 + .5*n.y;
-    if(H.mat == 1.){ vec3 al = vec3(.86, .63, .24)*(.9 + .1*n2(p*vec2(420., 30.)));
-      col = al*(.22 + .7*dif) + al*env*.28 + vec3(1., .9, .62)*pow(nh, 55.)*1.25 + vec3(1., .8, .45)*fr*.25;
-      if(p.x > -.112 && p.x < .072) col *= .9 + .1*smoothstep(.3, .7, fract(p.x*260.)); }
-    else if(H.mat == 2.){ vec3 al = vec3(.06, .19, .52);
-      col = al*(.28 + .72*dif) + vec3(.2, .45, 1.)*env*.18 + vec3(.65, .88, 1.)*pow(nh, 90.)*1.5 + vec3(.25, .55, 1.)*fr*.55;
-      float v = abs(fbm(vec2(p.x*58. - uT*1.7, p.y*170. + uT*5.)) - .5), vein = smoothstep(.035, 0., v)*(.55 + .45*sin(uT*21. + p.x*95.));
-      col += vec3(.55, .88, 1.)*vein*(uState > .5 ? .55 : 1.15); }
-    else if(H.mat == 3.){ vec3 al = vec3(.17, .18, .2)*(.82 + .32*fbm(p*vec2(320., 60.)));
-      col = al*(.25 + .75*dif) + vec3(.7, .75, .8)*pow(nh, 40.)*.6 + al*env*.2;
-      float seam = smoothstep(.0016, .0, abs(p.y + (fbm(vec2(p.x*70., 3.)) - .5)*.004)), crk = smoothstep(.012, .0, abs(fbm(p*vec2(80., 260.)) - .5))*.6;
-      float pulse = .55 + .45*sin(uT*3.1 + p.x*20.);
-      glow += vec3(.45, .8, 1.)*(seam*1.3 + crk*.5)*pulse; }
-    else if(H.mat == 4.){ vec3 al = vec3(.55, .58, .62); col = al*(.25 + .75*dif) + vec3(1.)*pow(nh, 70.)*.9 + al*env*.2; }
-    else if(H.mat == 5.){ vec3 al = vec3(.48, .5, .54); col = al*(.2 + .8*dif) + vec3(1.)*pow(nh, 60.)*.8; }
-    else if(H.mat == 7.){ col = vec3(.9, .86, .74)*(.55 + .45*dif)*(.9 + .1*n2(p*900.)); }
-    else if(H.mat == 8.){ col = vec3(.62, .08, .06)*(.6 + .4*dif); }
-    if(uState > 1.5 && H.mat == 1. && p.x > -.03 && p.x < .072){ float s2 = smoothstep(.35, .5, fract((p.x + p.y*.9)*150.)); col = vec3(.05, .05, .06)*(.5 + .5*dif) + vec3(.35)*pow(nh, 30.) + vec3(.03)*s2; }   // 절연 테이프
-    col *= mix(1., .3, smoothstep(-px*1.6, 0., H.e));   // 그림 같은 어두운 윤곽
-  }
-  // 번개: 원본은 갈래 사이를 아크가 오가고, 한 겹 봉인은 고리 · 사슬에 부딪혀 불꽃이 튄다
-  float xb = .085, xt = xb + .5*uL;
-  if(uState < .5){
-    for(int k=0;k<4;k++){ float sd = floor(uT*9.) + float(k)*17.; if(h21(vec2(sd, 1.)) < .3) continue;
-      float xp = mix(xb, xt, .8), x0 = mix(xb + .04, xp - .05, h21(vec2(sd, 2.))), side = h21(vec2(sd, 3.)) < .5 ? -1. : 1., tt = (x0 - xb)/(xp - xb), top = prad(tt, .038)*.94;
-      float yy = p.y*side; if(yy > -.002 && yy < top + .002){ float jit = (n2(vec2(p.y*150., sd)) - .5)*.016 + (n2(vec2(p.y*420., sd + 4.)) - .5)*.005; float d = abs(p.x - x0 - jit);
-        float g = exp(-d*1100.)*1.4 + exp(-d*200.)*.3; glow += vec3(.62, .9, 1.)*g; } }
-    glow += vec3(.25, .55, 1.)*exp(-max(H.eb, 0.)*110.)*.35*(.7 + .3*sin(uT*13.));   // 날 둘레의 푸른 기운
-  } else if(uState < 1.5){
-    float xr = mix(xb, mix(xb, xt, .8), .62);
-    for(int k=0;k<6;k++){ float sd = floor(uT*12.) + float(k)*7.; vec2 c = vec2(xr + (h21(vec2(sd, 5.)) - .5)*.03, (h21(vec2(sd, 6.)) - .5)*.08); float f = h21(vec2(sd, 7.));
-      if(f > .45){ float d = length((p - c)*vec2(1., 1.)); glow += vec3(.65, .92, 1.)*(exp(-d*900.)*1.2 + exp(-d*220.)*.2); } }
-    glow += vec3(.25, .55, 1.)*exp(-max(H.eb, 0.)*160.)*.18;
-  }
-  float ga = clamp(max(glow.r, max(glow.g, glow.b)), 0., 1.);
-  o = vec4(col*a + glow*(1. - a*.3), clamp(a + ga*.85, 0., 1.)); }`;
-  function init(){ if(state !== null) return state; state = false;
-    try{ cv = document.createElement("canvas"); gl = cv.getContext("webgl2", {premultipliedAlpha:true, alpha:true, antialias:false, preserveDrawingBuffer:true}); if(!gl) return false;
-      const sh = (t, s)=>{ const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); if(!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
-      prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
-      if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
-      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
-      const loc = gl.getAttribLocation(prog, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-      ["uRes","uView","uT","uState","uL"].forEach(k=>uni[k] = gl.getUniformLocation(prog, k)); state = true;
-    }catch(e){ console.warn("RelicSDF", e); state = false; } return state; }
-  // 무기 좌표의 그릴 범위(손 = 0): 뒤 끝 금강저부터 창끝까지
-  const viewOf = L => { const x1 = .085 + .5*L + .03; return {x0:-.31, x1, y:.1}; };
-  function render(stage, L, t, W){ if(!init()) return null; const v = viewOf(L), H = Math.round(W*(2*v.y)/(v.x1 - v.x0));
-    if(cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; }
-    gl.viewport(0, 0, W, H); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT); gl.useProgram(prog);
-    gl.uniform2f(uni.uRes, W, H); gl.uniform4f(uni.uView, v.x0, -v.y, v.x1, v.y); gl.uniform1f(uni.uT, t); gl.uniform1f(uni.uState, stage); gl.uniform1f(uni.uL, L);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); return {cv, v, H}; }
-  // 스프라이트: 단계마다 하나. 움직임은 1/15초마다(느린 그래픽 환경이면 한 번만) 다시 그린다
-  function sprite(id, stage, L){ if(!init()) return null; const soft = softGL(), W = soft ? 640 : 1280, key = id + "|" + stage + "|" + L.toFixed(2) + "|" + W;
-    let e = sprites[key]; const now = performance.now();
-    if(!e){ e = sprites[key] = {c: document.createElement("canvas"), t: -1e9}; }
-    if((soft ? e.t < 0 : now - e.t > 66)){ const r = render(stage, L, now/1000, W); if(e.c.width !== W || e.c.height !== r.H){ e.c.width = W; e.c.height = r.H; }
-      const x = e.c.getContext("2d"); x.clearRect(0, 0, W, r.H); x.drawImage(r.cv, 0, 0); e.t = now; e.v = r.v; }
-    return e; }
-  return {sprite, init, viewOf, render};
-})();
+  astrape:{trait:"자루를 따라 번개가 흐르고, 던져도 손으로 돌아온다"},
+  claiomh:{trait:"뽑으면 둘레가 한낮처럼 밝아진다"},
+  gyeongui:{trait:"칼등의 두 글귀가 쥔 이의 마음을 곧게 세운다"},
+  ruyi:{trait:"쥔 이의 뜻에 따라 길이와 무게가 바뀐다"},
+  drepanon:{trait:"지나간 자리에서 이듬해 무언가가 자란다"},
+  sleipnir:{trait:"걸치면 발걸음이 한 박자씩 빨라진다"},
+  aegis:{trait:"새겨진 얼굴과 눈이 마주친 자는 잠시 굳는다"},
+  kavacha:{trait:"살갗처럼 몸에 붙어 웬만한 칼날을 튕겨 낸다"},
+  karakawa:{trait:"가문이 무너져도 주인을 찾아 떠돈 갑옷"},
+  bell:{trait:"흔들면 소리가 여덟 갈래로 퍼져 다른 목소리를 덮는다"},
+  scarab:{trait:"어두운 날에도 목에 건 자리가 따뜻하다"},
+  tyr:{trait:"끊어지지 않는 여섯 가닥 은실이 쥔 이와 상대의 강함을 같게 묶는다"}};
+const RELIC_BACKLASH = 0.1;
+// 유물 무기의 적성: 처음 마주했을 때 정해진다
+// 유물을 마주하는 방식(원작: 우연히 줍거나, 지키던 것을 쓰러뜨리거나, 소문을 따라가 찾아낸다)
+const RELIC_FIND = ["chance", "guard", "rumor"];
+const RELIC_FIND_CAP = {
+  chance:["의뢰를 마치고, 무너진 갱도를 빠져나오던 길.", "다친 손끝에 — 잔해 틈에 박혀 있던 무언가가 걸렸다."],
+  guard:["유적 안쪽, 무언가가 오래 지키고 있던 자리.", "그것이 쓰러지고 나서야, 그 뒤에 놓인 받침대가 보였다."],
+  rumor:["의뢰 중에 흘려들은 이야기 하나 — 저 아래에, 아직 아무도 손대지 않은 물건이 있다.", "소문이 가리킨 자리에, 그것은 정말로 있었다."]};
+const RELIC_FIND_NOTE = {chance:"갱도 잔해 틈에서 우연히", guard:"지키던 것이 쓰러진 자리의 받침대 위에서", rumor:"흘려들은 소문을 따라간 자리에서"};
+const RELIC_TIERS = [[20, "떠남"], [40, "두 겹 봉인"], [60, "한 겹 봉인"], [999, "원본"]];
+const relicTier = v => v <= 20 ? -1 : v <= 40 ? 2 : v <= 60 ? 1 : 0;      // -1 떠남 · 2 두 겹 · 1 한 겹 · 0 원본
+const SEAL_NAME = ["원본", "한 겹 봉인", "두 겹 봉인"];   // 적성이 없는 손으로 쥐면 다친다 — 체력 -10%
 /* ================= 유물 연출 — 셰이더 층(RelicGL) =================
    개화·전투 연출처럼 WebGL2로 그린다. 장면 버퍼에 ① 배경(유적 갱도 → 성운 · 별) ② 절차적 봉인 고리 메시 ③ 유물(노이즈 디졸브 · 금빛 녹은 테두리 · 별빛 흐름 · 보로노이 균열/파편)
    ④ 별먼지 입자(나선 수렴 → 공명 분출 / 거부 불씨)를 그리고, ⑤ 후처리(공명 파동 굴절 · 충격파 · 방사형 빛줄기 · 색수차 · 비네트 · 입자감)로 화면에 낸다. */
@@ -9574,16 +9489,97 @@ function create(canvas, sprite){
   return {render,dispose};}
 return {create};})();
 
+/* 유물 장면 덧그림 층 — 발견 방식에 맞춘 배경 연출 · 일행 적성 줄 · 가운데 물건(무기 = 실시간 3D, 봉인이 벗겨진다 / 방어구 · 장신구 = 내력 글)
+   시간표는 장면과 같다: 하강 0~2.4 · 떠오름 2.4~ · 적성 4.8~7.6 · 결과 7.6 · 감정서 9.2 */
+function relicSentences(t){ return String(t||"").split(/(?<=[.?!])\s+/).map(x=>x.trim()).filter(Boolean); }
+function relicOverlay(el, R, fit, ok, X){
+  const mc = el.querySelector(".rl-mode"), m = mc.getContext("2d"), obj = el.querySelector(".rl-obj"), c3 = el.querySelector(".rl-3d"), lore = [...el.querySelectorAll(".rl-lore p")];
+  const rows = X.cands.map((c,i)=>({c, bar: el.querySelector(`.rl-bar[data-i="${i}"] i`), em: el.querySelector(`.rl-fit em[data-i="${i}"]`), nm: el.querySelector(`.rf-n[data-i="${i}"]`)}));
+  const T = {rise:2.4, fit:4.8, res:7.6, card:9.2}, t0 = performance.now(), cl = x=>Math.max(0, Math.min(1, x)), ease = x=>x*x*(3-2*x), mode = X.mode;
+  const isW = R.slot==="weapon", tier = isW && ok ? fit.tier : 2, spec = isW ? {kind:R.kind, relic:R.id, add:[]} : null;
+  let jump = 0, spinOff = 0, drag = null, shards = [], dust = [], flashes = [], lastSeal = 2, lastT = 0;
+  // 발견 방식별 배경 재료
+  const rnd = (a,b)=>a + Math.random()*(b-a);
+  const DUST = Array.from({length:90}, ()=>({x:Math.random(), y:Math.random(), v:rnd(0.02,0.08), s:rnd(0.6,2.2), a:rnd(0.15,0.5)}));
+  const RUB = Array.from({length:14}, ()=>({x:rnd(0.15,0.85), t:rnd(0.2,2.0), w:rnd(4,14), h:rnd(3,9), r:rnd(0,6.28), vr:rnd(-4,4)}));
+  const EMB = Array.from({length:120}, ()=>({x:rnd(0.25,0.75), y:rnd(0.15,0.6), vx:rnd(-0.03,0.03), vy:rnd(-0.09,-0.02), a:rnd(0.3,1), t:rnd(0.6,2.4)}));
+  const WHI = ["…저 아래에…", "…아직 아무도…", "…손대지 않은 물건이…", "…정말 있다더라…", "…가 본 사람은…", "…그 자리에…"].map((w,i)=>({w, x:rnd(0.12,0.78), y:rnd(0.22,0.8), t:0.3 + i*0.32, v:rnd(-0.02,0.02)}));
+  // 끌어서 돌려 보기(결과 뒤)
+  if(c3){ c3.addEventListener("pointerdown", e=>{ if(!el.classList.contains("res")) return; e.stopPropagation(); drag = {x:e.clientX, s:spinOff}; c3.setPointerCapture(e.pointerId); });
+    c3.addEventListener("pointermove", e=>{ if(drag){ e.stopPropagation(); spinOff = drag.s + (e.clientX - drag.x)*0.012; } });
+    ["pointerup","pointercancel"].forEach(k=>c3.addEventListener(k, e=>{ if(drag){ e.stopPropagation(); drag = null; } }));
+    c3.addEventListener("click", e=>{ if(el.classList.contains("res")) e.stopPropagation(); }); }
+  const burst = (n, col, sp, big)=>{ for(let i=0;i<n;i++){ const a = rnd(0, 6.283), v = rnd(0.3, 1)*sp; shards.push({x:0, y:0, vx:Math.cos(a)*v, vy:Math.sin(a)*v*0.8 - sp*0.25, r:rnd(0,6.28), vr:rnd(-9,9), w:rnd(3,big?11:7), h:rnd(2,big?7:5), col, life:0}); } };
+  const loop = ()=>{ if(!el.isConnected) return;
+    let tt = (performance.now() - t0)/1000 + jump;
+    if((el.classList.contains("res") || el.classList.contains("rej")) && tt < T.res){ jump += T.res + 0.01 - tt; tt = T.res + 0.01; }
+    if(el.classList.contains("card") && tt < T.card){ jump += T.card - tt; tt = T.card; }
+    const dt = Math.min(0.05, Math.max(0, tt - lastT)); lastT = tt;
+    const d = Math.min(1.5, devicePixelRatio||1), W = mc.clientWidth, H = mc.clientHeight;
+    if(mc.width !== Math.round(W*d) || mc.height !== Math.round(H*d)){ mc.width = Math.round(W*d); mc.height = Math.round(H*d); }
+    m.setTransform(d,0,0,d,0,0); m.clearRect(0,0,W,H);
+    const cx = W/2, cy = H*(el.classList.contains("card") ? 0.3 : 0.4);
+    // ── 발견 방식별 배경
+    if(mode==="chance"){   // 갱도: 흙먼지가 내려앉고 잔해가 떨어진다, 빛은 어둡게
+      const fade = 1 - cl((tt - 6)/3)*0.6;
+      DUST.forEach(p=>{ const y = ((p.y + tt*p.v) % 1)*H; m.fillStyle = `rgba(190,170,140,${p.a*fade})`; m.fillRect(p.x*W, y, p.s, p.s); });
+      RUB.forEach(r=>{ const k = tt - r.t; if(k < 0 || k > 1.4) return; const y = -20 + k*k*H*0.9; m.save(); m.translate(r.x*W, y); m.rotate(r.r + r.vr*k); m.fillStyle = "rgba(70,62,52,.9)"; m.fillRect(-r.w/2, -r.h/2, r.w, r.h); m.restore(); });
+      if(tt < 2.6){ const g = m.createRadialGradient(cx, cy, 10, cx, cy, Math.max(W,H)*0.7); g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, `rgba(0,0,0,${0.55*(1-cl((tt-1.8)/0.8))})`); m.fillStyle = g; m.fillRect(0,0,W,H); } }
+    else if(mode==="guard"){   // 수호자: 거대한 그림자가 무너져 불씨로 흩어지고, 받침대가 남는다
+      const k = cl((tt - 0.3)/2.4), A = 1 - ease(k);
+      if(A > 0.01){ m.save(); m.globalAlpha = A*0.85; m.translate(cx, cy + 40 + k*60); m.scale(1 + k*0.1, 1 - k*0.35);
+        m.fillStyle = "#07060a"; m.shadowColor = "rgba(200,70,40,.75)"; m.shadowBlur = 28; m.beginPath(); m.moveTo(-W*0.32, H*0.6); m.quadraticCurveTo(-W*0.30, -H*0.30, 0, -H*0.40); m.quadraticCurveTo(W*0.30, -H*0.30, W*0.32, H*0.6); m.closePath(); m.fill(); m.shadowBlur = 0;
+        m.strokeStyle = `rgba(210,90,50,${0.6*(1-k)})`; m.lineWidth = 2; m.stroke();
+        m.fillStyle = `rgba(220,70,40,${0.9*(1-k)})`; [-1,1].forEach(sg=>{ m.beginPath(); m.ellipse(sg*W*0.05, -H*0.22, 9, 4, sg*0.25, 0, 7); m.fill(); }); m.restore(); }
+      EMB.forEach(p=>{ const kk = tt - p.t*0.6; if(kk < 0 || kk > 3) return; const a = p.a*(1 - kk/3); m.fillStyle = `rgba(255,${120 + 60*p.a},60,${a})`; m.fillRect((p.x + p.vx*kk)*W, (p.y + p.vy*kk + 0.15)*H, 2, 2); });
+      const pa = cl((tt - 2.0)/1.2); if(pa > 0){ m.globalAlpha = pa*0.9; const py = cy + 120, pw = 150;   // 받침대
+        const g = m.createLinearGradient(0, py, 0, py + 70); g.addColorStop(0, "#3a3326"); g.addColorStop(1, "#14110c"); m.fillStyle = g;
+        m.beginPath(); m.moveTo(cx - pw*0.5, py); m.lineTo(cx + pw*0.5, py); m.lineTo(cx + pw*0.62, py + 70); m.lineTo(cx - pw*0.62, py + 70); m.closePath(); m.fill();
+        m.strokeStyle = "rgba(242,210,122,.35)"; m.lineWidth = 1; m.beginPath(); m.moveTo(cx - pw*0.5, py + 1); m.lineTo(cx + pw*0.5, py + 1); m.stroke(); m.globalAlpha = 1; } }
+    else {   // 소문: 흘려들은 말이 어둠 속을 스쳐 지나가고, 등불 하나가 아래로 이끈다
+      m.font = "15px 'Noto Serif KR', serif"; m.textAlign = "center";
+      WHI.forEach(p=>{ const k = tt - p.t; if(k < 0 || k > 2.2) return; const a = Math.sin(Math.PI*k/2.2)*0.75; m.fillStyle = `rgba(214,200,170,${a})`; m.fillText(p.w, (p.x + p.v*k)*W, (p.y - k*0.02)*H); });
+      const la = cl(tt/0.8)*(1 - cl((tt - 3.2)/1.0)); if(la > 0){ const ly = H*(0.15 + 0.25*cl(tt/3)), g = m.createRadialGradient(cx, ly, 0, cx, ly, 90); g.addColorStop(0, `rgba(255,210,140,${0.5*la})`); g.addColorStop(1, "rgba(0,0,0,0)"); m.fillStyle = g; m.fillRect(cx - 90, ly - 90, 180, 180); m.fillStyle = `rgba(255,236,190,${la})`; m.beginPath(); m.arc(cx, ly, 3, 0, 7); m.fill(); } }
+    // ── 일행 적성 줄: 차례로 시험한다(한 명이면 그 한 명만)
+    const n = rows.length, span = (T.res - T.fit - 0.3)/n;
+    rows.forEach((r,i)=>{ const k = cl((tt - T.fit - i*span*0.6)/Math.max(0.6, span*1.2)), v = r.c.fit.v*k, pass = v > RELIC_FIT_MIN;
+      if(r.em) r.em.textContent = Math.round(v); if(r.bar){ r.bar.style.width = Math.min(100, v) + "%"; r.bar.style.background = pass ? "#f2d27a" : "#a35a4a"; }
+      if(r.nm) r.nm.style.color = tt > T.res && i===0 && ok ? "#f2d27a" : tt > T.res ? "#7d7566" : ""; });
+    // ── 가운데 물건
+    if(obj){ obj.style.top = (el.classList.contains("card") ? 30 : 40) + "%"; }
+    if(c3 && (typeof RTW !== "undefined")){
+      const cw = c3.clientWidth, ch = c3.clientHeight; if(c3.width !== Math.round(cw*d)){ c3.width = Math.round(cw*d); c3.height = Math.round(ch*d); }
+      const x = c3.getContext("2d"); x.setTransform(d,0,0,d,0,0); x.clearRect(0,0,cw,ch);
+      // 봉인 단계: 두 겹으로 떠올라, 결과에서 적성만큼 벗겨진다
+      let seal = 2; if(tt > T.res){ if(tier <= 1) seal = 1; if(tier === 0 && tt > T.res + 0.85) seal = 0; }
+      if(seal !== lastSeal){ const big = seal === 0; burst(big ? 46 : 34, big ? "#c9d2dc" : "#2a2e36", big ? 520 : 380, big); flashes.push({t:tt, big}); lastSeal = seal; }
+      const away = !ok && tt > T.res ? cl((tt - T.res)/1.6) : 0;
+      if(away > 0 && dust.length < 140) for(let i=0;i<4;i++) dust.push({x:rnd(-160,160)*(1-away*0.3), y:rnd(-40,40), vy:rnd(18,60), a:1, s:rnd(1,2.6)});
+      const rise = cl((tt - T.rise - 0.8)/1.2), bob = Math.sin(tt*1.3)*4, jit = tt > T.fit && tt < T.res && ok===false ? (Math.random()-0.5)*1.6 : 0;
+      x.save(); x.globalAlpha = rise*(1 - away); x.translate(cw/2 + jit, ch/2 + bob + (1-rise)*40 + away*70); x.rotate(-0.38);
+      RTW.item(x, Object.assign({seal}, spec), 0, 0, cw*0.98, ch*0.62, {spin: 0.4 + tt*0.45 + spinOff, t: tt, tight: true, line: 1.2, act: 0});
+      x.restore(); x.globalAlpha = 1;
+      // 봉인이 깨질 때: 번쩍임 + 조각
+      flashes = flashes.filter(f=>tt - f.t < 0.9); flashes.forEach(f=>{ const k = (tt - f.t)/0.9, r = 30 + k*(f.big ? 300 : 200), g = x.createRadialGradient(cw/2, ch/2, 0, cw/2, ch/2, r);
+        g.addColorStop(0, `rgba(255,248,225,${(f.big ? 0.9 : 0.6)*(1-k)})`); g.addColorStop(1, "rgba(255,240,200,0)"); x.fillStyle = g; x.fillRect(0,0,cw,ch); });
+      shards.forEach(p=>{ p.life += dt; p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 520*dt; p.r += p.vr*dt; const a = Math.max(0, 1 - p.life/1.3); if(a <= 0) return;
+        x.save(); x.globalAlpha = a; x.translate(cw/2 + p.x, ch/2 + p.y); x.rotate(p.r); x.fillStyle = p.col; x.fillRect(-p.w/2, -p.h/2, p.w, p.h); x.strokeStyle = "rgba(220,226,235,.6)"; x.lineWidth = 0.6; x.strokeRect(-p.w/2, -p.h/2, p.w, p.h); x.restore(); });
+      shards = shards.filter(p=>p.life < 1.3);
+      dust.forEach(p=>{ p.y += p.vy*dt; p.a -= dt*0.45; if(p.a <= 0) return; x.fillStyle = `rgba(190,215,255,${p.a})`; x.fillRect(cw/2 + p.x, ch/2 + p.y, p.s, p.s); }); dust = dust.filter(p=>p.a > 0); }
+    // 방어구 · 장신구: 내력 글이 한 줄씩 떠오른다
+    if(lore.length){ const k0 = T.rise + 0.6, step = (T.res - k0)/Math.max(1, lore.length);
+      lore.forEach((p,i)=>{ const a = cl((tt - k0 - i*step)/0.9)*(1 - cl((tt - T.res + 0.2)/0.4)); p.style.opacity = a; p.style.transform = `translateY(${(1-cl((tt - k0 - i*step)/0.9))*8}px)`; }); }
+    requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+}
 /* 셰이더 연출 경로 — 장면 시간표는 2D와 같다(하강 0~2.4 · 성운 2.4~ · 물질화 3.4~ · 적성 4.8~7.6 · 결과 7.6 · 감정서 9.2) */
 function relicSceneGL(el, R, f, fit, ok){
   const spr = document.createElement("canvas"); spr.width = spr.height = 512; const sx = spr.getContext("2d");
-  sx.save(); sx.translate(256, 256); sx.scale(2.6, 2.6); sx.translate(-128, -128); try{ relicArt(sx, R, 256, 256, 0, 0); }catch(_){ } sx.restore();
   const glc = document.createElement("canvas"); glc.className = "rl-gl"; el.insertBefore(glc, el.firstChild);
   let G = null; try{ G = RelicGL.create(glc, spr); }catch(e){ console.warn(e); G = null; }
   if(!G){ glc.remove(); return null; }
   el.classList.add("gl");
   const t0 = performance.now(), T = {res:7.6, card:9.2}; let skipAt = null, slow = 0, frames = 0;
-  const em = el.querySelector(".rl-fit em"), bar = el.querySelector(".rl-bar i");
   const cl = (x)=>Math.max(0, Math.min(1, x)), ease = x => x*x*(3-2*x);
   const loop = () => { if(!el.isConnected){ G.dispose(); return; }
     const now = performance.now(); let tt = (now-t0)/1000; if(skipAt!=null) tt = Math.max(tt, 10 + (now-skipAt)/1000);
@@ -9597,7 +9593,6 @@ function relicSceneGL(el, R, f, fit, ok){
       burst: ok ? ease(cl(aft/1.6)) : 0, shake: aft > 0 && aft < 0.6 ? (ok ? 0.5 : 1.2)*(1 - aft/0.6) : (tt < 2.4 ? 0.15 : 0),
       cy: 0.6 + 0.1*ease(cl((tt - T.card)/1.0))};
     try{ G.render(st); }catch(e){ console.warn(e); }
-    em.textContent = Math.round(fv); bar.style.width = Math.min(100, fv) + "%"; bar.style.background = pass ? "#f2d27a" : "#a35a4a";
     requestAnimationFrame(loop); };
   requestAnimationFrame(loop);
   const add = k => () => el.classList.add(k);
@@ -9607,32 +9602,29 @@ function relicSceneGL(el, R, f, fit, ok){
 /* 유물 그림(무기 · 방어구 · 장신구) — 2D 연출과 셰이더 연출(텍스처)이 함께 쓴다 */
 function relicArt(ix, R, iw, ih, tt, away){ away = away || 0;
     if(R.slot==="weapon"){ ix.save(); ix.translate(iw/2, ih/2); ix.rotate(-0.6 + Math.sin(tt*0.8)*0.04 + away*0.6); try{ const L0 = (WEAPON_REACH[R.kind]||0.6)*(R.look.len||1), ru = R.id==="ruyi", u = iw*0.95/(L0*(ru ? 1.3 : 1)+0.2); ix.translate(-L0*u*(ru ? 0.13 : 0.5), 0); drawWeaponSpec(ix, Object.assign(defaultSpec(R.kind), R.look, {relic:R.id, add:[], style:null}), u, "#2a2c31"); }catch(_){ } ix.restore(); }
-    else if(R.slot==="armor"){ try{ drawFixer(ix, iw/2, ih*0.95, ih*0.85, {face:1, view:"front", state:"idle", col:"#4a4038", armor:Object.assign({}, R.look, {relic:R.id, pad:0}), t:tt}); }catch(_){ } }
-    else { const cx2 = iw/2, cy2 = ih/2, r = ih*0.22, g2 = ix.createRadialGradient(cx2 - r*0.3, cy2 - r*0.3, 2, cx2, cy2, r*1.2); g2.addColorStop(0, "#fff2c0"); g2.addColorStop(0.5, "#d8b45a"); g2.addColorStop(1, "#5a4520");
-      ix.fillStyle = g2; ix.strokeStyle = "#3a2c14"; ix.lineWidth = 2;
-      if(R.id==="bell"){ ix.beginPath(); ix.moveTo(cx2 - r, cy2 + r*0.8); ix.quadraticCurveTo(cx2 - r*0.9, cy2 - r, cx2, cy2 - r); ix.quadraticCurveTo(cx2 + r*0.9, cy2 - r, cx2 + r, cy2 + r*0.8); ix.closePath(); ix.fill(); ix.stroke();
-        for(let q=0;q<8;q++){ const a = q/8*6.283 + tt*0.3; ix.beginPath(); ix.arc(cx2 + Math.cos(a)*r*1.5, cy2 + Math.sin(a)*r*1.5, r*0.16, 0, 7); ix.fill(); ix.stroke(); } }
-      else if(R.id==="horus"){ ix.beginPath(); ix.ellipse(cx2, cy2, r*1.3, r*0.6, 0, 0, 7); ix.fill(); ix.stroke(); ix.fillStyle = "#1a1408"; ix.beginPath(); ix.arc(cx2, cy2, r*0.38, 0, 7); ix.fill();
-        ix.strokeStyle = "#d8b45a"; ix.lineWidth = 3; ix.beginPath(); ix.moveTo(cx2 - r*0.2, cy2 + r*0.5); ix.quadraticCurveTo(cx2 - r*0.3, cy2 + r*1.3, cx2 + r*0.3, cy2 + r*1.2); ix.stroke(); }
-      else { ix.beginPath(); ix.ellipse(cx2, cy2, r*0.75, r, 0, 0, 7); ix.fill(); ix.stroke(); ix.beginPath(); ix.moveTo(cx2, cy2 - r); ix.lineTo(cx2, cy2 + r); ix.stroke();
-        ix.fillStyle = `rgba(255,170,60,${0.7+0.3*Math.sin(tt*2)})`; ix.beginPath(); ix.arc(cx2, cy2 - r*1.35, r*0.38, 0, 7); ix.fill(); } }
+    // 방어구 · 장신구: 그림 없이 글로만 전한다
 }
-function relicScene(R, f, fit, ok){
-  const L = RELIC_LORE[R.id] || {}, SLOT = {weapon:"무기", armor:"방어구", acc:"장신구"}[R.slot];
+function relicScene(R, f, fit, ok, X){
+  X = X || {mode: fit.mode || pick(RELIC_FIND), cands:[{f, fit}]}; if(!X.cands || !X.cands.length) X.cands = [{f, fit}];
+  const L = RELIC_LORE[R.id] || {}, SLOT = {weapon:"무기", armor:"방어구", acc:"장신구"}[R.slot], CAP = RELIC_FIND_CAP[X.mode] || RELIC_FIND_CAP.chance, many = X.cands.length > 1;
   const el = document.createElement("div"); el.className = "relic-fx" + (ok ? "" : " miss"); el.dataset.jolt = ok ? "res|#f2d27a|1,card|#7fd8c8" : "rej|#b83a2a|1";
   el.innerHTML = `<canvas class="rl-cv"></canvas>
-    <div class="rl-cap"><div class="c1">도시 아래 — 유적.</div><div class="c2">어느 날개도 끝까지 내려가 보지 못한 곳에서, 물건 하나가 올라왔다.</div><div class="c3">유물은 아무 손에나 쥐어지지 않는다.</div></div>
+<canvas class="rl-mode"></canvas>
+    <div class="rl-cap"><div class="c1">${esc(CAP[0])}</div><div class="c2">${esc(CAP[1])}</div><div class="c3">유물은 아무 손에나 쥐어지지 않는다.</div></div>
+    <div class="rl-obj">${R.slot==="weapon" ? `<canvas class="rl-3d"></canvas>` : `<div class="rl-lore">${relicSentences(R.d).map(t=>`<p>${esc(t)}</p>`).join("")}</div>`}</div>
     <div class="rl-core"><div class="rl-ring r1"></div><div class="rl-ring r2"></div><div class="rl-ring r3"></div><canvas class="rl-item"></canvas></div>
     <div class="rl-head">遺 跡 出 土 · 유 물</div>
     <div class="rl-name relic-name">${esc(R.name)}</div><div class="rl-origin">${esc(R.origin)} · ${SLOT}</div>
-    <div class="rl-fit"><span>${esc(f.name)} — 적성</span><div class="rl-bar"><i></i><b style="left:${RELIC_FIT_MIN}%"></b></div><em>0</em>
-      <small>운명 ${fit.fate>=0?"+":""}${fit.fate} · 강함 +${fit.str} · 등급 +${fit.gr} · 적합도 ${RELIC_FIT_MIN} 이하는 거부</small></div>
-    <div class="rl-verdict">${ok ? "공 명" : "거 부"}</div>
+    <div class="rl-fit">${X.cands.map((c,i)=>`<span class="rf-n" data-i="${i}">${esc(c.f.name)} — 적성</span><div class="rl-bar" data-i="${i}" title="운명 ${c.fit.fate>=0?"+":""}${c.fit.fate} · 강함 +${c.fit.str} · 등급 +${c.fit.gr}"><i></i><b style="left:${RELIC_FIT_MIN}%"></b></div><em data-i="${i}">0</em>`).join("")}
+      <small>${many ? "유물이 일행을 차례로 시험한다 · 가장 잘 맞는 손을 고른다 · " : ""}20 이하는 떠난다 · 40 이하 두 겹 봉인 · 60 이하 한 겹 봉인 · 그 위는 원본</small></div>
+    <div class="rl-verdict">${ok ? `공 명 <small style="display:block;font-size:.45em;letter-spacing:.3em;margin-top:6px">${SEAL_NAME[fit.tier]}</small>` : "떠 남"}</div>
     ${ok ? `<div class="rl-card"><div class="rc-h">유물 감정서</div>
-      <div class="rc-g"><span>이름</span><b class="relic-name">${esc(R.name)}</b><span>출토</span><b>유적 · ${esc(R.origin)}</b><span>갈래</span><b>${SLOT}</b>
-      <span>성질</span><b>${esc(L.trait || R.d)}</b><span>흠</span><b style="color:#a0461e">${esc(L.flaw || "알 수 없다")}</b><span>적합도</span><b>${fit.v}</b><span>귀속</span><b>${esc(f.name)}</b></div>
+      <div class="rc-g"><span>이름</span><b class="relic-name">${esc(R.name)}</b><span>출토</span><b>유적 · ${esc(R.origin)}</b><span>발견</span><b>${esc(RELIC_FIND_NOTE[X.mode] || "")}</b><span>갈래</span><b>${SLOT}</b>
+      ${R.slot!=="weapon" ? `<span>내력</span><b style="font-weight:400;font-size:12px;line-height:1.6">${esc(R.d)}</b>` : ""}<span>성질</span><b>${esc(L.trait || R.d)}</b><span>적합도</span><b>${fit.v}</b><span>봉인</span><b>${SEAL_NAME[fit.tier]}${fit.tier===0 ? " · 원하면 다시 봉인해 쓸 수 있다" : " · 이 상태로만 쓸 수 있다"}</b><span>귀속</span><b>${esc(f.name)}</b></div>
       <div class="rc-seal">歸屬</div></div>`
+    : true ? `<div class="rl-card miss"><div class="rc-h">떠남</div><div class="rc-t">유물은 ${many ? "일행을" : esc(jo(f.name,"을"))} 한참 바라보다가, 아무도 고르지 않고 빛가루가 되어 유적의 어둠 속으로 가라앉았다.</div></div>`
     : `<div class="rl-card miss"><div class="rc-h">거부</div><div class="rc-t">유물은 ${esc(jo(f.name,"을"))} 한참 바라보다가, 손가락 사이로 빠져나갔다.<br>적성이 없는 손을 태우고서. <b style="color:#ff8a7a">(${esc(f.name)} 체력 -${Math.round(RELIC_BACKLASH*100)}%)</b></div></div>`}`;
+  relicOverlay(el, R, fit, ok, X);
   const glOk = !!window.WebGL2RenderingContext && (window.__forceRelicGL || !softGL());
   if(glOk){ const gl = relicSceneGL(el, R, f, fit, ok); if(gl) return gl; }
   const cv = el.querySelector(".rl-cv"), c = cv.getContext("2d"), ic = el.querySelector(".rl-item"), ix = ic.getContext("2d"), t0 = performance.now();
@@ -9640,7 +9632,6 @@ function relicScene(R, f, fit, ok){
   const P = Array.from({length:160}, (_,i)=>({a:Math.random()*6.283, r:0.3+Math.random()*0.7, s:0.3+Math.random()*1.3, z:Math.random()}));
   const ST = Array.from({length:70}, ()=>({x:Math.random(), y:Math.random(), v:0.6+Math.random()*1.6, l:20+Math.random()*90}));
   const NEB = [[0.38,0.36,"242,210,122"],[0.62,0.44,"127,216,200"],[0.5,0.3,"150,110,220"]];
-  const em = el.querySelector(".rl-fit em"), bar = el.querySelector(".rl-bar i");
   const T = {fall:[0.2,2.6], rise:[2.4,4.8], fit:[4.8,7.6], res:7.6};
   const loop = () => { if(!el.isConnected) return; const d = Math.min(1.5, devicePixelRatio||1), W = cv.clientWidth, H = cv.clientHeight;
     if(cv.width !== Math.round(W*d)){ cv.width = Math.round(W*d); cv.height = Math.round(H*d); } c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H);
@@ -9676,9 +9667,7 @@ function relicScene(R, f, fit, ok){
     ix.setTransform(d,0,0,d,0,0); ix.clearRect(0,0,iw,ih);
     const away = !ok && tt > T.res ? clamp((tt-T.res)/1.4, 0, 1) : 0, jit = tt > T.fit[0] && tt < T.res ? (pass ? 0 : (Math.random()-0.5)*2) : 0;
     ix.globalAlpha = clamp((tt-T.rise[0]-0.8)/1.0, 0, 1) * (1 - away*0.85); ix.save(); ix.translate(jit, -away*40 + Math.sin(tt*1.4)*3);
-    relicArt(ix, R, iw, ih, tt, away);
     ix.restore(); ix.globalAlpha = 1;
-    em.textContent = Math.round(fv); bar.style.width = Math.min(100, fv) + "%"; bar.style.background = pass ? "#f2d27a" : "#a35a4a";
     requestAnimationFrame(loop); };
   requestAnimationFrame(loop);
   const add = k => () => el.classList.add(k);
@@ -11797,7 +11786,7 @@ function fig(c, x, gy, h, o={}){
   if(!spec && o.weapon) spec = defaultSpec(o.ewt || (side==="foe" ? "blunt" : "blade"));
   if(spec && side==="foe") spec = Object.assign({}, spec, {metal:"#b9aca9"});
   if(gr && gr.ego){ c.save(); c.globalCompositeOperation="lighter"; const ag=c.createRadialGradient(x,gy-h*0.5,0,x,gy-h*0.5,h*0.9); ag.addColorStop(0,"rgba(255,225,150,0.2)"); ag.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle=ag; c.fillRect(x-h,gy-h*1.5,h*2,h*1.6); c.restore(); }
-  drawFixer(c, x, gy, h*1.15, {face:o.face||1, col: o.tint || o.color || sc.fill, state: o.state || (o.weapon ? "combat" : "idle"), weapon:spec,
+  drawFixer(c, x, gy, h*1.15, {spr: !!o.spr, face:o.face||1, col: o.tint || o.color || sc.fill, state: o.state || (o.weapon ? "combat" : "idle"), weapon:spec,
     armor: (gr && gr.armorSpec) || null, rot:o.rot, alpha:o.alpha, sw:o.sw||0, rim: o.tint ? null : (o.rim || sc.rim), acc: gr && gr.acc ? gr.accColor : null});
 }
 /* ================= 인물 · 무기 실루엣 =================
@@ -11813,10 +11802,10 @@ function fig(c, x, gy, h, o={}){
 function weaponSpecOf(g){
   if(!g) return null; const kind = weaponTypeOf(g) || "blade";
   const s = g.look ? g : (SHOP.find(i=>i.id===g.id) || SHOP.find(i=>i.name===g.name) || {});
-  return Object.assign(defaultSpec(kind), s.look || {}, {kind}, g.relic ? {relic: String(g.id).replace("relic-",""), add:[], style:null} : {});
+  return Object.assign(defaultSpec(kind), s.look || {}, {kind}, s.id ? {id: s.id} : {}, g.relic ? {relic: String(g.id).replace("relic-",""), add:[], style:null, seal: g.seal!=null ? g.seal : 0} : {});
 }
 function armorSpecOf(g){
-  if(!g) return {type:1, pad:0, collar:0, trim:null};
+  if(!g) return {type:1, pad:0, collar:0, trim:null, none:true};
   const s = g.look ? g : (SHOP.find(i=>i.id===g.id) || SHOP.find(i=>i.name===g.name) || {});
   return Object.assign({type:1, pad:0, collar:0, trim:null}, s.look || {type:1, pad:1}, g.relic ? {relic: String(g.id).replace("relic-",""), pad:0} : {});
 }
@@ -12059,10 +12048,11 @@ function drawWeaponSpec(c, s, u, dark, opt){
     G = {x:X, top, bot};
   };
   const k = s.kind, v = s.v||0;
-  let sdfSp = null;
-  if(s.relic==="astrape" && !opt.noSDF && (sdfSp = RelicSDF.sprite("astrape", s.seal!=null ? s.seal : (window.__astrapeSeal ?? 0), L))){   // 아스트라페: 셰이더(SDF)로 그린 금강저형 단창 — 봉인 단계마다 모습이 다르다
-    const v = sdfSp.v; c.drawImage(sdfSp.c, v.x0*u, -v.y*u, (v.x1 - v.x0)*u, 2*v.y*u);
-    const xb = 0.085, xt = xb + 0.5*L; edges.length = 0; edges.push([[xb, 0],[xt, 0]]); G = {x:t=>xb + (xt-xb)*t, top:()=>-0.06, bot:()=>0.06}; gEnd = -0.12; }
+  let bb3 = null;
+  if(s.relic && !opt.noSDF && (typeof RTW !== "undefined") && (bb3 = RTW.bbox(s))){   // 유물 무기: 실시간 3D 모형(봉인 단계마다 모습이 다르다)
+    const q = ((WEAPON_REACH[s.kind]||0.6) + 0.3)/(bb3[1] - bb3[0]), z0 = bb3[0]*q, z1 = bb3[1]*q, rd = bb3[2]*q;   // 그림 길이를 같은 종류의 무기와 맞춘다
+    RTW.item(c, s, (z0 + z1)/2*u, 0, (z1 - z0)*u/0.92, Math.max(rd*2*u/0.92*1.6, 8), {t: opt && opt.t});
+    edges.length = 0; edges.push([[z0*0.5, 0],[z1, 0]]); G = {x:t=>z0 + (z1-z0)*t, top:()=>-rd, bot:()=>rd}; gEnd = z0; }
   else if(s.relic==="astrape"){ // 아스트라페: 제우스의 번개 — 청동 단창. 자루에 금실이 나선으로 감기고, 날 자체가 지그재그 번개 모양으로 벼려져 있다
     const sh = 0.3*L; fs("#6b4a2a"); R(-0.36, -0.011, sh+0.36, 0.022); ln([[-0.34,-0.004],[sh-0.02,-0.006]], 0.002, "#8a6444");
     c.strokeStyle = "#e0b85a"; c.lineWidth = lw(0.004); c.beginPath(); for(let i=0;i<=60;i++){ const x = -0.3 + i/60*(sh+0.24), y = Math.sin(i*0.9)*0.011; i ? Lt(x,y) : M(x,y); } c.stroke();
@@ -12369,7 +12359,7 @@ function drawWeaponSpec(c, s, u, dark, opt){
   drawAdds(c, u, G, s.add, col, edges, opt.far, k, gEnd, s.glow);
   drawStyle(c, u, G, s, col, opt.far, k, gEnd, edges);
   // 발광: 날 가장자리에 가는 빛
-  if(s.glow && !opt.noGlow && !sdfSp){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round"; c.lineJoin="round";
+  if(s.glow && !opt.noGlow && !bb3){ c.save(); c.strokeStyle=s.glow; c.shadowColor=s.glow; c.shadowBlur=Math.max(4,u*0.04); c.lineWidth=Math.max(1,u*0.007); c.lineCap="round"; c.lineJoin="round";
     edges.forEach(e=>{ c.beginPath(); e.forEach(([x,y],i)=> i ? c.lineTo(x*u,y*u) : c.moveTo(x*u,y*u)); c.stroke(); }); c.restore(); }
   // 망(望): 소망을 꼰 금빛 실이 손잡이에서 날 쪽으로 감겨 있다 — 하나에 한 가닥
   if(s.mang){ const n = Math.min(5, s.mang), x0 = Math.max(0.02, (gEnd||0.18) - 0.1), span = 0.12 + n*0.035, tt = performance.now()/1000;
@@ -12972,7 +12962,435 @@ function drawRelicArmor(c, id, R, h, back, S1, S2, t){
       for(let i=0;i<5;i++){ const a = R(-0.02 + i*0.018, -0.21), b2 = R(-0.01 + i*0.018, -0.13); c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(a[0]+0.012*h, (a[1]+b2[1])/2, b2[0], b2[1]); c.stroke(); } c.restore(); }
     [[S2, 0.85],[S1, 1]].forEach(([sp, k])=>{ for(let r=0;r<4;r++){ const w = 0.05*h*k, y = sp[1] - 0.006*h + r*0.014*h; c.fillStyle = r%2 ? "#3a2418" : "#4a3020"; c.fillRect(sp[0]-w/2, y, w, 0.013*h); c.fillStyle = "#d8502a"; for(let i=0;i<4;i++) c.fillRect(sp[0]-w/2 + (i+0.5)*w/4 - 0.0015*h, y+0.003*h, 0.003*h, 0.007*h); } }); }
   c.restore(); }
+/* ===== 3D 인물 그림 · 실시간 무기(WebGL2) =====
+   몸: 미리 그린 무채색 그림(spr/b) + 깊이 · 코트 위치 그림(spr/d)을 한 장의 GL 화면에 깔고 해결사 색 · 방어구 표시(아랫단 색 · 장식선)를 칠한다.
+   무기 · 붙임 · 칼집 · 방어구 부품: 3D 모형(spr/m)을 프레임마다 손 · 뼈 행렬로 놓고 같은 칠(3단 명암 + 위 빛 + 테두리 빛 + 바깥 윤곽)로 그린다.
+   몸 깊이로 가려서 몸 뒤로 간 부분은 보이지 않는다. 길이 · 폭은 모형의 '늘림 · 넓힘' 방향으로 슬라이더 값 그대로.
+   준비가 안 됐거나 WebGL2가 없으면 false → 예전 그림. 저장 데이터는 쓰지 않는다. */
+const RTW = (()=>{
+  const BASE = "spr/";
+  let gl = null, cv = null, PM = null, PB = null, ok = null, IDX = null, idxState = 0, quad = null;
+  const meshes = {}, texs = {}, ULm = {}, ULb = {};
+  const VS = `#version 300 es
+    in vec3 p0; in vec3 dl; in vec3 dw; in vec3 nn; in vec3 hn; in float mt;
+    uniform mat4 M; uniform mat4 V; uniform mat4 P; uniform vec2 LW; uniform float ext; uniform float tm; uniform vec3 sr; uniform float act;
+    out vec3 wpos; out vec3 wn; out float vm; out vec3 opos;
+    float hv(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x + p.y + p.z)); }
+    float vn(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f);
+      return mix(mix(mix(hv(i), hv(i+vec3(1,0,0)), f.x), mix(hv(i+vec3(0,1,0)), hv(i+vec3(1,1,0)), f.x), f.y),
+                 mix(mix(hv(i+vec3(0,0,1)), hv(i+vec3(1,0,1)), f.x), mix(hv(i+vec3(0,1,1)), hv(i+vec3(1,1,1)), f.x), f.y), f.z); }
+    void main(){ vec3 p = p0 + LW.x*dl + LW.y*dw + hn*ext;
+      int mi = int(mt+0.5);
+      if(mi>=22 && mi<=24){   // 번개 줄기: 짧은 간격으로 툭툭 튀며 떨리고, 곁가지는 켜졌다 꺼진다
+        float q = floor(tm*14.0); vec3 k = p0*26.0 + q*1.713;
+        p += (vec3(vn(k), vn(k + 5.3), vn(k + 9.1)) - 0.5) * (mi==22 ? 0.007 : 0.011);
+        if(mi>22){ float on = hv(vec3(dl.x*91.7, floor(tm*(mi==23 ? 6.0 : 7.5) + dl.x*3.0)*0.371, float(mi))); if(on < 0.4){ gl_Position = vec4(2.0, 2.0, 2.0, 1.0); wpos = vec3(0); wn = vec3(0,0,1); vm = mt; opos = p; return; } } }
+      if(mi==27){ float w = dl.y*dl.y; p += vec3(sin(tm*1.7 + dl.x*20.0), cos(tm*1.3 + dl.x*13.0)*0.6, sin(tm*2.1 + dl.x*7.0)*0.4) * 0.005 * w; }   // 새싹: 바람에 흔들림
+      if(mi==32){ p += dw * (0.25 + 0.75*act) * (0.5 - 0.5*cos(tm*1.4 + dl.x*20.0)); }   // 떠도는 획: 날에서 떨어졌다 돌아온다
+      if(sr.z > 0.0){ p.z += sr.z * clamp((p0.z - sr.x)/(sr.y - sr.x), 0.0, 1.0); }    // 늘어남: 앞쪽이 길게 밀려 나간다
+      opos = p; vec4 w = M*vec4(p,1.0); wpos = w.xyz; wn = mat3(M)*nn; vm = mt; gl_Position = P*(V*w); }`;
+  const FS = `#version 300 es
+    precision highp float;
+    in vec3 wpos; in vec3 wn; in float vm; in vec3 opos; out vec4 o;
+    uniform vec3 sun; uniform vec3 eye; uniform vec3 metal; uniform vec3 glow; uniform vec3 cloth; uniform int outline; uniform vec3 lineCol; uniform int glowOn; uniform float tm; uniform vec3 ecol; uniform int haloSet; uniform vec3 sr;
+    float hsh(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x + p.y + p.z)); }
+    float vnoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f);
+      return mix(mix(mix(hsh(i), hsh(i+vec3(1,0,0)), f.x), mix(hsh(i+vec3(0,1,0)), hsh(i+vec3(1,1,0)), f.x), f.y),
+                 mix(mix(hsh(i+vec3(0,0,1)), hsh(i+vec3(1,0,1)), f.x), mix(hsh(i+vec3(0,1,1)), hsh(i+vec3(1,1,1)), f.x), f.y), f.z); }
+    // 번개 재질: 깊은 푸른 바탕 위로 갈라지는 금(번개)이 흐르고, 가끔 굵은 줄기가 길이를 따라 달린다
+    float fbm(vec3 p){ return vnoise(p)*0.55 + vnoise(p*2.03 + 7.1)*0.30 + vnoise(p*4.1 + 3.3)*0.15; }
+    vec3 energy(vec3 N){
+      vec3 q = opos*vec3(17.0, 17.0, 7.0);
+      float n1 = vnoise(q + vec3(0.0, 0.0, -tm*0.8))*0.7 + vnoise(q*2.1 + vec3(tm*0.4, 1.7, 0.0))*0.3;
+      float n2 = vnoise(q*2.6 + vec3(5.0, tm*0.6, 2.0));
+      float w1 = max(fwidth(n1), 1e-4), w2 = max(fwidth(n2), 1e-4);
+      float c1 = 1.0 - smoothstep(0.0, w1*0.9, abs(n1 - 0.5));
+      float c2 = (1.0 - smoothstep(0.0, w2*0.8, abs(n2 - 0.5))) * 0.35 * step(0.45, vnoise(q*0.7 + 9.0));
+      float an = atan(opos.y, opos.x), zz = opos.z;
+      float path = 0.55*sin(zz*11.0 + tm*2.3) + 0.25*sin(zz*29.0 - tm*4.1) + 0.12*sin(zz*71.0 + tm*7.0);
+      float bolt = (1.0 - smoothstep(0.0, 0.07, abs(sin((an - path)*0.5)))) * (0.6 + 0.4*step(0.55, fract(tm*0.7 + zz*0.3)));
+      float fl = 0.88 + 0.12*sin(tm*17.0 + zz*23.0);
+      float fr = pow(1.0 - abs(dot(N, eye)), 1.6);
+      float sh = 0.55 + 0.45*max(dot(N, sun), 0.0);
+      float gl2 = pow(max(dot(reflect(-sun, N), eye), 0.0), 18.0);
+      vec3 deep = vec3(0.006, 0.022, 0.22)*sh + vec3(0.05, 0.12, 0.6)*gl2, hot = mix(ecol, vec3(0.75, 0.95, 1.0), 0.6);
+      return deep + hot*(c1*0.95 + c2)*fl + mix(ecol, vec3(1.0), 0.7)*bolt*1.2 + ecol*fr*0.55; }
+    vec3 ease3(float t, vec3 a, vec3 b, vec3 c, vec3 pos){
+      if(t<=pos.x) return a; if(t>=pos.z) return c;
+      if(t<pos.y){ float f=(t-pos.x)/(pos.y-pos.x); f=f*f*(3.0-2.0*f); return mix(a,b,f); }
+      float f=(t-pos.y)/(pos.z-pos.y); f=f*f*(3.0-2.0*f); return mix(b,c,f); }
+    vec3 srgb(vec3 x){ x=clamp(x,0.0,1.0); return mix(12.92*x, 1.055*pow(x,vec3(1.0/2.4))-0.055, step(0.0031308,x)); }
+    void main(){
+      if(outline==1 && ((int(vm+0.5)>=22 && int(vm+0.5)<=24) || int(vm+0.5)==26 || int(vm+0.5)==32 || int(vm+0.5)==35)) discard;
+      if(outline==1){ o = vec4(srgb((int(vm+0.5)==18 || int(vm+0.5)==25) ? ecol*1.1 : lineCol),1.0); return; }
+      int mm = int(vm+0.5); if(outline==2){ if(haloSet==1 ? (mm!=18 && (mm<22 || mm>26) && mm!=32) : (mm!=0 && mm!=3 && mm!=8)) discard; o = vec4(srgb(haloSet==1 ? ecol : glow),1.0); return; }
+      vec3 N = normalize(wn); if(!gl_FrontFacing) N = -N;
+      int m = int(vm+0.5);
+      if(m==3 || (m==8 && glowOn==1)){ o = vec4(srgb(glow*1.6),1.0); return; }
+      if(m==18){ o = vec4(srgb(energy(N)),1.0); return; }
+      if(m==25){ // 빛: 날을 따라 흐르는 결
+        float fl = 0.80 + 0.20*sin(opos.z*48.0 - tm*7.0) * sin(opos.z*13.0 + tm*2.3);
+        float f = pow(abs(dot(N, eye)), 0.8);
+        o = vec4(srgb(mix(ecol*1.05, vec3(1.0, 0.99, 0.94), 0.35 + 0.55*f) * fl), 1.0); return; }
+      if(m==26 || m==32){ float pu = 0.85 + 0.15*sin(tm*2.0 + opos.z*30.0); o = vec4(srgb(mix(ecol, vec3(1.0), 0.55)*pu*(m==32 ? 0.9 : 1.1)), 1.0); return; }
+      if(m==35){ vec3 g = vec3(0.86, 0.62, 0.18); o = vec4(srgb(mix(g*0.5, g*1.25, max(dot(N, sun), 0.0))), 1.0); return; }
+      if(m>=22 && m<=24){ float f = pow(abs(dot(N, eye)), 1.3); float fl = 0.85 + 0.15*sin(tm*31.0 + opos.z*60.0);
+        o = vec4(srgb(mix(ecol*1.2, vec3(0.90, 0.97, 1.0), clamp(f*1.05, 0.0, 1.0))*fl*(m==22 ? 1.15 : 1.0)),1.0); return; }
+      if(m>=11 && m<=14){ vec3 e = m==11 ? vec3(1.0,0.254,0.042) : m==12 ? vec3(0.212,0.745,1.0) : m==13 ? vec3(0.144,0.366,1.0) : vec3(0.565,1.0,0.102); o = vec4(srgb(e*1.25),1.0); return; }
+      vec3 base; float dk, lt, rk, tk, gr; vec3 pos = vec3(0.22,0.55,0.88), rim = vec3(0.9,0.95,1.0);
+      if(m==0 || m==8){ base = m==8 ? min(metal*1.7+0.05, vec3(1.0)) : metal; dk=0.42; lt=1.45; rk=0.35; tk=0.25; gr=0.12; rim=vec3(1.0); }
+      else if(m==1){ base=vec3(0.07,0.075,0.085); dk=0.5; lt=1.9; rk=0.3; tk=0.2; gr=0.1; }
+      else if(m==2){ base=vec3(0.085,0.045,0.028); dk=0.55; lt=1.5; rk=0.12; tk=0.1; gr=0.0; pos=vec3(0.22,0.55,0.9); rim=vec3(0.85,0.95,1.0); }
+      else if(m==4){ base=vec3(0.16,0.085,0.045); dk=0.55; lt=1.4; rk=0.12; tk=0.1; gr=0.0; pos=vec3(0.22,0.55,0.9); rim=vec3(0.85,0.95,1.0); }
+      else if(m==9){ base=vec3(0.366,0.016,0.023); dk=0.55; lt=1.3; rk=0.15; tk=0.1; gr=0.0; }
+      else if(m==10){ base=vec3(0.686,0.456,0.102); dk=0.42; lt=1.45; rk=0.35; tk=0.25; gr=0.1; rim=vec3(1.0); }
+      else if(m==15){ base=vec3(0.745,0.352,0.246); dk=0.55; lt=1.25; rk=0.2; tk=0.15; gr=0.0; }
+      else if(m==16){ base=vec3(0.624,0.863,1.0); dk=0.55; lt=1.6; rk=0.6; tk=0.4; gr=0.0; rim=vec3(1.0); }
+      else if(m==17){ base=vec3(0.018,0.020,0.025); dk=0.5; lt=2.2; rk=0.3; tk=0.2; gr=0.0; }
+      else if(m==19){ base=vec3(0.020,0.024,0.032); dk=0.45; lt=2.2; rk=0.30; tk=0.30; gr=0.0; rim=vec3(0.7,0.8,0.95); }
+      else if(m==20){ base=vec3(0.70,0.72,0.76); dk=0.42; lt=1.4; rk=0.35; tk=0.25; gr=0.1; rim=vec3(1.0); }
+      else if(m==21){ base=vec3(0.66,0.58,0.42); dk=0.6; lt=1.15; rk=0.1; tk=0.1; gr=0.0; }
+      else if(m==37){ base=vec3(0.80,0.56,0.14); dk=0.40; lt=1.55; rk=0.5; tk=0.35; gr=0.05; rim=vec3(1.0,0.95,0.8); }
+      else if(m==36){ base=vec3(0.20,0.22,0.25); dk=0.45; lt=2.0; rk=0.45; tk=0.35; gr=0.0; rim=vec3(0.9,0.95,1.0); }
+      else if(m==27){ base=vec3(0.10,0.42,0.06); dk=0.5; lt=1.6; rk=0.25; tk=0.2; gr=0.0; rim=vec3(0.8,1.0,0.6); }
+      else if(m==28){ base=vec3(0.62,0.58,0.50); dk=0.6; lt=1.2; rk=0.15; tk=0.1; gr=0.0; }
+      else if(m==29){ base=vec3(0.34,0.25,0.13); dk=0.58; lt=1.25; rk=0.08; tk=0.08; gr=0.0; }
+      else if(m==30){ base=vec3(0.035,0.012,0.010); dk=0.5; lt=2.4; rk=0.35; tk=0.3; gr=0.0; rim=vec3(1.0,0.8,0.7); }
+      else if(m==31){ base=vec3(0.42,0.32,0.17); dk=0.55; lt=1.25; rk=0.1; tk=0.1; gr=0.0; }
+      else if(m==33){ base=vec3(0.30,0.32,0.34); dk=0.45; lt=1.9; rk=0.55; tk=0.4; gr=0.0; rim=vec3(0.85,1.0,0.9); }
+      else if(m==34){ base=vec3(0.20,0.13,0.07); dk=0.6; lt=1.2; rk=0.05; tk=0.05; gr=0.0; }
+      else if(m==7){ base=cloth; dk=0.6; lt=1.1; rk=0.14; tk=0.08; gr=0.2; pos=vec3(0.30,0.62,0.95); rim=vec3(0.8,1.0,0.85); }
+      else { base=vec3(0.035,0.037,0.04); dk=0.6; lt=1.8; rk=0.15; tk=0.12; gr=0.0; pos=vec3(0.22,0.55,0.9); rim=vec3(0.85,0.95,1.0); }
+      float lam = max(dot(N, sun), 0.0) * 0.95493;
+      vec3 c = ease3(lam, base*dk, base, base*lt, pos);
+      c *= mix(1.0-gr, 1.0, clamp((wpos.z+0.85)/1.4, 0.0, 1.0));
+      float fac = 1.0 - sqrt(abs(dot(N, eye)));
+      float r = clamp((fac-0.55)/0.40, 0.0, 1.0)*rk + clamp((N.z-0.2)/0.7, 0.0, 1.0)*tk; r = clamp(r, 0.0, 1.0);
+      c = 1.0 - ((1.0-r) + r*(1.0-rim))*(1.0-c);
+      o = vec4(srgb(c),1.0); }`;
+  // 몸: 자른 사각형 위의 네모 하나. 깊이 그림: R = 깊이 위 8비트, G = 깊이 아래 4비트 · 앞섶 표시, B = 코트 높이(시트 px)
+  const VSB = `#version 300 es
+    in vec2 q; uniform vec4 rc; out vec2 uv;
+    void main(){ uv = q; gl_Position = vec4(rc.x + q.x*rc.z, rc.y - q.y*rc.w, 0.0, 1.0); }`;
+  const FSB = `#version 300 es
+    precision highp float;
+    in vec2 uv; out vec4 o;
+    uniform sampler2D bt; uniform sampler2D dt; uniform vec2 dr; uniform float fr; uniform float nf; uniform vec3 col; uniform float vb; uniform vec3 trim; uniform int hasTrim; uniform int region;
+    void main(){
+      vec2 t = vec2((fr + uv.x)/nf, uv.y);
+      vec4 b = texture(bt, t); if(b.a < 0.004) discard;
+      vec4 d = texture(dt, t); float qd = floor(d.r*255.0+0.5); float dist = dr.x + (dr.y-dr.x)*qd/254.0; float flag = d.g > 0.5 ? 1.0 : 0.0;
+      float code = floor(d.b*255.0+0.5);
+      vec3 c = b.rgb * min(col*1.275, vec3(1.0));
+      if(region==1 && code > 0.5){
+        float v = 200.0 + (code-1.0)/254.0*330.0;
+        if(v > vb) c *= 0.42;
+        if(hasTrim==1){ float lum = clamp(b.r/0.784, 0.0, 1.3);
+          if((v > vb-8.0 && v <= vb+1.0) || (mod(flag,2.0) > 0.5 && v < vb && v > 206.0)) c = trim*lum; }
+      }
+      o = vec4(c*b.a, b.a);
+      gl_FragDepth = (b.a > 0.5 && qd < 254.5) ? (dist + 0.004)/20.0 : 1.0; }`;
+  function sh(t, s){ const x = gl.createShader(t); gl.shaderSource(x, s); gl.compileShader(x); if(!gl.getShaderParameter(x, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(x)); return x; }
+  function prog(vs, fs){ const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p); if(!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p; }
+  function init(){
+    if(ok!==null) return ok;
+    try{
+      cv = document.createElement("canvas"); cv.width = 4; cv.height = 4;
+      gl = cv.getContext("webgl2", {antialias:true, premultipliedAlpha:true, preserveDrawingBuffer:true, alpha:true});
+      if(!gl) return ok = false;
+      PM = prog(VS, FS); PB = prog(VSB, FSB);
+      ["M","V","P","LW","ext","sun","eye","metal","glow","cloth","outline","lineCol","glowOn","tm","ecol","haloSet","sr","act"].forEach(n=>ULm[n] = gl.getUniformLocation(PM, n));
+      ["rc","bt","dt","dr","fr","nf","col","vb","trim","hasTrim","region"].forEach(n=>ULb[n] = gl.getUniformLocation(PB, n));
+      quad = gl.createVertexArray(); gl.bindVertexArray(quad); const qb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, qb);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 1,1]), gl.STATIC_DRAW);
+      const ql = gl.getAttribLocation(PB, "q"); gl.enableVertexAttribArray(ql); gl.vertexAttribPointer(ql, 2, gl.FLOAT, false, 0, 0); gl.bindVertexArray(null);
+      cv.addEventListener("webglcontextlost", e=>{ e.preventDefault(); ok = false; });
+      ok = true;
+    }catch(e){ console.warn("RTW", e); ok = false; }
+    return ok;
+  }
+  function loadIdx(){ if(idxState) return; idxState = 1;
+    fetch(BASE + "rt.json").then(r=>r.ok ? r.json() : null).then(j=>{ IDX = j; idxState = j ? 2 : 3; }).catch(()=>{ idxState = 3; }); }
+  // 모형(양자화된 bin) → GPU
+  function decodeMesh(buf){
+    const dv = new DataView(buf), hl = dv.getUint32(0, true), H = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, hl)));
+    let off = 4 + hl; off += (4 - off % 4) % 4; const nv = H.nv, nt = H.nt;
+    const i16 = n => { const a = new Int16Array(buf, off, n); off += n*2; off += (4 - off % 4) % 4; return a; };
+    const i8 = n => { const a = new Int8Array(buf, off, n); off += n; off += (4 - off % 4) % 4; return a; };
+    const P = i16(nv*3), DL = i16(nv*3), DW = i16(nv*3), NN = i8(nv*3), HN = i8(nv*3);
+    const mt = new Uint8Array(buf, off, nv); off += nv; off += (4 - off % 4) % 4;
+    const ix = nv < 65536 ? new Uint16Array(buf, off, nt*3) : new Uint32Array(buf, off, nt*3);
+    const [mn, mx] = H.bb, p0 = new Float32Array(nv*3), dl = new Float32Array(nv*3), dw = new Float32Array(nv*3), nn = new Float32Array(nv*3), hn = new Float32Array(nv*3);
+    for(let i=0;i<nv*3;i++){ const a = i%3; p0[i] = mn[a] + (P[i]+32767)/65534*(mx[a]-mn[a]); dl[i] = DL[i]*H.sl/32767; dw[i] = DW[i]*H.sw/32767; nn[i] = NN[i]/127; hn[i] = HN[i]/127; }
+    return {H, p0, dl, dw, nn, hn, mt: new Float32Array(mt), ix};
+  }
+  function upload(D){
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const att = (name, data, n) => { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(PM, name); if(loc<0) return; gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, n, gl.FLOAT, false, 0, 0); };
+    att("p0", D.p0, 3); att("dl", D.dl, 3); att("dw", D.dw, 3); att("nn", D.nn, 3); att("hn", D.hn, 3); att("mt", D.mt, 1);
+    const eb = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, eb); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, D.ix, gl.STATIC_DRAW);
+    gl.bindVertexArray(null);
+    return {vao, n: D.ix.length, type: D.ix instanceof Uint16Array ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT, H: D.H};
+  }
+  // 모형 묶음: PNG 한 장(RGB 바이트) → GPU로 읽어 바이트 배열로(색 변환 없이)
+  const packs = {};
+  function pack(g){ let e = packs[g];
+    if(!e){ e = packs[g] = {st:0}; const im = new Image();
+      im.onload = ()=>{ try{ const [W, H] = IDX.packs[g], t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+          gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+          const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+          const px = new Uint8Array(W*H*4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+          gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.deleteFramebuffer(fb); gl.deleteTexture(t);
+          const out = new Uint8Array(W*H*3); for(let i=0, j=0; i<W*H; i++){ out[j++] = px[i*4]; out[j++] = px[i*4+1]; out[j++] = px[i*4+2]; }
+          e.b = out; e.st = 2; }catch(err){ console.warn("RTW pack", err); e.st = 3; } };
+      im.onerror = ()=>{ e.st = 3; }; im.src = BASE + "m/" + g + ".png"; }
+    return e.st===2 ? e.b : e.st===3 ? false : null; }
+  function mesh(key){ let e = meshes[key];
+    if(e && e.st===2) return e.m; if(e && e.st===3) return false;
+    const R = IDX.mesh[key]; if(!R) return false;
+    const P = pack(R[0]); if(P===null) return null; if(!P){ meshes[key] = {st:3}; return false; }
+    try{ const m = upload(decodeMesh(P.slice(R[1], R[1]+R[2]).buffer)); meshes[key] = {st:2, m}; return m; }catch(err){ console.warn("RTW mesh", key, err); meshes[key] = {st:3}; return false; } }
+  function tex(path){ let e = texs[path];
+    if(!e){ e = texs[path] = {st:0}; const im = new Image(); im.decoding = "async";
+      im.onload = ()=>{ if(!ok) return; const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false); gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, im);
+        const f = path.startsWith("d/") ? gl.NEAREST : gl.LINEAR;
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, f); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, f);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        e.t = t; e.st = 2; };
+      im.onerror = ()=>{ e.st = 3; }; im.src = BASE + path; }
+    return e.st===2 ? e.t : e.st===3 ? false : null; }
+  const lin = h => { const n = parseInt(String(h||"#aab5b1").replace("#","").slice(0,6),16); return [n>>16&255, n>>8&255, n&255].map(x=>{ x/=255; return x>0.04045 ? Math.pow((x+0.055)/1.055,2.4) : x/12.92; }); };
+  const s01 = h => { const n = parseInt(String(h||"#888888").replace("#","").slice(0,6),16); return [(n>>16&255)/255, (n>>8&255)/255, (n&255)/255]; };
+  // 4x4(행 우선 12개 = 위 3줄) → 열 우선 Float32Array
+  const m4 = a => new Float32Array([a[0],a[4],a[8],0, a[1],a[5],a[9],0, a[2],a[6],a[10],0, a[3],a[7],a[11],1]);
+  const mul = (A, B) => { const r = new Array(12); for(let i=0;i<3;i++) for(let j=0;j<4;j++) r[i*4+j] = A[i*4]*B[j] + A[i*4+1]*B[4+j] + A[i*4+2]*B[8+j] + (j===3 ? A[i*4+3] : 0); return r; };
+  const inv = m => { const R = [m[0],m[4],m[8], m[1],m[5],m[9], m[2],m[6],m[10]], t = [m[3],m[7],m[11]];
+    return [R[0],R[1],R[2], -(R[0]*t[0]+R[1]*t[1]+R[2]*t[2]), R[3],R[4],R[5], -(R[3]*t[0]+R[4]*t[1]+R[5]*t[2]), R[6],R[7],R[8], -(R[6]*t[0]+R[7]*t[1]+R[8]*t[2])]; };
+  // 무기 → 동작 묶음 · 모형
+  function kindKey(s){ if(!s) return "fist"; if(s.kind==="tool") return s.v===1 ? "saw" : "tool"; if(s.kind==="gun") return poseV(s)>0 ? "rifle" : "gun"; return IDX && IDX.styles[s.kind] ? s.kind : null; }
+  function modelKey(s){
+    if(!s || !IDX) return null;
+    if(s.relic) return `relic_${s.relic}_s${s.seal!=null ? s.seal : 0}`;
+    if(s.id && IDX.basic.includes(s.id)) return s.id;
+    const k = `${s.kind}_v${s.v||0}`, M = IDX.models[k];
+    if(!M) return IDX.models[`${s.kind}_v0`] ? `${s.kind}_v0` : null;
+    if(M.Ls){ const L = s.len||1; let b = M.Ls[0]; M.Ls.forEach(x=>{ if(Math.abs(x-L) < Math.abs(b-L)) b = x; }); return `${k}@${b}`; }
+    return k; }
+  function frameOf(ph){ if(ph==null) return 0; if(ph>=2.75) return 0; const P = IDX.phs; let b = 0, d = 9; P.forEach((p,i)=>{ const dd = Math.abs(p - ph); if(dd<d){ d = dd; b = i; } }); return b; }
+  const ARM_VB = [340, 440, 526, 440];
+  /* c에 인물 하나: o = drawFixer 옵션(col · state · face · atk · weapon · armor · rot · alpha · t) */
+  function draw(c, x, gy, h, o){
+    if(!init()) return false; loadIdx(); if(idxState!==2) return false;
+    const s = o.weapon || null; if(s && s.relic && !(IDX.relics||{})[s.relic]) return false;
+    const st = o.state || "idle", foe = (o.face||1)===-1;
+    const kk = s ? kindKey(s) : "fist"; if(!kk) return false;
+    let role, R, bodyP, depP, fi = 0, nf = 8, mats = [], bones = null, acc = [];
+    const mk = s && s.kind!=="none" ? modelKey(s) : null;
+    if(st==="combat"){
+      role = foe ? "foe" : "ally"; R = IDX.roles[role];
+      const sts = IDX.styles[kk]; const style = o.atk && sts.includes(o.atk.style) ? o.atk.style : sts[0];
+      fi = o.atk ? frameOf(o.atk.ph) : 0; const key = `${kk}_${style}_${role}`;
+      bodyP = `b/${key}.webp`; depP = `d/${key}.webp`;
+      const F = IDX.frames[key]; if(!F) return false;
+      if(mk) mats = F[fi]; bones = IDX.bones[key] ? IDX.bones[key][fi] : null;
+    } else if(st==="idle"){
+      role = "idle"; R = IDX.roles.idle; nf = 1; const I = IDX.idle[kk]; if(!I) return false;
+      bodyP = `b/idle_${kk}.webp`; depP = `d/idle_${kk}.webp`; bones = I.bones;
+      if(mk){ mats = I.slots.map(z=>z.m); I.slots.forEach((z,i)=>{ if(z.acc) acc.push([`${z.acc}_${mk.split("@")[0]}`, z.m]); }); if(I.strap) acc.push([I.strap, null]); }
+    } else return false;
+    const BT = tex(bodyP), DT = tex(depP); if(BT===null || DT===null) return false; if(!BT || !DT) return false;
+    // 모형 목록: [열쇠, 행렬, 늘림 · 넓힘, 재질 색]
+    const L = (s && s.len) || 1, Wd = (s && s.wid) || 1, basic = mk && (!mk.includes("_v") || mk.startsWith("relic_"));
+    const lw = basic || (mk && IDX.models[mk.split("@")[0]] && IDX.models[mk.split("@")[0]].Ls) ? [0, Wd-1] : [L-1, Wd-1];
+    const parts = [];
+    const sty = s && s.style ? `sty_${s.style}_${s.kind}_v${s.v||0}` : null;
+    if(mk) mats.forEach(m=>{ parts.push([mk, m, basic ? [0,0] : lw, s.metal]); (s.add||[]).forEach(a=>{ const ak = `add_${mk.split("@")[0]}_${a}`; if(IDX.adds[ak]) parts.push([ak, m, lw, s.metal]); });
+      if(sty && IDX.adds[sty]) parts.push([sty, m, "sty", s.metal]); });
+    acc.forEach(([k, m])=>parts.push([k, m || [1,0,0,0, 0,1,0,0, 0,0,1,0], m ? lw : [0,0], "#8e959e"]));
+    const A = o.armor && !o.armor.relic && !o.armor.none ? o.armor : null;
+    if(A && bones){ const pad = A.type===3 ? 2 : (A.pad||0);
+      const bm = b => mul(bones[b], inv(IDX.rest[b]));
+      if(pad) ["L","R"].forEach(sd=>parts.push([`arm_pad_${pad===2?"l":"s"}_${sd}`, bm(`clav.${sd}`), [0,0], "#7c838c"]));
+      if(A.type===3) parts.push(["arm_cuirass", bm("chest"), [0,0], "#7c838c"]);
+      if(A.collar) parts.push(["arm_collar", bm("chest"), [0,0], null]); }
+    const GM = []; for(const p of parts){ const m = mesh(p[0]); if(m===null) return false; if(!m) continue;
+      if(p[2]==="sty") p[2] = [L - (m.H.L0||1), Wd - (m.H.W0||1)];
+      GM.push([m, ...p.slice(1)]); }
+    // 그릴 사각형: 몸 자르기 + 긴 무기 · 붙임이 잘리지 않게 넓힘
+    const [x0, y0, w, hh] = R.crop, mx = Math.round(w*0.56), myT = Math.round(hh*0.30), myB = Math.round(hh*0.08);
+    const X0 = x0 - mx, Y0 = y0 - myT, Wr = w + 2*mx, Hr = hh + myT + myB;
+    const k = h/(1.5*R.ppm), tf = c.getTransform ? c.getTransform() : {a:1}, dpr = Math.hypot(tf.a, tf.b) || 1;
+    const sc = Math.max(0.4, Math.min(2.2, k*dpr)), W = Math.max(8, Math.round(Wr*sc)), H = Math.max(8, Math.round(Hr*sc));
+    if(cv.width < W || cv.height < H){ cv.width = Math.max(cv.width, W); cv.height = Math.max(cv.height, H); }   // 크기를 줄이지 않는다(번갈아 그릴 때마다 다시 만들지 않게)
+    const CH = cv.height;
+    gl.viewport(0, 0, W, H); gl.clearColor(0,0,0,0); gl.clearDepth(1); gl.depthMask(true); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    // 1) 몸
+    gl.useProgram(PB); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.ALWAYS); gl.disable(gl.CULL_FACE); gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    gl.uniform4f(ULb.rc, (x0-X0)/Wr*2-1, 1-(y0-Y0)/Hr*2, w/Wr*2, hh/Hr*2);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, BT); gl.uniform1i(ULb.bt, 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, DT); gl.uniform1i(ULb.dt, 1);
+    const drr = (IDX.dr[st==="combat" ? depP.slice(2,-5) : `idle_${kk}`]||[])[fi] || [8,10]; gl.uniform2f(ULb.dr, drr[0], drr[1]);
+    gl.uniform1f(ULb.fr, fi); gl.uniform1f(ULb.nf, nf); gl.uniform3fv(ULb.col, s01(o.col || "#3d9fd6"));
+    gl.uniform1i(ULb.region, A ? 1 : 0); gl.uniform1f(ULb.vb, A ? ARM_VB[A.type|0] ?? 440 : 999);
+    gl.uniform1i(ULb.hasTrim, A && A.trim ? 1 : 0); gl.uniform3fv(ULb.trim, s01(A && A.trim || "#ffffff"));
+    gl.bindVertexArray(quad); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.bindVertexArray(null);
+    // 2) 모형
+    const act = o.atk ? Math.sin(Math.PI*Math.max(0, Math.min(1, (o.atk.ph - 0.4)/1.4))) : 0;
+    if(GM.length){
+      gl.useProgram(PM); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND);
+      const S = R.ortho, RS = R.res, V = inv(R.cam);
+      const P = new Float32Array([2*RS/(S*Wr),0,0,0, 0,2*RS/(S*Hr),0,0, 0,0,-0.1,0, (RS/2-X0)*2/Wr-1, 1-(RS/2-Y0)*2/Hr, -1, 1]);
+      gl.uniformMatrix4fv(ULm.V, false, m4(V)); gl.uniformMatrix4fv(ULm.P, false, P);
+      gl.uniform3fv(ULm.sun, R.sun); gl.uniform3fv(ULm.eye, [R.cam[2], R.cam[6], R.cam[10]]);
+      const glow = s && s.glow; gl.uniform3fv(ULm.glow, lin(glow || "#e6e6ff")); gl.uniform1i(ULm.glowOn, glow && !s.relic ? 1 : 0);
+      gl.uniform1f(ULm.tm, (o.t!=null ? o.t : performance.now()/1000) % 1000); gl.uniform1f(ULm.act, act);
+      gl.uniform3fv(ULm.ecol, lin(GM.length && GM[0][0].H.ecol || (s && s.relic && s.glow) || "#3a66ff")); gl.uniform1i(ULm.haloSet, s && s.relic ? 1 : 0);
+      gl.uniform3fv(ULm.cloth, lin(glow && !A ? glow : "#b0403a"));
+      const lc = [0.03,0.035,0.04];
+      for(const [m, M, lwv, met] of GM){
+        const st = m.H.st; gl.uniform3f(ULm.sr, st ? st[0] : 0, st ? st[1] : 1, st ? st[2]*act : 0);
+        gl.uniformMatrix4fv(ULm.M, false, m4(M)); gl.uniform2f(ULm.LW, lwv[0], lwv[1]); gl.uniform3fv(ULm.metal, lin(met || "#aab5b1"));
+        if(m.H.armor==="collar") gl.uniform3fv(ULm.cloth, lin(hexMix(o.col || "#3d9fd6", "#000000", 0.25)));
+        else if(m.H.add) gl.uniform3fv(ULm.cloth, lin(m.H.add==="wrap" ? "#bdb39c" : (glow || "#b0403a")));
+        gl.bindVertexArray(m.vao);
+        gl.disable(gl.CULL_FACE); gl.uniform1i(ULm.outline, 0); gl.uniform1f(ULm.ext, 0); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0);
+        gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT); gl.uniform1i(ULm.outline, 1); gl.uniform3fv(ULm.lineCol, lc);
+        gl.uniform1f(ULm.ext, m.H.armor ? R.lwb*0.5 : R.lw*(kk==="fist" ? 0.85 : 1)); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0);
+      }
+      gl.bindVertexArray(null); gl.disable(gl.CULL_FACE);
+    }
+    // 3) 화면에 옮기기
+    const put = () => c.drawImage(cv, 0, CH - H, W, H, -gxE*k, -gyE*k, Wr*k, Hr*k);
+    const gxE = R.gx + mx, gyE = R.gy + myT, t = o.t!=null ? o.t : performance.now()/1000;
+    c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); if(o.alpha!=null) c.globalAlpha *= o.alpha;
+    if(st==="idle"){ c.scale(1, 1 + Math.sin(t*1.6 + x*0.37)*0.006); if(foe) c.scale(-1, 1); }
+    put();
+    // 발광: 무기만 발광색으로 한 번 더 그려 흐리게 겹친다(몸 뒤로 간 부분은 몸 깊이로 가림)
+    if(s && (s.glow || s.relic) && mk && GM.length){
+      gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(PB); gl.depthFunc(gl.ALWAYS); gl.colorMask(false,false,false,false); gl.bindVertexArray(quad); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); gl.colorMask(true,true,true,true);
+      gl.useProgram(PM); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND); gl.uniform1i(ULm.outline, 2);
+      for(const [m, M, lwv] of GM){ if(m.H.armor || m.H.acc) continue; const st = m.H.st; gl.uniform3f(ULm.sr, st ? st[0] : 0, st ? st[1] : 1, st ? st[2]*act : 0); gl.uniformMatrix4fv(ULm.M, false, m4(M)); gl.uniform2f(ULm.LW, lwv[0], lwv[1]); gl.bindVertexArray(m.vao);
+        if(s.relic){ gl.colorMask(false,false,false,false); gl.disable(gl.CULL_FACE); gl.uniform1i(ULm.outline, 0); gl.uniform1f(ULm.ext, 0); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0); gl.colorMask(true,true,true,true); gl.uniform1i(ULm.outline, 2);
+          gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT); gl.uniform1f(ULm.ext, R.lw*2.2); }
+        else { gl.disable(gl.CULL_FACE); gl.uniform1f(ULm.ext, R.lw*1.2); }
+        gl.drawElements(gl.TRIANGLES, m.n, m.type, 0); }
+      gl.disable(gl.CULL_FACE);
+      gl.bindVertexArray(null);
+      c.globalCompositeOperation = "lighter"; c.globalAlpha *= 0.5; try{ c.filter = `blur(${Math.max(1.5, 3*k*dpr)}px)`; }catch(_){ } put(); }
+    c.restore();
+    return true;
+  }
+  /* 무기 하나만 크게: 자루 축을 화면 가로로 눕히고 축을 따라 돌린다(o.spin · o.tilt · o.t · o.line) */
+  function item(c, s, x, y, w, h, o){
+    o = o || {}; if(!init()) return false; loadIdx(); if(idxState!==2 || !s) return false;
+    if(s.relic && !(IDX.relics||{})[s.relic]) return false;
+    const mk = modelKey(s); if(!mk) return false; const m = mesh(mk); if(!m) return false;
+    const R = IDX.roles.ally, cam = R.cam, a = o.spin || 0, r = o.tilt || 0, ca = Math.cos(a), sa = Math.sin(a), cr = Math.cos(r), sr = Math.sin(r);
+    const act = o.act || 0, st = m.H.st, ext0 = st ? st[2] : 0, [mn, mx] = m.H.bb, cz = (mn[2]+mx[2]+ext0)/2, len = mx[2]-mn[2]+ext0, rad = Math.max(Math.abs(mn[0]), Math.abs(mx[0]), Math.abs(mn[1]), Math.abs(mx[1]));
+    // 카메라 공간: 무기 z → 가로, 무기 x · y → 축을 따라 돈다
+    const cx_ = [0, ca, sa], cy_ = [0, -sa, ca], cz_ = [1, 0, 0];
+    const rot = v => [v[0]*cr - v[1]*sr, v[0]*sr + v[1]*cr, v[2]];
+    const X = rot(cx_), Y = rot(cy_), Z = rot(cz_);
+    const Lm = [X[0], Y[0], Z[0], -Z[0]*cz, X[1], Y[1], Z[1], -Z[1]*cz, X[2], Y[2], Z[2], -Z[2]*cz - 5];
+    const M = mul(cam, Lm);
+    const tf = c.getTransform ? c.getTransform() : {a:1}, dpr = Math.hypot(tf.a, tf.b) || 1;
+    const W = Math.max(8, Math.round(w*dpr)), H = Math.max(8, Math.round(h*dpr));
+    let ey0 = rad, mid = 0;
+    if(o.tight){ ey0 = Math.max(mx[0]-mn[0], mx[1]-mn[1])/2*1.08; let lo = 1e9, hi = -1e9;
+      for(const xx of [mn[0], mx[0]]) for(const yy of [mn[1], mx[1]]){ const v = xx*ca - yy*sa; lo = Math.min(lo, v); hi = Math.max(hi, v); } mid = (lo + hi)/2; }
+    const ex = Math.abs(cr)*len/2 + Math.abs(sr)*ey0, ey = Math.abs(sr)*len/2 + Math.abs(cr)*ey0;
+    const sc = Math.min(W*0.46/ex, H*0.46/ey);   // 픽셀/미터
+    if(cv.width < W || cv.height < H){ cv.width = Math.max(cv.width, W); cv.height = Math.max(cv.height, H); }
+    const CH = cv.height;
+    gl.viewport(0, 0, W, H); gl.clearColor(0,0,0,0); gl.clearDepth(1); gl.depthMask(true); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+    gl.useProgram(PM); gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND);
+    const P = new Float32Array([2*sc/W,0,0,0, 0,2*sc/H,0,0, 0,0,-0.1,0, 0,-mid*2*sc/H,-1,1]);
+    gl.uniformMatrix4fv(ULm.V, false, m4(inv(cam))); gl.uniformMatrix4fv(ULm.P, false, P); gl.uniformMatrix4fv(ULm.M, false, m4(M));
+    gl.uniform3fv(ULm.sun, R.sun); gl.uniform3fv(ULm.eye, [cam[2], cam[6], cam[10]]);
+    const glow = s.glow; gl.uniform3fv(ULm.glow, lin(glow || "#e6e6ff")); gl.uniform1i(ULm.glowOn, glow && !s.relic ? 1 : 0);
+    gl.uniform1f(ULm.tm, (o.t!=null ? o.t : performance.now()/1000) % 1000); gl.uniform3fv(ULm.ecol, lin(m.H.ecol || (s.relic && glow) || "#3a66ff")); gl.uniform1i(ULm.haloSet, s.relic ? 1 : 0);
+    gl.uniform1f(ULm.act, act); gl.uniform3f(ULm.sr, st ? st[0] : 0, st ? st[1] : 1, st ? st[2]*act : 0);
+    gl.uniform3fv(ULm.cloth, lin(glow || "#b0403a")); gl.uniform2f(ULm.LW, 0, 0); gl.uniform3fv(ULm.metal, lin(s.metal || "#aab5b1"));
+    gl.bindVertexArray(m.vao);
+    gl.disable(gl.CULL_FACE); gl.uniform1i(ULm.outline, 0); gl.uniform1f(ULm.ext, 0); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0);
+    gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT); gl.uniform1i(ULm.outline, 1); gl.uniform3fv(ULm.lineCol, [0.03,0.035,0.04]);
+    gl.uniform1f(ULm.ext, (o.line || 1.6)*dpr/sc); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0);
+    gl.disable(gl.CULL_FACE);
+    const put = () => c.drawImage(cv, 0, CH - H, W, H, x - w/2, y - h/2, w, h);
+    c.save(); put();
+    if(s.relic || glow){ gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT); gl.uniform1i(ULm.outline, 2);
+      gl.colorMask(false,false,false,false); gl.uniform1i(ULm.outline, 0); gl.uniform1f(ULm.ext, 0); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0); gl.colorMask(true,true,true,true); gl.uniform1i(ULm.outline, 2);
+      gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT); gl.uniform1f(ULm.ext, 4*dpr/sc); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0); gl.disable(gl.CULL_FACE);
+      c.globalCompositeOperation = "lighter"; c.globalAlpha *= 0.8; try{ c.filter = `blur(${Math.max(2, 4*dpr)}px)`; }catch(_){ } put(); }
+    gl.bindVertexArray(null); c.restore();
+    return true;
+  }
+  /* 무기 모형의 길이 범위 · 굵기: [뒤 끝, 앞 끝, 반지름] (아직 못 읽었으면 null) */
+  function bbox(s){
+    if(!s || !init()) return null; loadIdx(); if(idxState!==2) return null;
+    if(s.relic && !(IDX.relics||{})[s.relic]) return null;
+    const mk = modelKey(s); if(!mk) return null; const m = mesh(mk);
+    if(!m) return m===null && s.relic ? [-0.3, 1.0, 0.06] : null;
+    const [mn, mx] = m.H.bb; return [mn[2], mx[2], Math.max(Math.abs(mn[0]), Math.abs(mx[0]), Math.abs(mn[1]), Math.abs(mx[1]))];
+  }
+  return {init, draw, item, bbox, get ok(){ return ok; }, get ready(){ return idxState===2; }, get idx(){ return IDX; }};
+})();
+
+/* 3D 인물 그림 켜기 · 끄기(이 기기에만 기억) — 그리기는 RTW가 한다 */
+const SPR = (()=>{
+  let on = true; try{ on = localStorage.getItem("spr3d")!=="0"; }catch(_){ }
+  function draw(c, x, gy, h, o){ if(!on) return false; try{ return RTW.draw(c, x, gy, h, o); }catch(e){ console.warn("RTW", e); return false; } }
+  return {draw, preload(){}, get on(){ return on; }, set on(v){ on = !!v; try{ localStorage.setItem("spr3d", on ? "1" : "0"); }catch(_){ } }, get idx(){ return RTW.idx; }};
+})();
+
+/* 시험: 3D 인물 그림 보기 — 무기 · 공격 방식 · 아군/적/평상 · 방어구 · 색을 골라 반복 재생 */
+async function openSprViewer(){
+  const ws = SHOP.filter(i=>i.slot==="weapon" && i.wtype);
+  const STY = {down:"내려베기", up:"올려베기", horiz:"가로베기", diag:"사선베기", smash:"내려찍기", swing:"휘두르기", upper:"올려치기", spin:"회전", jab:"잽", thrust:"찌르기", aim:"조준 사격"};
+  const COLS = ["#2f8452","#3d6fd6","#8a4fc0","#d08a2f","#a32f2f","#cfcfcf","#3a3a44"];
+  let wi = -1, role = "ally", style = null, col = COLS[0];
+  const specOf = ()=> wi<0 ? null : weaponSpecOf(ws[wi]);
+  await modal("3D 인물 그림 보기", `<canvas id="sprc" style="width:100%;aspect-ratio:720/360;display:block;border-radius:8px;border:1px solid var(--line);background:#16141c"></canvas>
+    <div class="fg-row" style="margin-top:8px;gap:6px;flex-wrap:wrap"><select id="sprw" style="max-width:100%"><option value="-1">맨손</option>${ws.map((w,i)=>`<option value="${i}">${esc((WEAPON_KINDS[w.wtype]||{}).n||w.wtype)} · ${esc(w.name)}</option>`).join("")}</select>
+    <select id="sprr"><option value="ally">아군(전투·뒷모습)</option><option value="foe">적(전투·앞모습)</option><option value="idle">평상([관리])</option></select>
+    <select id="spra"><option value="">방어구 없음</option>${ARMOR_TYPES.map((n,i)=>`<option value="${i}">${n}</option>`).join("")}</select>
+    <select id="sprp"><option value="0">어깨 장갑 없음</option><option value="1">어깨 장갑 작게</option><option value="2">어깨 장갑 크게</option></select>
+    <select id="sprk"><option value="0">깃 낮게</option><option value="1">깃 세움</option></select>
+    <select id="sprt"><option value="">장식선 없음</option>${GLOWS.filter(Boolean).map(g=>`<option value="${g}" style="color:${g}">${g}</option>`).join("")}</select>
+    <select id="sprs"></select></div>
+    <div class="fg-row" style="margin-top:8px"><span>색</span><div class="fg-sw">${COLS.map(cl=>`<button class="sw ${cl===col?"on":""}" data-sc="${cl}" style="background:${cl}"></button>`).join("")}</div>
+    <span style="margin-left:auto;opacity:.7;font-size:12px" id="sprn"></span></div>`, [{t:"닫기"}], false, root=>{
+    root.querySelector(".modal").classList.add("modal-wide");
+    const cv = root.querySelector("#sprc"), c = cv.getContext("2d"), W = 720, H = 360, sw = root.querySelector("#sprw"), sr = root.querySelector("#sprr"), ss = root.querySelector("#sprs");
+    const fillStyles = ()=>{ const s = specOf(), I = SPR.idx; const kk = !s ? "fist" : s.kind==="tool" ? (s.v===1 ? "saw" : "tool") : s.kind==="gun" ? (poseV(s)>0 ? "rifle" : "gun") : s.kind;
+      const list = (I && I.styles[kk]) || []; ss.innerHTML = list.map(k=>`<option value="${k}">${STY[k]||k}</option>`).join(""); style = list[0] || null; };
+    fillStyles();
+    sw.onchange = ()=>{ wi = +sw.value; fillStyles(); }; sr.onchange = ()=>{ role = sr.value; }; ss.onchange = ()=>{ style = ss.value; };
+    root.addEventListener("click", e=>{ const b = e.target.closest("[data-sc]"); if(!b) return; col = b.dataset.sc; root.querySelectorAll("[data-sc]").forEach(x=>x.classList.toggle("on", x===b)); });
+    const t0 = performance.now();
+    const loop = ()=>{ if(!cv.isConnected) return; const d = Math.min(2, devicePixelRatio||1); if(cv.width!==W*d){ cv.width = W*d; cv.height = H*d; }
+      c.setTransform(d,0,0,d,0,0); c.clearRect(0,0,W,H); const s = specOf(), t = (performance.now()-t0)/1000;
+      c.fillStyle = "rgba(255,255,255,0.05)"; c.beginPath(); c.ellipse(W/2, 318, 150, 16, 0, 0, 7); c.fill();
+      const av = root.querySelector("#spra").value, arm = av==="" ? null : {type:+av, pad:+root.querySelector("#sprp").value, collar:+root.querySelector("#sprk").value, trim:root.querySelector("#sprt").value || null};
+      let o = {col, weapon:s, spr:true, t, armor:arm};
+      if(role==="ally" || role==="foe"){ const kd = s ? s.kind : "none", tm = timingOf(kd), cyc = 1.9;
+        o = Object.assign(o, {face: role==="foe" ? -1 : 1, state:"combat", atk: style ? {style, ph: Math.min(3, atkPhase((t % cyc) - 0.35, kd==="rapier" && style==="thrust" ? 3 : 1, tm))} : null}); }
+      else o = Object.assign(o, {face:1, state: role});
+      const ok = SPR.draw(c, W/2, 318, role==="foe" ? 220 : 250, o);
+      if(!ok) drawFixer(c, W/2, 318, role==="foe" ? 220 : 250, Object.assign({}, o, {spr:false}));
+      root.querySelector("#sprn").textContent = ok ? "3D 그림" : (SPR.on ? "불러오는 중 · 기존 그림" : "3D 그림 꺼짐 · 기존 그림");
+      requestAnimationFrame(loop); };
+    loop();
+  });
+}
+
 function drawFixer(c, x, gy, h, o={}){
+  if(o.spr && SPR.draw(c, x, gy, h, o)) return;
   return drawFixerSD(c, x, gy, h, o);       // 모든 무기: 5등신 3/4 시점 인물(아군은 전투에서 뒷모습). 아래는 이전 방식(쓰지 않음)
   const t = o.t!=null ? o.t : performance.now()/1000, state = o.state || "idle", face = o.face || 1;
   const B = BODY_STATE[state] || BODY_STATE.idle, hk = state==="combat" ? clamp(o.hurt||0,0,1) : 0;
@@ -14128,22 +14546,21 @@ function fxTestPanel(){
   if(!S){ newGame("테스트 대표","연출 시험 사무소","테스트 동료"); for(let n=S.fixers.length;n<5;n++){ S.fixers.push(newFixer(`시험 해결사 ${n+1}`,9,genStats(9))); } leaveTitle(); render(); }
   const el=document.createElement("div"); el.className="fxtest";
   el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
-   <b>일반 의뢰</b><div class="g">${[["str","물리"],["agi","속도"],["tec","정밀"]].map(([a,l])=>`<button data-fx="일반|${a}|1">${l} 성공</button><button data-fx="일반|${a}|0">${l} 실패</button>`).join("")}</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
-   <b>호위 · 수색</b><div class="g"><button data-fx="호위|str|1">호위 성공</button><button data-fx="호위|str|0">호위 실패</button><button data-fx="수색|agi|1">수색 성공</button><button data-fx="수색|agi|0">수색 실패</button></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
    <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="assoc">협회 의뢰</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="nom">지명 의뢰 올리기</button><button data-adj="lootreq">특수 전리품 의뢰 올리기</button><select id="fxacc">${LOOT_ACC.map(x=>`<option value="${x.id}">${x.name}</option>`).join("")}</select><button data-adj="giveacc">대표에게 장신구 주기</button><button data-adj="lowhp">대표 체력·정신력 위험으로</button><button data-adj="dk">대표 뒤틀림 처치 +1</button><button data-adj="deye">대표에게 뒤틀림을 보는 눈</button><button data-adj="dreq">뒤틀림 처리 의뢰 올리기</button><button data-adj="reg">사무소 신뢰도 올리기</button><button data-adj="regban">사무소 신뢰도 내리기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="astrape">아스트라페 봉인 단계</button><button data-adj="relicall">유물 생김새 모아 보기</button><button data-adj="shin80">대표 신 · 망 감기 준비</button><button data-adj="streak">사흘 연속 출동 → 피로</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="nom">지명 의뢰 올리기</button><button data-adj="lootreq">특수 전리품 의뢰 올리기</button><select id="fxacc">${LOOT_ACC.map(x=>`<option value="${x.id}">${x.name}</option>`).join("")}</select><button data-adj="giveacc">대표에게 장신구 주기</button><button data-adj="lowhp">대표 체력·정신력 위험으로</button><button data-adj="dk">대표 뒤틀림 처치 +1</button><button data-adj="deye">대표에게 뒤틀림을 보는 눈</button><button data-adj="dreq">뒤틀림 처리 의뢰 올리기</button><button data-adj="reg">사무소 신뢰도 올리기</button><button data-adj="regban">사무소 신뢰도 내리기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="astrape">유물 무기 봉인 단계 · 적성 시험</button><button data-adj="relicall">유물 생김새 모아 보기</button><button data-adj="shin80">대표 신 · 망 감기 준비</button><button data-adj="streak">사흘 연속 출동 → 피로</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
-   <b>참격 VFX</b><div class="g"><button data-fxc="slash">참격·히트 시험장</button></div>
    <b>환상체 · 죄종</b><div class="g"><select id="fxab" style="max-width:100%">${["죄종","ZAYIN","TETH","HE","WAW","ALEPH"].map(r=>`<optgroup label="${r}">${ABNOS.filter(a=>a.risk===r).map(a=>`<option value="${a.id}">${esc(a.n)}${a.canon?" ·원작":""}</option>${a.variant?`<option value="${a.id}~v">${esc(a.n)} (아종: ${esc(a.variant.n)})</option>`:""}`).join("")}</optgroup>`).join("")}</select>
      <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="cityall">도시 일람 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">모든 기프트를 도감에 추가</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
    <b>원작 환상체 기믹 시험</b><div class="g"><button data-ab="bless">대표에게 기사의 축복</button><button data-ab="despair">축복받은 이 쓰러뜨리기</button><button data-ab="flame">대표에게 용기의 불꽃 +1</button><button data-ab="feast">대표에게 요정의 축제</button><button data-ab="prick">대표가 가시에 찔림</button><button data-ab="solitude">대표에게 고독</button><button data-ab="bullet">마탄 2발(6·7번째 탄환)</button><button data-ab="skin">가죽 쓴 동료의 방문</button><button data-ab="gun">대표에게 총 쥐여 주기</button><button data-ab="sup5">환상체 제압 수 +5</button><button data-ab="clear">기믹 상태 모두 지우기</button></div>`;
   document.body.appendChild(el);
+  el.insertAdjacentHTML("beforeend",`<h4>3D 인물 그림</h4><div class="g"><button data-spr3="toggle">3D 그림 켜기/끄기</button><button data-spr3="view">무기 · 공격 방식 보기</button></div>`);
+  el.addEventListener("click", e=>{ const k = e.target.closest("[data-spr3]")?.dataset.spr3; if(!k) return; if(k==="toggle"){ SPR.on = !SPR.on; toast(`3D 인물 그림 ${SPR.on ? "켜짐" : "꺼짐"}`); } else openSprViewer(); });
   el.insertAdjacentHTML("beforeend",`<h4>V.a1.2.6.3 전용 시험</h4><div class="g">
     <button data-newtest="trustplus">선택 동료 신뢰 +4</button><button data-newtest="trustminus">선택 동료 신뢰 -3</button>
     <button data-newtest="sur">주변 상황 보기</button>
@@ -14170,8 +14587,7 @@ function fxTestPanel(){
     else if(k==="omen"){ const t = S.fixers.find(x=>!x.isLeader) || f; const tone = Math.random()<0.5 ? "vermil" : "moon"; showOmen(t.name, pick(OMEN[tone]), tone); }
     else if(k==="ego0" || k==="ego1"){ const t = k==="ego0" ? f : S.fixers.find(x=>!x.isLeader); if(!t) return toast("동료가 없다"); t.ego = null; await bloomEgo(t); save(); render(); }
     else if(k==="shop") await openShop();
-    else if(k==="rig") await openRigGallery();
-    else if(k==="slash") await openSlashLab(); });
+    else if(k==="rig") await openRigGallery();  });
   el.addEventListener("click", async e=>{ const k = e.target.dataset.adj; if(!k) return; const L = leader(), v = id => +el.querySelector(id).value;
     if(k==="office"){ S.officeGrade = v("#fxog"); save(); render(); return toast(`사무소 등급 → ${gName(S.officeGrade)}`); }
     if(k==="leader"){ const g = v("#fxlg"); if(g===0){ await passColor(L); } else { L.grade = g; L.title = null; L.tcol = null; L.cap = 70; } save(); render(); return toast(`대표 → ${gName(L.grade)}`); }
@@ -14206,17 +14622,45 @@ function fxTestPanel(){
     if(k==="arcnext"){ const X = arcState(); if(X.i >= ARCS.length){ X.i = 0; X.ch = 0; } const A = ARCS[X.i]; S.requests = S.requests.filter(q=>!q.arc); S.requests.unshift(arcReq(A, X.ch)); save(); render(); return toast(`사건 「${A.n}」 ${X.ch+1}장 게시`); }
     if(k==="hanastar"){ S.requests.unshift(hanaStarReq()); save(); render(); return toast("하나 협회 지정 도시의 별 게시"); }
     if(k==="relicreq"){ const q = makeRequest(3, {kind:"일반", attrs:["str"], noRelic:true}); q.relic = true; S.requests.unshift(q); save(); render(); return toast("유물 의뢰 게시"); }
-    if(k==="relicall"){ closeAll(); const cv = RELICS.filter(R=>R.slot!=="full").map(R=>`<div style="display:inline-block;margin:4px;text-align:center;font-size:12px"><canvas data-rv="${R.id}" width="180" height="180" style="background:#15161a;border-radius:6px;width:150px;height:150px"></canvas><br>${R.name}</div>`).join("");
-      modal("유물 생김새", `<div style="max-width:720px">${cv}</div>`, [{t:"닫기"}], null, el=>{ el.querySelectorAll("[data-rv]").forEach(cn=>{ const R = RELICS.find(r=>r.id===cn.dataset.rv), ix = cn.getContext("2d"); try{ relicArt(ix, R, 180, 180, 1.2, 0); }catch(e){ console.error(e); } }); }); return; }
+    if(k==="relicall"){ closeAll(); const cv = RELICS.filter(R=>R.slot!=="full").map(R=>R.slot==="weapon" ? `<div style="display:inline-block;margin:4px;text-align:center;font-size:12px"><canvas data-rv="${R.id}" width="180" height="180" style="background:#15161a;border-radius:6px;width:150px;height:150px"></canvas><br>${R.name}</div>` : `<div style="margin:6px 4px;padding:8px 10px;background:#15161a;border-radius:6px;font-size:12px;line-height:1.6"><b>${R.name}</b> <span class="muted">${R.origin}</span><br>${esc(R.d)}</div>`).join("");
+      modal("유물 생김새", `<div style="max-width:720px">${cv}</div>`, [{t:"닫기"}], null, el=>{ const cvs = [...el.querySelectorAll("[data-rv]")], t0 = performance.now(); RTW.bbox({kind:"spear", relic:"astrape", seal:0});
+        const tick = ()=>{ if(!document.body.contains(el)) return; const t = (performance.now() - t0)/1000;
+          cvs.forEach(cn=>{ const R = RELICS.find(r=>r.id===cn.dataset.rv), ix = cn.getContext("2d"); ix.clearRect(0, 0, 180, 180);
+            ix.save(); ix.translate(90, 90); ix.rotate(-0.6); const ok = RTW.item(ix, {kind:R.kind, relic:R.id, seal:0, add:[]}, 0, 0, 230, 120, {spin: 0.35 + t*0.6, t, tight: true, line: 1.1}); ix.restore();
+            if(!ok){ try{ relicArt(ix, R, 180, 180, 1.2, 0); }catch(e){ console.error(e); } } });
+          requestAnimationFrame(tick); }; tick(); }); return; }
     if(k==="shin80"){ L.shin = true; L.shinOff = false; L.shinUses = Math.max(L.shinUses||0, MANG_NEED[Math.min(MANG_MAX-1, L.mang||0)]); L.mp = L.mpMax; save(); render(); toast(`${L.name}: 신을 감았고, 망을 감을 수 있다(관리 → 해결사).`); return; }
-    if(k==="astrape"){ closeAll(); const R = RELICS.find(r=>r.id==="astrape"), L0 = R.look.len || 0.85, labels = ["원본","한 겹 봉인","두 겹 봉인"];
-      let raf = 0, live = true;
-      modal("아스트라페 — 봉인 단계", `<div class="muted" style="margin-bottom:8px">위에서부터 두 겹 봉인 → 한 겹 봉인 → 원본. 셰이더로 그린 실시간 모습.</div>${[2,1,0].map(st=>`<div style="margin:6px 0"><b>${labels[st]}</b><canvas data-as="${st}" width="900" height="200" style="display:block;width:100%;background:#121218;border-radius:6px"></canvas></div>`).join("")}
-        <div style="display:flex;gap:6px;margin-top:8px">${[2,1,0].map(st=>`<button data-asq="${st}">대표에게 쥐여 보기(${labels[st]})</button>`).join("")}</div>`, [{t:"닫기"}], null, el=>{
-        const cvs = [...el.querySelectorAll("[data-as]")];
-        const tick = ()=>{ if(!live || !document.body.contains(el)){ live = false; return; } cvs.forEach(cn=>{ const x = cn.getContext("2d"); x.clearRect(0, 0, cn.width, cn.height); const sp = RelicSDF.sprite("astrape", +cn.dataset.as, L0); if(!sp) return; const v = sp.v, u = cn.width*0.94/(v.x1 - v.x0);
-          x.save(); x.translate(cn.width*0.03 - v.x0*u, cn.height/2); x.drawImage(sp.c, v.x0*u, -v.y*u, (v.x1 - v.x0)*u, 2*v.y*u); x.restore(); }); raf = requestAnimationFrame(tick); }; tick();
-        el.querySelectorAll("[data-asq]").forEach(b=>b.onclick = ()=>{ const st = +b.dataset.asq; window.__astrapeSeal = st; L.gear.weapon = Object.assign(relicItem(R, L), {seal: st}); L.gear.weapon.look = Object.assign({}, L.gear.weapon.look, {seal: st}); save(); render(); toast(`${L.name}: 아스트라페(${labels[st]})를 쥐었다`); });
+    if(k==="astrape"){ closeAll(); for(let i=0; i<40 && !(RTW.idx && RTW.idx.relics); i++){ RTW.bbox({kind:"spear", relic:"astrape", seal:0}); await new Promise(r=>setTimeout(r, 100)); }
+      const ids = Object.keys((RTW.idx && RTW.idx.relics) || {}), WR = RELICS.filter(r=>r.slot==="weapon" && ids.includes(r.id));
+      if(!WR.length){ toast("유물 무기 3D 모형을 아직 읽지 못했다 — 잠시 뒤 다시"); return; }
+      let live = true, cur = WR[0], fm = "", ft = 1;
+      const body = ()=>`<div class="muted" style="margin-bottom:6px">위에서부터 두 겹 봉인 → 한 겹 봉인 → 원본. 실시간 3D(천천히 돈다).</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px">${WR.map(R=>`<button data-rw="${R.id}"${R===cur?' class="primary"':''}>${R.name}</button>`).join("")}</div>
+        ${[2,1,0].map(st=>`<div style="margin:4px 0"><b>${SEAL_NAME[st]}</b><canvas data-as="${st}" width="900" height="190" style="display:block;width:100%;background:#0c0d10;border-radius:6px"></canvas></div>`).join("")}
+        <b>대표에게 쥐여 보기</b><div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px">${[2,1,0].map(st=>`<button data-asq="${st}">${SEAL_NAME[st]}${st===0?" (봉인 골라 쓰기 가능)":""}</button>`).join("")}</div>
+        <b>처음 마주했을 때 적성 시험(연출 포함)</b>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0">발견 방식 ${[["","무작위"],["chance","우연"],["guard","수호자"],["rumor","소문"]].map(([k,n])=>`<button data-afm="${k}"${fm===k?' class="primary"':''}>${n}</button>`).join("")}
+          · 일행 ${[1,3].map(k=>`<button data-aft="${k}"${ft===k?' class="primary"':''}>${k}명</button>`).join("")}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${[[12,"부적합"],[32,"낮은 적합"],[52,"적정 적합"],[72,"적합"]].map(([v,n])=>`<button data-afit="${v}">${n}</button>`).join("")}</div>`;
+      modal("유물 무기 — 봉인 단계", `<div id="rwbox">${body()}</div>`, [{t:"닫기"}], null, el=>{
+        const box = el.querySelector("#rwbox"), t0 = performance.now();
+        const tick = ()=>{ if(!live || !document.body.contains(el)){ live = false; return; } const t = (performance.now() - t0)/1000;
+          box.querySelectorAll("[data-as]").forEach(cn=>{ const x = cn.getContext("2d"); x.clearRect(0, 0, cn.width, cn.height); RTW.item(x, {kind:cur.kind, relic:cur.id, seal:+cn.dataset.as, add:[]}, cn.width/2, cn.height/2, cn.width*0.98, cn.height*0.96, {spin: 0.35 + t*0.6, t, line: 1.4, tight: true, act: 0.5 - 0.5*Math.cos(t*1.3)}); });
+          requestAnimationFrame(tick); }; tick();
+        const wire = ()=>{
+          box.querySelectorAll("[data-rw]").forEach(b=>b.onclick = ()=>{ cur = WR.find(r=>r.id===b.dataset.rw); box.innerHTML = body(); wire(); });
+          box.querySelectorAll("[data-asq]").forEach(b=>b.onclick = ()=>{ const st = +b.dataset.asq, old = L.gear.weapon; L.gear.weapon = Object.assign(relicItem(cur, L, st), {sealFree: st===0});
+            if(old && !old.relic){ S.inventory = S.inventory || []; S.inventory.push(old); } save(); render(); toast(`${L.name}: ${cur.name}(${SEAL_NAME[st]})를 쥐었다`); });
+          box.querySelectorAll("[data-afm]").forEach(b=>b.onclick = ()=>{ fm = b.dataset.afm; box.innerHTML = body(); wire(); });
+          box.querySelectorAll("[data-aft]").forEach(b=>b.onclick = ()=>{ ft = +b.dataset.aft; box.innerHTML = body(); wire(); });
+          box.querySelectorAll("[data-afit]").forEach(b=>b.onclick = async ()=>{ const v = +b.dataset.afit, fit = {fate: v - 24, str: 18, gr: 6, v, tier: relicTier(v)}, ok = v > RELIC_FIT_MIN, R = cur;
+            const others = S.fixers.filter(x=>x!==L).slice(0, ft - 1).map(x=>{ const w = Math.max(0, v - rnd(4, 22)); return {f:x, fit:{fate: w - 24, str: 18, gr: 6, v: w}}; });
+            const X = {mode: fm || pick(RELIC_FIND), cands:[{f:L, fit}].concat(others)}; fit.mode = X.mode;
+            live = false; closeAll(); await relicScene(R, L, fit, ok, X);
+            if(!ok){ addLog(`유물 「${R.name}」${jo(R.name,"이").slice(R.name.length)} ${jo(L.name,"을")} 주인으로 고르지 않고 사라졌다 (시험)`); save(); render(); return; }
+            const it = relicItem(R, L, fit.tier), old = L.gear.weapon; it.sealFree = fit.tier===0; L.gear.weapon = it;
+            if(old && !old.relic){ S.inventory = S.inventory || []; S.inventory.push(old); } save(); render(); toast(`${L.name}: ${R.name} — ${SEAL_NAME[it.seal]}${it.sealFree ? " (관리에서 봉인 단계를 고를 수 있다)" : ""}`); });
+        }; wire();
       }); return; }
     if(k==="relicok" || k==="relicno"){ closeAll(); const R = pick(RELICS), f = L, fit = k==="relicok" ? {fate:24, str:18, gr:6, v:48} : {fate:-22, str:14, gr:2, v:0};
       await relicScene(R, f, fit, k==="relicok"); if(k==="relicok"){ const it = relicItem(R, f), old = f.gear[R.slot]; f.gear[R.slot] = it; if(old && !old.relic){ S.inventory = S.inventory||[]; S.inventory.push(old); } S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 시험`}); } save(); render(); return; }
@@ -14278,54 +14722,12 @@ function fxTestPanel(){
     const r = await runMinigames(q, team); toast(r.decisive!=null ? `직접 수행 ${r.decisive?"성공":"실패"}` : `미니게임 점수 ${Math.round(r.score*100)}점`); });
 }
 
-// 테스트: 참격·히트 VFX 시험장
-// [이름, 무기, 모양 번호, 공격 동작, 연속 횟수]
-const SLASH_LAB = [
-  ["양날검 내려베기","blade",0,"down"],["외날검 올려베기","blade",1,"up"],["톱날검 가로베기","blade",2,"horiz"],["단검 대각선 베기","blade",3,"diag"],
-  ["양손검 내려베기","long",0,"down"],["양손검(장도) 가로베기","long",1,"horiz"],["쌍검 교차 베기","twin",0,"diag"],
-  ["대검 내려치기","great",0,"smash"],["망치 내려치기","blunt",0,"smash"],["메이스 후려치기","blunt",1,"swing"],["몽둥이 올려치기","blunt",2,"upper"],["도끼 내려찍기","blunt",3,"smash"],
-  ["봉 휘돌려 치기","staff",0,"spin"],["건틀릿 지르기","fist",0,"jab"],
-  ["창 찌르기","spear",0,"thrust"],["랜스 돌격","lance",1,"thrust"],["레이피어 삼연 찌르기","rapier",0,"thrust",3],["권총 사격","gun",0,"aim"],["산탄총 사격","gun",1,"aim"],["장총 사격","gun",2,"aim"]
-];
 // 공격 동작 시간표(초): 젖힘 0~0.2 → 휘두름 0.2~0.29 → 멈춤 → 대기로 0.38~0.74. 연속이면 0.2~0.38 사이에 여러 번
 function atkPhase(k, multi=1, tm=[200,90,90,360]){
   const a = tm[0]/1000, b = a + tm[1]/1000, c2 = b + tm[2]/1000, d = c2 + tm[3]/1000;
   if(k<0) return 0; if(k<a) return k/a;
   if(k<c2 && multi>1){ const f = (k-a)/(c2-a)*multi, fr = f - Math.floor(f); return Math.floor(f)>=multi-1 && fr>0.5 ? 2 : (fr<0.5 ? 1+ease(fr/0.5) : 2-ease((fr-0.5)/0.5)); }
   if(k<b) return 1 + ease((k-a)/(b-a)); if(k<c2) return 2; return Math.min(3, 2 + (k-c2)/(d-c2));
-}
-async function openSlashLab(){
-  let auto = true, idx = -1, glow = null;
-  await modal("참격 · 타격 · 관통 VFX", `<canvas id="slc" style="width:100%;aspect-ratio:720/360;display:block;border-radius:8px;border:1px solid var(--line)"></canvas>
-    <div class="fg-seg" style="margin-top:8px">${SLASH_LAB.map((s,i)=>`<button data-sl="${i}">${s[0]}</button>`).join("")}<button data-sauto="1" class="on">자동 반복</button></div>
-    <div class="fg-row" style="margin-top:8px"><span>발광색</span><div class="fg-sw">${GLOWS.map(cl=>`<button class="sw ${cl===glow?"on":""}" data-sg="${cl||"none"}" style="background:${cl||"transparent"}">${cl?"":"✕"}</button>`).join("")}</div></div>`, [{t:"닫기"}], false, root=>{
-    root.querySelector(".modal").classList.add("modal-wide");
-    const cv = root.querySelector("#slc"), c = cv.getContext("2d"), W = 720, H = 360, V = SlashFX.make(W, H), AX = 250, TX = 470, GY = 305;
-    let last = -9, cur = null;
-    const fire = i => { idx = i; const s = SLASH_LAB[i], spec = Object.assign(defaultSpec(s[1]), {v:s[2], glow});
-      cur = {i, t0: performance.now()/1000, spec};
-      // 손이 맞는 자리에 닿는 순간(0.29초)에 맞춘다
-      const tm = timingOf(s[1]); slashAt(V, s[1], TX, 200, 92, {face:1, style:s[3], multi:s[4]||1, spec, groundY:GY, fromX: AX+82, fromY: 182, delay:(tm[0]+tm[1])/1000}); };
-    const lbl = root.querySelectorAll("[data-sl]");
-    const loop = ()=>{ if(!cv.isConnected) return; const d = devicePixelRatio||1; if(cv.width !== W*d){ cv.width = W*d; cv.height = H*d; }
-      c.setTransform(d,0,0,d,0,0); const g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#17141f"); g.addColorStop(1,"#09080c"); c.fillStyle = g; c.fillRect(0,0,W,H);
-      c.fillStyle = "rgba(255,255,255,0.04)"; c.beginPath(); c.ellipse(TX, GY, 120, 16, 0, 0, 7); c.fill(); c.beginPath(); c.ellipse(AX, GY, 120, 16, 0, 0, 7); c.fill();
-      const t = performance.now()/1000, s = cur ? SLASH_LAB[cur.i] : SLASH_LAB[0], k = cur ? t - cur.t0 : 9, tm = timingOf(s[1]), ph = atkPhase(k, s[4]||1, tm);
-      const im = (tm[0]+tm[1])/1000, hl = im + tm[2]/1000, go = k<im ? ease(Math.max(0,k)/im) : 1 - ease(clamp((k-hl)/(tm[3]/1000),0,1)), reach = s[1]==="gun" ? 10 : s[1]==="rapier"||s[1]==="spear"||s[1]==="lance" ? 30 : 60;
-      drawFixer(c, AX + go*reach, GY, 172, {face:1, col:SIDE_COL.ally.fill, state:"combat", weapon: cur ? cur.spec : defaultSpec("blade"), atk: {style:s[3], ph}, rot: 0.08*go});
-      const hk = k-im, fl = hk>0 && hk<0.2 ? (1-hk/0.2) : 0;
-      drawFixer(c, TX + (hk>0 && hk<0.4 ? Math.sin(hk/0.4*Math.PI)*12 : 0), GY, 160, {face:-1, col: fl>0 ? hexMix(SIDE_COL.foe.fill, "#fff4e8", fl*0.35) : SIDE_COL.foe.fill, state:"combat", rot: hk>0 && hk<0.4 ? -0.1*Math.sin(hk/0.4*Math.PI)*-1 : 0, weapon: Object.assign(defaultSpec("blade"),{metal:"#b9aca9"})});
-      if(V){ V.render(); c.drawImage(V.canvas, 0, 0, W, H); } else { c.fillStyle="#f88"; c.fillText("WebGL을 쓸 수 없는 환경", 20, 20); }
-      c.fillStyle = "#e6e1d8"; c.font = `700 15px "Noto Sans KR",sans-serif`; c.fillText(s[0] + (cur ? "" : ""), 18, 28);
-      c.fillStyle = "#9a9387"; c.font = `500 12px "Noto Sans KR",sans-serif`; c.fillText(`${CAT_NAME[WEAPON_KINDS[s[1]].cat]} · ${WEAPON_KINDS[s[1]].n}`, 18, 46);
-      if(auto && t - last > 1.8){ last = t; fire((idx+1) % SLASH_LAB.length); lbl.forEach((b,j)=>b.classList.toggle("on", j===idx)); }
-      requestAnimationFrame(loop); };
-    requestAnimationFrame(loop);
-    root.addEventListener("click", e=>{ const d = e.target.dataset;
-      if(d.sl!=null){ auto = false; root.querySelector("[data-sauto]").classList.remove("on"); fire(+d.sl); lbl.forEach((b,j)=>b.classList.toggle("on", j===idx)); }
-      else if(d.sauto){ auto = !auto; e.target.classList.toggle("on", auto); }
-      else if(d.sg){ glow = d.sg==="none" ? null : d.sg; root.querySelectorAll("[data-sg]").forEach(x=>x.classList.toggle("on", x.dataset.sg===d.sg)); } });
-  });
 }
 // 테스트: 무기 종류 × 상태 실루엣 한눈에 보기
 async function openRigGallery(){
