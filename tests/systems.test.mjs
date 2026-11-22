@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-// 미리보기 1.2.5.7 독립 회귀 검사: node --test tests/systems.test.mjs
+// 미리보기 V.a1.2.6.3 독립 회귀 검사: node --test tests/systems.test.mjs
 // 운영 파일은 검사하거나 수정하지 않는다.
 const preview=readFileSync(new URL('../public/preview.html',import.meta.url),'utf8');
 const scripts=[...preview.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
@@ -12,7 +12,7 @@ function section(before,after){
   assert.ok(a>=0&&b>a,`검사 대상 코드 누락: ${before} → ${after}`);
   return game.slice(a,b);
 }
-test('미리보기 버전 1.2.5.7',()=>assert.match(game,/const VERSION = "1\.2\.5\.7"/));
+test('미리보기 버전 V.a1.2.6.3',()=>assert.match(game,/const VERSION = "V\.a1\.2\.6\.3"/));
 test('미리보기 인라인 자바스크립트 문법',()=>scripts.forEach((s,i)=>assert.doesNotThrow(()=>new vm.Script(s,{filename:`preview-${i}.js` }))));
 test('기존 저장 키와 저장 파일 호환',()=>{
   assert.match(game,/const SAVE_KEY = "problem-solver-office-save-v1"/);
@@ -55,7 +55,7 @@ test('의체 정비비를 못 내면 자금은 음수가 되지 않고 출동 �
 test('주급 미납액 이월 및 잔액 음수 방지',()=>{
   const f={isLeader:false,wage:2000,mp:100,mpMax:100};
   const cx={Math,S:{money:1000,moved:false,fixers:[f]},accFx:()=>false,INJ_COST:500,
-    won:n=>n,addLog:()=>{},RENT_DAYS:28,rentForecast:()=>({total:0,base:0}),RENT_SALES:0.1};
+    won:n=>n,addLog:()=>{},ac:()=>{},changeFixerTrust:()=>{},RENT_DAYS:28,rentForecast:()=>({total:0,base:0}),RENT_SALES:0.1};
   vm.createContext(cx);vm.runInContext(section('function officeFees(','async function review('),cx);
   cx.officeFees(7);assert.equal(cx.S.money,0);assert.equal(f.wageDue,1000);
   cx.S.money=5000;cx.officeFees(14);assert.equal(cx.S.money,2000);assert.equal(f.wageDue,0);
@@ -82,4 +82,71 @@ test('목표 달성 시 의뢰 확정 성공',()=>assert.match(game,/else if\(r\
 test('피해 예측과 실제 정산 공통 계산 함수 사용',()=>{
   assert.match(game,/const pct = damagePercent\(f,q,success,w,mental,march/);
   assert.match(game,/mx\*damagePercent\(f,q,success,w,mental,march\)/);
+});
+
+
+test('고용 해결사의 신뢰 기본값과 창립 동료',()=>{
+  assert.match(game,/hp:100, hpMax:100, mp:100, mpMax:100, trust:50, personality:/);
+  assert.match(game,/S\.fixers\.push\(L,P\); P\.trust=65;/);
+  assert.match(game,/if\(!f\.isLeader && !Number\.isFinite\(f\.trust\)\) f\.trust=f\.founder\?65:50/);
+});
+test('개인 신뢰는 0~100 범위, 대표는 제외',()=>{
+  const cx={Math,S:{log:[]},addLog:()=>{},ac:()=>{}};vm.createContext(cx);
+  vm.runInContext(section('function fixerTrust(','function initSurroundings('),cx);
+  const f={name:'직원',trust:50,isLeader:false};
+  cx.changeFixerTrust(f,4,'성공');assert.equal(f.trust,54);
+  cx.changeFixerTrust(f,-3,'미납');assert.equal(f.trust,51);
+  cx.changeFixerTrust(f,200,'상승');assert.equal(f.trust,100);
+  cx.changeFixerTrust(f,-200,'하락');assert.equal(f.trust,0);
+  const lead={isLeader:true,trust:60};cx.changeFixerTrust(lead,-3,'미납');assert.equal(lead.trust,60);
+});
+test('버전 변경 후 의뢰 보수를 반복 삭감하지 않음',()=>{
+  const cx={VERSION:'V.a1.2.6.3',fixGrade1Threat:()=>{},Math};vm.createContext(cx);
+  vm.runInContext(section('function migrate1247(','const NOM_P ='),cx);
+  const d={v:'1.2.5.7',requests:[{grade:8,reward:10000,accepted:false}]};
+  cx.migrate1247(d);cx.migrate1247(d);
+  assert.equal(d.requests[0].reward,10000);assert.equal(d.v,'V.a1.2.6.3');
+});
+test('주변 사무소 초기 급수와 주간 폐업 확률',()=>{
+  const cx={S:{day:1,officeGrade:8,log:[]},Math,gName:n=>n+'급',ac:()=>{},FINGER_NEWS:['손가락'],CITY_NEWS:['도시']};
+  vm.createContext(cx);vm.runInContext(section('function initSurroundings(','const FINGER_NEWS='),cx);
+  const D=cx.initSurroundings();
+  assert.deepEqual(Array.from(D.offices.map(o=>o.grade)),[8,8,6]);
+  assert.deepEqual(Array.from(D.offices.map(o=>o.p)),[.04,.04,.005]);
+  cx.surroundingsHandOff({id:1,grade:8,client:'주민',text:'수색'});
+  assert.equal(D.jobs.length,1);
+  cx.S.day=5;cx.surroundingsTick();assert.notEqual(D.jobs[0].status,'수행 중');
+});
+test('폐지부 0.1% 등장 및 지하 1~5층',()=>{
+  const floors=JSON.parse(game.match(/const RUINS_FLOORS=({[^;\n]+});/)[1]);
+  const areas=JSON.parse(game.match(/const RUINS_AREAS=({[^;\n]+});/)[1]);
+  assert.deepEqual(Array.from(Object.values(floors)),[1,2,3,4,5]);
+  const m=Object.create(Math);m.random=()=>.0009;
+  const cx={S:{day:10},Math:m,RUINS_FLOORS:floors,RUINS_AREAS:areas,threatOf:q=>q.threat};
+  vm.createContext(cx);vm.runInContext(section('function maybeRuinsRequest(','function ruinsPickNode('),cx);
+  const q={kind:'일반',grade:8,threat:'도시 괴담',req:8};
+  assert.equal(cx.maybeRuinsRequest({...q}).ruins.floor,1);
+  m.random=()=>.001;assert.equal(cx.maybeRuinsRequest({...q}).ruins,undefined);
+});
+test('폐지부 5층에도 휴식과 정보 수집 경로 가능',()=>{
+  const rooms=JSON.parse(game.match(/const RUINS_ROOMS=({[^;\n]+});/)[1]);
+  const m=Object.create(Math);m.random=()=>.5;
+  const cx={RUINS_ROOMS:rooms,Math:m};vm.createContext(cx);
+  vm.runInContext(section('function ruinsPickNode(','function makeRuinsMap('),cx);
+  m.random=()=>.88;assert.equal(cx.ruinsPickNode(5,2).kind,'rest');
+  m.random=()=>.99;assert.equal(cx.ruinsPickNode(5,2).kind,'intel');
+});
+test('엔케팔린 통 보상 및 매각 가격',()=>{
+  const m=Object.create(Math);m.random=()=>0;
+  const cx={S:{day:9,inventory:[]},Math:m,ac:()=>{},acSet:()=>{},won:n=>n};vm.createContext(cx);
+  vm.runInContext(section('function ruinsReward(','const RUINS_FLOORS='),cx);
+  cx.ruinsReward({id:1,ruins:{floor:5},ruinsResult:{cans:9,intel:2,won:4}},[]);
+  const enk=cx.S.inventory.filter(x=>x.name==='엔케팔린 통');
+  assert.equal(enk.length,5);assert.ok(enk.every(x=>x.pawnFixed===50000));
+  assert.equal(cx.S.inventory.filter(x=>x.ruinsRare).length,1);
+});
+test('미확정 메인 스토리 미반영, 기존 연속 사건 유지',()=>{
+  for(const phrase of ['function mainlineState()','mainlineSpawn()','const MAINLINE=','검은 출근부'])
+    assert.equal(game.includes(phrase),false,phrase);
+  assert.ok(game.includes('const ARCS = ['));
 });
