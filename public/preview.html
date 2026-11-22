@@ -2421,8 +2421,18 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       lines.push(`<span style="color:#d8c9a0">사무소 이야기 · ${titleOf(id)}의 후속 이야기가 생겼습니다.</span>`);
     }
     if(success&&q.kind!=="특색 심사"&&threatOf(q)==="도시의 별"){
-      d.starWins++;
+      d.starPending={qid:q.id,members:team.map(f=>f.id)};
     }
+  }
+  function starAfter(q,team,success){
+    if(!S||S.over||!q) return;
+    const d=state(),pending=d.starPending;
+    if(!pending||pending.qid!==q.id) return;
+    delete d.starPending;
+    if(success&&pending.members.length&&pending.members.every(id=>{
+      const f=S.fixers.find(x=>x.id===id);
+      return !!(f&&f.hp>0&&f.mp>0);
+    })) d.starWins++;
   }
   function expire(q){
     if(!S||!q||!q.officeStoryId) return;
@@ -2431,7 +2441,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     d.followups.push({id,result:"expired",actor:q.officeStoryActor||null});
     addLog(`[사무소 이야기] ${titleOf(id)} 의뢰의 기한이 지났다.`);
   }
-  return {schedule,after,expire};
+  return {schedule,after,starAfter,expire};
 })();
 
 /* ================= 의뢰 생성 ================= */
@@ -6680,6 +6690,7 @@ async function dispatch(qid, fids, modeArg){
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f); }
   if(S && !S.over) team.forEach(f=>{ if(S.fixers.includes(f)) checkOmen(f); });
   if(!S) return;
+  officeStoryModule.starAfter(q, team, success);
   delete teamSel[qid]; q.accepted = false;
   openQ = nextOpenable(); if(openQ!=null){ const nq = S.requests.find(x=>x.id===openQ); if(nq && !(teamSel[openQ]||[]).length) autoPick(nq); }
   save(); render();
