@@ -2208,7 +2208,13 @@ function newGame(leaderName, officeName, partnerName, lead){
   const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, Object.assign({isLeader:true}, lead ? {look: Object.assign({}, lead.look), personality: lead.pers || pick(PERSONALITIES)[0]} : {}));
   L.precious = lead && lead.precious && lead.precious.text ? {kind: lead.precious.kind || "마음", text: lead.precious.text} : {kind:"마음", text:"소중한 것"};
   const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7});
-  syncStatVitals(L); syncStatVitals(P); S.fixers.push(L,P); P.trust=65; P.precious = rollPrecious(P); L.founder = P.founder = true; S.st = {}; setTimeout(()=>{ if(S){ ac("runs"); acSet("district", S.district); } }, 0);
+  syncStatVitals(L); syncStatVitals(P); S.fixers.push(L,P);
+  // 미리보기 한정: 두 번째 9급 동료를 이름·능력치·성격·외형 모두 무작위로 생성한다.
+  const P2 = newFixer(randomName(), 9, genStats(9));
+  syncStatVitals(P2); S.fixers.push(P2);
+  P.trust = P2.trust = 65;
+  P.precious = rollPrecious(P); P2.precious = rollPrecious(P2);
+  L.founder = P.founder = P2.founder = true; S.st = {}; setTimeout(()=>{ if(S){ ac("runs"); acSet("district", S.district); } }, 0);
   initSurroundings(); startDay(true);
   addLog(`${S.district.name}에서 ${S.officeName}의 문을 열었다. 남은 빚은 ${won(S.debt)}.`);
   save();
@@ -10941,10 +10947,10 @@ function renderStart(){
     <div class="name-panel" id="np" hidden>
       <div class="np-h">개업 신고서 <span>하나 협회 제출용</span></div>
       <div class="np-body">
-        <p class="muted">사무소를 세우느라 진 빚 ${won(START_DEBT)}. 8급 사무소. 대표인 당신과 9급 해결사 한 명으로 시작한다.<br>매주 시작할 때 자금의 35%를 기준으로 최소 수금액이 정해진다. 흉터가 세 번 새겨지면 끝이다.</p>
+        <p class="muted">사무소를 세우느라 진 빚 ${won(START_DEBT)}. 8급 사무소. 대표인 당신과 9급 해결사 두 명으로 시작한다. 두 번째 동료의 이름·능력치·성격·외형은 무작위로 정해진다.<br>매주 시작할 때 자금의 35%를 기준으로 최소 수금액이 정해진다. 흉터가 세 번 새겨지면 끝이다.</p>
         <div class="field"><label>대표 이름</label><input id="s1" maxlength="16" value="${esc(randomName())}"><button data-r="s1">랜덤</button></div>
         <div class="field"><label>사무소 이름</label><input id="s2" maxlength="20" value="${esc(randomOffice())}"><button data-r="s2">랜덤</button></div>
-        <div class="field"><label>동료 이름</label><input id="s3" maxlength="16" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
+        <div class="field"><label>첫 번째 동료 이름</label><input id="s3" maxlength="16" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
         <div class="field"><label>개업 구역</label><input id="s4" readonly value="${esc(NEWLEAD.district.name)}${NEWLEAD.district.note ? " — "+esc(NEWLEAD.district.note) : ""}"><button data-r="s4">랜덤</button></div>
         <h4 class="np-sub">대표의 생김새와 성격</h4><div id="lkbox">${lookFields(NEWLEAD.look, NEWLEAD.pers)}</div>
         <h4 class="np-sub">마음속에 간직한 것 <span class="muted" style="font-weight:400;font-size:11px">— 이것을 잃은 채 정신력이 바닥나면 목소리가 들어온다</span></h4>
