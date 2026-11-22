@@ -1537,7 +1537,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "V.a1.2.6.6"; // 개인 신뢰 · 주변 사무소 · 지부 탐사 · 연속 사건
+const VERSION = "V.a1.2.6.8"; // 개인 신뢰 · 주변 사무소 · 지부 탐사 · 연속 사건
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -3408,9 +3408,9 @@ function genRequestsInner(){
 
 /* ================= 판정 ================= */
 // 의뢰 등급별 [권장 인원, 최대 인원]
-const PARTY = {9:[1,2],8:[1,2],7:[2,3],6:[2,3],5:[2,4],4:[3,4],3:[3,5],2:[3,5],1:[4,5]};
-const partyRec = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][0];
-const partyMax = q => q.kind==="특색 심사" ? 1 : PARTY[q.grade][1];
+const PARTY = {9:[1,3],8:[1,3],7:[2,3],6:[2,3],5:[2,3],4:[3,3],3:[3,4],2:[3,4],1:[4,4]};
+const partyMax = q => q.kind==="특색 심사" ? 1 : (["도시 악몽","도시의 별"].includes(threatOf(q)) ? 4 : 3);
+const partyRec = q => q.kind==="특색 심사" ? 1 : Math.min(partyMax(q), (PARTY[q.grade]||[1])[0]);
 function gearList(f){ return bodyItems(f).concat(augItems(f), [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.ab && f.ab.coatOff && S && S.day <= f.ab.coatOff ? null : f.gear.armor, f.gear.acc].filter(Boolean)); }
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
@@ -8382,6 +8382,17 @@ function genRecruits(){
     if(old && S.recruitPool.length) S.recruitPool[rnd(0,S.recruitPool.length-1)]=old;
   }
 }
+/* 미리보기 전용: 대표를 제외한 동료 인원 한도는 공방의 사무소 확장으로 늘어난다. */
+const OFFICE_EXTENSIONS = [
+  {grade:7,max:4,cost:100000,label:"1차 확장"},
+  {grade:5,max:7,cost:400000,label:"2차 확장"},
+  {grade:3,max:10,cost:1200000,label:"3차 확장"}
+];
+const officeExpansionLevel = () => S ? Math.max(0,Math.min(3,Math.floor(Number(S.officeExpansion)||0))) : 0;
+const officeCompanionMax = () => officeExpansionLevel() ? OFFICE_EXTENSIONS[officeExpansionLevel()-1].max : 2;
+const officeCompanionCount = () => S ? S.fixers.filter(f=>!f.isLeader).length : 0;
+const officeExpansionNext = () => OFFICE_EXTENSIONS[officeExpansionLevel()] || null;
+const officeExpansionAllowed = step => !!(S && step && Number(S.officeGrade)<=step.grade && Number(S.money)>=step.cost);
 async function openRecruit(){
   // 이전 저장의 영입 후보에도 현재 대표 급수 제한을 적용한다.
   const leadGrade = leader()?.grade ?? 9;
@@ -8391,17 +8402,18 @@ async function openRecruit(){
   }
   const draw = () => S.recruitPool.length ? S.recruitPool.map(f=>`<div class="item"><div><b>${esc(f.name)}</b> <span class="badge">${gName(f.grade)}</span> <span class="badge">${f.personality}</span>${f.alumniKey ? ` <span class="badge" style="color:#e8c98a;border-color:currentColor">이전 사무소 출신</span>` : ""}${f.distEye ? ` <span class="badge" style="color:#c9b0ff;border-color:currentColor" title="${esc(distEyeText)}">뒤틀림을 보는 눈</span>` : ""}
     ${f.alumniKey ? `<div class="d">예전 소속: ${esc(f.fromOffice||"이전 사무소")}</div>` : ""}<div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">${esc(hairText(f.look||{}))} · ${esc(eyeText(f.look||{}))}</div><div class="d">간직한 것: ${esc(f.precious ? f.precious.text : "—")}</div><div class="d">고용비 ${won(f.cost)}</div></div>
-    <div class="d" style="color:#e8c98a">고용비 ${won(f.cost)} · 주급 ${won(f.wage||0)}</div><button class="primary" data-hire="${f.id}" ${S.money<f.cost||S.fixers.length>=10?"disabled":""}>고용</button></div>`).join("") : `<p class="muted">오늘은 더 이상 찾아온 해결사가 없다. 명단은 매일 아침 바뀐다.</p>`;
-  await modal("영입", `<p class="muted">${gName(S.officeGrade)} 사무소 · 일반 지원자는 최대 ${gName(Math.max(2,S.officeGrade-1,leadGrade))}까지 찾아온다. 이전 회차 인연도 대표보다 높은 급수는 등장하지 않는다. 1급 사무소에서는 대표가 1급 이상일 때 이전 회차의 1급 해결사가 재등장할 수 있다. 특색은 영입으로 오지 않는다. 소속 ${S.fixers.length}/10명.</p><div class="list" id="rlist">${draw()}</div>`, [{t:"닫기"}], false, root=>{
+    <div class="d" style="color:#e8c98a">고용비 ${won(f.cost)} · 주급 ${won(f.wage||0)}</div><button class="primary" data-hire="${f.id}" ${S.money<f.cost||officeCompanionCount()>=officeCompanionMax()?"disabled":""}>고용</button></div>`).join("") : `<p class="muted">오늘은 더 이상 찾아온 해결사가 없다. 명단은 매일 아침 바뀐다.</p>`;
+  await modal("영입", `<p class="muted">${gName(S.officeGrade)} 사무소 · 일반 지원자는 최대 ${gName(Math.max(2,S.officeGrade-1,leadGrade))}까지 찾아온다. 이전 회차 인연도 대표보다 높은 급수는 등장하지 않는다. 1급 사무소에서는 대표가 1급 이상일 때 이전 회차의 1급 해결사가 재등장할 수 있다. 특색은 영입으로 오지 않는다.</p><p class="muted" id="recruit-cap">동료 ${officeCompanionCount()}/${officeCompanionMax()}명 (대표 제외) · 한도를 늘리려면 공방 → 사무소 확장에서 비용을 지불하세요.</p><div class="list" id="rlist">${draw()}</div>`, [{t:"닫기"}], false, root=>{
     root.addEventListener("click", async e=>{
       const id = +e.target.dataset.hire; if(!id) return;
-      const f = S.recruitPool.find(x=>x.id===id); if(!f || f.grade < (leader()?.grade ?? 9) || S.money<f.cost) return;
+      const f = S.recruitPool.find(x=>x.id===id); if(!f || f.grade < (leader()?.grade ?? 9) || S.money<f.cost || officeCompanionCount()>=officeCompanionMax()) { toast("사무소 고용 한도 또는 고용 조건을 확인하세요."); return; }
       const nm = f.alumniKey ? f.name : await promptBox("이름", "이 해결사의 이름을 정한다(그대로 두거나 랜덤).", f.name, true);
       if(nm===null) return;
+      if(!S.recruitPool.includes(f) || S.money<f.cost || officeCompanionCount()>=officeCompanionMax()) { toast("그사이 고용 한도 또는 자금이 달라졌습니다."); return; }
       f.name = nm || f.name; S.money -= f.cost; f.hiredDay=S.day; delete f.cost;
       S.fixers.push(f); S.recruitPool = S.recruitPool.filter(x=>x!==f); ac("hire"); f.hiredGrade = f.grade; S.records.push({day:S.day, name:f.name, what:"영입", note:gName(f.grade)});
       addLog(`${jo(f.name,"을")} 고용했다(${gName(f.grade)}).`);
-      root.querySelector("#rlist").innerHTML = draw(); save(); render();
+      root.querySelector("#rlist").innerHTML = draw(); const cap=root.querySelector("#recruit-cap"); if(cap) cap.textContent=`동료 ${officeCompanionCount()}/${officeCompanionMax()}명 (대표 제외) · 한도를 늘리려면 공방 → 사무소 확장에서 비용을 지불하세요.`; save(); render();
     });
   });
 }
@@ -8539,12 +8551,28 @@ function fixerLook(f){ const lg = leadGear(f); return {weapon: lg.spec, armor: l
 async function openShop(startTab){
   const tierMax = S.officeGrade<=3?2 : S.officeGrade<=6?1 : 0;
   const colors = () => S.fixers.filter(x=>x.grade===0);
-  let who = S.fixers[0]?.id, tab = startTab!=null ? startTab : 0;
+  let who = S.fixers[0]?.id, tab = startTab!=null ? startTab : 0, expansionBusy = false;
   const uniqs = () => S.fixers.filter(x=>x.grade===0 || (x.gear.weapon && x.gear.weapon.unique));
   const lockMsg = t => t===1 ? (tierMax<1 ? "6급 사무소부터 거래할 수 있다." : "") : t===2 ? (tierMax<2 ? "3급 사무소부터 거래할 수 있다." : "") : t===3 ? (uniqs().length ? "" : "고유 무기를 받거나 특색이 된 해결사가 생기면 열린다.") : "";
   const draw = () => {
     const f = S.fixers.find(x=>x.id===who);
-    const tabs = `<div class="tabs">${TIER_NAME.map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${lockMsg(i)?" 🔒":""}</button>`).join("")}<button data-tab="4" class="${tab===4?"on":""}">의체 · 시술</button><button data-tab="5" class="${tab===5?"on":""}">탄약 · 장전</button></div>`;
+    const tabs = `<div class="tabs">${TIER_NAME.map((t,i)=>`<button data-tab="${i}" class="${i===tab?"on":""}">${t}${lockMsg(i)?" 🔒":""}</button>`).join("")}<button data-tab="4" class="${tab===4?"on":""}">의체 · 시술</button><button data-tab="5" class="${tab===5?"on":""}">탄약 · 장전</button><button data-tab="6" class="${tab===6?"on":""}">사무소 확장</button></div>`;
+    if(tab===6){
+      const level=officeExpansionLevel(), next=officeExpansionNext(), hired=officeCompanionCount(), cap=officeCompanionMax();
+      const rows=OFFICE_EXTENSIONS.map((step,i)=>{
+        const owned=i<level, now=i===level, accessible=S.officeGrade<=step.grade;
+        const status=owned?"확장 완료":now?(accessible?"확장 가능":"등급 미달"):"앞 단계 필요";
+        return `<div class="item"><div style="flex:1"><b>${step.label}</b> <span class="badge">${status}</span>
+          <div class="d">사무소 ${gName(step.grade)} 이상 · 동료 ${step.max}명까지 (대표 제외)</div>
+          <div class="d">확장 비용 ${won(step.cost)}</div></div></div>`;
+      }).join("");
+      return tabs+`<p class="muted">대표를 제외한 고용 동료를 늘리기 위해 사무소를 확장합니다. 확장은 1차부터 차례로 진행하며, 기존 동료는 그대로 남습니다.</p>
+      <div class="kv"><span>현재 확장</span><b>${level} / 3차</b><span>동료 고용</span><b>${hired} / ${cap}명 (대표 제외)</b><span>보유 자금</span><b>${won(S.money)}</b></div>
+      <div class="list">${rows}</div>
+      ${next ? `<div style="margin-top:12px"><button class="primary" data-office-expand="1" ${officeExpansionAllowed(next)?"":"disabled"}>${next.label} · ${won(next.cost)}</button>
+      <p class="muted" style="margin-top:7px">${S.officeGrade>next.grade?`사무소가 ${gName(next.grade)} 이상이 되어야 확장할 수 있습니다.`:S.money<next.cost?`확장 자금이 ${won(next.cost-S.money)} 부족합니다.`:"비용을 지불하면 동료 고용 한도가 즉시 늘어납니다."}</p></div>`:
+      `<p class="muted">최대 단계까지 확장했습니다. 대표 제외 동료 10명을 고용할 수 있습니다.</p>`}`;
+    }
     if(tab===4) return `<div class="field"><label>시술받을 사람</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>${tabs}${bodyShopHtml(f, tierMax)}`;
     if(tab===5){
       const fgun=f&&f.gear&&f.gear.weapon, active=gunKind(fgun), available=SHOP.filter(it=>gunKind(it) && (it.tier<=tierMax || (fgun && fgun.id===it.id)));
@@ -8584,6 +8612,23 @@ async function openShop(startTab){
     root.addEventListener("click", async e=>{
       const d = e.target.closest("button")?.dataset || {};
       if(d.tab!==undefined){ tab=+d.tab; }
+      else if(d.officeExpand){
+        if(expansionBusy) return;
+        let step=officeExpansionNext();
+        if(!officeExpansionAllowed(step)){ toast("확장에 필요한 사무소 등급 또는 자금이 부족합니다."); paint(box); return; }
+        expansionBusy=true;
+        try {
+          const accepted=await confirmBox("사무소 확장",`${step.label}에 ${won(step.cost)}을 지불하고 동료 고용 한도를 ${step.max}명으로 늘리시겠습니까? (대표 제외)`);
+          if(!accepted) return;
+          if(officeExpansionNext()!==step||!officeExpansionAllowed(step)){ toast("확장 조건이 변경되었습니다. 다시 확인해 주세요."); return; }
+          S.money-=step.cost;
+          S.officeExpansion=officeExpansionLevel()+1;
+          S.records.push({day:S.day,name:S.officeName,what:"사무소 확장",note:`${step.label} · 동료 최대 ${step.max}명 · 비용 ${won(step.cost)}`});
+          addLog(`${step.label} 완료 · 동료 ${step.max}명까지 고용 가능 (대표 제외) · -${won(step.cost)}`);
+          save(); render(); toast(`${step.label} 완료 · 동료 최대 ${step.max}명`);
+        } finally { expansionBusy=false;paint(box); }
+        return;
+      }
       else if(d.ammoBuy){const [id,t]=d.ammoBuy.split("|"),g=SHOP.find(x=>x.id===id);if(!g||!purchaseAmmo(g,t))return;}
        else if(d.ammoLoad){const f=S.fixers.find(x=>x.id===who),g=f&&f.gear.weapon;if(!g||!gunKind(g))return;const n=loadAmmo(g,d.ammoLoad);addLog(`${f.name}: ${g.name}에 ${(AMMO_BY[d.ammoLoad]||AMMO_TYPES[0]).name} 장전(+${n}발)`);}
        else if(d.buy){ const it=SHOP.find(i=>i.id===d.buy), f=S.fixers.find(x=>x.id===who); if(!it||!f||S.money<it.price) return;
