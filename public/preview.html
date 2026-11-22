@@ -6399,7 +6399,7 @@ async function dispatch(qid, fids, modeArg){
   { const cl = contractResult(q, success); if(cl) lines.push(cl); }
   if(q.distFoe && success) team.forEach(f=>{ const e0 = distExp(f); f.dk = (f.dk||0) + 1; const e1 = distExp(f);
     if(e1 && (!e0 || e0.n!==e1.n)) lines.push(`<span style="color:#c9b0ff">${esc(f.name)}: 뒤틀림 경험 — <b>${e1.n}</b>(처치 ${f.dk}) · 이제 뒤틀림을 상대로 기본 위력 +${e1.base}${e1.cp ? `, 코인 위력 +${e1.cp}` : ""}</span>`); });
-  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); hanaStarAfter(q, success, lines);
+  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); mainlineAfter(q, success, lines); hanaStarAfter(q, success, lines);
   if(success){
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
@@ -7670,7 +7670,7 @@ function startDay(first){
   if(S.debt>0){ const week=Math.floor((S.day-1)/7);
     if(!S.scarWeekDue||S.scarWeekDue.week!==week) S.scarWeekDue={week,amount:Math.min(S.debt,Math.max(Math.floor(S.money*0.35),10000))}; }
   rwSnap();
-  surroundingsTick(); genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn();
+  surroundingsTick(); genRequests(); assocWeekly(); arcSpawn(); mainlineSpawn(); hanaStarSpawn();
   genRecruits();
   spawnRumors();
   S.todayIncome = 0;
@@ -9524,6 +9524,46 @@ function surroundingsHtml(){
 const FINGER_NEWS=["엄지 산하 조직이 공방 거리에서 물건을 수거했다는 이야기가 들려온다. 명령을 내린 자는 확인되지 않았다.","검지의 지령 봉투를 받은 누군가가 밤새 거리를 헤맸다는 목격담이 있다. 봉투 내용은 알려지지 않았다.","중지의 이름이 나왔던 술집에서 손님들이 자리를 옮겼다고 한다. 자세한 사정은 불명확하다.","약지와 관계가 있다는 물건 하나가 암시장에서 거래됐다는 소문이 있다. 출처는 확인되지 않았다.","소지의 이름이 적힌 낙서가 골목에서 발견됐다는 목격담이 있다. 전해지는 내용은 제각각이다."];
 const CITY_NEWS=["붕괴된 L사 지부의 냉각 장치를 노리는 회수업자들이 늘고 있다는 소식이다.","경비 계약을 잃은 사무소들이 철거 업체로부터 단기 의뢰를 받는다고 한다.","협회 지부에 실종 신고가 여러 건 접수되었으나 원인은 알려지지 않았다.","공방 거리에서 의체 유지비가 올랐다는 이야기가 나온다. 실제 가격은 거래처에 따라 다르다.","붕괴된 시설의 출입구를 알려 주는 대가로 돈을 받는 사람들이 생겼다고 한다."];
 
+function mainlineState(){if(!S)return null;const L=S.mainline=S.mainline||{step:0,nextDay:2,done:false,fail:0,history:[]};if(!Array.isArray(L.history))L.history=[];return L}
+function makeMainlineRequest(step){
+ const C=MAINLINE[step];if(!C)return null;
+ const q=makeRequest(C.grade,{kind:C.kind,attrs:C.attrs.slice(),goal:C.goal,noRelic:true});
+ return Object.assign(q,{mainline:step,kind:C.kind,grade:C.grade,threat:(REQ_BASE[C.grade]||[])[2]||"도시 괴담",
+  attrs:C.attrs.slice(),client:C.client,text:C.text,story:[`연속 사건 「검은 출근부」 · ${C.act} · ${C.title}`,...C.story],
+  foe:C.foe||q.foe,goal:C.goal||null,reward:Math.round(q.reward*1.35/100)*100,deadline:4,
+  loot:null,nom:false,prescript:null,synd:null,distFoe:null,abno:null,relic:null,special:true});
+}
+function mainlineSpawn(){
+ const L=mainlineState();if(!L||L.done||L.step>=MAINLINE.length||S.day<Math.max(2,L.nextDay||2)||S.over)return;
+ const C=MAINLINE[L.step];if(S.officeGrade>C.grade||S.requests.some(q=>q.mainline!=null))return;
+ const q=makeMainlineRequest(L.step);S.requests.unshift(q);addLog(`연속 사건 「검은 출근부」: ${C.title} 의뢰가 도착했다.`);
+}
+function mainlineAfter(q,success,lines){
+ if(!q||!Number.isInteger(q.mainline))return;
+ const L=mainlineState();if(q.mainline!==L.step)return;
+ if(!success){L.fail++;L.nextDay=S.day+2;lines.push("증거를 찾지 못했다. 의뢰인은 며칠 뒤 다시 연락하겠다고 했다.");return;}
+ const C=MAINLINE[L.step];L.history.push({day:S.day,act:C.act,title:C.title});L.step++;L.nextDay=S.day+2;ac("storyMission");
+ S.records.push({day:S.day,name:"검은 출근부",what:"연속 사건",note:C.title});
+ lines.push(`<b style="color:#e8c98a">연속 사건 「검은 출근부」 ${L.step}/${MAINLINE.length} 완료</b>`);
+ if(L.step===MAINLINE.length){L.done=true;ac("storyFinish");
+   const pay=1200000;S.money+=pay;S.todayIncome=(S.todayIncome||0)+pay;
+   lines.push(`<b>최종 의뢰 완수 · 특별 사례 +${won(pay)}</b><br>하나 협회가 비정상적인 회수 계약과 사라진 사람들의 명부를 접수했다. 폐허가 된 L사 지부는 여전히 그 자리에 있다. 다만 사라진 이들의 이름은 더는 지워지지 않는다.`);
+   surroundingsNote("도시","위험한 폐지부 회수 계약의 발행자가 하나 협회의 조사를 받고 있다는 소식이 들린다.");
+ }else if(MAINLINE[L.step].act!==C.act){
+   lines.push(`<span class="muted">${C.act} 완료. ${MAINLINE[L.step].act}는 ${gName(MAINLINE[L.step].grade)} 사무소 이상부터 열린다.</span>`);
+ }
+}
+function mainlineRefused(q){
+ if(!q||!Number.isInteger(q.mainline))return;const L=mainlineState();if(L.step!==q.mainline)return;
+ L.nextDay=S.day+2;L.fail++;
+ surroundingsNote("연속 사건",`「검은 출근부」: ${MAINLINE[L.step].title} 의뢰를 거절했다. 의뢰인이 다른 연락망을 찾는 중이다.`);
+}
+function mainlineHtml(){
+ const L=mainlineState(),C=MAINLINE[L.step],hist=L.history.slice().reverse().map(h=>`<div class="item"><div><b>${esc(h.title)}</b><div class="d">${h.day}일차 · ${esc(h.act)}</div></div></div>`).join("");
+ return `<h4>연속 사건 「검은 출근부」</h4><p class="muted">폐지부 회수대에서 사라진 사람들의 명단을 좇는 이야기다. 일상 의뢰 및 다른 연속 사건과 별도로 진행된다.</p><div class="kv"><span>진행</span><b>${L.step}/${MAINLINE.length}건${L.done?" · 완결":""}</b><span>다음 의뢰</span><b>${C?esc(C.title):"완결"}</b>${C?`<span>필요 사무소</span><b>${gName(C.grade)} 이상 · ${S.officeGrade>C.grade?"급수 부족":S.day<(L.nextDay||2)?"연락 대기":"수주 가능"}</b>`:""}</div><h4>완료한 이야기</h4>${hist?`<div class="list">${hist}</div>`:"<p class='muted'>아직 완료한 의뢰가 없다.</p>"}`;
+}
+const MAINLINE=[{"act":"1막 · 빈 출근부","title":"책상 밑의 출근부","grade":8,"kind":"수색","attrs":["agi","tec"],"client":"야간 청소부 지선","text":"폐쇄된 사무실에서 매일 밤 새로운 이름이 적히는 출근부를 찾아 달라","story":["지선은 물에 젖지 않도록 감싼 출근부 한 장을 꺼내 놓았다. 회사 이름이 있어야 할 자리는 가위로 도려낸 듯 비어 있었다.","마지막 줄에는 어젯밤 날짜와 모르는 사람의 이름이 적혀 있었다. 사무실은 몇 해째 비어 있었다고 한다.","청소부는 자신이 쉬었던 날에도 출근한 것으로 적혀 있었다고 말했다. 누군가 이 종이로 없는 사람을 만들어 내고 있었다."]},{"act":"1막 · 빈 출근부","title":"돌아오지 않는 청소부","grade":8,"kind":"호위","attrs":["str","agi"],"client":"야간 청소부 지선","text":"출근부를 발견한 청소부를 철거 구역 밖까지 안전하게 데려가 달라","story":["지선의 집 앞에 정체 모를 차량이 세워졌다. 운전석에 앉은 자는 출근부를 되돌려 달라고 했다.","청소부는 사무소에 작은 열쇠 하나를 건넸다. 출근부가 있던 사무실의 서랍 열쇠였다.","살아 돌아간다면 지선은 수상한 급여 명세서의 수령인을 찾아 주겠다고 약속했다."]},{"act":"2막 · 지워진 급여","title":"자리가 남은 봉급","grade":7,"kind":"수색","attrs":["agi","tec"],"client":"폐지부 하청 인사담당자","text":"임금을 받았으나 존재하지 않는 직원들의 급여 명세서를 조사해 달라","story":["명세서의 수령인에는 이름 대신 검은 선만 그어져 있었다. 회사는 이미 사라졌지만 월급은 계속 지급됐다.","계좌에 들어온 돈은 철거 차량과 경비원 고용에 쓰였다.","사람이 사라지면 명부에서 지우고, 다시 같은 이름으로 새로운 회수대를 계약하는 일이 반복되고 있었다."]},{"act":"2막 · 지워진 급여","title":"철거단의 영수증","grade":7,"kind":"일반","attrs":["str"],"goal":"제압","foe":"불법 철거단 대장","client":"폐지부 하청 인사담당자","text":"급여 서류를 빼앗아 간 철거단 대장을 제압하고 계약의 발행자를 알아내 달라","story":["철거단은 벽을 허물고 통로를 막으면 돈이 들어오는 일을 맡았다고 했다.","그런데 계약서의 공사 장소에는 존재하지 않는 지하층이 표시돼 있었다.","대장은 고용주 얼굴은 보지 못했다. 하지만 봉투 안에는 녹색 액체가 조금 묻어 있었다고 말했다."]},{"act":"3막 · 밀봉된 복도","title":"회수원의 마지막 증언","grade":5,"kind":"호위","attrs":["str","agi"],"client":"전 L사 하청 회수원 은호","text":"폐허가 된 L사 지부에서 살아 나온 하청 회수원을 안전한 협회 연락소로 호위해 달라","story":["은호는 회수 작업에 투입된 사람들의 이름이 적힌 장부를 갖고 있었다. 지부에서 돌아오지 못한 이들은 명단에서 바로 삭제됐다.","지부의 출입문은 안쪽에서 봉쇄됐다. 누군가 바깥에서 그것을 다시 열어 새 회수원들을 내려보냈다.","은호가 자신은 살고 싶다고 말했다. 그를 뒤쫓는 사람들은 이미 다음 회수대를 모으는 중이었다."]},{"act":"3막 · 밀봉된 복도","title":"냉각실 운송표","grade":5,"kind":"수색","attrs":["agi","tec"],"client":"전 L사 하청 회수원 은호","text":"폐지부에서 빼돌린 엔케팔린의 운송 경로와 회수대 계약을 대조해 달라","story":["운송표에는 구매자 대신 소규모 사무소들의 이름이 적혀 있었다. 몇 곳은 폐업한 지 오래다.","회수원을 보호하는 경비 비용이 물품 가격에서 빠져 있었지만, 현장에 호위는 없었다.","은호는 말했다. '사람이 돌아오지 않으면 주급도 줄 필요가 없잖아요.' 누군가 위험한 일을 일부러 싼값에 팔고 있었다."]},{"act":"4막 · 팔리지 않은 이름","title":"계약서를 쓴 손","grade":3,"kind":"일반","attrs":["str","wil"],"goal":"제압","foe":"폐지부 계약 집행인","client":"익명의 공증인","text":"폐지부 회수대 계약서를 조작한 집행인을 생포하고 사주를 밝혀 달라","story":["계약 집행인은 파산한 날개 계열 경비원의 의체를 달고 있었다. 죽은 사람의 이름으로 새 계약을 쓰는 법을 알고 있었다.","그가 지키는 금고에는 황금가지가 없었다. 대신 살아남은 회수원들의 주소가 빼곡히 적혀 있었다.","집행인은 자신 역시 명령을 받았을 뿐이라고 변명했다. 그러나 명령을 내린 사람의 이름은 끝까지 밝히지 않았다."]},{"act":"4막 · 팔리지 않은 이름","title":"도장이 찍힌 마지막 장","grade":3,"kind":"수색","attrs":["agi","tec"],"client":"익명의 공증인","text":"공증 문서에 남은 인장과 필적을 대조해 거짓 계약의 발행자를 찾아 달라","story":["계약서마다 같은 도장이 찍혀 있었다. 이미 문을 닫은 사무소의 이름이었다.","그 사무소가 있던 자리에는 빈 책상 하나와 의뢰인용 접수대가 남아 있었다.","서랍에는 여러 사무소의 직원 명단이 있었다. 그중에는 우리가 사무소를 개업한 날도 적혀 있었다."]},{"act":"5막 · 아직 살아 있는 자","title":"증인이 건너야 할 거리","grade":1,"kind":"호위","attrs":["str","agi"],"client":"하나 협회 특별 조사 담당","text":"삭제된 명부 원본과 살아남은 증인을 하나 협회 조사실까지 호위해 달라","story":["하나 협회 조사 담당자는 서류를 받기 전 물었다. '명부에 적힌 사람이 전부 살아 있습니까?'","은호는 이름을 하나씩 읽었다. 이미 돌아오지 못한 사람들의 이름도 있었다.","조사실까지의 길은 짧았다. 그러나 명부를 빼앗으려는 자들이 골목마다 기다리고 있었다."]},{"act":"5막 · 아직 살아 있는 자","title":"장부를 지우는 자","grade":1,"kind":"일반","attrs":["str","wil"],"goal":"제압","foe":"검은 장부의 관리인","client":"하나 협회 특별 조사 담당","text":"위험한 폐지부 회수 계약을 조작한 관리인을 붙잡아 원본 서류를 협회에 넘겨 달라","story":["관리인은 자기가 죽인 사람은 없다고 했다. 위험은 계약서에 분명 적혀 있었고 서명도 받았다는 것이다.","그러나 명부에 적힌 사람들 중 상당수는 계약서를 본 적조차 없었다. 약속한 보수를 기다리다 돌아오지 못했다.","사무소는 그에게 서명할 기회를 주었다. 이번에는 자신이 저지른 일 아래에 이름을 쓰게 할 차례였다."]}];
+
 /* ================= 의뢰 받기 =================
    모든 의뢰는 게시판에서 [의뢰를 받는다]로 먼저 연다 → 의뢰 상세와 짧은 이야기 → [사람을 보낸다] / [거절한다].
    사람을 보내기로 하면 그 의뢰 카드에서 해결사를 고를 수 있다. 거절한 의뢰는 게시판에서 내려간다(지령을 거절하면 대가를 치른다). */
@@ -10350,7 +10390,7 @@ function render(){
     ${S.moved ? `<span class="stat">월세 ${RENT_DAYS}일마다 <b>${won(rentForecast().total)}</b>${S.rentArrears?` · 미납 ${won(S.rentArrears)}`:""}</span>`:""}`;
   // 모든 분류는 기존 의뢰 목록을 그대로 가리키므로 보수·마감·이야기는 변경되지 않는다.
   const tabs=["전체","일반","지명","위험·특수","사건·이야기"], filterIds=["all","normal","regular","risk","story"];
-  const reqCategory=q=>q.arc||q.prescript||q.hanaStar?"story":q.nom?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
+  const reqCategory=q=>q.arc||q.mainline!=null||q.prescript||q.hanaStar?"story":q.nom?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
   const avail = S.fixers.filter(canSend);
   app.querySelector("#reqfilters").innerHTML = filterIds.map((k,i)=>`<button data-reqfilter="${k}" class="${reqFilter===k?"on":""}">${tabs[i]} <small>${S.requests.filter(q=>k==="all"||reqCategory(q)===k).length}</small></button>`).join("");
   const shownRequests=S.requests.filter(q=>reqFilter==="all"||reqCategory(q)===reqFilter);
@@ -10361,7 +10401,7 @@ function render(){
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
-      <div class="head">${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
+      <div class="head">${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.mainline!=null?`<span class="badge" style="color:#a5dcce;border-color:currentColor">주요 사건 · 검은 출근부 ${q.mainline+1}/${MAINLINE.length}</span>`:""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.deadline!=null&&q.deadline<=1?`<span class="badge deadline-urgent">오늘 마감</span>`:""}${q.risk?`<span class="badge">${q.kind==="환상체" && abnoOf(q) && codexSeen(abnoOf(q).vid) < 2 ? "위험 등급 ???" : q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
@@ -10418,7 +10458,7 @@ async function refuseReq(qid){ const q = S.requests.find(x=>x.id===qid); if(!q) 
   if(q.prescript && !await confirmBox("지령 거절", "지령을 거절하면 대가를 치른다. 그래도 거절하겠는가?")) return;
   if(q.accepted){ if(!await confirmBox('계약 포기', `이미 수락한 의뢰입니다. 포기하면 사무소 신뢰도가 6 감소합니다. ${esc(q.client)}의 계약을 포기하시겠습니까?`)) return;
     changeOfficeTrust(-6, `수락한 계약 포기 · ${q.client}`); }
-  surroundingsHandOff(q);
+  surroundingsHandOff(q); mainlineRefused(q);
   S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id]; if(openQ===qid) openQ = null;
   if(q.prescript){ idxFail(); addLog("지령을 거절했다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%"); }
   else addLog(`의뢰를 거절했다 — ${q.client}`);
