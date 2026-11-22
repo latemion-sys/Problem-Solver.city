@@ -2308,12 +2308,12 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     const who=which===2?"옛 지인":"이전 구역의 주민";
     if(k==="사람"||k==="동료")
       return {kind:"수색",attrs:["agi","tec"],client:`${n}의 ${who}`,
-        text:`${n}이(가) 소중히 여기는 사람과 연락이 끊겼다. 마지막 행방을 확인해 달라.`,
-        scene:[`${n}이(가) 간직해 온 마음: ${t}.`,"마지막으로 만난 곳부터 찾아가 근처 사람들에게 사정을 묻는다."]};
+        text:`${jo(n,"이")} 소중히 여기는 사람과 연락이 끊겼다. 마지막 행방을 확인해 달라.`,
+        scene:[`${jo(n,"이")} 간직해 온 마음: ${t}.`,"마지막으로 만난 곳부터 찾아가 근처 사람들에게 사정을 묻는다."]};
     if(k==="물건")
       return {kind:"수색",attrs:["agi","tec"],client:`${n}의 보관소 관계자`,
-        text:`${n}이(가) 아끼는 물건을 맡겼던 보관소가 문을 닫았다. 물건을 회수해 달라.`,
-        scene:[`${n}이(가) 소중히 간직한 것: ${t}.`,"보관소 문에는 전 주인의 연락처 하나만 붙어 있다."]};
+        text:`${jo(n,"이")} 아끼는 물건을 맡겼던 보관소가 문을 닫았다. 물건을 회수해 달라.`,
+        scene:[`${jo(n,"이")} 소중히 간직한 것: ${t}.`,"보관소 문에는 전 주인의 연락처 하나만 붙어 있다."]};
     if(k==="목표")
       return {kind:"일반",attrs:["tec"],client:`${n}의 옛 거래처`,
         text:`${n}의 계획을 위해 진행하던 거래가 중단됐다. 거래처와 정산 문제를 해결해 달라.`,
@@ -4190,7 +4190,7 @@ function mgCombat(ctx){
       if(k7 === 7){ const t = pick(party); t.hp = 0; AXN.push(`<b style="color:#ff8a7a">어디선가 마탄이 날아왔다. 일곱 번째 탄환이 ${esc(jo(t.name,"을"))} 골랐다</b>`); }
       else { const d = 3 + 3*k7; foe.hp = Math.max(1, foe.hp - d); AXN.push(`<span style="color:#e8d27a">${k7}번째 마탄이 ${esc(jo(foe.name,"을"))} 꿰뚫었다(고정 피해 ${d})</span>`); } }
     if(AB && AB.fuse){ foe.fuseMark = pick(party); AXN.push(`<span style="color:#ffb35a">${esc(jo(foe.name,"이"))} ${esc(foe.fuseMark.name)}에게 성냥불 표식을 붙였다 — ${AB.fuse}턴이 끝나기 전에 쓰러뜨려야 한다</span>`); }
-    party.forEach(p=>{ if(relicFx(p.f,"tyr")) AXN.push(`<span style="color:#d8d8e8">티르의 오른손 — 여섯 가닥 은실이 ${esc(p.name)}와 ${esc(foe.name)}의 몸에 감겼다. ${esc(p.name)}이(가) 나서는 동안 둘의 강함이 같아진다</span>`);
+    party.forEach(p=>{ if(relicFx(p.f,"tyr")) AXN.push(`<span style="color:#d8d8e8">티르의 오른손 — 여섯 가닥 은실이 ${esc(jo(p.name,"와"))} ${esc(foe.name)}의 몸에 감겼다. ${esc(jo(p.name,"이"))} 나서는 동안 둘의 강함이 같아진다</span>`);
       if(relicFx(p.f,"bell")) AXN.push(`<span style="color:#e8d27a">청동 방울이 여덟 갈래로 울린다 — ${esc(p.name)}의 마음에 다른 목소리가 들어오지 못한다</span>`); });
     if(AB && AB.aoe) AXN.push(`<span style="color:#e8d27a">${AB.aoe}턴마다 금빛 저울이 기운다 — 그 자리 모두가 심판받는다</span>`);
     if(AB && AB.enrage){ foe.clock = 4; AXN.push(`<span style="color:#e8d27a">징벌 새의 시간 4턴 — 다 지나면 스스로 알로 돌아간다. 건드리면 붉게 변해 큰 부리로 문다</span>`); }
