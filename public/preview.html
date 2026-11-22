@@ -2223,7 +2223,7 @@ function newGame(leaderName, officeName, partnerName, lead){
 function migrate1247(d){
   if(!d || !Array.isArray(d.requests)) return d;
   // 1.2.4.7에서 이미 10% 조정한 보수를 버전 갱신 때문에 다시 인하하지 않는다.
-  const old = !/^1\.2\.(?:4\.(?:7|8|9)|5\.\d+)$/.test(String(d.v||""));
+  const old = !/^(?:1\.2\.(?:4\.(?:7|8|9)|5\.\d+)|V?\.?a?1\.2\.6\.\d+)$/.test(String(d.v||""));
   d.requests = d.requests.filter(q=>Number(q.grade) !== 0);
   d.requests.forEach(fixGrade1Threat);
   if(old){
@@ -9546,7 +9546,7 @@ function maybeRuinsRequest(q,forcedFloor=0){
   return q;
 }
 function ruinsPickNode(floor,round){
-  const roll=Math.random(), danger=.25+.052*floor;
+  const roll=Math.random();
   // 각 층의 적 비중은 높아지지만, 휴식실과 통제실 경로는 5층에서도 나타난다.
   const cut=[.15+.02*floor,.25+.04*floor,.36+.04*floor,.45+.04*floor,.50+.04*floor,.70+.025*floor,.88+.008*floor];
   let kind=roll<cut[0]?"abno":roll<cut[1]?"wing":roll<cut[2]?"fixer":roll<cut[3]?"trap":roll<cut[4]?"elite":roll<cut[5]?"cache":roll<cut[6]?"rest":"intel";
