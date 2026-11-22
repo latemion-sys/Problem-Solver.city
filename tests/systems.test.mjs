@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-// 미리보기 V.a1.2.6.3 독립 회귀 검사: node --test tests/systems.test.mjs
-// 운영 파일은 검사하거나 수정하지 않는다.
+// V.a1.2.6.8 공통 회귀 검사: node --test tests/systems.test.mjs
+// 본 사이트와 미리보기 파일의 일치 여부 및 핵심 규칙 검사
 const preview=readFileSync(new URL('../public/preview.html',import.meta.url),'utf8');
 const scripts=[...preview.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
 const game=scripts.at(-1);
@@ -12,7 +12,10 @@ function section(before,after){
   assert.ok(a>=0&&b>a,`검사 대상 코드 누락: ${before} → ${after}`);
   return game.slice(a,b);
 }
-test('미리보기 버전 V.a1.2.6.3',()=>assert.match(game,/const VERSION = "V\.a1\.2\.6\.3"/));
+test('현재 버전 V.a1.2.6.8',()=>assert.match(game,/const VERSION = "V\.a1\.2\.6\.8"/));
+test('본 사이트와 미리보기 코드 동일',()=>{
+  assert.equal(preview,readFileSync(new URL('../public/index.html',import.meta.url),'utf8'));
+});
 test('미리보기 인라인 자바스크립트 문법',()=>scripts.forEach((s,i)=>assert.doesNotThrow(()=>new vm.Script(s,{filename:`preview-${i}.js` }))));
 test('기존 저장 키와 저장 파일 호환',()=>{
   assert.match(game,/const SAVE_KEY = "problem-solver-office-save-v1"/);
@@ -87,7 +90,11 @@ test('피해 예측과 실제 정산 공통 계산 함수 사용',()=>{
 
 test('고용 해결사의 신뢰 기본값과 창립 동료',()=>{
   assert.match(game,/hp:100, hpMax:100, mp:100, mpMax:100, trust:50, personality:/);
-  assert.match(game,/S\.fixers\.push\(L,P\); P\.trust=65;/);
+  assert.match(game,/S\.fixers\.push\(L,P\)/);
+  assert.match(game,/const P2 = newFixer\(randomName\(\), 9, genStats\(9\)\)/);
+  assert.match(game,/S\.fixers\.push\(P2\)/);
+  assert.match(game,/P\.trust = P2\.trust = 65;/);
+  assert.match(game,/L\.founder = P\.founder = P2\.founder = true/);
   assert.match(game,/if\(!f\.isLeader && !Number\.isFinite\(f\.trust\)\) f\.trust=f\.founder\?65:50/);
 });
 test('개인 신뢰는 0~100 범위, 대표는 제외',()=>{
@@ -101,11 +108,11 @@ test('개인 신뢰는 0~100 범위, 대표는 제외',()=>{
   const lead={isLeader:true,trust:60};cx.changeFixerTrust(lead,-3,'미납');assert.equal(lead.trust,60);
 });
 test('버전 변경 후 의뢰 보수를 반복 삭감하지 않음',()=>{
-  const cx={VERSION:'V.a1.2.6.3',fixGrade1Threat:()=>{},Math};vm.createContext(cx);
+  const cx={VERSION:'V.a1.2.6.8',fixGrade1Threat:()=>{},Math};vm.createContext(cx);
   vm.runInContext(section('function migrate1247(','const NOM_P ='),cx);
   const d={v:'1.2.5.7',requests:[{grade:8,reward:10000,accepted:false}]};
   cx.migrate1247(d);cx.migrate1247(d);
-  assert.equal(d.requests[0].reward,10000);assert.equal(d.v,'V.a1.2.6.3');
+  assert.equal(d.requests[0].reward,10000);assert.equal(d.v,'V.a1.2.6.8');
 });
 test('주변 사무소 초기 급수와 주간 폐업 확률',()=>{
   const cx={S:{day:1,officeGrade:8,log:[]},Math,gName:n=>n+'급',ac:()=>{},FINGER_NEWS:['손가락'],CITY_NEWS:['도시']};
@@ -149,4 +156,45 @@ test('미확정 메인 스토리 미반영, 기존 연속 사건 유지',()=>{
   for(const phrase of ['function mainlineState()','mainlineSpawn()','const MAINLINE=','검은 출근부'])
     assert.equal(game.includes(phrase),false,phrase);
   assert.ok(game.includes('const ARCS = ['));
+});
+
+test('개인 사연 조사: 이름의 받침과 개인 사연 유형별 확인',()=>{
+  const cx={}; vm.createContext(cx);
+  vm.runInContext(section('function jo(w, type){','/* 하루 마감'),cx);
+  vm.runInContext(section('  function personalCase(f,which){','  function postRequest('),cx);
+  for(const [name,p] of [['유나','가'],['민준','이'],['서아','가'],['민혁','이']]){
+    for(const kind of ['사람','동료','물건']){
+      const c=cx.personalCase({name,precious:{kind,text:'소중한 것'}},2);
+      assert.ok(c.text.startsWith(name+p+' '),c.text);
+      assert.equal(c.text.includes('이(가)'),false);
+      assert.equal(c.scene[0].includes('이(가)'),false);
+    }
+  }
+});
+test('사무소 1~3차 확장: 대표 제외 2·4·7·10명 및 등급 조건',()=>{
+  const cx={S:{officeExpansion:0,officeGrade:8,money:1200000,fixers:[{isLeader:true},{isLeader:false},{isLeader:false}]}};
+  vm.createContext(cx);
+  vm.runInContext(section('const OFFICE_EXTENSIONS = [','async function openRecruit(){'),cx);
+  const cap=()=>vm.runInContext('officeCompanionMax()',cx);
+  const can=()=>vm.runInContext('officeExpansionAllowed(officeExpansionNext())',cx);
+  assert.equal(cap(),2); assert.equal(can(),false);
+  cx.S.officeGrade=7; assert.equal(can(),true);
+  cx.S.officeExpansion=1; assert.equal(cap(),4); assert.equal(can(),false);
+  cx.S.officeGrade=5; assert.equal(can(),true);
+  cx.S.officeExpansion=2; assert.equal(cap(),7); assert.equal(can(),false);
+  cx.S.officeGrade=3; assert.equal(can(),true);
+  cx.S.officeExpansion=3; assert.equal(cap(),10); assert.equal(can(),false);
+});
+test('출동 인원: 일반 3명, 도시 악몽과 도시의 별 4명',()=>{
+  const cx={threatOf:q=>q.threat||({9:'뜬소문',8:'도시 괴담',7:'도시 전설',6:'도시 전설',5:'도시 질병',4:'도시 질병',3:'도시 악몽',2:'도시 악몽',1:'도시의 별'})[q.grade]};
+  vm.createContext(cx);
+  vm.runInContext(section('const PARTY = {','function gearList('),cx);
+  for(const [grade,cap] of [[9,3],[8,3],[7,3],[6,3],[5,3],[4,3],[3,4],[2,4],[1,4]]){
+    assert.equal(vm.runInContext('partyMax({grade:'+grade+'})',cx),cap);
+  }
+  assert.equal(vm.runInContext('partyMax({grade:9,threat:"도시의 별"})',cx),4);
+  assert.equal(vm.runInContext('partyMax({grade:1,threat:"도시 질병"})',cx),3);
+  assert.equal(vm.runInContext('partyMax({grade:1,kind:"특색 심사"})',cx),1);
+  assert.match(game,/team.length>partyMax\(q\)/);
+  assert.match(game,/else if\(sel.length < partyMax\(q\)\)/);
 });
