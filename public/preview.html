@@ -1535,7 +1535,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "1.2.5.7"; // 의뢰 문장 55건 개정 · 게임 규칙 및 저장 호환 유지
+const VERSION = "V.a1.2.6.3"; // 개인 신뢰 · 주변 사무소 · 지부 탐사 · 연속 사건
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -2068,7 +2068,7 @@ let S = null;
 function newFixer(name, grade, stats, opts={}){
   return Object.assign({
     id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
-    hp:100, hpMax:100, mp:100, mpMax:100, personality: pick(PERSONALITIES)[0], look: randomLook(), precious: null,
+    hp:100, hpMax:100, mp:100, mpMax:100, trust:50, personality: pick(PERSONALITIES)[0], look: randomLook(), precious: null,
     gear:{weapon:null,armor:null,acc:null}, ego:null, title:null, cap:70,
     lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0, tech:"allout", techs:[], wuse:{}
   }, opts);
@@ -2089,6 +2089,7 @@ function syncStatVitals(f){
 }
 function syncAllStatVitals(d){ if(d){ (d.fixers||[]).concat(d.recruitPool||[]).forEach(f=>{
   syncStatVitals(f);
+  if(!f.isLeader && !Number.isFinite(f.trust)) f.trust=f.founder?65:50;
   if(f.grade<=1){ growOf(f); ATTRS.forEach(a=>{ if(f.gk[a]){ f.gk[a]=false; f.gc[a]=0; } }); }
 }); } return d; }
 function total(f){ return ATTRS.reduce((s,a)=>s+f.stats[a],0); }
@@ -2205,8 +2206,8 @@ function newGame(leaderName, officeName, partnerName, lead){
   const L = newFixer(leaderName, 8, {str:15,agi:13,tec:12,wil:11}, Object.assign({isLeader:true}, lead ? {look: Object.assign({}, lead.look), personality: lead.pers || pick(PERSONALITIES)[0]} : {}));
   L.precious = lead && lead.precious && lead.precious.text ? {kind: lead.precious.kind || "마음", text: lead.precious.text} : {kind:"마음", text:"소중한 것"};
   const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7});
-  syncStatVitals(L); syncStatVitals(P); S.fixers.push(L,P); P.precious = rollPrecious(P); L.founder = P.founder = true; S.st = {}; setTimeout(()=>{ if(S){ ac("runs"); acSet("district", S.district); } }, 0);
-  startDay(true);
+  syncStatVitals(L); syncStatVitals(P); S.fixers.push(L,P); P.trust=65; P.precious = rollPrecious(P); L.founder = P.founder = true; S.st = {}; setTimeout(()=>{ if(S){ ac("runs"); acSet("district", S.district); } }, 0);
+  initSurroundings(); startDay(true);
   addLog(`${S.district.name}에서 ${S.officeName}의 문을 열었다. 남은 빚은 ${won(S.debt)}.`);
   save();
 }
@@ -6341,6 +6342,7 @@ async function dispatch(qid, fids, modeArg){
   let pay = Math.round(q.reward*payMul/100)*100;
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
   const success = decisive!=null ? decisive : Math.random()*100 < pr;
+  team.forEach(f=>{ if(f.isLeader)return; const n=success ? Math.min(4,1+(q.grade<=f.grade?1:0)+(mode==="play"?1:0)+(mgScore!=null&&mgScore>=.85?1:0)) : -Math.min(3,1+(q.grade<f.grade?1:0)+(f.hp<=f.hpMax*.35?1:0));changeFixerTrust(f,n,success?"의뢰 완수":"의뢰 실패"); });
   // 이번 주 심사 기록(사무소 · 해결사): 해낸 수, 수행 점수, 성공 비중
   { const best = Math.min(...team.map(f=>f.grade)), th = threatOf(q); S.st = S.st || {};
     if(success){ ac("ok"); ac(mode==="play" ? "play" : "auto"); ac("pay", pay); if(team.length===1) ac("solo"); if(team.length>=3) ac("crew");
@@ -7668,7 +7670,7 @@ function startDay(first){
   if(S.debt>0){ const week=Math.floor((S.day-1)/7);
     if(!S.scarWeekDue||S.scarWeekDue.week!==week) S.scarWeekDue={week,amount:Math.min(S.debt,Math.max(Math.floor(S.money*0.35),10000))}; }
   rwSnap();
-  genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn();
+  surroundingsTick(); genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn();
   genRecruits();
   spawnRumors();
   S.todayIncome = 0;
@@ -7910,7 +7912,7 @@ async function endDayInner(reason){
   if(S && !S.over) S.fixers.forEach(checkOmen);
   if(S && !S.over) await colorMailCheck();
 }
-async function weekly(){ ac("week"); bodyUpkeep();
+async function weekly(){ ac("week"); bodyUpkeep(); surroundingsWeekly();
   if(!S.over && S.scarCard && !S.scarJobPosted && S.day - S.scarCard >= 6){ S.scarJobPosted = S.day; const q = scarRequest(); S.requests.unshift(q); addLog(`남겨진 흉터가 의뢰를 맡기고 갔다 — ${q.text}`); }
   if(!S.over && !endCool() && S.debt<=0 && S.officeGrade<=2 && !S.wingAsked && S.repaidDay && S.day - S.repaidDay >= 6){ await wingOffer(); if(!S || S.over) return; }
   if(!S.over && !endCool() && S.debt<=0 && !S.wsAsked && S.repaidDay && S.day - S.repaidDay >= 6 && uniqueHolder()){ await workshopOffer(); if(!S || S.over) return; }
@@ -8058,7 +8060,8 @@ function officeFees(ended){ S.money=Math.max(0,Number(S.money)||0); let h = "";
       due+=f.wageDue;
       const t=Math.min(Math.max(0,S.money),f.wageDue);
       S.money=Math.max(0,S.money-t);f.wageDue-=t;paid+=t;unpaid+=f.wageDue;
-      if(f.wageDue>0) f.mp=Math.max(1,f.mp-Math.round(f.mpMax*0.1));
+      if(f.wageDue>0){ f.mp=Math.max(1,f.mp-Math.round(f.mpMax*0.1));changeFixerTrust(f,-3,"주급 미납");ac("wageLate"); }
+      else {changeFixerTrust(f,1,"주급 전액 지급");ac("wagePaid");}
     });
     if(due>0){h+=`<span>주급(지난 미납액 포함)</span><b>-${won(paid)} (${workers.length}명)${unpaid?` · 미납 ${won(unpaid)}`:""}</b>`;
       if(unpaid){h+=`<span></span><b style="color:#ff8a7a">임금 미납 해결사 정신력 -10% · 미납액 다음 주 이월</b>`;addLog(`주급 미납 ${won(unpaid)} — 다음 주로 이월`);}
@@ -8165,6 +8168,7 @@ async function openManage(){
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} <button data-rename="1" style="padding:2px 8px">이름 변경</button></b>
       <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
       <span>성격</span><b>${f.personality}</b>
+      ${!f.isLeader?`<span>개인 신뢰</span><b>${fixerTrust(f)}/100 · 의뢰 성과·주급에 따라 변동</b>`:""}
       <span>간직한 것</span><b style="${f.precious&&f.precious.lost?"color:#e7a07c":""}">${esc(preciousText(f))}</b>
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
@@ -8773,8 +8777,8 @@ async function openForge(f, slot0, mode){
 /* ================= 기록 / 저장 ================= */
 async function openRecords(){
   const rec = S.records.slice().reverse();
-  await modal("기록", `<div class="tabs"><button class="on">사무소 인사 기록</button></div>
-   ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}
+  await modal("기록", `<div class="tabs"><button class="on" data-rec-tab="people">사무소 인사 기록</button><button data-rec-tab="surroundings">주변 상황</button><button data-rec-tab="mainline">연속 사건</button></div><div id="record-tab-view">
+   ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}</div>
    ${S.ledger && S.debt<=0 ? `<h4 style="margin:16px 0 6px">장부</h4><p class="muted" style="font-size:12px">서랍 속 낡은 장부. 원할 때 덮을 수 있다.</p><button class="primary" data-x="trio">장부를 펼친다</button>` : ""}
    <h4 style="margin:16px 0 6px">저장 관리</h4>
    <p class="muted" style="font-size:12px">진행 상황은 이 브라우저에 자동 저장된다. 기기 변경·브라우저 데이터 삭제에 대비해 저장 파일을 별도로 보관할 수 있다.</p>
@@ -8797,6 +8801,12 @@ async function openRecords(){
         save();closeAll();render();toast("저장 파일을 불러왔습니다.");
       }catch(err){await alertBox("불러오기 실패",esc(err&&err.message?err.message:"파일을 확인해 주세요."));}
       finally{e.target.value="";}
+    });
+    const peopleHtml=root.querySelector("#record-tab-view").innerHTML;
+    root.addEventListener("click",e=>{
+      const btn=e.target.closest("[data-rec-tab]");if(!btn)return;
+      root.querySelectorAll("[data-rec-tab]").forEach(b=>b.classList.toggle("on",b===btn));
+      root.querySelector("#record-tab-view").innerHTML=btn.dataset.recTab==="surroundings"?surroundingsHtml():btn.dataset.recTab==="mainline"?mainlineHtml():peopleHtml;
     });
     root.addEventListener("click", async e=>{
       const x=e.target.dataset.x; if(!x) return;
@@ -9458,6 +9468,62 @@ function hanaStarAfter(q, success, lines){ if(!q.hanaStar) return;
   if(success){ ac("hanaStar"); S.records.push({day:S.day, name:S.officeName, what:"지정 도시의 별", note:`${q.foe} 처리`}); lines.push(`<b style="color:#e8c98a">하나 협회 지정 도시의 별 — 「${esc(q.foe)}」를 쓰러뜨렸다</b>`.replace(`「${esc(q.foe)}」를`, `「${esc(q.foe)}」${jo(q.foe,"을").slice(q.foe.length)}`));
     try{ pushRumor(`${jo(S.officeName,"이")} 하나 협회 지정 의뢰 「${q.foe}」를 처리했다고 한다.`.replace(`「${q.foe}」를`, `「${q.foe}」${jo(q.foe,"을").slice(q.foe.length)}`), true, performance.now(), "major"); }catch(_){} }
   else S.records.push({day:S.day, name:S.officeName, what:"지정 도시의 별", note:`${q.foe} — 실패`}); }
+function fixerTrust(f){if(!f||f.isLeader)return 0;return Math.max(0,Math.min(100,Number.isFinite(f.trust)?f.trust:f.founder?65:50))}
+function changeFixerTrust(f,n,why){if(!f||f.isLeader||!n)return 0;const a=fixerTrust(f);f.trust=Math.max(0,Math.min(100,a+n));const delta=f.trust-a;if(delta){addLog(`${f.name}: 신뢰 ${delta>0?"+":""}${delta} · ${why}`);if(delta>0&&f.trust>=90)ac("trust90");if(delta<0&&f.trust<=20)ac("trust20")}return delta}
+function initSurroundings(){
+  if(!S)return null;if(S.surroundings&&Array.isArray(S.surroundings.offices))return S.surroundings;
+  const g=Math.max(1,Math.min(9,S.officeGrade||8));
+  S.surroundings={
+    offices:[{id:"a",name:"접힌 동전 사무소",grade:g,role:"동급",p:.04,closed:false,done:0},
+      {id:"b",name:"굽은 못 사무소",grade:g,role:"동급",p:.04,closed:false,done:0},
+      {id:"c",name:"흰 가위 사무소",grade:Math.max(1,g-2),role:"상위",p:.005,closed:false,done:0}],
+    news:[{day:S.day,type:"도시",text:"무너진 L사 지부에 접근하는 회수업자와 해결사들이 늘었다는 소식이 들린다."},
+      {day:S.day,type:"손가락",text:"손가락들의 지시와 거래가 뒷골목에 미치고 있다는 소문이 돌지만, 정확한 움직임은 확인되지 않았다."}],
+    jobs:[],lastWeek:0,lastTick:0};return S.surroundings;
+}
+function surroundingsNote(type,text){const D=initSurroundings();if(!D)return;D.news.unshift({day:S.day,type,text:String(text)});D.news=D.news.slice(0,40)}
+function surroundingsHandOff(q){
+  const D=initSurroundings();if(!D||!q)return;
+  const pool=D.offices.filter(o=>!o.closed).sort((a,b)=>Math.abs(a.grade-q.grade)-Math.abs(b.grade-q.grade));
+  const office=pool[Math.floor(Math.random()*Math.min(2,pool.length))];
+  const item={id:q.id,client:String(q.client||"의뢰인"),text:String(q.text||""),grade:q.grade,day:S.day,
+    officeId:office?.id||null,office:office?.name||"인수처 없음",due:S.day+1+Math.floor(Math.random()*3),
+    status:office?"수행 중":"인수 실패"};
+  D.jobs.unshift(item);D.jobs=D.jobs.slice(0,50);
+  surroundingsNote("주변 사무소",office?`${office.name}이 우리 사무소가 거절한 의뢰를 받아 갔다. 의뢰인: ${item.client}`:"주변 사무소가 모두 폐업해 의뢰를 넘기지 못했다.");
+  ac("neighborRefused");
+}
+function surroundingsTick(){
+  const D=initSurroundings();if(!D||D.lastTick===S.day)return;D.lastTick=S.day;
+  D.jobs.forEach(j=>{if(j.status!=="수행 중"||j.due>S.day)return;
+    const o=D.offices.find(x=>x.id===j.officeId);if(!o||o.closed){j.status="수행 중단";return;}
+    j.status=Math.random()<Math.max(.14,Math.min(.94,.75+(j.grade-o.grade)*.065))?"완료":"실패";j.finishDay=S.day;
+    if(j.status==="완료"){o.done++;ac("neighborDone");}
+    surroundingsNote("주변 사무소",`${o.name}: 양도받은 ${j.client}의 의뢰 ${j.status==="완료"?"완수":"실패"}.`);
+  });
+}
+function surroundingsWeekly(){
+  const D=initSurroundings();if(!D)return;const week=Math.floor(S.day/7);if(week<=D.lastWeek)return;
+  for(let w=D.lastWeek+1;w<=week;w++){
+    D.offices.forEach(o=>{if(o.closed||Math.random()>=o.p)return;o.closed=true;o.closedDay=S.day;
+      D.jobs.forEach(j=>{if(j.officeId===o.id&&j.status==="수행 중")j.status="수행 중단";});
+      ac("neighborClosed");surroundingsNote("주변 사무소",`${o.name}이 폐업했다. ${gName(o.grade)} 사무소였으며 진행 중이던 의뢰도 중단됐다.`);
+    });
+    surroundingsNote("손가락",FINGER_NEWS[Math.floor(Math.random()*FINGER_NEWS.length)]);
+    surroundingsNote("도시",CITY_NEWS[Math.floor(Math.random()*CITY_NEWS.length)]);
+  }
+  D.lastWeek=week;
+}
+function surroundingsHtml(){
+ const D=initSurroundings();
+ const office=D.offices.map(o=>`<div class="item"><div><b>${esc(o.name)}</b> <span class="badge">${esc(o.role)} · ${gName(o.grade)}</span> <span class="badge" style="color:${o.closed?"#ff8a7a":"#9fe8b0"}">${o.closed?"폐업":"영업 중"}</span><div class="d">넘겨받은 의뢰 완료 ${o.done}건 · 매주 폐업 확률 ${o.p===.04?"4%":"0.5%"}${o.closed?` · ${o.closedDay}일차 폐업`:""}</div></div></div>`).join("");
+ const jobs=D.jobs.slice(0,16).map(j=>`<div class="item"><div><b>${esc(j.office)}</b> · ${esc(j.status)}<div class="d">${esc(j.client)}: ${esc(j.text)}</div><div class="d">${j.day}일차 이관${j.finishDay?` · ${j.finishDay}일차 결과`:""}</div></div></div>`).join("");
+ const news=D.news.slice(0,25).map(n=>`<div class="item"><div><span class="badge">${esc(n.type)}</span> <span class="muted">${n.day}일차</span><div class="d">${esc(n.text)}</div></div></div>`).join("");
+ return `<h4>주변 사무소</h4><p class="muted">개업 시 동급 2곳, 2급 높은 사무소 1곳이 이웃한다. 거절한 의뢰는 영업 중인 주변 사무소가 맡으며, 처리 성공 여부는 별도로 결정된다.</p><div class="list">${office}</div><h4>이관한 의뢰</h4>${jobs?`<div class="list">${jobs}</div>`:"<p class='muted'>넘긴 의뢰가 없다.</p>"}<h4>손가락 및 도시 소식</h4><p class="muted">일부는 확인되지 않은 소문이다. 손가락 세력 자체는 바뀌지 않는다.</p><div class="list">${news}</div>`;
+}
+const FINGER_NEWS=["엄지 산하 조직이 공방 거리에서 물건을 수거했다는 이야기가 들려온다. 명령을 내린 자는 확인되지 않았다.","검지의 지령 봉투를 받은 누군가가 밤새 거리를 헤맸다는 목격담이 있다. 봉투 내용은 알려지지 않았다.","중지의 이름이 나왔던 술집에서 손님들이 자리를 옮겼다고 한다. 자세한 사정은 불명확하다.","약지와 관계가 있다는 물건 하나가 암시장에서 거래됐다는 소문이 있다. 출처는 확인되지 않았다.","소지의 이름이 적힌 낙서가 골목에서 발견됐다는 목격담이 있다. 전해지는 내용은 제각각이다."];
+const CITY_NEWS=["붕괴된 L사 지부의 냉각 장치를 노리는 회수업자들이 늘고 있다는 소식이다.","경비 계약을 잃은 사무소들이 철거 업체로부터 단기 의뢰를 받는다고 한다.","협회 지부에 실종 신고가 여러 건 접수되었으나 원인은 알려지지 않았다.","공방 거리에서 의체 유지비가 올랐다는 이야기가 나온다. 실제 가격은 거래처에 따라 다르다.","붕괴된 시설의 출입구를 알려 주는 대가로 돈을 받는 사람들이 생겼다고 한다."];
+
 /* ================= 의뢰 받기 =================
    모든 의뢰는 게시판에서 [의뢰를 받는다]로 먼저 연다 → 의뢰 상세와 짧은 이야기 → [사람을 보낸다] / [거절한다].
    사람을 보내기로 하면 그 의뢰 카드에서 해결사를 고를 수 있다. 거절한 의뢰는 게시판에서 내려간다(지령을 거절하면 대가를 치른다). */
@@ -10307,13 +10373,14 @@ function render(){
   // 해결사
   app.querySelector("#fxs").innerHTML = S.fixers.map(f=>{
     const lh=level(f.hp,f.hpMax), lm=level(f.mp,f.mpMax);
-    const st = f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? (f.marchDay===S.day ? "강행군까지 마침" : "오늘 출동함 · 강행군 가능") : "대기 중";
+    const st = !bodyServiceReady(f) ? "전신 의체 정비비 미납 · 출동 불가" : f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? (f.marchDay===S.day ? "강행군까지 마침" : "오늘 출동함 · 강행군 가능") : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     const nc = nameCol(f);
     return `<div class="fx"><div class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
       ${colorBtn(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${f.distEye?`<div class="title" style="color:#c9b0ff" title="${esc(distEyeText)}">뒤틀림을 보는 눈</div>`:""}${distExp(f)?`<div class="title muted">뒤틀림 경험 — ${distExp(f).n}(처치 ${f.dk})</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}${f.addict?`<div class="title" style="color:#ff8a7a">엔케팔린 중독 — 회복량 절반</div>`:""}${accFx(f,"rewind")?`<button class="hana-btn" data-rewind="${f.id}" ${f.rw && f.rw.length ? "" : "disabled"}>시간 되돌림 장치 사용</button>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
+      ${!f.isLeader?`<div style="font-size:12px">신뢰 ${fixerTrust(f)}/100</div>${bar(fixerTrust(f),100,fixerTrust(f)>=70?"#7fb069":fixerTrust(f)>=35?"#d8b24a":"#c94a4a")}`:""}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
       <div class="state">${st} · 총합 ${total(f)}${f.tired ? ` · <b style="color:#e7a07c">피로</b>` : (f.streak||0) >= 1 ? ` · <span class="muted">연속 출동 ${f.streak}일</span>` : ""}</div></div>`;
   }).join("");
@@ -10351,6 +10418,7 @@ async function refuseReq(qid){ const q = S.requests.find(x=>x.id===qid); if(!q) 
   if(q.prescript && !await confirmBox("지령 거절", "지령을 거절하면 대가를 치른다. 그래도 거절하겠는가?")) return;
   if(q.accepted){ if(!await confirmBox('계약 포기', `이미 수락한 의뢰입니다. 포기하면 사무소 신뢰도가 6 감소합니다. ${esc(q.client)}의 계약을 포기하시겠습니까?`)) return;
     changeOfficeTrust(-6, `수락한 계약 포기 · ${q.client}`); }
+  surroundingsHandOff(q);
   S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id]; if(openQ===qid) openQ = null;
   if(q.prescript){ idxFail(); addLog("지령을 거절했다. 그날 밤, 출근길마다 누군가 뒤를 밟았다 — 모두 체력 -10%"); }
   else addLog(`의뢰를 거절했다 — ${q.client}`);
