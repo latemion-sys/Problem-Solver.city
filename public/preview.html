@@ -2286,6 +2286,25 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     S.records.push({day:S.day,name:S.officeName,what:"사무소 이야기",note:title});
     addLog(`[사무소 이야기] ${title}${txt?" · "+txt:""}`);
   }
+  function personalCase(f,which){
+    const k=f.precious&&f.precious.kind||"목표", n=f.name, t=f.precious&&f.precious.text||"소중한 것";
+    const who=which===2?"옛 지인":"이전 구역의 주민";
+    if(k==="사람"||k==="동료")
+      return {kind:"수색",attrs:["agi","tec"],client:`${n}의 ${who}`,
+        text:`${n}이(가) 소중히 여기는 사람과 연락이 끊겼다. 마지막 행방을 확인해 달라.`,
+        scene:[`${n}이(가) 간직해 온 마음: ${t}.`,"마지막으로 만난 곳부터 찾아가 주변 사람들에게 사정을 묻는다."]};
+    if(k==="물건")
+      return {kind:"수색",attrs:["agi","tec"],client:`${n}의 보관소 관계자`,
+        text:`${n}이(가) 아끼는 물건을 맡겼던 보관소가 문을 닫았다. 물건을 회수해 달라.`,
+        scene:[`${n}이(가) 소중히 간직한 것: ${t}.`,"보관소 문에는 이전 주인의 연락처 하나만 붙어 있다."]};
+    if(k==="목표")
+      return {kind:"일반",attrs:["tec"],client:`${n}의 옛 거래처`,
+        text:`${n}의 계획을 위해 진행하던 거래가 중단됐다. 거래처와 정산 문제를 해결해 달라.`,
+        scene:[`${n}의 목표는 ${t}이다.`,"미뤄 둔 계약과 선금을 둘러싼 사정을 알아봐야 한다."]};
+    return {kind:"수색",attrs:["agi","tec"],client:`${n}의 ${who}`,
+      text:"전에 끝내지 못한 개인적인 일을 조사해 달라.",
+      scene:["예전에 함께 일하던 사람이 마지막으로 남긴 주소가 있다.","그 주소에서부터 조사한다."]};
+  }
   function postRequest(id, kind, attrs, client, text, actorId, scene){
     const grade=Math.max(1,Math.min(9,(Number(S.officeGrade)||8)+1));
     const q=makeRequest(grade,{kind,attrs});
@@ -2387,11 +2406,11 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     }else if(id==="week2"&&ff[0]){
       const f=ff[0],p=f.precious&&f.precious.text?`그가 간직한 것은 '${escapeText(f.precious.text)}'이다.`:"전에 함께 일하던 사람이 있었다고 한다.";
       const choice=await modal("2주째 · 아는 사람",`<p>${escapeText(f.name)}${escapeText(josa(f.name,"이","가").slice(f.name.length))} 잠시 말을 멈췄다. 사무소를 찾은 사람이 자신의 지난 일을 알고 있다는 것이다.</p><p>${p}</p><p>"대표님, 이번 일만큼은 제가 나가도 되겠습니까?"</p><p class="muted">수락하면 관련 의뢰가 게시판에 생깁니다.</p>`,[{t:"이번에는 맡지 않는다",v:"no"},{t:"함께 해결한다",v:"yes",primary:true}]);
-      if(choice==="yes") postRequest(id,"일반",["tec"],`${f.name}의 옛 지인`,"예전에 끝내지 못한 정산과 행방을 확인해 달라.",f.id,["동료의 옛 지인은 정산을 미루던 거래처의 위치를 알려 주었다.","사라진 장부를 찾아 사실관계를 확인해야 한다."]);
+      if(choice==="yes"){const c=personalCase(f,2);postRequest(id,c.kind,c.attrs,c.client,c.text,f.id,c.scene);}
     }else if(id==="week3"&&ff[1]){
       const f=ff[1],p=f.precious&&f.precious.text?`그가 마음에 두고 있는 것은 '${escapeText(f.precious.text)}'이다.`:"말하지 못한 일이 하나 있었다고 한다.";
       const choice=await modal("3주째 · 두 번째 동료의 부탁",`<p>${escapeText(f.name)}${escapeText(josa(f.name,"이","가").slice(f.name.length))} 대표를 찾아와 개인적인 부탁을 꺼낸다.</p><p>${p}</p><p>"한 번만 같이 찾아가 주시겠습니까?"</p><p class="muted">수락하면 수색 의뢰가 게시판에 생깁니다.</p>`,[{t:"지금은 어렵다",v:"no"},{t:"의뢰를 맡는다",v:"yes",primary:true}]);
-      if(choice==="yes") postRequest(id,"수색",["agi","tec"],`${f.name}의 부탁`,"전에 살던 구역에서 사라진 사람의 행방을 확인해 달라.",f.id,["그가 기억하는 마지막 주소에서부터 수색을 시작한다.","그곳 주민들은 사람을 찾기보다 먼저 지난달 일어난 일을 들려준다."]);
+      if(choice==="yes"){const c=personalCase(f,3);postRequest(id,c.kind,c.attrs,c.client,c.text,f.id,c.scene);}
     }else if(id==="month1"){
       const members=S.fixers.filter(f=>!f.isLeader);
       const intro=`<p>개업하고 한 달이 지났다. 현재 자금은 <b>${won(S.money)}</b>, 남은 빚은 <b>${won(S.debt)}</b>이다.</p><p>${S.money>=10000?"동료들이 오늘 하루만큼은 함께 식사하자고 제안했다.":"동료들은 오늘도 아껴 써야 한다며 장부를 펼쳤다."}</p>`;
