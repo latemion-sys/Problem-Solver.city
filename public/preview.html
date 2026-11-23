@@ -2182,8 +2182,18 @@ function syncStatVitals(f){
   if(dm){ f.mpMax=Math.max(1,(Number(f.mpMax)||100)+dm); f.mp=clamp((Number(f.mp)||0)+dm,0,f.mpMax); }
   f.statVitals={hp,mp}; return f;
 }
+/* 배운 기본 기술은 습득 순서대로 저장한다. 이전 저장은 처음 배운 세 가지를 남긴다. */
+const MAX_BASIC_TECHS = 3;
+function limitBasicTechs(f){
+  if(!f) return f;
+  const learned = Array.isArray(f.techs) ? f.techs : [];
+  f.techs = learned.length > MAX_BASIC_TECHS ? learned.slice(0, MAX_BASIC_TECHS) : learned;
+  if(!f.tech || (f.tech !== "allout" && !f.techs.includes(f.tech))) f.tech = "allout";
+  return f;
+}
 function syncAllStatVitals(d){ if(d){ (d.fixers||[]).concat(d.recruitPool||[]).forEach(f=>{
   syncStatVitals(f);
+  limitBasicTechs(f);
   if(!f.isLeader && !Number.isFinite(f.trust)) f.trust=f.founder?65:50;
   if(f.grade<=1){ growOf(f); ATTRS.forEach(a=>{ if(f.gk[a]){ f.gk[a]=false; f.gc[a]=0; } }); }
 }); } return d; }
@@ -4606,12 +4616,14 @@ const techFits = (id, wt) => { const T = TECHS[id]; return !!T && (!T.kinds || T
 // 깨우침: 같은 갈래의 무기로 출동한 횟수(장비) + 등급(기량) · 능력치(능력). 조건을 갖춘 출동마다 35%로 자연스럽게
 const TECH_STAT_REQ = 28;   // 새 성장 곡선(승급 +4/+1~3)에 맞춰 낮춤
 function techCandidates(f){ const out = [], u = f.wuse || {}, know = f.techs || [];
+  if(know.length >= MAX_BASIC_TECHS) return out;
   Object.entries(TECHS).forEach(([id,T])=>{ if(id==="allout" || T.relic || know.includes(id)) return;
     if(T.kinds){ const n = T.kinds.reduce((s,k)=>s+(u[k]||0),0), order = Object.keys(TECHS).filter(x=>TECHS[x].kinds && TECHS[x].kinds.some(k=>T.kinds.includes(k)) && know.includes(x)).length;
       const need = 6 + order*8, gradeOk = f.grade <= 8 - Math.min(4, order*2); if(n >= need && gradeOk) out.push(id); }
     else if(T.stat && f.stats[T.stat] >= TECH_STAT_REQ && f.done >= 8) out.push(id); });
   return out; }
 async function checkTech(f){
+  if((f.techs||[]).length >= MAX_BASIC_TECHS) return;
   const c = techCandidates(f); if(!c.length || Math.random() >= (window.__forceTech ? 1 : 0.35)) return;
   const wt = weaponTypeOf(wGear(f)) || "none", fit = c.filter(id=>techFits(id, wt)), id = pick(fit.length ? fit : c), T = TECHS[id];
   f.techs = (f.techs||[]).concat(id); ac("tech"); if(!f.tech || f.tech==="allout") { if(techFits(id, wt)) f.tech = id; }
@@ -9389,7 +9401,7 @@ async function openManage(){
       ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
-      <span>기술</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
+      <span>기술 (${(f.techs||[]).length}/${MAX_BASIC_TECHS})</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
         return `<select data-tech="1">${list.map(id=>`<option value="${id}" ${(f.tech||"allout")===id?"selected":""} ${techFits(id, wt)?"":"disabled"}>${TECHS[id].n}${techFits(id, wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
           <br><span class="muted" style="font-weight:400">${esc(TECHS[f.tech && techFits(f.tech, wt) ? f.tech : "allout"].d)}${(f.techs||[]).length ? "" : " · 무기를 오래 쓰거나 능력치가 높아지면 기술을 깨우친다."}</span>`; })()}</b>
       <span>완료 의뢰</span><b>${f.done}건</b>
@@ -12508,7 +12520,7 @@ const ACH_RAW = [
 [1,"드묾","사람을 모으다","해결사를 10명 영입한다.", X=>X.L.hire>=10],
 [1,"드묾","단련의 흔적","의뢰로 오른 능력치가 모두 합쳐 100이 된다.", X=>X.L.grow>=100],
 [1,"드묾","신(心)","해결사가 처음으로 신(心)을 깨우친다.", X=>X.L.shin>=1],
-[1,"드묾","다섯 갈래 손","한 해결사가 기술을 다섯 가지 깨우친다.", X=>X.S && X.S.fixers.some(f=>(f.techs||[]).length>=5)],
+[1,"드묾","세 갈래 손","한 해결사가 기술을 세 가지 깨우친다.", X=>X.S && X.S.fixers.some(f=>(f.techs||[]).length>=3)],
 [1,"드묾","여섯 식구","해결사가 여섯이 된다.", X=>X.fixN>=6],
 [1,"희귀","협회가 눈여겨보는 이","3급 해결사가 나온다.", X=>X.bestG<=3],
 [1,"희귀","정상의 문턱","1급 해결사가 나온다.", X=>X.bestG<=1],
