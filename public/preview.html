@@ -2635,7 +2635,7 @@ function makeRequest(grade, opts={}){
   }
   const [base0, req0, threat0] = REQ_BASE[grade];
   // 9급 가운데 일부는 뜬소문이 아니라 도시 괴담 — 조금 더 까다롭고 보수도 낫다
-  const kw = grade===9 && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
+  const kw = grade===9 && !opts.noKw && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
   const key = attrs[0];
   let text, client, foe = null, chase = null, row, scene = null;
   const ab = kind==="환상체" ? pickAbno(grade) : null;
@@ -3479,6 +3479,18 @@ function dailyReqN(){ return ((S && S.fixers) ? S.fixers.length : 1) + 1; }
 const reqCap = () => dailyReqN();
 const isSpecialReq = q => !!(q.special || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
 const reqRoom = () => Math.max(0, reqCap() - S.requests.filter(q=>!q.accepted && !isSpecialReq(q)).length);
+// 사무소 등급별 의뢰 재해 등급 비중(%) — 9급 사무소는 기존 방식 그대로
+const REQ_MIX = {
+  8:[["뜬소문",70],["도시 괴담",20],["도시 전설",10]],
+  7:[["뜬소문",40],["도시 괴담",35],["도시 전설",25]],
+  6:[["뜬소문",20],["도시 괴담",40],["도시 전설",40]],
+  5:[["도시 괴담",50],["도시 전설",35],["도시 질병",15]],
+  4:[["도시 괴담",20],["도시 전설",35],["도시 질병",35],["도시 악몽",10]],
+  3:[["도시 괴담",10],["도시 질병",60],["도시 악몽",30]],
+  2:[["도시 질병",50],["도시 악몽",40],["도시의 별",10]],
+  1:[["도시 악몽",60],["도시의 별",40]],
+};
+const THREAT_GRADES = {"뜬소문":[9], "도시 괴담":[8], "도시 전설":[7,6], "도시 질병":[5,4], "도시 악몽":[3,2], "도시의 별":[1]};
 function genRequestsInner(){
   let n = Math.min(dailyReqN(), reqRoom());
   if(S.day<=3){
@@ -3495,9 +3507,14 @@ function genRequestsInner(){
   if(S.gossip && S.gossip >= S.day && n > 1) n--;   // 현장 사건 '소문'을 내버려 두면 그다음 날 의뢰가 하나 줄어든다
   if(n <= 0) return;
   for(let i=0;i<n;i++){
-    const r = Math.random();
-    const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9);
-    S.requests.push(maybeRuinsRequest(makeRequest(g)));
+    const T = REQ_MIX[S.officeGrade];
+    if(!T){ const r = Math.random(); const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9); S.requests.push(maybeRuinsRequest(makeRequest(g))); continue; }
+    // 사무소 등급별 재해 등급 비중 → 그 재해 등급의 의뢰 등급 가운데 사무소 등급에 가장 가까운 쪽
+    let r = Math.random()*100, th = T[T.length-1][0]; for(const [k,p] of T){ if(r < p){ th = k; break; } r -= p; }
+    const cand = THREAT_GRADES[th], best = Math.min(...cand.map(x=>Math.abs(x - S.officeGrade))), gs = cand.filter(x=>Math.abs(x - S.officeGrade)===best), g = pick(gs);
+    const q = makeRequest(g, th==="뜬소문" ? {noKw:true} : {});
+    if(th==="도시 괴담" && g===9 && q.threat!=="도시 괴담") q.threat = "도시 괴담";
+    S.requests.push(maybeRuinsRequest(q));
   }
   if(S.officeGrade > 1 && Math.random() < NOM_P && !S.requests.some(q=>q.nom) && reqRoom() > 0) S.requests.push(nominate(makeRequest(S.officeGrade - 1)));
   // 1급 사무소: 기존의 드문 도시의 별 의뢰를 1급 기준으로 다시 게시한다(특색급 의뢰 생성 금지).
@@ -5973,25 +5990,25 @@ const ABNO_SIGN = {
     ok:{mood:6}, okT:"엄폐물 뒤로 몸을 숨겼다. 사수가 조준을 거둔다", bad:{mp:0.04, hurt:0.07}, badT:"총알이 어깨를 스쳤다", missT:"아무도 숨지 않았다. 사수의 눈에 옛 전장이 겹친다",
     rage:{t:"흉탄이 장전되는 소리가 울린다", btn:"엄폐한다", okT:"모두 엄폐물 뒤로 몸을 던졌다", missT:"흉탄이 쏟아졌다", sp:3, hp:7}},
   carousel:{t:()=>"목마가 삐걱이며 저절로 흔들리기 시작한다. 가시가 하나둘 돋는다", btn:"고삐를 잡아 멈춘다", d:"근력 판정 · 실패하면 가시에 긁힌다", chk:"str",
-    ok:{mood:8}, okT:"고삐를 당기자 흔들림이 멎는다", bad:{mp:0.03, hurt:0.07}, badT:"고삐가 손에서 빠졌다 — 가시가 팔을 긁었다", missT:"흔들림이 커진다. 가시가 바깥을 향한다",
+    ok:{mood:8}, okT:"고삐를 당기자 흔들림이 멎는다", bad:{mp:0.03, hurt:0.07}, badT:"고삐가 손에서 빠졌다 — 가시가 팔을 긁었다", missT:"흔들림이 커진다. 가시가 바깥을 향한다", missDmg:{hp:0.05, t:"흔들리는 가시가 곁의 모두를 긁었다"},
     rage:{t:"목마가 가시를 세운 채 달려든다", btn:"옆으로 비킨다", okT:"목마가 허공을 가르고 지나갔다", missT:"가시 돋친 목마가 모두를 들이받았다", sp:3, hp:7}},
   greenboots:{t:()=>"장화가 한 짝씩 저절로 행진 박자를 맞춘다. 발끝이 따라 움직인다", btn:"박자를 흩뜨린다", d:"민첩 판정 · 박자에 말리면 발이 장화로 들어갈 뻔한다", chk:"agi",
-    ok:{mood:8}, okT:"엇박으로 발을 굴러 박자를 깨뜨렸다. 장화가 멈칫한다", bad:{mp:0.06}, badT:"발끝이 장화 입구에 닿을 뻔했다", missT:"행진 박자가 골목을 메운다",
+    ok:{mood:8}, okT:"엇박으로 발을 굴러 박자를 깨뜨렸다. 장화가 멈칫한다", bad:{mp:0.04, hurt:0.06}, badT:"발끝이 장화 입구에 닿을 뻔했다 — 장화 굽에 채였다", missT:"행진 박자가 골목을 메운다", missDmg:{hp:0.06, t:"행진하던 장화가 발등을 짓밟고 지나갔다"},
     rage:{t:"장화가 행진 박자에 맞춰 다가온다", btn:"박자를 끊는다", okT:"엇박에 행진이 흐트러졌다", missT:"장화가 앞을 막는 모두를 짓밟고 지나갔다", sp:4, hp:6}},
   stitchbear:{t:()=>"터진 실밥 사이로 솜이 흘러나온다. 곰이 빈 품을 내려다본다", btn:"실밥을 꿰매 준다", d:"재주 판정 · 서툴면 곰이 실망한다", chk:"tec",
-    ok:{mood:10}, okT:"한 땀 한 땀 꿰매자 곰이 품을 여민다", bad:{mp:0.06}, badT:"바늘이 엇나갔다 — 곰이 빤히 바라본다", missT:"솜이 다 흘러나왔다. 곰이 채울 것을 찾아 두리번거린다",
+    ok:{mood:10}, okT:"한 땀 한 땀 꿰매자 곰이 품을 여민다", bad:{mp:0.04, hurt:0.04}, badT:"바늘이 엇나갔다 — 곰이 빤히 바라본다", missT:"솜이 다 흘러나왔다. 곰이 채울 것을 찾아 두리번거린다", missDmg:{hp:0.04, mp:0.03, t:"곰이 가장 가까운 이를 와락 끌어안았다 놓았다"},
     rage:{t:"곰이 터진 품을 활짝 벌리고 다가온다", btn:"품을 피한다", okT:"팔 사이로 빠져나왔다", missT:"곰이 모두를 끌어안아 숨통을 조였다", sp:5, hp:5}},
-  mothwedding:{t:()=>"나방들이 하객을 세듯 일행 머리 위를 맴돈다", btn:"고개 숙여 축하한다", d:"예를 갖추면 나방들이 내려앉는다",
-    ok:{mood:8}, okT:"고개를 숙이자 나방들이 신부 곁으로 돌아간다", missT:"축하하지 않는 하객이 있다 — 나방들이 날개를 비빈다",
+  mothwedding:{t:()=>"나방들이 하객을 세듯 일행 머리 위를 맴돈다", btn:"고개 숙여 축하한다", d:"의지 판정 · 힘으로 다루려 들지 말고 예를 갖춘다",
+    chk:"wil", ok:{mood:8}, okT:"고개를 숙이자 나방들이 신부 곁으로 돌아간다", bad:{mp:0.06}, badT:"인사가 어색했다 — 나방들이 하객 명단을 다시 센다", missT:"축하하지 않는 하객이 있다 — 나방들이 날개를 비빈다", missDmg:{mp:0.06, t:"날갯가루가 흩날려 모두의 머리가 어지럽다"},
     rage:{t:"나방 떼가 하객을 데려가려 날아오른다", btn:"불빛을 가린다", okT:"불빛을 가리자 나방들이 방향을 잃었다", missT:"나방 떼가 모두를 휩쓸고 지나갔다", sp:7, hp:3}},
   biik:{t:()=>"한쪽 날개가 짝을 찾아 허공을 퍼덕인다", btn:"짝을 불러 나란히 선다", d:"한 쌍으로 묶인 두 사람이 나란히 서 준다",
-    ok:{mood:10}, okT:"두 사람이 나란히 서자 날개가 하나로 맞물린다", missT:"짝 잃은 날개가 홀로 퍼덕인다",
+    ok:{mood:10}, okT:"두 사람이 나란히 서자 날개가 하나로 맞물린다", missT:"짝 잃은 날개가 홀로 퍼덕인다", missDmg:{mp:0.05, t:"엇갈린 날갯바람이 마음을 흔든다"},
     rage:{t:"두 날개가 따로 퍼덕이며 크게 흔들린다", btn:"나란히 선다", okT:"나란히 서자 날갯짓이 가라앉았다", missT:"엇갈린 날갯바람이 모두를 휩쓸었다", sp:6, hp:4}},
   skel:{t:()=>"거대한 그림자가 앞을 막아선다. 비켜 갈 길이 보이지 않는다", btn:"피하지 않고 버틴다", d:"의지 판정 · 곧게 버티면 고래가 길을 연다", chk:"wil",
-    ok:{mood:10}, okT:"제자리에서 버텼다. 고래가 천천히 몸을 비킨다", bad:{mp:0.06}, badT:"한 발 물러설 뻔했다 — 그림자가 더 짙어진다", missT:"아무도 버티지 않았다. 그림자가 더 넓게 퍼진다",
+    ok:{mood:10}, okT:"제자리에서 버텼다. 고래가 천천히 몸을 비킨다", bad:{mp:0.04, hurt:0.05}, badT:"한 발 물러설 뻔했다 — 그림자가 더 짙어진다", missT:"아무도 버티지 않았다. 그림자가 더 넓게 퍼진다", missDmg:{hp:0.05, t:"고래의 몸이 스치며 모두를 밀쳐 냈다"},
     rage:{t:"고래가 몸을 틀어 길을 막는다", btn:"곧게 버틴다", okT:"버티자 고래가 몸을 돌렸다", missT:"고래의 몸이 모두를 덮쳤다", sp:4, hp:6}},
   erlking:{t:()=>"안개 속에서 '얘야, 이리 오렴' 하는 부름이 들려온다", btn:"아이의 귀를 막아 준다", d:"의지 판정 · 성공하면 부름이 한 칸 옅어진다", chk:"wil",
-    ok:{mood:6, lure:-1}, okT:"「얘야, 그건 안개란다.」 부름이 멀어진다", bad:{mp:0.06}, badT:"부름이 손가락 사이로 새어 들어왔다", missT:"부름이 짙어진다",
+    ok:{mood:6, lure:-1}, okT:"「얘야, 그건 안개란다.」 부름이 멀어진다", bad:{mp:0.06}, badT:"부름이 손가락 사이로 새어 들어왔다", missT:"부름이 짙어진다", missDmg:{mp:0.05, t:"안개가 짙어져 모두의 정신이 흐려진다"},
     missFx:{lure:1}, rage:{t:"마왕이 안개 속에서 아이를 부른다", btn:"아이를 붙잡는다", okT:"아이의 손을 꼭 붙잡았다", missT:"부름이 모두의 정신을 흐렸다", sp:8}},
 };
 const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
@@ -6515,7 +6532,9 @@ function mgAbno(ctx){
       say(`<b style="color:#ffb35a">징후 — ${esc(G.sign.txt)}</b>`); }
     function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
       if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = Math.max(1, Math.floor(x.hpMax*0.1)); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 -10%)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
-      say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1`);
+      let dmgT = ""; if(SG.missDmg){ const D = SG.missDmg, parts = []; ctx.team.forEach(x=>{ if(D.mp){ const v = Math.floor(x.mpMax*D.mp); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; } if(D.hp){ const v = Math.max(1, Math.floor(x.hpMax*D.hp*(1 - redHP(x)*0.5))); x.hp = Math.max(1, x.hp - v); } });
+        if(D.mp) parts.push(`모두 정신력 -${Math.round(D.mp*100)}%`); if(D.hp) parts.push(`모두 체력 -${Math.round(D.hp*100)}%`); dmgT = ` · <b style="color:#ff8a7a">${esc(D.t)} (${parts.join(" · ")})</b>`; }
+      say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1${dmgT}`);
       if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
     function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil"); G.sign = null;
       const out = [];
