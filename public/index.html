@@ -3672,8 +3672,10 @@ function autoWound(f){
 const CLEAN_WIN = 0.8;   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
 const directOnly = q => !!(q && (q.ruins || q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
-const MG_NAME = {ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
-const gamesFor = q => q.ruins ? ["ruins"] : q.kind==="환상체" ? ["abno"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : q.attrs.filter(a=>a!=="wil");
+const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
+const gamesFor = q => { const base = gamesFor0(q); if(!storyMG(q)) return base;
+  return q.arc ? ["story"].concat(base.includes("str") || q.goal ? ["str"] : []) : ["story"].concat(base); };
+const gamesFor0 = q => q.ruins ? ["ruins"] : q.kind==="환상체" ? ["abno"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : q.attrs.filter(a=>a!=="wil");
 function chooseMode(q, team){
   if(directOnly(q)) return Promise.resolve("play");
   const base = rate(team, q), games = gamesFor(q);
@@ -3688,7 +3690,8 @@ async function runMinigames(q, team){
   const games = gamesFor(q); let sum = 0, combat = null, abno = null; const dec = [];
   for(let i=0;i<games.length;i++){
     const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
-    if(a==="ruins"){ const r=await mgRuins(ctx);sum+=r.score;dec.push(r); }
+    if(a==="story"){ const r = await mgStory(ctx); sum += r; q.__edge = r; }
+    else if(a==="ruins"){ const r=await mgRuins(ctx);sum+=r.score;dec.push(r); }
     else if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; dec.push(combat); }
     else if(a==="agi"){ const tr = await mgTrack(ctx); sum += tr.score; dec.push(tr); if(!combat) combat = tr; }
     else if(a==="escort"){ const r = await mgEscort(ctx); sum += r.score; dec.push(r); if(r.combat) combat = r.combat; }
@@ -3699,6 +3702,225 @@ async function runMinigames(q, team){
   // 승패가 나는 게임(합 전투·추적)만으로 이뤄진 의뢰는 그 승패가 곧 의뢰 성패
   return {score: games.length ? sum/games.length : 0, combat, decisive: dec.length===games.length ? dec.every(d=>d.win) : null, lostDecisive: dec.some(d=>!d.win), abno};
 }
+
+/* ================= 사건 · 특수 의뢰 전용 미니게임 =================
+   사건 의뢰(6개 사건 × 3장)와 특수 의뢰(지령 · 하나 협회 지정 · 지명 · 흉터의 의뢰 · 승급 심사 · 뒤틀림 토벌)는
+   일반 미니게임 대신 그 일에 맞춘 전용 미니게임을 먼저 한다. 싸움이 걸린 장(제압·사살)은 전용 미니게임 뒤에 합 전투가 이어지고,
+   전용 미니게임을 잘할수록 상대의 체력이 깎인 채로 시작한다(최대 25%).
+   의뢰가 끝나면 성공·실패에 따라 다른 뒷이야기가 장면으로 이어진다.
+   방식: order 순서 기억 · pick 골라 붙잡기 · watch 신호 잠복 · guide 사람 대피 · tune 바늘 맞추기 · hotcold 소리 따라 찾기 */
+const STORY_MG = {
+  gloves0:{t:"빨랫줄 추적", type:"order", attr:"tec", bg:["#2b2a36","#1c1b24"], items:["빨랫집게","젖은 발자국","고무 냄새","찢긴 비닐","사탕 껍질","담장 틈"],
+    d:"장갑이 사라진 길에 남은 흔적이 차례로 빛난다. 빛난 순서대로 짚어 길을 잇는다."},
+  gloves1:{t:"장갑 든 아이 붙잡기", type:"pick", attr:"agi", bg:["#2a2230","#18141c"], tgt:"빨간 장갑", dec:["비닐봉지","고양이","빈 손"], need:5,
+    d:"골목을 가로지르는 아이들 가운데, 빨간 장갑을 든 아이만 붙잡는다. 다른 아이를 붙잡으면 겁을 먹고 흩어진다."},
+  gloves2:{t:"쥐 두목의 은신처", type:"hotcold", attr:"tec", bg:["#231e1c","#141110"], what:"찍찍거리는 소리",
+    d:"하수구 어딘가에서 쥐 두목이 숨죽이고 있다. 짚은 자리에서 소리가 얼마나 가까운지 듣고 은신처를 찾아낸다. 빨리 찾을수록 싸움이 쉬워진다."},
+  courier0:{t:"송장 번호 대조", type:"order", attr:"tec", bg:["#20252e","#12161c"], items:["03:00","가게 이름","영수증","도장","주소 띠","빈 칸"],
+    d:"배달된 상자들의 송장에 같은 번호가 숨어 있다. 빛나는 순서대로 송장을 대조해 보낸 곳을 거슬러 올라간다."},
+  courier1:{t:"새벽 세 시의 잠복", type:"watch", attr:"agi", bg:["#141a24","#0b0e14"], ok:"배달부의 발소리", no:["바람 소리","고양이","빗소리"], rounds:6,
+    d:"국밥집 앞에서 숨죽인다. 진짜 배달부의 발소리가 날 때만 뛰쳐나간다. 헛것에 뛰쳐나가면 들킨다."},
+  courier2:{t:"가게 사냥꾼의 장부", type:"order", attr:"wil", bg:["#2a2420","#16120f"], items:["헐값","빚 문서","망한 가게","새 간판","심부름값","도장"],
+    d:"가게 사냥꾼의 사무실, 장부의 연결 고리를 순서대로 짚어 증거를 엮는다. 증거가 단단할수록 싸움에서 상대가 흔들린다."},
+  cranes0:{t:"종이학의 숫자", type:"order", attr:"tec", bg:["#262230","#15131c"], items:["17","38","52","69","81","94"],
+    d:"사람이 사라진 자리의 종이학 안쪽에 숫자가 적혀 있다. 숫자가 나타난 순서를 기억해 다음 자리를 짚는다."},
+  cranes1:{t:"다음에 사라질 사람", type:"pick", attr:"agi", bg:["#1f2430","#11141c"], tgt:"종이학을 쥔 사람", dec:["행인","경비","신문팔이"], need:4,
+    d:"사람들 사이에서 종이학을 손에 쥔 사람을 찾아 붙잡는다. 그 사람이 다음 표적이다."},
+  cranes2:{t:"백 번째 종이학", type:"tune", attr:"wil", bg:["#24202c","#121018"], what:"접힌 날개",
+    d:"지워진 해결사가 백 번째 종이학을 접고 있다. 누르고 있으면 손이 올라가고, 떼면 내려간다. 접히는 날개를 따라가 끝까지 지켜본다."},
+  funeral0:{t:"돌아온 사람의 흔적", type:"hotcold", attr:"tec", bg:["#1e2224","#101314"], what:"톱니 도는 소리",
+    d:"장례를 치른 시신이 걸어 다닌다. 톱니 도는 소리를 따라 의체를 덧댄 곳을 찾아낸다."},
+  funeral1:{t:"증인 호송", type:"guide", attr:"agi", bg:["#1c2226","#0e1214"], who:"증인", haz:"돌아온 사람들", n:5,
+    d:"돌아온 사람들이 천천히 몰려온다. 증인을 하나씩 눌러 협회 지부 쪽으로 보낸다. 따라잡히면 증인을 잃는다."},
+  funeral2:{t:"장의사의 심장", type:"tune", attr:"wil", bg:["#221c1e","#120e10"], what:"맥박",
+    d:"장의사였던 것의 가슴 속 톱니가 미친 듯이 돈다. 맥박을 따라 바늘을 맞춰 두면 톱니가 어긋난다. 오래 맞출수록 싸움이 쉬워진다."},
+  umbrella0:{t:"소리가 사라진 구역", type:"hotcold", attr:"wil", bg:["#16181e","#0a0b0e"], what:"아직 남은 소리",
+    d:"행렬이 지나간 자리엔 소리가 없다. 아직 소리가 남은 곳을 더듬어 행렬이 떠난 자리를 찾는다."},
+  umbrella1:{t:"블록 대피", type:"guide", attr:"agi", bg:["#14161c","#08090c"], who:"주민", haz:"검은 우산 행렬", n:6,
+    d:"검은 우산 행렬이 블록을 덮쳐 온다. 주민을 하나씩 눌러 옆 구역으로 보낸다. 행렬에 닿으면 소리와 함께 사라진다."},
+  umbrella2:{t:"가장 큰 우산", type:"pick", attr:"str", bg:["#121318","#06070a"], tgt:"큰 우산", dec:["작은 우산","찢긴 우산","빈 손잡이"], need:4,
+    d:"행렬 속 우산들 사이에서 가장 큰 우산의 살을 노려 친다. 작은 우산을 건드리면 행렬 전체가 돌아본다."},
+  clock0:{t:"시계탑의 톱니", type:"order", attr:"tec", bg:["#262018","#14100a"], items:["XII","III","VI","IX","태엽","추"],
+    d:"시계탑 안, 거꾸로 도는 톱니가 차례로 빛난다. 같은 순서로 짚어 어느 톱니가 하루를 붙잡는지 알아낸다."},
+  clock1:{t:"매번 다른 사람", type:"pick", attr:"agi", bg:["#221e16","#120f0a"], tgt:"다르게 걷는 사람", dec:["같은 길의 행인","같은 말의 상인","같은 자리의 아이"], need:4,
+    d:"같은 하루를 되풀이하는 사람들 사이, 혼자만 다르게 움직이는 사람을 붙잡는다."},
+  clock2:{t:"바늘 되돌리기", type:"tune", attr:"str", bg:["#2a2014","#140f08"], what:"분침",
+    d:"시계탑 꼭대기, 거꾸로 도는 분침을 힘으로 붙잡는다. 누르면 밀어 올리고 떼면 밀린다. 바늘을 표시 안에 붙들수록 싸움이 쉬워진다."},
+  prescript:{t:"지령 이행", type:"order", attr:"wil", bg:["#24242a","#101014"], items:["오른쪽 신발","세 번째 계단","파란 문","두 번 두드림","침묵","인사"],
+    d:"지령서의 문장은 순서가 생명이다. 빛나는 순서 그대로 행동을 옮긴다. 하나라도 어긋나면 검지가 알아챈다."},
+  hanaStar:{t:"별의 틈", type:"watch", attr:"agi", bg:["#2a1418","#12080a"], ok:"빛이 갈라지는 틈", no:["눈부신 잔광","가짜 그림자","울림"], rounds:7,
+    d:"도시의 별이 숨을 고르는 찰나에만 틈이 열린다. 진짜 틈이 열릴 때만 파고든다. 틈을 많이 찌를수록 별이 약해진 채로 싸움이 시작된다."},
+  trio:{t:"협회 지명 — 현장 정리", type:"guide", attr:"agi", bg:["#1e2428","#0e1214"], who:"민간인", haz:"번지는 피해", n:5,
+    d:"하나 협회가 지명한 현장이다. 싸움이 번지기 전에 민간인을 먼저 빼낸다. 협회는 결과만큼 과정도 본다."},
+  scarJob:{t:"흉터의 장부", type:"order", attr:"wil", bg:["#2a1612","#140a08"], items:["이름","빚","날짜","도장","피","서명"],
+    d:"남겨진 흉터의 장부에서 갚아야 할 이름을 차례로 짚는다. 흉터는 셈이 틀리는 걸 가장 싫어한다."},
+  promoExam:{t:"승급 심사 — 심사관의 눈", type:"watch", attr:"tec", bg:["#1c2430","#0c1018"], ok:"심사관의 신호", no:["구경꾼의 손짓","경적","깜박이는 간판"], rounds:6,
+    d:"하나 협회 심사관이 현장을 지켜본다. 심사관이 신호를 줄 때만 움직인다. 서두르거나 늦으면 감점이다."},
+  distort:{t:"뒤틀림의 이름", type:"tune", attr:"wil", bg:["#22142a","#100814"], what:"남은 이름",
+    d:"뒤틀린 동료 안에 아직 이름이 남아 있다. 바늘을 이름 쪽에 붙들어 둘수록 싸움에서 그가 머뭇거린다."},
+};
+const storyKey = q => !q ? null : q.arc ? `${q.arc.id}${q.arc.ch}` : q.prescript ? "prescript" : q.hanaStar ? "hanaStar" : q.trio ? "trio" : q.scarJob ? "scarJob" : q.promoExam ? "promoExam" : q.distorted ? "distort" : null;
+const storyMG = q => STORY_MG[storyKey(q)] || null;
+function mgStory(ctx){
+  const sp = storyMG(ctx.q); if(!sp) return Promise.resolve(0.5);
+  return new Promise(resolve=>{
+    const m = mgOpen(`사건 · ${sp.t}`, sp.d, ctx), k = powK(ctx, sp.attr||"tec"), c = m.c, G = {done:false, msg:"", msgT:0}, st = {};
+    let raf, last = performance.now();
+    const bg = () => { const g = c.createLinearGradient(0,0,0,300); g.addColorStop(0, sp.bg[0]); g.addColorStop(1, sp.bg[1]); c.fillStyle = g; c.fillRect(0,0,720,300);
+      c.fillStyle = "rgba(255,255,255,0.03)"; for(let x=0;x<720;x+=36) c.fillRect(x,0,1,300); };
+    const label = (x,y,t,col,sz) => { c.save(); c.font = `${sz||13}px sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = col||"#e8e2d6"; c.fillText(t,x,y); c.restore(); };
+    const disc = (x,y,r,fill,stroke,glow) => { c.save(); if(glow){ c.shadowColor = glow; c.shadowBlur = 18; } c.fillStyle = fill; c.beginPath(); c.arc(x,y,r,0,7); c.fill(); if(stroke){ c.strokeStyle = stroke; c.lineWidth = 2; c.stroke(); } c.restore(); };
+    const say = t => { G.msg = t; G.msgT = performance.now(); };
+    const finish = (score, txt) => { if(G.done) return; G.done = true; score = clamp(score,0,1); setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, score, txt).then(resolve); }, 450); };
+    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve(0); };
+    let step = ()=>{}, draw = ()=>{}, info = ()=>"";
+    // ---- order: 순서 기억 ----
+    if(sp.type==="order"){
+      const N = k < 0.9 ? 4 : k < 1.25 ? 5 : 5, names = sp.items.slice().sort(()=>Math.random()-0.5).slice(0, N);
+      const pts = []; names.forEach(nm=>{ for(let t=0;t<200;t++){ const x = 80+Math.random()*560, y = 60+Math.random()*190; if(pts.every(p=>Math.hypot(p.x-x,p.y-y) > 95)){ pts.push({x,y,nm}); break; } } });
+      const seq = pts.slice().sort(()=>Math.random()-0.5), show = clamp(0.85*k, 0.55, 1.2); let phase = "show", t0 = performance.now(), idx = 0, miss = 0, lives = 2;
+      m.cvs.addEventListener("pointerdown", e=>{ if(G.done || phase!=="play") return; const p = m.pos(e), hit = pts.find(o=>Math.hypot(o.x-p.x,o.y-p.y) < 30); if(!hit) return;
+        if(hit === seq[idx]){ hit.ok = true; idx++; sparks(st, hit.x, hit.y, 12, "#ffe6a8", 2.4, 0.6, 0.02); say(`${hit.nm} — 맞다`); if(idx >= seq.length) finish(1 - miss*0.18, "흔적을 모두 이었다"); }
+        else { miss++; lives--; say(`${hit.nm} — 순서가 아니다`); hit.bad = performance.now(); if(lives < 0) finish(idx/seq.length*0.8, "흔적이 끊겼다"); } });
+      step = now => { if(phase==="show" && (now - t0)/1000 > show*(seq.length+0.6)){ phase = "play"; say("이제 순서대로 짚는다"); } };
+      draw = now => { const s = (now - t0)/1000, lit = phase==="show" ? Math.floor(s/show) : -1;
+        pts.forEach(o=>{ const on = phase==="show" && seq[lit]===o, bad = o.bad && now - o.bad < 400;
+          disc(o.x, o.y, 26, o.ok ? "#5a4a28" : on ? "#e8c98a" : bad ? "#6a2420" : "#2e2b36", o.ok ? "#ffe6a8" : "rgba(255,255,255,0.25)", on ? "#ffd27a" : null);
+          label(o.x, o.y+40, o.nm, o.ok ? "#ffe6a8" : "#cfc8bc", 12); if(o.ok) label(o.x, o.y, String(seq.indexOf(o)+1), "#ffe6a8", 15); }); };
+      info = () => phase==="show" ? `순서를 기억한다… (재주·능력치 보정: 한 칸 ${show.toFixed(2)}초)` : `${idx} / ${seq.length} · 남은 실수 ${Math.max(0,lives)}`;
+    }
+    // ---- pick: 골라 붙잡기 ----
+    else if(sp.type==="pick"){
+      const T = clamp(16 + 4*(k-1), 13, 20), need = sp.need, sp0 = clamp(110/k, 70, 170); let left = T, got = 0, wrong = 0, spawnT = 0; const fig = [];
+      m.cvs.addEventListener("pointerdown", e=>{ if(G.done) return; const p = m.pos(e), hit = fig.find(o=>!o.gone && Math.hypot(o.x-p.x,o.y-p.y) < 24); if(!hit) return; hit.gone = performance.now();
+        if(hit.tgt){ got++; sparks(st, hit.x, hit.y, 14, "#ffe6a8", 2.6, 0.6, 0.02); say(`${sp.tgt} — 붙잡았다`); if(got >= need) finish(1 - wrong*0.12, "모두 붙잡았다"); }
+        else { wrong++; left = Math.max(0, left - 1.2); say(`${hit.nm} — 아니다 (-1.2초)`); } });
+      step = (now, dt) => { left -= dt; spawnT -= dt; if(spawnT <= 0){ spawnT = clamp(0.75/k, 0.5, 1.1); const lane = rnd(0,2), dir = Math.random() < 0.5 ? 1 : -1, tgt = Math.random() < 0.4;
+          fig.push({x: dir>0 ? -20 : 740, y: 80 + lane*75, v: dir*sp0*(0.8+Math.random()*0.5), tgt, nm: tgt ? sp.tgt : pick(sp.dec)}); }
+        fig.forEach(o=>{ o.x += o.v*dt; }); for(let i=fig.length-1;i>=0;i--) if(fig[i].x < -40 || fig[i].x > 760 || (fig[i].gone && now - fig[i].gone > 300)) fig.splice(i,1);
+        if(left <= 0) finish(got/need - wrong*0.08, got >= need*0.6 ? "시간이 다 됐다" : "놓쳐 버렸다"); };
+      draw = now => { for(let i=0;i<3;i++){ c.fillStyle = "rgba(255,255,255,0.04)"; c.fillRect(0, 56+i*75, 720, 48); }
+        fig.forEach(o=>{ const a = o.gone ? 1 - (now-o.gone)/300 : 1; c.globalAlpha = Math.max(0,a); disc(o.x, o.y, 18, o.tgt ? "#7a3a2a" : "#3a3a44", o.tgt ? "#e8a07a" : "rgba(255,255,255,0.2)");
+          label(o.x, o.y-28, o.nm, o.tgt ? "#ffc8a0" : "#a8a29a", 11); c.globalAlpha = 1; }); };
+      info = () => `${sp.tgt} ${got} / ${need} · 남은 시간 ${Math.max(0,left).toFixed(1)}초 · 잘못 붙잡음 ${wrong}`;
+    }
+    // ---- watch: 신호 잠복 ----
+    else if(sp.type==="watch"){
+      const R = sp.rounds, win = clamp(0.95*k, 0.6, 1.35); let round = 0, hits = 0, feint = 0, cur = null, wait = 1.2, tNow = 0;
+      const next = () => { cur = null; wait = 0.8 + Math.random()*1.6; };
+      m.cvs.addEventListener("pointerdown", ()=>{ if(G.done) return;
+        if(cur && cur.ok && !cur.hit){ cur.hit = true; hits++; sparks(st, 360, 150, 18, "#ffe6a8", 3, 0.7, 0.02); say("지금이다 — 파고들었다"); round++; setTimeout(next, 250); }
+        else if(cur && !cur.ok){ feint++; say(`${cur.nm} — 헛것이었다`); cur.hit = true; setTimeout(next, 250); }
+        else { feint++; say("아직 아무것도 없다 — 들켰다"); } if(round >= R) finish(hits/R - feint*0.1, "잠복을 마쳤다"); });
+      step = (now, dt) => { tNow += dt; if(!cur){ wait -= dt; if(wait <= 0){ const ok = Math.random() < 0.55; cur = {ok, nm: ok ? sp.ok : pick(sp.no), t:0}; } }
+        else { cur.t += dt; if(cur.ok && !cur.hit && cur.t > win){ round++; say("놓쳤다"); next(); if(round >= R) finish(hits/R - feint*0.1, "잠복을 마쳤다"); } else if(!cur.ok && cur.t > 1.1){ next(); } } };
+      draw = now => { c.fillStyle = "rgba(0,0,0,0.35)"; c.fillRect(0,210,720,90);
+        if(cur){ const a = cur.ok ? Math.min(1, cur.t*4) : 0.7; disc(360, 140, 46 + Math.sin(now/90)*3, cur.ok ? `rgba(232,201,138,${a})` : "rgba(140,140,150,0.6)", null, cur.ok ? "#ffd27a" : null); label(360, 205, cur.nm, cur.ok ? "#ffe6a8" : "#b0aaa2", 15);
+          if(cur.ok){ c.fillStyle = "#e8c98a"; c.fillRect(260, 238, 200*Math.max(0, 1 - cur.t/win), 6); } }
+        else label(360, 150, "…", "#6a6660", 28); };
+      info = () => `${Math.min(round,R)} / ${R}번째 · 성공 ${hits} · 헛손질 ${feint} · 반응 시간 ${win.toFixed(2)}초`;
+    }
+    // ---- guide: 사람 대피 ----
+    else if(sp.type==="guide"){
+      const N = sp.n, hz = {x: -40, v: clamp(26/k, 18, 40)}, ppl = []; let saved = 0, lost = 0;
+      for(let i=0;i<N;i++) ppl.push({x: 110 + (i%3)*70 + Math.random()*30, y: 60 + i*(200/N) + Math.random()*20, st:"wait"});
+      const walk = clamp(150*k, 110, 230); let moving = 0;
+      m.cvs.addEventListener("pointerdown", e=>{ if(G.done) return; const p = m.pos(e), hit = ppl.find(o=>o.st==="wait" && Math.hypot(o.x-p.x,o.y-p.y) < 24); if(!hit) return;
+        if(moving >= 2){ say("한 번에 둘까지만 데려갈 수 있다"); return; } hit.st = "go"; moving++; say(`${sp.who} 하나를 데려간다`); });
+      step = (now, dt) => { hz.x += hz.v*dt;
+        ppl.forEach(o=>{ if(o.st==="go"){ o.x += walk*dt; if(o.x >= 650){ o.st = "safe"; saved++; moving--; sparks(st, o.x, o.y, 10, "#9fe8b0", 2, 0.5, 0.02); } }
+          if((o.st==="wait" || o.st==="go") && o.x < hz.x){ if(o.st==="go") moving--; o.st = "lost"; lost++; say(`${sp.who} 하나가 ${sp.haz}에 삼켜졌다`); } });
+        if(saved + lost >= N) finish(saved/N, saved >= N ? "모두 빼냈다" : `${saved}명을 빼냈다`); };
+      draw = now => { const g = c.createLinearGradient(hz.x-120,0,hz.x,0); g.addColorStop(0,"rgba(0,0,0,0.85)"); g.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = "rgba(0,0,0,0.85)"; c.fillRect(0,0,Math.max(0,hz.x-120),300); c.fillStyle = g; c.fillRect(hz.x-120,0,120,300);
+        label(Math.max(60, hz.x-60), 20, sp.haz, "#ff8a7a", 12); c.fillStyle = "rgba(159,232,176,0.12)"; c.fillRect(650,0,70,300); label(685, 20, "안전", "#9fe8b0", 12);
+        ppl.forEach(o=>{ if(o.st==="lost") return; disc(o.x, o.y, 13, o.st==="safe" ? "#2e5a3a" : o.st==="go" ? "#5a7a9a" : "#8a7a5a", "rgba(255,255,255,0.3)"); }); };
+      info = () => `빼낸 ${sp.who} ${saved} / ${N} · 잃음 ${lost} · ${sp.who}을(를) 눌러 데려간다(동시에 둘까지)`;
+    }
+    // ---- tune: 바늘 맞추기 ----
+    else if(sp.type==="tune"){
+      const T = 12, zw = clamp(0.16*k, 0.11, 0.24); let left = T, inT = 0, y = 0.5, vy = 0, hold = false, zc = 0.5, zv = 0.18;
+      m.cvs.addEventListener("pointerdown", ()=>{ hold = true; }); window.addEventListener("pointerup", ()=>{ hold = false; }); m.cvs.addEventListener("pointerleave", ()=>{ hold = false; });
+      step = (now, dt) => { left -= dt; vy += (hold ? 1.6 : -1.4)*dt; vy *= 0.92; y = clamp(y + vy*dt, 0, 1); if(y===0 || y===1) vy = 0;
+        zc += zv*dt; if(zc > 0.85 || zc < 0.15) zv *= -1; if(Math.random() < dt*0.6) zv = (Math.random()-0.5)*0.5;
+        if(Math.abs(y - zc) < zw/2) inT += dt; if(left <= 0) finish(inT/T*1.35, `${sp.what}을(를) ${Math.round(inT/T*100)}% 붙들었다`); };
+      draw = () => { const X = 360, top = 40, H = 220; c.fillStyle = "rgba(0,0,0,0.4)"; c.fillRect(X-40, top, 80, H);
+        c.fillStyle = "rgba(232,201,138,0.35)"; c.fillRect(X-40, top + (1-zc-zw/2)*H, 80, zw*H); label(X+110, top + (1-zc)*H, sp.what, "#ffe6a8", 12);
+        const ny = top + (1-y)*H, on = Math.abs(y - zc) < zw/2; c.fillStyle = on ? "#ffe6a8" : "#a8a29a"; c.fillRect(X-52, ny-3, 104, 6); if(on) disc(X-60, ny, 5, "#ffd27a", null, "#ffd27a"); };
+      info = () => `남은 시간 ${Math.max(0,left).toFixed(1)}초 · 맞춘 시간 ${inT.toFixed(1)}초 · 누르고 있으면 올라간다`;
+    }
+    // ---- hotcold: 소리 따라 찾기 ----
+    else {
+      const goal = {x: 80+Math.random()*560, y: 60+Math.random()*190}, R = clamp(34*k, 26, 48); let tries = Math.round(clamp(6 + 3*(k-1), 5, 9)); const max = tries, marks = [];
+      m.cvs.addEventListener("pointerdown", e=>{ if(G.done || tries <= 0) return; const p = m.pos(e), d = Math.hypot(p.x-goal.x, p.y-goal.y); tries--;
+        marks.push({x:p.x, y:p.y, d, t:performance.now()});
+        if(d < R){ sparks(st, goal.x, goal.y, 20, "#ffe6a8", 3, 0.7, 0.02); say("여기다"); finish(0.45 + 0.55*tries/max, "찾아냈다"); return; }
+        say(d < 90 ? `${sp.what}이(가) 바로 곁에서 들린다` : d < 180 ? `${sp.what}이(가) 가까워졌다` : `${sp.what}이(가) 멀다`);
+        if(tries <= 0) finish(clamp(1 - Math.min(...marks.map(o=>o.d))/300, 0, 0.4), "끝내 찾지 못했다"); });
+      draw = now => { marks.forEach(o=>{ const col = o.d < 90 ? "#ffb35a" : o.d < 180 ? "#c9a86a" : "#5a5a66", rr = 10 + ((now-o.t)/40)%30;
+          c.save(); c.strokeStyle = col; c.globalAlpha = 0.6; c.beginPath(); c.arc(o.x,o.y,rr,0,7); c.stroke(); c.restore(); disc(o.x,o.y,5,col); }); };
+      info = () => `남은 짚기 ${tries} / ${max} · 가까울수록 붉게 울린다`;
+    }
+    function loop(){ const now = performance.now(), dt = Math.min(0.05, (now-last)/1000); last = now;
+      if(!G.done) step(now, dt); bg(); draw(now); drawParts(c, st, dt);
+      if(G.msg && now - G.msgT < 1600) label(360, 282, G.msg, "#ffe6a8", 13);
+      if(!G.done) m.info.innerHTML = info(); raf = requestAnimationFrame(loop); }
+    loop();
+  });
+}
+/* 의뢰를 마친 뒤의 뒷이야기 — 성공(ok) · 실패(fail) */
+const STORY_POST = {
+  gloves0:{ok:[["","흔적은 담장 틈으로 이어졌다. 틈 너머에서 작은 발소리가 여럿, 서둘러 흩어졌다."],["골목 세탁소 사장","\"…아이들이었어요? 우리 동네 애들이?\""]],
+    fail:[["","흔적은 빗물에 씻겨 끊겼다. 그날 밤에도 장갑 한 짝이 사라졌다."],["골목 세탁소 사장","\"열세 짝째네요. 괜찮아요. …괜찮아요.\""]]},
+  gloves1:{ok:[["","붙잡힌 아이는 장갑을 꼭 끌어안고 울었다. \"안 가져가면… 쥐 아저씨가 동생을 데려간대요.\""],["","아이의 손등에 쥐 이빨 자국이 나 있었다."]],
+    fail:[["","아이들은 장갑을 든 채 하수구 쪽으로 사라졌다. 맨홀 뚜껑 아래에서 찍찍거리는 소리가 오래 울렸다."]]},
+  gloves2:{ok:[["","쥐 두목이 쓰러지자 하수구 구석에서 아이들이 하나둘 기어 나왔다. 손에는 빨간 장갑이 한 짝씩 들려 있었다."],["골목 세탁소 사장","\"이제 다 돌려받았네요. 짝이 맞는 건 하나도 없지만.\""]],
+    fail:[["","쥐 두목은 더 깊은 하수구로 숨어들었다. 다음 날 아침, 빨랫줄엔 장갑이 한 짝도 남아 있지 않았다."]]},
+  courier0:{ok:[["","송장 번호는 모두 같은 우체국 사서함으로 모였다. 사서함 주인의 이름은 가짜였지만, 주소는 진짜였다."]],
+    fail:[["","송장은 서로 맞지 않았다. 새벽 세 시, 또 다른 가게 앞에 상자가 놓였다."]]},
+  courier1:{ok:[["","발소리의 주인은 열다섯도 안 돼 보이는 배달부였다. \"저는 그냥… 상자만 놓으면 돈을 준다고 해서요.\""],["국밥집 주인","\"상자 안엔 뭐가 들었는데?\" 배달부는 고개를 저었다. \"열면 안 된다고 했어요.\""]],
+    fail:[["","헛소리에 뛰쳐나간 사이 상자는 이미 문 앞에 놓여 있었다. 국밥집 주인은 상자를 열지 않고 한참 내려다보았다."]]},
+  courier2:{ok:[["","가게 사냥꾼의 장부는 협회로 넘어갔다. 헐값에 넘어간 가게 열한 곳의 이름이 다시 적혔다."],["국밥집 주인","\"국밥 한 그릇 하고 가요. 오늘은 공짜로.\""]],
+    fail:[["","가게 사냥꾼은 장부를 들고 사라졌다. 한 달 뒤, 국밥집 자리엔 새 간판이 걸렸다."]]},
+  cranes0:{ok:[["","숫자를 이으니 다음 자리가 보였다. 종이학은 거기서 접히고 있었다. 아직 날개 한쪽만."]],
+    fail:[["","숫자는 엉켰다. 다음 날 아침, 또 한 자리에 종이학이 놓여 있었다. 날개를 다 접은 채로."]]},
+  cranes1:{ok:[["","붙잡힌 사람은 종이학을 내밀며 떨었다. \"누가 문틈에 넣고 갔어요. 이걸 받은 사람은 다 사라졌대요.\""],["","종이학 안쪽에는 그 사람의 이름이 적혀 있었다."]],
+    fail:[["","종이학을 쥔 사람을 끝내 찾지 못했다. 그날 밤, 한 사람이 사라졌다."]]},
+  cranes2:{ok:[["","백 번째 종이학은 접히지 않았다. 지워진 해결사는 마지막 순간 접던 손을 멈추고, 펼친 종이를 내려다보았다."],["","종이 안쪽엔 협회 명부에서 지워진 그의 이름이 적혀 있었다."]],
+    fail:[["","백 번째 종이학이 날개를 접었다. 바람이 불자 종이학 백 마리가 한꺼번에 날아올랐다."]]},
+  funeral0:{ok:[["","톱니 소리는 장례식장 지하로 이어졌다. 관 뚜껑마다 의체 부품 상자가 놓여 있었다."]],
+    fail:[["","소리는 도시의 소음 속으로 흩어졌다. 그 주에만 세 사람이 '돌아왔다'."]]},
+  funeral1:{ok:[["","증인은 협회 지부 문턱에서 주저앉았다. \"그 사람들… 우리 아버지 얼굴이었어요.\""],["","진술서는 그날 밤 정식으로 접수됐다."]],
+    fail:[["","증인은 지부에 닿지 못했다. 며칠 뒤, 그 증인을 닮은 사람이 장례식장 앞을 걸어 다녔다는 말이 돌았다."]]},
+  funeral2:{ok:[["","장의사의 가슴 속 톱니가 멎었다. 장례식장은 그날 처음으로 조용해졌다."],["","남은 관들은 협회가 거두어 갔다. 이번엔 진짜로 묻히게 될 것이다."]],
+    fail:[["","톱니는 멈추지 않았다. 장례식장 문이 안에서부터 열리고, 의체를 단 행렬이 거리로 나왔다."]]},
+  umbrella0:{ok:[["","소리가 남은 마지막 자리, 젖은 아스팔트 위에 검은 우산살 하나가 떨어져 있었다."]],
+    fail:[["","소리를 더듬던 사이, 사무소 창밖도 고요해졌다. 빗소리조차 들리지 않았다."]]},
+  umbrella1:{ok:[["","옆 구역으로 넘어온 사람들이 서로의 이름을 불렀다. 대답이 돌아오는 게 이상하게 고마웠다."]],
+    fail:[["","행렬이 지나간 블록엔 아무 소리도 남지 않았다. 남은 사람들이 거기 있는지조차 알 수 없었다."]]},
+  umbrella2:{ok:[["","가장 큰 우산이 꺾이자 행렬이 멈췄다. 우산들이 하나둘 접히고, 그 아래에서 사라졌던 소리가 쏟아져 나왔다."]],
+    fail:[["","가장 큰 우산은 끝내 꺾이지 않았다. 행렬은 다음 구역으로 천천히 걸어갔다."]]},
+  clock0:{ok:[["","거꾸로 도는 톱니는 단 하나였다. 그 톱니에만 누군가의 손때가 묻어 있었다."]],
+    fail:[["","톱니의 순서를 놓쳤다. 정신을 차려 보니 다시 아침이었다. 같은 아침."]]},
+  clock1:{ok:[["","붙잡힌 사람은 숨을 몰아쉬었다. \"당신들도… 기억해요? 어제가 오늘이었던 거?\""],["","그는 백 번도 넘게 같은 하루를 살았다고 했다."]],
+    fail:[["","다르게 움직이던 사람은 군중 속으로 사라졌다. 시계탑 종이 울리고, 하루가 처음으로 되감겼다."]]},
+  clock2:{ok:[["","분침이 제 방향으로 한 칸 움직였다. 구역 전체에 내일이 왔다."],["","시계탑 꼭대기에 있던 자는 마지막으로 중얼거렸다. \"그날을… 한 번만 더 보고 싶었을 뿐이야.\""]],
+    fail:[["","분침은 다시 거꾸로 돌기 시작했다. 내일은 오지 않았다."]]},
+  prescript:{ok:[["","지령대로 했다. 이유는 끝내 알 수 없었다. 다음 날 아침, 문틈에 빈 봉투 하나가 끼워져 있었다. 고맙다는 뜻인지도 모른다."]],
+    fail:[["","지령의 순서가 어긋났다. 그날 밤, 사무소 앞 가로등 아래에 누군가 오래 서 있다가 사라졌다."]]},
+  hanaStar:{ok:[["","도시의 별이 졌다. 하나 협회는 그 구역의 지도를 다시 그렸고, 지도 한쪽에 사무소 이름이 작게 적혔다."]],
+    fail:[["","별은 지지 않았다. 협회는 다른 사무소를 불렀다고 했다. 그 사무소의 이름은 다시 들리지 않았다."]]},
+  trio:{ok:[["하나 협회 연락관","\"민간인 피해 없음. 보고서에 그렇게 쓰겠습니다. 드문 일이에요.\""]],
+    fail:[["하나 협회 연락관","\"…이번 건은 기록에 남습니다. 다음 지명이 있을지는 장담 못 합니다.\""]]},
+  scarJob:{ok:[["남겨진 흉터","\"셈이 맞는군.\" 흉터는 장부의 한 줄을 그어 지웠다. 그 줄에 누구의 이름이 있었는지는 묻지 않았다."]],
+    fail:[["남겨진 흉터","\"셈이 틀렸어.\" 흉터는 장부를 덮었다. 그 소리가 칼집에 칼을 넣는 소리와 닮아 있었다."]]},
+  promoExam:{ok:[["하나 협회 심사관","\"현장 판단, 마무리, 보고. 전부 기준 이상입니다. 심사 기록에 올려 두죠.\""]],
+    fail:[["하나 협회 심사관","\"이번 건은 심사 실적으로 인정하기 어렵습니다. 다음 기회에.\""]]},
+  distort:{ok:[["","쓰러진 몸에서 뒤틀림이 걷혔다. 마지막에 남은 얼굴은 분명 우리가 알던 얼굴이었다."]],
+    fail:[["","뒤틀린 것은 우리 이름을 부르며 골목 너머로 사라졌다. 그 목소리가 오래 귀에 남았다."]]},
+};
+function storyPost(q, success){ const k = storyKey(q), P = STORY_POST[k]; if(!P || !S) return;
+  const A = q.arc ? ARCS.find(a=>a.id===q.arc.id) : null, title = A ? `사건 「${A.n}」 ${q.arc.ch+1}장 — ${success ? "그 뒤" : "놓친 뒤"}` : `${(STORY_MG[k]||{}).t || "의뢰"} — ${success ? "그 뒤" : "놓친 뒤"}`;
+  vnQueue({title, lines:(success ? P.ok : P.fail)}); }
 
 /* ================= 배경 음악 =================
    normal은 게임 전체의 기본 곡이다(시작 화면 · 사무소 · 일반 의뢰 등). 전투 의뢰와 환상체 조우 때만 그 곡으로 바뀌었다가, 창이 닫히면 기본 곡으로 돌아온다.
@@ -4307,6 +4529,8 @@ function mgCombat(ctx){
     foe.hits = CT.hits; foe.hitK = CT.k;
     foe.max = Math.max(1,Math.round(foeHpValue(q,AB,DF,g0) * (foe.aug ? clamp(0.85+0.15*augMul,0.85,1.2) : 1)));
     foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = !AB&&!DF ? (FOE_SP_BALANCE[g0]||0) : 0;
+    // 사건 전용 미니게임을 잘 해냈으면 상대가 지친 채로 싸움이 시작된다(최대 25%)
+    const storyEdge = q.__edge ? Math.round(foe.max*0.25*clamp(q.__edge,0,1)) : 0; if(storyEdge){ foe.hp = Math.max(1, foe.hp - storyEdge); foe.shownHp = foe.hp; } delete q.__edge;
     foe.baseDamage = foeDmgValue(q,AB,DF,g0);
     // 신(心)을 깨우친 인간 적: 2급 이상 가운데 아주 일부. 첫 턴에 신을 두르고, 그 뒤 망을 한 겹씩 감는다(추가 행동)
     foe.shinMax = 0; foe.shinLive = false; foe.mangLive = 0;
@@ -6002,6 +6226,43 @@ const ABNO_SIGN = {
     chk:G=>["str","agi","wil"][Math.min(2, G.flowers.length)],
     ok:{mood:8}, okT:"꽃이 다시 고개를 들었다. 다음 차례를 잇는다", bad:{mp:0.05}, badT:"물동이를 엎질렀다 — 꽃밭지기가 혀를 찬다", missT:"차례의 꽃이 말라 바스러졌다. 꽃밭에 붉은 물이 번진다",
     rage:{t:"피살이꽃이 붉게 피어 상처마다 피를 끌어당긴다", btn:"상처를 동여맨다", okT:"상처를 동여매자 꽃이 고개를 돌렸다", missT:"뼈 잇는 가지와 살 붙이는 꽃가루가 모두를 휘감고 피를 빨았다", sp:5, hp:5}},
+  // ── HE ──
+  ichthys:{t:()=>"배 속 붉은 물주머니가 꿀렁이며 부풀어 오른다", btn:"물주머니를 찔러 뺀다", d:"근력 판정 · 성공하면 물주머니가 한 칸 줄어든다", chk:"str",
+    ok:{mood:6, sac:-1}, okT:"물주머니에서 피 섞인 물이 빠져나갔다", bad:{mp:0.05, hurt:0.06}, badT:"주머니가 미끄러졌다 — 물이 튀어 살갗이 따갑다", missT:"물주머니가 한 칸 더 차올랐다",
+    missFx:{sac:1}, rage:{t:"물주머니가 터질 듯 부풀었다 — 잘린 목이 일행을 겨눈다", btn:"물주머니를 겨눈다", okT:"주머니를 찔러 물길을 돌렸다", missT:"잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다", sp:4, hp:6}},
+  freischutz:{t:()=>"사수가 총신을 닦으며 일곱 번째 탄환 이야기를 꺼낸다 — 눈이 이쪽을 잰다", btn:"눈을 피하지 않는다", d:"민첩(정의) 판정 · 약해 보이면 표적이 된다", chk:"agi",
+    ok:{mood:8}, okT:"끝까지 시선을 받아 냈다. 사수가 피식 웃으며 총을 내린다", bad:{mp:0.07}, badT:"눈을 피했다 — 조준경 너머의 시선이 등에 박힌다", missT:"아무도 대꾸하지 않자 사수가 탄창을 한 발씩 세기 시작한다"},
+  teddy:{t:()=>"곰 인형이 두 팔을 활짝 벌리고 다음 사람을 기다린다", btn:"다른 사람을 들여보낸다", d:"방금 행동한 이 대신 다른 사람이 다음 행동에 나서도록 바꾼다 · 혼자면 기분만 조금 오른다",
+    ok:{mood:6, swap:true}, okT:"새 얼굴이 다가가자 곰 인형이 반갑게 고개를 기울인다", missT:"같은 얼굴만 보이자 곰 인형의 팔에 힘이 들어간다"},
+  porccubus:{t:()=>"가시 끝에 이슬 같은 쾌감이 맺힌다. 손을 뻗고 싶어진다", btn:"가시에서 손을 뗀다", d:"재주(자제) 판정 · 흔들리면 쾌감에 정신이 들뜬다", chk:"tec",
+    ok:{mood:8}, okT:"손끝을 거두었다. 포큐버스가 아쉬운 듯 가시를 접는다", bad:{mp:0.07}, badT:"가시 끝을 살짝 스치고 말았다 — 머리가 멍하다", missT:"아무도 손을 거두지 않았다. 가시가 한 뼘 더 자란다",
+    rage:{t:"가시가 사방으로 돋으며 달콤한 독을 흩뿌린다", btn:"쾌감을 뿌리친다", okT:"숨을 참고 독을 털어 냈다", missT:"가시가 모두를 찔렀다 — 쾌감과 통증이 함께 번진다", sp:6, hp:4}},
+  redshoes:{t:()=>"빨간 구두가 누군가를 부르듯 또각, 또각 박자를 맞춘다", btn:"구두에서 눈을 뗀다", d:"재주(자제) 판정 · 홀리면 신어 보고 싶어진다", chk:"tec",
+    ok:{mood:8}, okT:"고개를 돌렸다. 구두 소리가 멎는다", bad:{mp:0.07}, badT:"구두 굽이 자꾸 눈에 밟힌다 — 발끝이 근질거린다", missT:"구두 소리가 점점 빨라진다. 누군가의 발이 박자를 따라간다"},
+  grudgeshooter:{t:()=>"사수가 조준경 너머로 누군가를 오래 겨눈다. 손가락이 방아쇠에 걸린다", btn:"엄폐한다", d:"민첩 판정 · 늦으면 총알이 스친다", chk:"agi",
+    ok:{mood:6}, okT:"엄폐물 뒤로 몸을 숨겼다. 사수가 조준을 거둔다", bad:{mp:0.04, hurt:0.07}, badT:"총알이 어깨를 스쳤다", missT:"아무도 숨지 않았다. 사수의 눈에 옛 전장이 겹친다",
+    rage:{t:"흉탄이 장전되는 소리가 울린다", btn:"엄폐한다", okT:"모두 엄폐물 뒤로 몸을 던졌다", missT:"흉탄이 쏟아졌다", sp:3, hp:7}},
+  carousel:{t:()=>"목마가 삐걱이며 저절로 흔들리기 시작한다. 가시가 하나둘 돋는다", btn:"고삐를 잡아 멈춘다", d:"근력 판정 · 실패하면 가시에 긁힌다", chk:"str",
+    ok:{mood:8}, okT:"고삐를 당기자 흔들림이 멎는다", bad:{mp:0.03, hurt:0.07}, badT:"고삐가 손에서 빠졌다 — 가시가 팔을 긁었다", missT:"흔들림이 커진다. 가시가 바깥을 향한다", missDmg:{hp:0.05, t:"흔들리는 가시가 곁의 모두를 긁었다"},
+    rage:{t:"목마가 가시를 세운 채 달려든다", btn:"옆으로 비킨다", okT:"목마가 허공을 가르고 지나갔다", missT:"가시 돋친 목마가 모두를 들이받았다", sp:3, hp:7}},
+  greenboots:{t:()=>"장화가 한 짝씩 저절로 행진 박자를 맞춘다. 발끝이 따라 움직인다", btn:"박자를 흩뜨린다", d:"민첩 판정 · 박자에 말리면 발이 장화로 들어갈 뻔한다", chk:"agi",
+    ok:{mood:8}, okT:"엇박으로 발을 굴러 박자를 깨뜨렸다. 장화가 멈칫한다", bad:{mp:0.04, hurt:0.06}, badT:"발끝이 장화 입구에 닿을 뻔했다 — 장화 굽에 채였다", missT:"행진 박자가 골목을 메운다", missDmg:{hp:0.06, t:"행진하던 장화가 발등을 짓밟고 지나갔다"},
+    rage:{t:"장화가 행진 박자에 맞춰 다가온다", btn:"박자를 끊는다", okT:"엇박에 행진이 흐트러졌다", missT:"장화가 앞을 막는 모두를 짓밟고 지나갔다", sp:4, hp:6}},
+  stitchbear:{t:()=>"터진 실밥 사이로 솜이 흘러나온다. 곰이 빈 품을 내려다본다", btn:"실밥을 꿰매 준다", d:"재주 판정 · 서툴면 곰이 실망한다", chk:"tec",
+    ok:{mood:10}, okT:"한 땀 한 땀 꿰매자 곰이 품을 여민다", bad:{mp:0.04, hurt:0.04}, badT:"바늘이 엇나갔다 — 곰이 빤히 바라본다", missT:"솜이 다 흘러나왔다. 곰이 채울 것을 찾아 두리번거린다", missDmg:{hp:0.04, mp:0.03, t:"곰이 가장 가까운 이를 와락 끌어안았다 놓았다"},
+    rage:{t:"곰이 터진 품을 활짝 벌리고 다가온다", btn:"품을 피한다", okT:"팔 사이로 빠져나왔다", missT:"곰이 모두를 끌어안아 숨통을 조였다", sp:5, hp:5}},
+  mothwedding:{t:()=>"나방들이 하객을 세듯 일행 머리 위를 맴돈다", btn:"고개 숙여 축하한다", d:"의지 판정 · 힘으로 다루려 들지 말고 예를 갖춘다",
+    chk:"wil", ok:{mood:8}, okT:"고개를 숙이자 나방들이 신부 곁으로 돌아간다", bad:{mp:0.06}, badT:"인사가 어색했다 — 나방들이 하객 명단을 다시 센다", missT:"축하하지 않는 하객이 있다 — 나방들이 날개를 비빈다", missDmg:{mp:0.06, t:"날갯가루가 흩날려 모두의 머리가 어지럽다"},
+    rage:{t:"나방 떼가 하객을 데려가려 날아오른다", btn:"불빛을 가린다", okT:"불빛을 가리자 나방들이 방향을 잃었다", missT:"나방 떼가 모두를 휩쓸고 지나갔다", sp:7, hp:3}},
+  biik:{t:()=>"한쪽 날개가 짝을 찾아 허공을 퍼덕인다", btn:"짝을 불러 나란히 선다", d:"한 쌍으로 묶인 두 사람이 나란히 서 준다",
+    ok:{mood:10}, okT:"두 사람이 나란히 서자 날개가 하나로 맞물린다", missT:"짝 잃은 날개가 홀로 퍼덕인다", missDmg:{mp:0.05, t:"엇갈린 날갯바람이 마음을 흔든다"},
+    rage:{t:"두 날개가 따로 퍼덕이며 크게 흔들린다", btn:"나란히 선다", okT:"나란히 서자 날갯짓이 가라앉았다", missT:"엇갈린 날갯바람이 모두를 휩쓸었다", sp:6, hp:4}},
+  skel:{t:()=>"거대한 그림자가 앞을 막아선다. 비켜 갈 길이 보이지 않는다", btn:"피하지 않고 버틴다", d:"의지 판정 · 곧게 버티면 고래가 길을 연다", chk:"wil",
+    ok:{mood:10}, okT:"제자리에서 버텼다. 고래가 천천히 몸을 비킨다", bad:{mp:0.04, hurt:0.05}, badT:"한 발 물러설 뻔했다 — 그림자가 더 짙어진다", missT:"아무도 버티지 않았다. 그림자가 더 넓게 퍼진다", missDmg:{hp:0.05, t:"고래의 몸이 스치며 모두를 밀쳐 냈다"},
+    rage:{t:"고래가 몸을 틀어 길을 막는다", btn:"곧게 버틴다", okT:"버티자 고래가 몸을 돌렸다", missT:"고래의 몸이 모두를 덮쳤다", sp:4, hp:6}},
+  erlking:{t:()=>"안개 속에서 '얘야, 이리 오렴' 하는 부름이 들려온다", btn:"아이의 귀를 막아 준다", d:"의지 판정 · 성공하면 부름이 한 칸 옅어진다", chk:"wil",
+    ok:{mood:6, lure:-1}, okT:"「얘야, 그건 안개란다.」 부름이 멀어진다", bad:{mp:0.06}, badT:"부름이 손가락 사이로 새어 들어왔다", missT:"부름이 짙어진다", missDmg:{mp:0.05, t:"안개가 짙어져 모두의 정신이 흐려진다"},
+    missFx:{lure:1}, rage:{t:"마왕이 안개 속에서 아이를 부른다", btn:"아이를 붙잡는다", okT:"아이의 손을 꼭 붙잡았다", missT:"부름이 모두의 정신을 흐렸다", sp:8}},
 };
 const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
 /* 전투 분류: 사살(죄종) · 전투형 · 조건부 전투 · 기믹형(전투 없음 — 그 자리에 머물고, 실패하면 재앙) · 전투 불가(손대면 즉사·중상 기믹, 맞서 싸울 수 없음) */
@@ -6523,7 +6784,10 @@ function mgAbno(ctx){
       G.sign = {f: f ? f.id : null}; G.signLast = G.turn; G.sign.txt = SG.t(G, f);
       say(`<b style="color:#ffb35a">징후 — ${esc(G.sign.txt)}</b>`); }
     function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
-      say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1`);
+      if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = Math.max(1, Math.floor(x.hpMax*0.1)); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 -10%)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
+      let dmgT = ""; if(SG.missDmg){ const D = SG.missDmg, parts = []; ctx.team.forEach(x=>{ if(D.mp){ const v = Math.floor(x.mpMax*D.mp); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; } if(D.hp){ const v = Math.max(1, Math.floor(x.hpMax*D.hp*(1 - redHP(x)*0.5))); x.hp = Math.max(1, x.hp - v); } });
+        if(D.mp) parts.push(`모두 정신력 -${Math.round(D.mp*100)}%`); if(D.hp) parts.push(`모두 체력 -${Math.round(D.hp*100)}%`); dmgT = ` · <b style="color:#ff8a7a">${esc(D.t)} (${parts.join(" · ")})</b>`; }
+      say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1${dmgT}`);
       if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
     function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil"); G.sign = null;
       const out = [];
@@ -6536,6 +6800,9 @@ function mgAbno(ctx){
       if(E.mp && !ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; out.push(`정신력 -${v}`); }
       if(E.frost && G.frost && G.frost[f.id]){ G.frost[f.id] = Math.max(0, G.frost[f.id] + E.frost); out.push(`서리 ${G.frost[f.id]}/3`); }
       if(E.hurt && !ok){ const v = Math.max(1, Math.floor(f.hpMax*E.hurt)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
+      if(E.sac && G.sac){ G.sac = Math.max(0, G.sac + E.sac); out.push(`물주머니 ${G.sac}/3`); }
+      if(E.lure && G.child!=null){ G.lure = Math.max(0, G.lure + E.lure); out.push(`부름 ${G.lure}/4`); }
+      if(E.swap){ const o = freeT().filter(x=>x.id!==G.last); if(o.length){ G.pick = o.sort((x,y)=>power(y,["tec"])-power(x,["tec"]))[0].id; out.push(`다음 차례: ${o[0] && ctx.team.find(x=>x.id===G.pick).name}`); } }
       if(E.tongue){ G.tongue = Math.max(0, G.tongue + E.tongue); out.push(E.tongue > 0 ? `혀에 맞았다(${G.tongue})` : `혀에 맞은 횟수 -1`); }
       const chkT = sgChk() ? ` <span class="muted">(${ATTR_NAME[sgChk()]} 판정 ${ok ? "성공" : "실패"})</span>` : "";
       say(`대응 · ${esc(jo(f.name,"이"))} ${esc(sgBtn())}${chkT} — <span style="color:${ok ? "#8fd6a0" : "#e0c64a"}">${esc(ok ? SG.okT : SG.badT)}</span>${out.length ? ` (${out.join(" · ")})` : ""}${ok ? "" : ` · <span class="muted">카운터는 지켰다</span>`}`);
@@ -7003,7 +7270,7 @@ async function dispatch(qid, fids, modeArg){
   { const cl = contractResult(q, success); if(cl) lines.push(cl); }
   if(q.distFoe && success) team.forEach(f=>{ const e0 = distExp(f); f.dk = (f.dk||0) + 1; const e1 = distExp(f);
     if(e1 && (!e0 || e0.n!==e1.n)) lines.push(`<span style="color:#c9b0ff">${esc(f.name)}: 뒤틀림 경험 — <b>${e1.n}</b>(처치 ${f.dk}) · 이제 뒤틀림을 상대로 기본 위력 +${e1.base}${e1.cp ? `, 코인 위력 +${e1.cp}` : ""}</span>`); });
-  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); hanaStarAfter(q, success, lines); officeStoryModule.after(q, team, success, lines);
+  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); storyPost(q, success); hanaStarAfter(q, success, lines); officeStoryModule.after(q, team, success, lines);
   if(success){
     if(q.ruins) ruinsReward(q,lines);
     if(q.scarJob) S.scarJobDone = S.day;
@@ -8501,8 +8768,8 @@ async function endDayInner(reason){
   S.requests = S.requests.filter(q=>!expired.includes(q));
   expired.forEach(officeStoryModule.expire);
   const letDown = expired.filter(q=>q.accepted).map(q=>changeOfficeTrust(-7, `수락한 의뢰 기한 초과 · ${q.client}`)).filter(Boolean);
-  // 도시는 금방 잊는다: 사무소 신뢰도는 매일 밤 5~10씩 줄어든다
-  const fade = changeOfficeTrust(-rnd(5,10), "하루가 지나 사무소의 이름이 조금 잊혔다");
+  // 도시는 금방 잊는다: 사무소 신뢰도는 매일 밤 2씩 줄어든다
+  const fade = changeOfficeTrust(-2, "하루가 지나 사무소의 이름이 조금 잊혔다");
   const idxMiss = expired.filter(q=>q.prescript); if(idxMiss.length) idxFail();
   const fee = officeFees(ended);
   let html = `<p class="muted">${reason||""}</p><div class="kv">
@@ -10423,7 +10690,15 @@ const SPECIAL_VN = {
       {k:"terms", t:"받되, 사람 목숨은 거두지 않는다는 조건을 붙인다", al:{정의:1}, eff:{goal:"제압", rw:0.85}, after:[["남겨진 흉터","\"…까다롭군. 좋아, 그렇게 하지.\""]]},
       {k:"no", t:"거절한다. 빚은 장부 안에서 끝났다", al:{질서:1}, refuse:true, after:[["남겨진 흉터","\"그래. 그것도 셈이지.\""]]}]})
 };
-const specialKind = q => q.prescript ? "prescript" : q.hanaStar ? "hanaStar" : q.trio ? "trio" : q.scarJob ? "scarJob" : null;
+SPECIAL_VN.promoExam = q => ({title:"하나 협회 승급 심사", lines:[
+      ["","하나 협회 승급 심사과의 봉투가 왔다. 안에는 의뢰서 한 장과, 심사관 한 명이 현장에 동행한다는 통지가 들어 있었다."],
+      ["하나 협회 심사관","\"이번 일은 결과만 보지 않습니다. 어떻게 들어가고, 어떻게 마무리하는지까지 적습니다.\""],
+      ["하나 협회 심사관","\"부담 갖지 마십시오. …라고 말해야 하는 규정이 있습니다.\""]],
+    ask:"심사관에게 뭐라고 할까?",
+    opts:[{k:"ok", t:"\"평소대로 하겠습니다. 그걸 보러 오신 거니까요.\"", al:{질서:1}},
+      {k:"bold", t:"\"기록할 게 많아질 겁니다. 펜 넉넉히 챙기세요.\"", al:{현실:1}},
+      {k:"why", t:"\"현장 사람들부터 챙기겠습니다. 점수는 그다음입니다.\"", al:{정의:1}}]});
+const specialKind = q => q.prescript ? "prescript" : q.hanaStar ? "hanaStar" : q.trio ? "trio" : q.scarJob ? "scarJob" : q.promoExam ? "promoExam" : null;
 /* 돌아오는 값: 거절했으면 true */
 async function specialVN(q){
   const k = specialKind(q); if(!k || q.spVN) return false;
@@ -11617,7 +11892,7 @@ function render(){
   app.querySelector(".topbar").innerHTML = `
     <span class="office">${esc(S.officeName)} <span class="badge">${gName(S.officeGrade)} 사무소</span> <span class="badge" title="${esc(districtOf().note||"")}">${esc(districtOf().name)}</span></span>
     <span class="stat">${S.day}일차${S.weather ? ` · ${weatherText(S.weather)}` : ""}</span>
-    <span class="stat" title="의뢰 완료 +1 · 실패 -4 · 수락한 의뢰 기한 초과 -7 · 계약 포기 -6 · 매일 밤 -5~-10">사무소 신뢰도 <b>${officeTrust()}/100</b> · 수락 ${S.requests.filter(q=>q.accepted).length}건</span>
+    <span class="stat" title="의뢰 완료 +1 · 실패 -4 · 수락한 의뢰 기한 초과 -7 · 계약 포기 -6 · 매일 밤 -2">사무소 신뢰도 <b>${officeTrust()}/100</b> · 수락 ${S.requests.filter(q=>q.accepted).length}건</span>
     <span class="stat">자금 <b>${won(S.money)}</b></span>
     <span class="stat">남은 빚 <b>${won(S.debt)}</b></span>
     <span class="stat">${S.debt>0?`흉터 방문 <b>${nextVisit-1===0?"오늘 밤":(nextVisit-1)+"일 뒤"}</b>`:"<b style='color:var(--accent)'>빚 청산</b>"}</span>
@@ -15521,6 +15796,7 @@ function fxTestPanel(){
   const el=document.createElement("div"); el.className="fxtest";
   el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
+   <b>사건 · 특수 의뢰 전용 미니게임</b><div class="g"><select id="fxstory">${Object.entries(STORY_MG).map(([k,v])=>`<option value="${k}">${k} — ${v.t}</option>`).join("")}</select><button data-story="1">시험</button><button data-story="post">뒷이야기(성공)</button><button data-story="postfail">뒷이야기(실패)</button></div>
    <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
@@ -15687,7 +15963,7 @@ function fxTestPanel(){
       codexSave(d); return toast(`기프트 ${n}개를 도감에 추가했다`); }
     if((k==="rage" || k==="signrage") && A.noFight) return toast(`이 환상체는 날뛰지 않는다(${FIGHT_TXT[fightType(A)][0]})`);
     const team = S.fixers.slice(0, Math.max(1, +el.querySelector("#fxn").value)).filter(Boolean);
-    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN·TETH만 적용됨)"); q.__signNow = true; }
+    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN·TETH·HE만 적용됨)"); q.__signNow = true; }
     S.requests.push(q); const r = await runMinigames(q, team); toast(r.abno && r.abno.how==="ctrl" ? "통제 성공" : r.abno && r.abno.how==="sup" ? "제압 성공" : "실패");
     if(r.abno){ const L = []; const lost = abnoApply(q, team, Object.assign({}, r.abno, {battle: r.combat && r.combat.battle}), L); if(r.abno.how) await abnoReward(q, team, r.abno, L);
       S.requests = S.requests.filter(x=>x.id!==q.id);
@@ -15699,6 +15975,11 @@ function fxTestPanel(){
   el.onclick=e=>{ const v=e.target.dataset.fx; if(!v||scene) return; const [k,a,ok]=v.split("|"); const n=+el.querySelector("#fxn").value;
     const wv=el.querySelector("#fxw").value, f0=S.fixers[0], lead = f0.gear.weapon && f0.gear.weapon.unique ? leadGear(f0) : {wtype:wv||null, spec: wv?defaultSpec(wv):null, weaponName: wv?el.querySelector("#fxw").selectedOptions[0].text:null, armor:el.querySelector("#fxa").checked, acc:el.querySelector("#fxc").checked, accColor:"150,230,255"};
     window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),lead,client:"테스트 의뢰인"}); };
+  el.addEventListener("click", async e=>{ const sv = e.target.dataset && e.target.dataset.story; if(!sv) return;
+    const k = el.querySelector("#fxstory").value, mm = k.match(/^([a-z]+)(\d)$/), q = {client:"시험 의뢰인", req: Math.max(1, Math.round(teamPower(S.fixers.slice(0,3),["tec"])/1.1)), grade:7, attrs:["str"], kind:"일반"};
+    if(mm && ARCS.find(a=>a.id===mm[1])) q.arc = {id:mm[1], ch:+mm[2]}; else if(k==="distort") q.distorted = "시험"; else q[k] = true;
+    if(sv==="1"){ const r = await mgStory({q, team:S.fixers.slice(0,3), idx:1, total:1}); toast(`전용 미니게임 ${Math.round(r*100)}점 — 싸움이 이어지면 상대 체력 -${Math.round(25*r)}%`); }
+    else { const Pp = STORY_POST[storyKey(q)]; if(Pp) await vnPlay(`${STORY_MG[k].t} — ${sv==="post" ? "성공한 뒤" : "실패한 뒤"}`, sv==="post" ? Pp.ok : Pp.fail, null, null); } });
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
     if(g==="shinme" || g==="shinfoe"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean), L = team[0];
       if(g==="shinme"){ if(!L.shin || L.shin===true) L.shin = {name: L.name, sin:"", wish:"미리보기", day:S.day}; L.shinOff = false; L.mangOff = false; L.mang = Math.max(L.mang||0, 3); L.mp = L.mpMax; }

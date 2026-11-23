@@ -8768,8 +8768,8 @@ async function endDayInner(reason){
   S.requests = S.requests.filter(q=>!expired.includes(q));
   expired.forEach(officeStoryModule.expire);
   const letDown = expired.filter(q=>q.accepted).map(q=>changeOfficeTrust(-7, `수락한 의뢰 기한 초과 · ${q.client}`)).filter(Boolean);
-  // 도시는 금방 잊는다: 사무소 신뢰도는 매일 밤 5~10씩 줄어든다
-  const fade = changeOfficeTrust(-rnd(5,10), "하루가 지나 사무소의 이름이 조금 잊혔다");
+  // 도시는 금방 잊는다: 사무소 신뢰도는 매일 밤 2씩 줄어든다
+  const fade = changeOfficeTrust(-2, "하루가 지나 사무소의 이름이 조금 잊혔다");
   const idxMiss = expired.filter(q=>q.prescript); if(idxMiss.length) idxFail();
   const fee = officeFees(ended);
   let html = `<p class="muted">${reason||""}</p><div class="kv">
@@ -11892,7 +11892,7 @@ function render(){
   app.querySelector(".topbar").innerHTML = `
     <span class="office">${esc(S.officeName)} <span class="badge">${gName(S.officeGrade)} 사무소</span> <span class="badge" title="${esc(districtOf().note||"")}">${esc(districtOf().name)}</span></span>
     <span class="stat">${S.day}일차${S.weather ? ` · ${weatherText(S.weather)}` : ""}</span>
-    <span class="stat" title="의뢰 완료 +1 · 실패 -4 · 수락한 의뢰 기한 초과 -7 · 계약 포기 -6 · 매일 밤 -5~-10">사무소 신뢰도 <b>${officeTrust()}/100</b> · 수락 ${S.requests.filter(q=>q.accepted).length}건</span>
+    <span class="stat" title="의뢰 완료 +1 · 실패 -4 · 수락한 의뢰 기한 초과 -7 · 계약 포기 -6 · 매일 밤 -2">사무소 신뢰도 <b>${officeTrust()}/100</b> · 수락 ${S.requests.filter(q=>q.accepted).length}건</span>
     <span class="stat">자금 <b>${won(S.money)}</b></span>
     <span class="stat">남은 빚 <b>${won(S.debt)}</b></span>
     <span class="stat">${S.debt>0?`흉터 방문 <b>${nextVisit-1===0?"오늘 밤":(nextVisit-1)+"일 뒤"}</b>`:"<b style='color:var(--accent)'>빚 청산</b>"}</span>
