@@ -2386,18 +2386,18 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     const who=which===2?"옛 지인":"이전 구역의 주민";
     if(k==="사람"||k==="동료")
       return {kind:"수색",attrs:["agi","tec"],client:`${n}의 ${who}`,
-        text:`${jo(n,"이")} 소중히 여기는 사람과 연락이 끊겼다. 마지막 행방을 확인해 달라.`,
+        text:`${jo(n,"이")} 아끼는 사람과 연락이 끊겼다. 어디서 마지막으로 보였는지 알아봐 달라.`,
         scene:[`${jo(n,"이")} 마음에 품어 온 사람 — ${t}.`,"마지막으로 만난 곳부터 찾아가 근처 사람들에게 사정을 묻는다."]};
     if(k==="물건")
       return {kind:"수색",attrs:["agi","tec"],client:`${n}의 보관소 관계자`,
-        text:`${jo(n,"이")} 아끼는 물건을 맡겼던 보관소가 문을 닫았다. 물건을 회수해 달라.`,
+        text:`${jo(n,"이")} 아끼는 물건을 맡겨 둔 보관소가 문을 닫아 버렸다. 물건을 찾아와 달라.`,
         scene:[`${jo(n,"이")} 소중히 간직해 온 물건 — ${t}.`,"보관소 문에는 전 주인의 연락처 하나만 붙어 있다."]};
     if(k==="목표")
       return {kind:"일반",attrs:["tec"],client:`${n}의 옛 거래처`,
-        text:`${n}의 계획을 위해 진행하던 거래가 중단됐다. 거래처와 정산 문제를 해결해 달라.`,
-        scene:[`${n}의 목표 — ${t}.`,"미뤄 둔 계약과 선금에 얽힌 사정을 알아봐야 한다."]};
+        text:`${jo(n,"이")} 꿈을 위해 이어 오던 거래가 중간에 끊겼다. 거래처와 얽힌 돈 문제를 풀어 달라.`,
+        scene:[`${n}의 목표 — ${t}.`,"미뤄 둔 계약서와 먼저 건넨 돈부터 따져 봐야 한다."]};
     return {kind:"수색",attrs:["agi","tec"],client:`${n}의 ${who}`,
-      text:"예전에 끝내지 못한 개인적인 일을 조사해 달라.",
+      text:"예전에 끝맺지 못한 일이 있다. 그 일이 어떻게 됐는지 알아봐 달라.",
       scene:["예전에 함께 일하던 사람이 마지막으로 남긴 주소가 있다.","그 주소부터 뒤져 본다."]};
   }
   function postRequest(id, kind, attrs, client, text, actorId, scene){
@@ -2539,7 +2539,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     }else if(id==="month3"){
       const choice=await modal("3달째 · 세 달을 버틴 간판","<p>근처 해결사 사무소가 이곳 단골손님들에게 더 싼 보수를 부르기 시작했다.</p><p>얼마 뒤, 그 사무소 사람이 직접 찾아와 맞붙든지 아니면 같이 움직이든지 하자고 한다.</p><p>동료들은 대표가 어느 쪽을 고를지 지켜본다.</p>",[{t:"관여하지 않는다",v:"no"},{t:"공동 의뢰를 맡는다",v:"together"},{t:"정면으로 경쟁한다",v:"contest",primary:true}]);
       if(choice==="contest") postRequest(id,"일반",["tec"],"뒷골목 상인회","경쟁 사무소보다 먼저, 잃어버린 물품이 어느 거래처로 흘러갔는지 밝혀 달라.",null,["두 사무소가 같은 의뢰를 저마다 다른 방식으로 파고든다.","상인회장은 결과를 먼저 가져오는 사무소와 계약하겠다고 했다."]);
-      if(choice==="together") postRequest(id,"호위",["str","agi"],"근처 해결사 사무소","공동으로 화물을 호위하고 보수를 나누자.",null,["출발하기 전에 근처 사무소와 역할을 나눴다.","서로 다른 사무소 해결사들이 한 화물을 함께 지킨다."]);
+      if(choice==="together") postRequest(id,"호위",["str","agi"],"근처 해결사 사무소","화물을 같이 지키고, 보수는 반씩 나누자.",null,["출발하기 전에 근처 사무소와 역할을 나눴다.","다른 사무소 해결사들과 한 화물을 나란히 지킨다. 어색한 침묵이 길게 이어진다."]);
     }
     save();render();
   }
@@ -3700,7 +3700,7 @@ function chooseMode(q, team){
   const lo = clamp(base-25,3,97), fight = games.includes("str") || (games.length===1 && ["agi","escort","search","abno"].includes(games[0]));
   return modal("출동 방식", `<div class="kv">
       <span>예상 성공률</span><b>${base}%</b>
-      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${fight ? `${games[0]==="abno" ? "행동으로 알로 재우거나(통제), 폭주하거나 날뛰면 싸워서 제압하면 성공. 즉사 기믹이 있는 환상체는 통제에 실패하면 그걸로 끝이다." : games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : games[0]==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복을 만나면 합 전투로 넘어간다." : games[0]==="search" ? "찾던 것의 자리를 짚어 내면 성공, 시간이 다 가면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${jo(esc(team[0].name),"이")} 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
+      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${games[0]==="story" ? `사건에 맞춘 전용 미니게임을 먼저 한다.${games.includes("str") ? " 잘할수록 상대가 지친 채로 합 전투가 이어지고, 합 전투에서 이기면 성공." : " 결과가 좋을수록 성공률이 오른다."}` : fight ? `${games[0]==="abno" ? "행동으로 알로 재우거나(통제), 폭주하거나 날뛰면 싸워서 제압하면 성공. 즉사 기믹이 있는 환상체는 통제에 실패하면 그걸로 끝이다." : games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : games[0]==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복을 만나면 합 전투로 넘어간다." : games[0]==="search" ? "찾던 것의 자리를 짚어 내면 성공, 시간이 다 가면 실패." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 ${jo(esc(team[0].name),"이")} 싸우고 나머지 ${team.length-1}명이 거든다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
       <span>자동 진행</span><b>팀 전력으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
@@ -3852,7 +3852,7 @@ function mgStory(ctx){
       draw = now => { const g = c.createLinearGradient(hz.x-120,0,hz.x,0); g.addColorStop(0,"rgba(0,0,0,0.85)"); g.addColorStop(1,"rgba(0,0,0,0)"); c.fillStyle = "rgba(0,0,0,0.85)"; c.fillRect(0,0,Math.max(0,hz.x-120),300); c.fillStyle = g; c.fillRect(hz.x-120,0,120,300);
         label(Math.max(60, hz.x-60), 20, sp.haz, "#ff8a7a", 12); c.fillStyle = "rgba(159,232,176,0.12)"; c.fillRect(650,0,70,300); label(685, 20, "안전", "#9fe8b0", 12);
         ppl.forEach(o=>{ if(o.st==="lost") return; disc(o.x, o.y, 13, o.st==="safe" ? "#2e5a3a" : o.st==="go" ? "#5a7a9a" : "#8a7a5a", "rgba(255,255,255,0.3)"); }); };
-      info = () => `빼낸 ${sp.who} ${saved} / ${N} · 잃음 ${lost} · ${sp.who}을(를) 눌러 데려간다(동시에 둘까지)`;
+      info = () => `빼낸 ${sp.who} ${saved} / ${N} · 잃음 ${lost} · ${jo(sp.who,"을")} 눌러 데려간다(동시에 둘까지)`;
     }
     // ---- tune: 바늘 맞추기 ----
     else if(sp.type==="tune"){
@@ -3860,7 +3860,7 @@ function mgStory(ctx){
       m.cvs.addEventListener("pointerdown", ()=>{ hold = true; }); window.addEventListener("pointerup", ()=>{ hold = false; }); m.cvs.addEventListener("pointerleave", ()=>{ hold = false; });
       step = (now, dt) => { left -= dt; vy += (hold ? 1.6 : -1.4)*dt; vy *= 0.92; y = clamp(y + vy*dt, 0, 1); if(y===0 || y===1) vy = 0;
         zc += zv*dt; if(zc > 0.85 || zc < 0.15) zv *= -1; if(Math.random() < dt*0.6) zv = (Math.random()-0.5)*0.5;
-        if(Math.abs(y - zc) < zw/2) inT += dt; if(left <= 0) finish(inT/T*1.35, `${sp.what}을(를) ${Math.round(inT/T*100)}% 붙들었다`); };
+        if(Math.abs(y - zc) < zw/2) inT += dt; if(left <= 0) finish(inT/T*1.35, `${jo(sp.what,"을")} ${Math.round(inT/T*100)}% 붙들었다`); };
       draw = () => { const X = 360, top = 40, H = 220; c.fillStyle = "rgba(0,0,0,0.4)"; c.fillRect(X-40, top, 80, H);
         c.fillStyle = "rgba(232,201,138,0.35)"; c.fillRect(X-40, top + (1-zc-zw/2)*H, 80, zw*H); label(X+110, top + (1-zc)*H, sp.what, "#ffe6a8", 12);
         const ny = top + (1-y)*H, on = Math.abs(y - zc) < zw/2; c.fillStyle = on ? "#ffe6a8" : "#a8a29a"; c.fillRect(X-52, ny-3, 104, 6); if(on) disc(X-60, ny, 5, "#ffd27a", null, "#ffd27a"); };
@@ -3872,7 +3872,7 @@ function mgStory(ctx){
       m.cvs.addEventListener("pointerdown", e=>{ if(G.done || tries <= 0) return; const p = m.pos(e), d = Math.hypot(p.x-goal.x, p.y-goal.y); tries--;
         marks.push({x:p.x, y:p.y, d, t:performance.now()});
         if(d < R){ sparks(st, goal.x, goal.y, 20, "#ffe6a8", 3, 0.7, 0.02); say("여기다"); finish(0.45 + 0.55*tries/max, "찾아냈다"); return; }
-        say(d < 90 ? `${sp.what}이(가) 바로 곁에서 들린다` : d < 180 ? `${sp.what}이(가) 가까워졌다` : `${sp.what}이(가) 멀다`);
+        say(d < 90 ? `${jo(sp.what,"이")} 바로 곁에서 들린다` : d < 180 ? `${jo(sp.what,"이")} 가까워졌다` : `${jo(sp.what,"이")} 아직 멀다`);
         if(tries <= 0) finish(clamp(1 - Math.min(...marks.map(o=>o.d))/300, 0, 0.4), "끝내 찾지 못했다"); });
       draw = now => { marks.forEach(o=>{ const col = o.d < 90 ? "#ffb35a" : o.d < 180 ? "#c9a86a" : "#5a5a66", rr = 10 + ((now-o.t)/40)%30;
           c.save(); c.strokeStyle = col; c.globalAlpha = 0.6; c.beginPath(); c.arc(o.x,o.y,rr,0,7); c.stroke(); c.restore(); disc(o.x,o.y,5,col); }); };
@@ -6282,16 +6282,16 @@ const ABNO_SIGN = {
     ok:{mood:6, lure:-1}, okT:"「얘야, 그건 안개란다.」 부름이 멀어진다", bad:{mp:0.06}, badT:"부름이 손가락 사이로 새어 들어왔다", missT:"부름이 짙어진다", missDmg:{mp:0.05, t:"안개가 짙어져 모두의 정신이 흐려진다"},
     missFx:{lure:1}, rage:{t:"마왕이 안개 속에서 아이를 부른다", btn:"아이를 붙잡는다", okT:"아이의 손을 꼭 붙잡았다", missT:"부름이 모두의 정신을 흐렸다", sp:8}},
   // ── WAW ──
-  knight:{t:G=>G.blessed ? "기사가 축복받은 이를 바라보며 투구 틈으로 눈물을 흘린다" : "기사가 축복을 내릴 사람을 찾듯 천천히 고개를 돌린다", btn:G=>G.blessed ? "축복받은 이가 곁을 지킨다" : "고개를 숙여 예를 갖춘다", d:"원작: 축복받은 이가 쓰러지면 기사는 절망한다 · 축복받은 이를 지켜 낸다", chk:"wil",
+  knight:{t:G=>G.blessed ? "기사가 축복받은 이를 바라보며 투구 틈으로 눈물을 흘린다" : "기사가 축복을 내릴 사람을 찾듯 천천히 고개를 돌린다", btn:G=>G.blessed ? "축복받은 이가 곁을 지킨다" : "고개를 숙여 예를 갖춘다", d:"축복받은 이가 쓰러지면 기사는 절망한다 · 의지 판정", chk:"wil",
     ok:{mood:10, mp:0.04}, okT:"기사가 조용히 검을 내렸다", bad:{mp:0.07}, badT:"기사의 슬픔이 고스란히 밀려들었다", missT:"아무도 기사를 돌아보지 않았다. 갑옷 틈으로 검은 물이 흐른다", missDmg:{mp:0.05, t:"기사의 절망이 방 안을 적셨다"},
     rage:{t:"기사가 절망에 빠져 검을 치켜든다", btn:"방패를 맞댄다", okT:"방패를 맞대 버텼다", missT:"절망의 검이 모두를 베었다", sp:5, hp:6}},
-  littlered:{t:()=>"용병이 담배를 비벼 끄며 사냥감 이야기를 꺼낸다 — '늑대 냄새가 나는데'", btn:"사냥감 정보를 건넨다", d:"원작: 용병은 늑대를 쫓는다 · 정보를 주면 이쪽을 겨누지 않는다(재주 판정)", chk:"tec",
+  littlered:{t:()=>"용병이 담배를 비벼 끄며 사냥감 이야기를 꺼낸다 — '늑대 냄새가 나는데'", btn:"사냥감 정보를 건넨다", d:"용병은 늑대만 쫓는다 · 쓸 만한 정보를 주면 총구를 거둔다(재주 판정)", chk:"tec",
     ok:{mood:10}, okT:"용병이 씩 웃으며 총을 거두었다", bad:{mp:0.05, hurt:0.05}, badT:"엉뚱한 정보였다 — 용병의 개머리판이 날아왔다", missT:"용병이 혀를 차며 이쪽을 훑어본다", missDmg:{hp:0.05, t:"용병이 위협 사격을 했다"},
     rage:{t:"용병이 총구를 이쪽으로 돌린다", btn:"엄폐한다", okT:"엄폐물 뒤로 몸을 던졌다", missT:"용병의 탄창이 비워질 때까지 총알이 쏟아졌다", sp:3, hp:8}},
   moth:{t:()=>"날개에서 붉은 불씨가 우수수 떨어진다", btn:"불씨를 털어 낸다", d:"민첩 판정 · 성공하면 불씨가 하나 사라진다", chk:"agi",
     ok:{mood:8, embers:-1}, okT:"불씨를 털어 냈다. 나방이 날개를 접는다", bad:{mp:0.04, hurt:0.06}, badT:"불씨가 옷깃에 옮아 붙었다", missT:"불씨가 쌓였다", missFx:{embers:1}, missDmg:{hp:0.05, t:"떨어진 불씨가 모두의 살갗을 그슬렸다"},
     rage:{t:"나방이 불타는 날개를 크게 펼친다", btn:"날개를 노린다", okT:"날갯짓이 한 박자 흐트러졌다", missT:"불꽃 날개가 모두를 휩쓸었다", sp:4, hp:7}},
-  spiral:{target:true, t:(G,f)=>`나선이 ${f.name}을(를) 뚫어지게 본다. 눈도 없는데`, btn:"다른 사람이 앞을 막는다", d:"대상: 시선을 받은 사람 · 같은 사람이 계속 시선을 받지 않게 한다",
+  spiral:{target:true, t:(G,f)=>`나선이 ${jo(f.name,"을")} 뚫어지게 본다. 눈도 없는데`, btn:"다른 사람이 앞을 막는다", d:"대상: 시선을 받은 사람 · 같은 사람이 계속 시선을 받지 않게 한다",
     ok:{mood:8, swap:true}, okT:"앞을 가로막자 나선의 시선이 흩어졌다", missT:"시선이 한 사람에게 박혀 떨어지지 않는다", missDmg:{mp:0.06, t:"경멸의 시선이 마음을 할퀸다"},
     rage:{t:"나선이 시선을 한 점에 모은다", btn:"시선을 나눠 받는다", okT:"시선이 갈라져 흐려졌다", missT:"경멸이 모두를 꿰뚫었다", sp:8, hp:3}},
   brokenlance:{t:()=>"기수가 지킬 사람을 찾듯 부러진 창끝을 떤다", btn:"다친 이를 등 뒤로 가린다", d:"기수 앞에서 다친 사람을 보이지 않게 한다",
@@ -6318,13 +6318,13 @@ const ABNO_SIGN = {
     ok:{mood:10}, okT:"손가락을 접자 못이 잠잠해졌다", bad:{mp:0.04, hurt:0.05}, badT:"손끝이 못에 찔렸다", missT:"못이 반쯤 솟았다", missDmg:{hp:0.04, t:"못이 바닥에서 솟아 발을 찔렀다"},
     rage:{t:"다섯 못이 한꺼번에 솟는다", btn:"손을 펴 막는다", okT:"못이 손바닥 앞에서 멈췄다", missT:"못이 모두를 꿰었다", sp:4, hp:7}},
   // ── ALEPH ──
-  orchestra:{t:()=>"지휘봉이 허공에서 멈춘다. 다음 악장 전의 침묵", btn:"숨을 죽인다", d:"원작: 공연 사이의 침묵을 깨면 안 된다 · 의지 판정", chk:"wil",
+  orchestra:{t:()=>"지휘봉이 허공에서 멈춘다. 다음 악장 전의 침묵", btn:"숨을 죽인다", d:"악장 사이의 침묵을 깨면 안 된다 · 의지 판정", chk:"wil",
     ok:{mood:8}, okT:"침묵이 지켜졌다. 지휘자가 만족한 듯 고개를 숙인다", bad:{mp:0.08}, badT:"숨소리가 새어 나갔다 — 귓속에서 음이 울린다", missT:"침묵이 깨졌다", missDmg:{mp:0.1, t:"한 음이 모두의 머릿속을 울렸다"},
     rage:{t:"공연이 절정으로 치닫는다", btn:"귀를 막는다", okT:"음 하나를 흘려보냈다", missT:"공연이 모두의 정신을 찢었다", sp:7, hp:3}},
-  bluestar:{t:()=>"푸른 맥박이 다시 커진다. 하늘이 가까워지는 것 같다", btn:"마음을 다잡는다", d:"원작: 신중(의지)이 높지 않은 이는 별에 이끌린다 · 의지 판정", chk:"wil",
+  bluestar:{t:()=>"푸른 맥박이 다시 커진다. 하늘이 가까워지는 것 같다", btn:"마음을 다잡는다", d:"마음이 약한 이는 별에 이끌린다 · 의지 판정", chk:"wil",
     ok:{mood:8, mp:0.03}, okT:"발바닥을 땅에 붙이고 버텼다. 맥박이 멀어진다", bad:{mp:0.08}, badT:"몸이 잠깐 떠올랐다 — 정신이 아득하다", missT:"맥박이 한 번 더 크게 울렸다", missDmg:{mp:0.1, t:"푸른 맥박이 모두의 정신을 끌어당겼다"},
     rage:{t:"별이 하늘에서 맥박을 크게 울린다 — 몸이 떠오른다", btn:"서로를 붙잡는다", okT:"손을 맞잡아 발을 땅에 붙였다", missT:"맥박이 모두의 정신을 별 쪽으로 끌어당겼다", sp:8, hp:2}},
-  nothing:{t:()=>"익숙한 목소리가 누군가의 이름을 부른다. 동료의 목소리다", btn:"대답하지 않는다", d:"원작: 그것은 목소리를 흉내 낸다 · 민첩(정의) 판정", chk:"agi",
+  nothing:{t:()=>"익숙한 목소리가 누군가의 이름을 부른다. 동료의 목소리다", btn:"대답하지 않는다", d:"그것은 아는 목소리를 흉내 낸다 · 민첩(정의) 판정", chk:"agi",
     ok:{mood:8}, okT:"대답하지 않았다. 목소리가 뚝 끊겼다", bad:{mp:0.07}, badT:"하마터면 대답할 뻔했다", missT:"누군가 대답해 버렸다", missDmg:{mp:0.08, t:"흉내 낸 목소리가 모두의 귀에 남는다"},
     rage:{t:"그것이 동료의 목소리로 다가오라고 부른다", btn:"목소리를 무시한다", okT:"목소리를 흘려보냈다", missT:"촉수가 목소리를 따라 나선 이들을 덮쳤다", sp:5, hp:6}},
   sun:{t:()=>"햇살이 숨 막히게 따뜻해진다. 외투를 벗고 싶어진다", btn:"외투 깃을 여민다", d:"의지 판정 · 견디면 태양이 다음을 기다린다", chk:"wil",
@@ -7337,7 +7337,7 @@ async function dispatch(qid, fids, modeArg){
     if(A.fairy && Math.random() < 0.3){ const v = Math.floor(f.hpMax*0.12); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 굶주린 요정이 깨물었다 — 체력 -${v}`); }
     if(A.catDebt){ f.mp = Math.max(0, f.mp - A.catDebt); lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 출동한 길목에서 고양이와 눈이 마주쳤다 — 정신력 -${A.catDebt}</span>`); delete A.catDebt; } });
   // 내키지 않는 의뢰: 신뢰 -2
-  team.forEach(f=>{ const why = dislikeOf(f, q); if(!why) return; const d = changeFixerTrust(f, -2, `내키지 않는 의뢰 — ${why}`); if(d) lines.push(`<span style="color:#e7a07c">${esc(f.name)}: ${esc(why)} (신뢰 ${d})</span>`); });
+  team.forEach(f=>{ const why = dislikeOf(f, q); if(!why) return; const t = why.replace("{N}", jo(f.name,"은")); const d = changeFixerTrust(f, -2, "내키지 않는 의뢰였다"); if(d) lines.push(`<span style="color:#e7a07c">${esc(t)} (신뢰 ${d})</span>`); });
   // 무기 내구도: 실제로 전투를 치른 무기만 1씩 닳는다(E.G.O.·고유 무기·수리가 필요한 무기는 빼고)
   team.forEach(f=>{ const g = f.gear.weapon; if(!isWornable(g) || !g.durMax || needsRepair(g) || wGear(f)!==g) return;
     const fb = combat && combat.battle && combat.battle.find(x=>x.f===f), autoFight = !combat && mode!=="play" && !!(q.goal || q.kind==="호위");   // 자동 진행은 전투 의뢰(제압·사살·호위)만 싸운 것으로 본다
@@ -10901,20 +10901,20 @@ function fixerTrust(f){if(!f||f.isLeader)return 0;return Math.max(0,Math.min(100
 /* 해결사마다 내키지 않는 의뢰가 있다(성격 · 능력치). 맡겨서 다녀오면 결과와 상관없이 신뢰 -2 */
 function dislikeOf(f, q){ if(!f || f.isLeader || !q) return null; const P = f.personality, th = threatOf(q), st = f.stats||{};
   const low = ATTRS.reduce((b,a)=>(st[a]||0) < (st[b]||0) ? a : b, "str"), base = (REQ_BASE[q.grade]||[0])[0];
-  if(["다정함","헌신"].includes(P) && q.goal==="사살") return "사람 목숨을 끊는 일은 마음에 걸린다";
-  if(P==="정의감" && (q.goal==="사살" && !q.foe || /빚|수금|철거|쫓아내/.test(q.text||""))) return "약한 쪽을 짓누르는 일 같았다";
-  if(["소심함","비관적"].includes(P) && (["도시 악몽","도시의 별"].includes(th) || (q.grade!=null && q.grade < f.grade - 1))) return "감당할 수 없는 일에 끌려갔다고 느낀다";
-  if(P==="오만함" && q.grade!=null && q.grade >= f.grade + 2) return "이런 시시한 일에 자기를 쓴 게 불쾌하다";
-  if(P==="탐욕" && base && q.reward < base*0.9) return "보수가 짜다고 투덜댄다";
-  if(["공격적","충동적"].includes(P) && ["호위","수색"].includes(q.kind)) return "칼을 뽑을 일 없는 지루한 일이었다";
-  if(["신중함","침착함"].includes(P) && q.hazard) return "준비 없이 뛰어든 무모한 일이었다";
-  if(P==="냉소" && /협회/.test(q.client||"")) return "협회 심부름은 질색이다";
-  if(P==="무심함" && q.kind==="호위") return "남을 지키는 일은 귀찮기만 하다";
-  if(P==="낙천적" && q.distorted) return "아는 얼굴을 베는 일은 웃어넘길 수 없었다";
-  if(P==="광기" && q.goal==="제압") return "멈춰야 하는 일은 재미가 없다";
-  if(P==="집요함" && q.deadline!=null && q.deadline<=1 && !q.accepted) return "끝까지 파고들 틈도 없이 서둘렀다";
-  if(low==="wil" && q.kind==="환상체" && (st.wil||0) < 15) return "환상체 앞에 서면 머리가 울린다";
-  if(low==="str" && q.goal==="사살" && (st.str||0) < 15) return "몸으로 부딪치는 일은 버겁다";
+  if(["다정함","헌신"].includes(P) && q.goal==="사살") return "{N} 돌아오는 내내 말이 없었다. 사람 목숨을 끊는 일은 아직도 손에 익지 않는다";
+  if(P==="정의감" && (q.goal==="사살" && !q.foe || /빚|수금|철거|쫓아내/.test(q.text||""))) return "{N} \"이번엔 우리가 약한 쪽을 누른 것 같네요\" 하고 중얼거렸다";
+  if(["소심함","비관적"].includes(P) && (["도시 악몽","도시의 별"].includes(th) || (q.grade!=null && q.grade < f.grade - 1))) return "{N} 아직 손이 떨린다. 자기 몫이 아닌 일에 끌려갔다고 생각하는 눈치다";
+  if(P==="오만함" && q.grade!=null && q.grade >= f.grade + 2) return "{N} \"이런 일에 절 부르셨어요?\" 하며 대놓고 불쾌한 티를 냈다";
+  if(P==="탐욕" && base && q.reward < base*0.9) return "{N} 보수 봉투를 흔들어 보더니 \"이걸로 목숨 걸라고요?\" 하고 투덜댔다";
+  if(["공격적","충동적"].includes(P) && ["호위","수색"].includes(q.kind)) return "{N} 하품을 참으며 돌아왔다. 칼 한 번 못 뽑은 일이 영 시시했던 모양이다";
+  if(["신중함","침착함"].includes(P) && q.hazard) return "{N} \"다음엔 준비할 시간을 좀 주세요\" 하고 굳은 얼굴로 말했다";
+  if(P==="냉소" && /협회/.test(q.client||"")) return "{N} \"협회 심부름은 이번이 마지막이었으면 좋겠네요\" 하며 코웃음을 쳤다";
+  if(P==="무심함" && q.kind==="호위") return "{N} 남 뒤치다꺼리는 귀찮다며 의자에 털썩 주저앉았다";
+  if(P==="낙천적" && q.distorted) return "{N} 웃지 않았다. 아는 얼굴을 벤 날엔 그도 웃지 못한다";
+  if(P==="광기" && q.goal==="제압") return "{N} \"끝까지 가면 안 되는 일은 재미없어요\" 하고 입을 삐죽였다";
+  if(P==="집요함" && q.deadline!=null && q.deadline<=1 && !q.accepted) return "{N} 끝까지 파고들지 못하고 서둘러 마친 게 마음에 걸리는 모양이다";
+  if(low==="wil" && q.kind==="환상체" && (st.wil||0) < 15) return "{N} 관자놀이를 짚은 채 한참을 앉아 있었다. 환상체 앞에만 서면 머리가 울린다고 했다";
+  if(low==="str" && q.goal==="사살" && (st.str||0) < 15) return "{N} 욱신거리는 어깨를 주무르며 \"몸으로 부딪치는 일은 아직 버거워요\" 했다";
   return null; }
 function changeFixerTrust(f,n,why){if(!f||f.isLeader||!n)return 0;const a=fixerTrust(f);f.trust=Math.max(0,Math.min(100,a+n));const delta=f.trust-a;if(delta){addLog(`${f.name}: 신뢰 ${delta>0?"+":""}${delta} · ${why}`);if(delta>0&&f.trust>=90)ac("trust90");if(delta<0&&f.trust<=20)ac("trust20")}return delta}
 function initSurroundings(){
