@@ -9137,7 +9137,7 @@ async function openRecruit(){
 }
 
 /* ================= 관리 ================= */
-const healCost = f => 1000 * (f.grade===0?10:(10-f.grade));
+const healCost = f => Math.floor(1000 * (f.grade===0?10:(10-f.grade)) * 0.7);   // 회복 비용 30% 인하(소수점 버림)
 async function openManage(){
   let sel = S.fixers[0]?.id, mview = null;
   const draw = () => {
