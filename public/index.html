@@ -2055,7 +2055,7 @@ const LOOT_ACC = [
   {id:"calm", t:1, name:"정신 안정 키트", effect:"피로해도 받는 피해가 늘지 않는다(성공률이 깎이는 건 그대로)", desc:"진정제 몇 알과 호흡 마스크. 지친 머리를 억지로 가라앉힌다.",
    who:"상대는 며칠 밤을 새우고도 멀쩡하다고 한다. 약통 같은 걸 늘 품에 넣고 다닌다나.", site:"그 건물 의무실에 안정 키트가 하나 남아 있을 거라고 한다.",
    got:["상대의 허리춤에서 정신 안정 키트가 나왔다.","의무실 서랍에서 키트를 찾았다."]},
-  {id:"march", t:1, name:"피로 회복 앰플", effect:"강행군 때 깎이는 양이 2.5배에서 1.8배로", desc:"지친 몸을 하루 더 끌고 나가게 하는 싸구려 앰플. 뒤끝이 남는다.",
+  {id:"march", t:1, name:"피로 회복 앰플", effect:"강행군 때 깎이는 양이 1.25배에서 0.9배로", desc:"지친 몸을 하루 더 끌고 나가게 하는 싸구려 앰플. 뒤끝이 남는다.",
    who:"상대가 하루에 두 탕씩 뛰고도 버틴다고 한다. 목에 앰플을 꽂는 걸 봤다는 사람도 있다.", site:"그곳 탈의실 사물함에 앰플 상자가 숨겨져 있다는 말이 있다.",
    got:["상대의 소매에서 앰플 몇 개가 굴러 나왔다.","사물함 안쪽에서 앰플 상자를 찾았다."]},
   {id:"buffer", t:1, name:"신경 완충재", effect:"신경을 의체로 바꾼 사람만: 합에서 질 때 정신력 감소 절반", desc:"의체 신경 이음매에 끼우는 완충재. 얻어맞아도 머릿속이 덜 울린다.",
@@ -2359,6 +2359,30 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     "광기":"네! 첫날부터 재밌으면 좋겠네요."
   };
   const escapeText = v => esc(v==null?"":String(v));
+  // 동료의 부탁에 답했을 때의 반응 — 성격마다 들어줬을 때(yes) · 거절했을 때(no)
+  const askReact = {
+    "공격적":["…고마워요. 빚진 걸로 할게요. 그 일 끝나면, 다음 칼부림은 제가 대신 맞죠.","…알겠어요. 이 도시에서 남의 사정까지 봐줄 여유가 없다는 것쯤은 저도 알아요. 그래도, 좀 아쉽네요."],
+    "신중함":["정말 괜찮으세요? …네, 그럼 제가 일정이랑 동선부터 정리해 둘게요. 대표님 시간 허투루 안 쓰게.","네, 이해해요. 지금 사무소 사정에 무리할 수는 없죠. …언젠가 다시 꺼낼게요."],
+    "헌신":["…같이 가 주시는 거예요? 저 혼자 끌어안고 있던 일이었는데. 고마워요, 정말로.","괜찮아요. 사무소 일이 먼저죠. …그 사람한테는 조금만 더 기다려 달라고 할게요."],
+    "냉소":["하, 대표님도 참. 남의 옛날 일에 발 들이면 손해만 볼 텐데. …그래도, 고마워요.","예상했어요. 이 도시는 원래 그렇잖아요. …괜히 꺼냈네요."],
+    "충동적":["진짜요?! 역시 대표님! 저 오늘 밤에라도 바로 나갈 수 있어요!","에이… 그렇구나. 아니에요, 괜찮아요. 혼자서라도 어떻게 해 볼게요."],
+    "침착함":["감사합니다. 사사로운 일인데도 시간을 내 주셔서. 빠르게 끝내겠습니다.","합당한 판단입니다. 지금은 사무소를 먼저 세워야죠. 저도 동의합니다."],
+    "집요함":["좋아요. 이번엔 끝까지 갑니다. 몇 년을 붙잡고 있던 일이거든요.","…알겠어요. 그래도 저는 놓지 않을 거예요. 쉬는 날에라도 혼자 찾아볼게요."],
+    "낙천적":["와, 정말요? 대표님이 같이 가면 분명 잘 풀릴 거예요! 그 사람도 좋아할 거예요.","하하, 괜찮아요! 지금 아니면 다음에 하면 되죠. 이 도시도 내일은 있으니까요."],
+    "비관적":["…들어주실 줄은 몰랐어요. 어차피 안 될 거라고 생각했는데. 고마워요.","그럴 줄 알았어요. …괜찮아요. 원래 제 일은 늘 이렇게 끝나거든요."],
+    "오만함":["흥, 현명한 판단이네요. 제 일을 돕는 건 사무소에도 득이 될 테니까요.","…그래요? 뭐, 대표님 판단이겠죠. 저 혼자서도 충분하지만요."],
+    "소심함":["저, 정말요? 이런 부탁… 처음 해 봤는데. 고, 고맙습니다. 열심히 할게요.","아, 네… 죄송해요, 괜히 말씀드려서. 잊어 주세요."],
+    "정의감":["고맙습니다. 그 사람, 억울하게 묻히게 둘 수는 없었거든요. 제대로 매듭지을게요.","…알겠습니다. 하지만 그 일, 언젠가는 바로잡아야 해요. 그건 변하지 않아요."],
+    "탐욕":["오, 보수도 붙는 거죠? …농담이에요. 고마워요. 이번 일은 제가 돈보다 더 아끼는 거라서요.","뭐, 돈 안 되는 일이긴 하죠. 이해해요. …아까운 건 어쩔 수 없지만."],
+    "다정함":["대표님… 고마워요. 그 사람, 대표님 얘기 들으면 분명 좋아할 거예요.","괜찮아요, 대표님 사정도 있으니까요. 마음 써 주신 것만으로도 충분해요."],
+    "무심함":["…응. 고마워. 금방 끝낼게.","그래. …별 기대 안 했어."],
+    "광기":["아하하, 좋아요! 옛날 일 파헤치는 거 재밌잖아요. 무슨 톱니가 튀어나올지!","에이, 시시해라. 뭐, 혼자 뒤져 보는 것도 나름 재밌겠죠."]
+  };
+  async function reactToAsk(f, yes){ if(!f) return; const L = askReact[f.personality] || ["고마워요.","…알겠어요."];
+    await modal(`${escapeText(f.name)}의 대답`, `<p>"${escapeText(L[yes?0:1])}"</p>`, [{t:"확인", primary:true}]);
+    if(yes) changeFixerTrust(f, 2, "개인적인 부탁을 들어주었다"); }
+  const mealTalk = ["오랜만에 국물 있는 거 먹으니까 살 것 같네요. 이 도시에서 따뜻한 밥 한 끼는 사치거든요.","한 달 버틴 사무소가 생각보다 많지 않대요. 우린 그중 하나네요.","다음 달에도 이렇게 다 같이 앉아 있었으면 좋겠어요."];
+
   function state(){
     if(!S) return null;
     if(!S.officeStory || typeof S.officeStory!=="object") S.officeStory={};
@@ -2520,17 +2544,20 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       const f=ff[0],p=f.precious&&f.precious.text?`${escapeText(f.name)}${escapeText(josa(f.name,"이","가").slice(f.name.length))} 오래 간직해 온 것 — 「${escapeText(f.precious.text)}」.`:"예전에 함께 일하던 사람이 있었다고 한다.";
       const choice=await modal("2주째 · 아는 사람",`<p>${escapeText(f.name)}${escapeText(josa(f.name,"이","가").slice(f.name.length))} 잠시 말을 멈췄다. 사무소를 찾은 사람이 자신의 지난 일을 알고 있다는 것이다.</p><p>${p}</p><p>"대표님, 이번 일만큼은 제가 나가 봐도 될까요?"</p><p class="muted">수락하면 관련 의뢰가 게시판에 생깁니다.</p>`,[{t:"이번에는 맡지 않는다",v:"no"},{t:"함께 해결한다",v:"yes",primary:true}]);
       if(choice==="yes"){const c=personalCase(f,2);postRequest(id,c.kind,c.attrs,c.client,c.text,f.id,c.scene);}
+      await reactToAsk(f, choice==="yes");
     }else if(id==="week3"&&ff[1]){
       const f=ff[1],p=f.precious&&f.precious.text?`${escapeText(f.name)}${escapeText(josa(f.name,"이","가").slice(f.name.length))} 마음에 두고 있는 것 — 「${escapeText(f.precious.text)}」.`:"아직 말하지 못한 일이 하나 있다고 한다.";
       const choice=await modal("3주째 · 두 번째 동료의 부탁",`<p>${escapeText(f.name)}${escapeText(josa(f.name,"이","가").slice(f.name.length))} 대표를 찾아와 개인적인 부탁을 꺼낸다.</p><p>${p}</p><p>"한 번만 같이 가 주시겠어요?"</p><p class="muted">수락하면 수색 의뢰가 게시판에 생깁니다.</p>`,[{t:"지금은 어렵다",v:"no"},{t:"의뢰를 맡는다",v:"yes",primary:true}]);
       if(choice==="yes"){const c=personalCase(f,3);postRequest(id,c.kind,c.attrs,c.client,c.text,f.id,c.scene);}
+      await reactToAsk(f, choice==="yes");
     }else if(id==="month1"){
       const members=S.fixers.filter(f=>!f.isLeader);
       const intro=`<p>개업하고 한 달이 지났다. 현재 자금은 <b>${won(S.money)}</b>, 남은 빚은 <b>${won(S.debt)}</b>이다.</p><p>${S.money>=10000?"동료들이 오늘 하루만큼은 다 같이 밥이나 먹자고 했다.":"동료들은 오늘도 아껴 써야 한다며 장부를 펼쳤다."}</p>`;
       const choice=await modal("1달째 · 한 달의 장부",intro,[{t:"각자 쉬게 한다",v:"rest"},{t:"장부를 정리한다",v:"ledger",primary:true},...(S.money>=1500?[{t:"함께 식사한다 (1,500안)",v:"meal"}]:[])]);
-      if(choice==="meal"&&S.money>=1500){S.money-=1500;members.forEach(f=>changeFixerTrust(f,2,"한 달 기념 식사"));addLog("동료들과 식사했다. 식비 1,500안");}
-      else if(choice==="rest") addLog("한 달을 버틴 기념으로 동료들에게 쉬는 시간을 주었다.");
-      else addLog("한 달 치 장부를 정리했다.");
+      if(choice==="meal"&&S.money>=1500){S.money-=1500;members.forEach(f=>changeFixerTrust(f,2,"한 달 기념 식사"));addLog("동료들과 식사했다. 식비 1,500안");
+        const sp=members.length?pick(members):null; if(sp) await modal("한 달 기념 식사",`<p>골목 국밥집 구석 자리에 다 같이 둘러앉았다. 김이 오르는 그릇 너머로, ${escapeText(sp.name)}${escapeText(josa(sp.name,"이","가").slice(sp.name.length))} 숟가락을 내려놓았다.</p><p>"${escapeText(pick(mealTalk))}"</p>`,[{t:"확인",primary:true}]);}
+      else if(choice==="rest"){ addLog("한 달을 버틴 기념으로 동료들에게 쉬는 시간을 주었다."); await modal("각자의 저녁",`<p>오늘은 일찍 문을 닫았다. 누구는 잠을 자러, 누구는 둥지 쪽 야시장 구경을 간다며 흩어졌다.</p><p>불 꺼진 사무소에 혼자 남아 장부를 덮었다. 한 달. 이 도시에선 짧지 않은 시간이다.</p>`,[{t:"확인",primary:true}]); }
+      else { addLog("한 달 치 장부를 정리했다."); await modal("한 달의 장부",`<p>동료들과 접수대에 둘러앉아 한 달 치 영수증을 맞췄다. 빠진 칸 하나를 두고 한참 실랑이가 오갔다.</p><p>"이거, 그날 탄피값이에요." 누군가 말했고, 다들 웃었다. 빚은 아직 그대로지만, 장부는 깨끗해졌다.</p>`,[{t:"확인",primary:true}]); }
       save();render();
     }else if(id==="month2"){
       const choice=await modal("2달째 · 우리 사무소의 일","<p>서로 다른 손님 둘이 같은 운송인을 두고 찾아왔다. 한쪽은 행방을 찾아 달라고 하고, 다른 쪽은 그가 물건을 훔쳐 달아났다고 우긴다.</p><p>어느 쪽 의뢰를 맡을지는 대표가 정한다.</p>",[{t:"둘 다 맡지 않는다",v:"no"},{t:"도난 피해부터 조사한다",v:"theft"},{t:"운송인을 찾는다",v:"search",primary:true}]);
@@ -3630,7 +3657,7 @@ const LOSS_PCT = {ok:[10,15,20,25],fail:[35,43,52,60]};
 function damagePercent(f,q,success,wound,mental,march,doom=false){
   const red=mental ? redMP(f) : redHP(f), w=wound===1&&accFx(f,"lining")?0:Math.max(0,Math.min(3,wound));
   const gentle=q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
-  let pct=march ? Math.floor(LOSS_PCT.ok[0]*(1-red*0.5)*(accFx(f,"march")?1.8:MARCH_K))
+  let pct=march ? Math.floor(LOSS_PCT.ok[0]*(1-red*0.5)*(accFx(f,"march")?0.9:MARCH_K))
     : doom ? 0 : gentle&&!success ? 3 : Math.floor((success?LOSS_PCT.ok:LOSS_PCT.fail)[w]*(1-red*0.5));
   if(LIGHT_THREATS.includes(threatOf(q))) pct=Math.floor(pct/2);
   if(f.tired&&!accFx(f,"calm")) pct=Math.floor(pct*TIRED_DMG);
@@ -3656,13 +3683,13 @@ function estimate(team,q){
     l:[Math.min(...profiles.map(x=>x.fail[0])),Math.max(...profiles.map(x=>x.fail[1]))]};
 }
 function canGo(f){ return f.hp > 0 && bodyServiceReady(f) && f.lastDispatch!==S.day && (f.unavailUntil||0) < S.day; }
-/* 강행군: 오늘 이미 출동한 해결사를 하루 한 번 더 내보낸다. 결과와 상관없이 가장 적게 깎일 때(성공 · 안정)의 2.5배가 깎인다 */
+/* 강행군: 오늘 이미 출동한 해결사를 하루 한 번 더 내보낸다. 결과와 상관없이 가장 적게 깎일 때(성공 · 안정)의 1.25배가 깎인다 */
 function canMarch(f){ return f.hp > 0 && bodyServiceReady(f) && f.lastDispatch===S.day && (f.unavailUntil||0) < S.day && f.marchDay!==S.day; }
 const canSend = f => canGo(f) || canMarch(f);
 /* 피로: 나흘 연속 출동한 해결사는 닷새째부터 '피로'가 붙는다 — 그 사람이 낀 출동은 성공률 -7.5%p, 그 사람이 받는 피해 +15%.
    하루 쉬면(출동하지 않으면) 피로가 풀리고, 체력·정신력을 평소(20%)보다 15%p 더 회복한다. 쉴지 버틸지는 플레이어가 고른다. */
 const STREAK_MAX = 4, TIRED_RATE = 7.5, TIRED_DMG = 1.15, REST_BONUS = 0.15;   // 나흘 연속 출동하면 피로 · 페널티는 예전(-10%p · +20%)보다 25% 완화
-const MARCH_K = 2.5;
+const MARCH_K = 1.25;   // 강행군 피해를 절반으로 줄였다(예전 2.5배)
 function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30?["나쁨","b"]:["위험","d"]; }
 
 /* ================= 장비 정보(연출용) ================= */
@@ -7241,7 +7268,7 @@ async function dispatch(qid, fids, modeArg){
   let mental = isMental(q);
   const marching = team.filter(f=>!canGo(f) && canMarch(f));
   if(marching.length){ const nm = mental ? "정신력" : "체력";
-    const ok = await confirmBox("강행군", `${marching.map(f=>`<b>${esc(f.name)}</b>(${nm} ${Math.floor(LOSS_OK0*(1-(mental ? redMP(f) : redHP(f))*0.5)*(accFx(f,"march") ? 1.8 : MARCH_K))}%)`).join(", ")}${jo(marching[marching.length-1].name,"은").slice(-1)} 오늘 이미 의뢰를 다녀왔다. 한 번 더 내보내면 성공이든 실패든 ${nm}이 크게 깎인다. 그래도 보낼까?`);
+    const ok = await confirmBox("강행군", `${marching.map(f=>`<b>${esc(f.name)}</b>(${nm} ${Math.floor(LOSS_OK0*(1-(mental ? redMP(f) : redHP(f))*0.5)*(accFx(f,"march") ? 0.9 : MARCH_K))}%)`).join(", ")}${jo(marching[marching.length-1].name,"은").slice(-1)} 오늘 이미 의뢰를 다녀왔다. 한 번 더 내보내면 성공이든 실패든 ${nm}이 크게 깎인다. 그래도 보낼까?`);
     if(!ok) return; }
   const risky = team.filter(f=>{ const lh=level(f.hp,f.hpMax)[1], lm=level(f.mp,f.mpMax)[1]; return lh==="d" || (mental && lm==="d"); });
   if(risky.length){
@@ -7311,7 +7338,7 @@ async function dispatch(qid, fids, modeArg){
     const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
-    // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 2.5배
+    // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 1.25배
     const pct = damagePercent(f,q,success,w,mental,march,!!(abnoR && abnoR.doom));
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
     const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
@@ -8965,7 +8992,7 @@ async function openRepay(){
   });
 }
 /* 하나 협회 등급 심사(7일마다): 이번 주에 해낸 의뢰 수 · 자기 등급 이상 의뢰 실적 · 수행 점수 · 성공 비중으로 본다 */
-const REVIEW_NEED = g => 3 + Math.floor((9 - g)/2);
+const REVIEW_NEED = g => 4 + Math.floor((9 - g)/2);   // 해결사 승급: 주간 성공 요구 +1(강행군 완화 대신)
 function reviewOf(w, g, needHi){ w = w || {n:0, ok:0, hi:0, sc:0}; const need = REVIEW_NEED(g), why = []; w.ok = Math.min(w.n||0,w.ok||0);
   if(w.ok < need) why.push("해낸 의뢰가 모자라다"); if(w.hi < (needHi!=null ? needHi : Math.ceil(need/2))) why.push("제 등급에 걸맞은 의뢰 실적이 모자라다");
   if(w.n && w.ok/w.n < 0.7) why.push("실패가 잦았다"); if(w.n && w.sc/w.n < 0.5) why.push("일 처리가 서툴렀다");
@@ -10435,12 +10462,44 @@ const TALK_TOPICS = [
   {open:["길에서 고양이 한 마리를 봤어요. 털이 다 젖어 있더라고요.", "데려올 걸 그랬나 싶어서요."],
    o:{warm:"다음에 보면 데려와. 같이 돌보자.", real:"여긴 고양이 밥값까지 낼 여유가 아직 없어.", joke:"그 고양이가 우리보다 잘 먹고 다닐걸.", firm:"도시에서 남을 거두려면 각오가 필요해.", praise:"그런 걸 그냥 지나치지 못하는 게 네 좋은 점이야."}},
 ];
-const TALK_OK = {"공격적":"…그래요. 그 말 듣고 싶었어요. 다음엔 제가 앞에 설게요.","신중함":"맞아요. 그렇게 정리하니까 마음이 놓이네요.","헌신":"…고마워요. 저도 끝까지 곁에 있을게요.","냉소":"하, 그건 좀 웃겼네요. 인정.",
-  "충동적":"하하! 역시 대표님이에요. 기분 좋아졌어요!","침착함":"합리적이네요. 그렇게 하죠.","집요함":"네. 끝까지 해 보죠. 저도 물러서지 않을게요.","낙천적":"그쵸? 웃으면서 하면 다 잘 될 거예요!",
-  "비관적":"…그렇게 말해 주는 사람은 처음이에요. 조금은 괜찮아진 것 같아요.","오만함":"흥, 이제야 알아보시는군요. 뭐, 나쁘지 않네요.","소심함":"저, 정말요…? 감사합니다. 힘낼게요.","정의감":"네. 그게 옳아요. 흔들리지 않을게요.",
-  "탐욕":"좋아요, 셈이 맞는 사람이 좋더라. 계속 같이 가죠.","다정함":"따뜻하네요. 저도 대표님께 그런 사람이 되고 싶어요.","무심함":"…응. 그 정도면 됐어.","광기":"아하하! 그거 최고예요. 오늘 일 재밌겠다!"};
-const TALK_MEH = {"공격적":"…말은 쉽죠.","신중함":"음, 그건 좀 대책 없는 말 같네요.","헌신":"그렇군요… 알겠어요.","냉소":"뻔한 소리네요.","충동적":"에이, 재미없게.","침착함":"…그런가요.","집요함":"그걸로는 안 끝나요.","낙천적":"음… 좀 무겁네요.",
-  "비관적":"…그래요. 어차피 그렇겠죠.","오만함":"그 정도 말로 제가 넘어갈 줄 알았어요?","소심함":"아, 네… 죄송해요.","정의감":"그건 좀 아닌 것 같은데요.","탐욕":"그걸로 밥이 나오나요?","다정함":"…그렇게 생각하시는구나.","무심함":"그래.","광기":"시시해라."};
+// 교류 대답 — 좋아하는 말을 들었을 때(ok)와 마음에 들지 않을 때(meh). 성격마다 두 갈래 중 하나가 나온다.
+const TALK_OK = {
+  "공격적":["…하, 그 말 기다렸어요. 이 도시에선 망설이는 놈부터 뒷골목에 눕더라고요. 다음 일은 제가 맨 앞에 서죠.","좋네요, 그런 말. 솔직히 사무소 간판보다 대표님 그 배짱 보고 남은 거예요. 오늘 밤 어디든 데려가요."],
+  "신중함":["…네, 그렇게 정리하니까 좀 낫네요. 계약서 한 줄 잘못 읽어서 사라진 사무소를 몇 개나 봤거든요. 대표님은 그런 거 안 놓치셔서 다행이에요.","맞아요. 날개 사람들도 결국 장부 앞에선 숫자로 말하잖아요. 저도 오늘 밤 기록 한 번 더 맞춰 둘게요."],
+  "헌신":["…고마워요, 정말로. 이 도시에서 누가 나를 챙겨 준다는 게 이렇게 낯설 줄은 몰랐어요. 저도 끝까지 곁에 있을게요.","그 말 하나면 됐어요. 다들 무사히 이 문으로 돌아오기만 하면, 나머진 제가 어떻게든 메꿀게요."],
+  "냉소":["하, 그건 좀 웃겼네요. 인정할게요. 이 도시에서 웃을 일 하나 건진 셈이니, 오늘은 남는 장사네요.","…뭐, 그렇게 말하는 대표님이라 아직 여기 붙어 있는 걸지도요. 다른 사무소였으면 벌써 짐 쌌어요."],
+  "충동적":["하하! 역시 대표님이에요! 아, 기분 좋다. 오늘은 뭐든 다 될 것 같은데, 의뢰 하나 더 받아도 돼요?","그쵸, 그쵸! 그렇게 말해 주니까 몸이 근질근질하네요. 커피는 됐고 당장 나가요!"],
+  "침착함":["합리적이네요. 그렇게 하죠. …대표님하고 일하면 계산이 서서 좋아요. 이 도시엔 계산 안 서는 일이 너무 많거든요.","네. 감정은 일 끝나고 정리하면 되니까요. 그래도 그렇게 말해 주셔서, 마음이 좀 편해졌습니다."],
+  "집요함":["네. 끝까지 가 보죠. 손가락 녀석들이 뭘 숨기든, 한 번 문 건 안 놔요. 대표님도 그런 사람이라 다행이에요.","그 말 들으니까 놓쳤던 실마리가 다시 생각나네요. 오늘 밤 그 골목 한 번 더 돌아볼게요."],
+  "낙천적":["그쵸? 저도 그렇게 생각했어요! 뒷골목의 밤도 결국 아침이 오잖아요. 우리 사무소도 그럴 거예요.","하하, 대표님 그 말투 좋아요. 이 도시가 아무리 험해도, 이런 아침이 있으면 버틸 만하죠."],
+  "비관적":["…그렇게 말해 주는 사람은 처음이에요. 어차피 다 무너질 거라고만 생각했는데, 오늘은 조금 덜 무서운 것 같아요.","고마워요. …이 도시에서 다정한 말은 빚처럼 느껴졌거든요. 근데 대표님 말은 갚고 싶은 쪽이네요."],
+  "오만함":["흥, 이제야 제대로 보시는군요. 뭐… 그렇게까지 말씀하시면, 제가 이 사무소 이름 좀 높여 드리죠.","당연한 말씀을. …그래도 대표님 입으로 들으니 나쁘진 않네요. 협회 놈들한테도 똑똑히 보여 주죠."],
+  "소심함":["저, 정말요…? 그렇게 말해 주실 줄 몰랐어요. 저… 이번엔 도망치지 않을게요. 진짜로요.","고, 고맙습니다. 실은 계속 제가 짐만 되는 것 같았거든요. 오늘은… 조금 더 해 볼게요."],
+  "정의감":["네. 그게 맞아요. 이 도시가 아무리 비뚤어져도, 우리까지 비뚤어질 필요는 없잖아요. 흔들리지 않을게요.","그 말 믿어도 되는 거죠? …네, 믿을게요. 약한 사람이 뒷골목에서 사라지는 건 이제 그만 보고 싶어요."],
+  "탐욕":["좋아요, 셈이 맞는 사람이 좋더라. 이 도시에서 공짜로 오는 건 뒷골목의 밤뿐이잖아요. 계속 같이 벌어 보죠.","역시 대표님은 말이 통해요. 다음 의뢰 보수 좀 보여 주세요. 쓸 데가 벌써 줄 서 있거든요."],
+  "다정함":["따뜻하네요, 그 말. …저도 대표님한테 그런 사람이 되고 싶어요. 다들 다치지 않고 돌아오는 사무소였으면 해요.","그렇게 말해 주니까 커피가 더 따뜻한 것 같아요. 오늘 저녁엔 다 같이 밥 먹어요, 제가 할게요."],
+  "무심함":["…응. 그 정도면 됐어. …아니, 사실 좀 괜찮았어. 그런 말.","그래. …대표님은 쓸데없이 말 길게 안 해서 좋아. 오늘 일, 맡겨."],
+  "광기":["아하하! 그거 최고예요! 이 도시는 원래 미쳐 있으니까, 우리도 그만큼은 웃어 줘야죠. 오늘 일, 재밌겠다!","좋아요 좋아요, 그 말 들으니까 톱니가 잘 맞물리는 느낌이에요. 오늘은 뭘 부숴 볼까요?"],
+};
+const TALK_MEH = {
+  "공격적":["…말은 쉽죠. 칼 들고 앞에 서는 건 결국 저잖아요.","그런 말로 배부르면 뒷골목에서 굶어 죽는 놈도 없겠네요."],
+  "신중함":["음… 그건 좀 대책 없는 말 같네요. 저는 그냥 서류나 다시 볼게요.","그렇게 쉽게 넘길 일이 아닌데요. 나중에 다시 얘기해요."],
+  "헌신":["그렇군요… 알겠어요. 제가 괜한 말을 꺼냈나 봐요.","…네. 신경 쓰지 마세요, 제가 알아서 할게요."],
+  "냉소":["뻔한 소리네요. 협회 홍보 책자에나 나올 말.","하, 네네. 그렇게 생각하시면 편하시겠죠."],
+  "충동적":["에이, 재미없게. 그냥 나가서 몸이나 풀래요.","으음, 그런 거 말고요… 됐어요, 나중에 얘기해요."],
+  "침착함":["…그런가요. 일단 알겠습니다.","그 말은 지금 상황이랑은 좀 안 맞는 것 같습니다."],
+  "집요함":["그걸로는 안 끝나요. 제가 계속 파 볼게요.","…대표님이 그렇게 말하면, 결국 저 혼자 붙잡고 있어야 하잖아요."],
+  "낙천적":["음… 좀 무겁네요. 아침부터 그런 얘기는 싫은데.","아하하… 네, 그렇죠. 그렇긴 한데요."],
+  "비관적":["…그래요. 어차피 그렇겠죠.","네… 뭐, 기대한 제가 이상한 거죠."],
+  "오만함":["그 정도 말로 제가 넘어갈 줄 알았어요?","흥. 대표님이 저를 아직 잘 모르시나 보네요."],
+  "소심함":["아, 네… 죄송해요. 괜히 말 걸었네요.","네, 네… 제가 더 열심히 할게요… (목소리가 작아졌다)"],
+  "정의감":["그건 좀 아닌 것 같은데요. 우리가 그렇게 굴면 손가락 놈들이랑 뭐가 달라요.","…대표님한테 그런 말은 듣고 싶지 않았어요."],
+  "탐욕":["그걸로 밥이 나오나요? 돈 얘기 아니면 나중에 해요.","말로 때우시려고요? 다음 주급이나 챙겨 주세요."],
+  "다정함":["…그렇게 생각하시는구나. 알겠어요.","음, 그렇네요. …커피 식겠어요, 드세요."],
+  "무심함":["그래.","…응. 알았어."],
+  "광기":["시시해라. 그런 대답은 둥지 사람들이나 하는 거예요.","에이, 재미없어. 톱니가 헛도는 소리 같네요."],
+};
+const talkLine = (T, P) => { const v = T[P]; return Array.isArray(v) ? pick(v) : (v || "…그래요."); };
 const TALK_TONE_LABEL = {warm:"다정하게", real:"현실적으로", joke:"농담으로", firm:"단호하게", praise:"추켜세운다"};
 function talkWeek(){ const w = Math.floor((S.day-1)/7); if(!S.talk || S.talk.w !== w) S.talk = {w, n:0, last:0}; return S.talk; }
 async function talkCheck(){
@@ -10449,7 +10508,7 @@ async function talkCheck(){
   if(!(need >= left || (need > 0 && Math.random() < 0.35) || (need === 0 && Math.random() < 0.1))) return;
   const f = pick(pool), P = f.personality, like = TALK_LIKE[P] || "warm", tp = pick(TALK_TOPICS);
   const others = Object.keys(tp.o).filter(k=>k!==like).sort(()=>Math.random()-0.5).slice(0,2), keys = [like].concat(others).sort(()=>Math.random()-0.5);
-  const opts = keys.map(k=>({k, t:`(${TALK_TONE_LABEL[k]}) "${tp.o[k]}"`, after:[[f.name, k===like ? TALK_OK[P] || "고마워요." : TALK_MEH[P] || "…그래요."]]}));
+  const opts = keys.map(k=>({k, t:`(${TALK_TONE_LABEL[k]}) "${tp.o[k]}"`, after:[[f.name, talkLine(k===like ? TALK_OK : TALK_MEH, P)]]}));
   T.n++; T.last = S.day;
   const o = await vnPlay(`교류 — ${f.name}`, [["", `아침, ${f.name}${jo(f.name,"이").slice(f.name.length)} 커피를 들고 다가왔다.`]].concat(tp.open.map(t=>[f.name, t])), `${f.name}에게 뭐라고 할까?`, opts);
   if(o && o.k===like){ const d = changeFixerTrust(f, 2, "교류 — 마음에 드는 말을 들었다"); if(d) toast(`${f.name}: 신뢰 +${d}`); }
