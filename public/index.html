@@ -2610,7 +2610,7 @@ function makeRequest(grade, opts={}){
   else if(kind==="환상체"){ row = pickRow(P.wil); }
   else if(P[key]){ row = pickRow(P[key]); }
   if(row){ text = row[0]; client = row[1]; scene = row[3] || null; if(key==="str") foe = row[2] || null; else chase = row[2] || null; }
-  if(ab){ const A = ABNO_BY[ab.id]; text = A.kill ? A.rumor : `${A.rumor}. 확인하고 처리해 달라`; scene=null; }
+  if(ab){ const A = ABNO_BY[ab.id]; text = A.kill || /달라$/.test(A.rumor) ? A.rumor : `${A.rumor}. 확인하고 처리해 달라`; scene=null; }
   else if(!row){ text = pick(TEXTS[key] || TEXTS.str); client = pick(CLIENTS[key] || CLIENTS.str); }
   // 물리 일반 의뢰는 제압 / 사살로 나뉜다(낮은 등급은 대부분 제압)
   let goal = null;
@@ -9238,7 +9238,8 @@ function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d
     d.officeTrust=clamp(50+oldDone*2,0,100);
   }
   delete d.clients;
-  (d.requests||[]).forEach(q=>{ delete q.reg; if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; } }); return syncAllStatVitals(migrate1247(migrateGunAmmoState(d))); }
+  (d.requests||[]).forEach(q=>{ delete q.reg; if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; }
+    if(typeof q.text==="string") q.text = q.text.replace(/(달라)\. 확인하고 처리해 달라$/, "$1"); }); return syncAllStatVitals(migrate1247(migrateGunAmmoState(d))); }
 }catch(e){ if(!saveWarningShown){saveWarningShown=true;try{console.warn("저장 불러오기 실패",e);}catch(_){}} } return null; }
 /* 전당포: 보관함의 물건을 산 값(값이 없는 전리품·기프트는 같은 칸에서 가장 비슷한 가치의 공방 물건 값)의 40%에 판다. 소수점 버림. */
 const PAWN_K = 0.4;
@@ -9976,13 +9977,51 @@ const RUINS_ROOMS={"wing":{"n":"몰락한 날개의 잔당","sub":"엔케팔린 
 /* ================= 의뢰 받기 =================
    모든 의뢰는 게시판에서 [의뢰를 받는다]로 먼저 연다 → 의뢰 상세와 짧은 이야기 → [사람을 보낸다] / [거절한다].
    사람을 보내기로 하면 그 의뢰 카드에서 해결사를 고를 수 있다. 거절한 의뢰는 게시판에서 내려간다(지령을 거절하면 대가를 치른다). */
-const STORY_OPEN = [
-  "오후 늦게, {c}이(가) 사무소 문을 두드렸다.",
-  "비가 그친 아침, {c}의 사람이 쪽지 한 장을 들고 찾아왔다.",
-  "{c}에게서 연락이 왔다. 목소리가 낮고 빨랐다.",
-  "접수대 위에 {c}의 이름이 적힌 봉투가 놓여 있었다.",
-  "{c}이(가) 의자에 앉기도 전에 말을 꺼냈다.",
-  "점심 무렵, {c}이(가) 모자를 손에 쥔 채 들어왔다."];
+/* 의뢰인 등장 문장. 사람·가게·단체·익명을 나눠, 단체가 모자를 쥐고 들어오는 일이 없게 한다.
+   등장 문장 다음에는 의뢰서(쪽지)에 적힌 글이 「」로 이어진다. */
+const STORY_OPEN = {
+  person:["오후 늦게, {w}이(가) 사무소 문을 두드렸다. 내민 쪽지엔 이렇게 적혀 있었다.",
+    "{w}이(가) 의자에 앉기도 전에 접은 종이부터 내밀었다.",
+    "점심 무렵, {w}이(가) 모자를 손에 쥔 채 들어와 의뢰서를 건넸다.",
+    "비가 그친 아침, 접수대 위에 {w}의 이름이 적힌 봉투가 놓여 있었다.",
+    "{w}이(가) 문간에서 한참 망설이다 들어왔다. 건넨 종이엔 몇 번이나 고쳐 쓴 흔적이 있었다."],
+  org:["비가 그친 아침, {c}에서 사람 하나가 쪽지를 들고 찾아왔다.",
+    "오후 늦게, {c}의 도장이 찍힌 의뢰서가 배달됐다.",
+    "{c}에서 나온 직원이 서류 봉투를 접수대에 올려놓았다.",
+    "점심 무렵, {c} 쪽 사람이 모자를 손에 쥔 채 들어와 의뢰서를 건넸다."],
+  anon:["아침에 보니 문틈에 봉투 하나가 끼워져 있었다. 보낸 사람 이름은 없었다.",
+    "누가 두고 갔는지 모를 봉투가 접수대 위에 놓여 있었다.",
+    "늦은 밤, 우편함에 이름 없는 봉투가 들어 있었다."]};
+const CLIENT_SHOP = /(사진관|슈퍼|생선 가게|부품상'|수리점|정비소|'둥근 저울'|'두 바퀴'|'손끝')$/;
+const CLIENT_ORG = /(조합|중개소|연구소|사무실|관리소|사무소|상인회|공방|연락실|조사실|작전실|조사반|감사실|대응실|모임|연합|업체|진료소|위원회|출판사)$/;
+function clientKind(c){ c = String(c||""); if(/^익명/.test(c)) return "anon"; if(CLIENT_SHOP.test(c)) return "shop"; if(CLIENT_ORG.test(c)) return "org"; return "person"; }
+function storyOpen(q){ const k = clientKind(q.client); const pool = STORY_OPEN[k==="shop" ? "person" : k];
+  const w = k==="shop" ? `${q.client} 주인` : q.client;
+  return pick(pool).replace(/\{w\}이\(가\)/g, jo(w,"이")).replace(/\{w\}/g, w).replace(/\{c\}/g, q.client); }
+/* 의뢰서 본문을 보고 덧붙일 의뢰인의 말을 고른다 — 같은 말이 두 번 나오지 않게 */
+const STORY_TAIL = {
+  kill:["의뢰인은 잠시 말을 고르더니, 살려 둘 필요는 없다고 했다.","\"다시 나타나면 또 누가 다칠 거예요. 끝내 주세요.\""],
+  drive:["\"죽일 필요까진 없어요. 다시는 얼씬 못 하게만 해 주세요.\"","상대와 몇 번 말을 섞어 봤지만 소용없었다고 했다."],
+  subdue:["상대와 몇 번 말을 섞어 봤지만 소용없었다고 했다.","\"더 다치는 사람이 나오기 전에 끝내 주세요.\"","\"말로 해서 들을 상대였으면 여기까지 안 왔죠.\""],
+  catch:["\"산 채로 데려와 주세요. 물어볼 게 많아요.\"","의뢰인은 마지막으로 본 곳을 짚어 보이고는 자리를 비켜 주었다.","\"시간이 지날수록 멀리 가요. 오늘 안에 움직여 주세요.\""],
+  fetch:["\"물건만 무사히 돌아오면 돼요. 흠집은 안 나게요.\"","의뢰인은 물건 생김새를 몇 번이고 되풀이해 설명했다."],
+  money:["\"받을 돈만 받아 오면 돼요. 나머진 저희 일이고요.\"","의뢰인은 계약서 사본을 접수대에 펼쳐 금액 칸을 손가락으로 짚었다."],
+  probe:["\"누가 그랬는지만 알면 돼요. 나머진 저희가 알아서 할게요.\"","의뢰인은 고개를 숙인 채, 확인할 수 있는 것부터 찾아 달라고 했다.","범인이라고 못 박을 증거가 없어서, 아직 누구한테도 책임을 묻지 못했다고 했다."],
+  find:["의뢰인은 지도 한 장을 펼쳐 놓고, 짚이는 곳 몇 군데에 동그라미를 쳤다.","\"어디쯤인지는 대충 알아요. 그게 더 답답하죠.\"","본 게 많지 않다면서도, 의뢰인은 아는 건 하나도 빼놓지 않고 털어놓았다."],
+  escort:["\"가는 내내 곁에 있어 주세요. 무슨 일이 생겨도 사람이 먼저예요.\"","출발 시각은 정해졌다. 길은 현장에서 고르면 된다.","\"노리는 놈이 있는지는 모르겠어요. 없다고 장담할 수도 없고요.\""],
+  wil:["이야기하는 내내 의뢰인의 눈이 자꾸 창밖을 향했다.","처음 듣는 종류의 이야기였다. 의뢰인도 제 말을 다 믿지는 못하는 눈치였다."]};
+function storyTailKind(q, t){
+  if(q.kind==="호위" || /호위|지켜 달라|데려다|옮겨 달라|동행|모셔/.test(t)) return "escort";
+  if(/살려 둘|사살|끝내 달라|처리해 달라/.test(t) || q.goal==="사살") return "kill";
+  if(/금액|빚|돈을 받|받아 와/.test(t)) return "money";
+  if(/되찾|회수|돌려받/.test(t) && !/(구역|출입로|길을|검문|도로|운송로|통로|기지|시설|경비소)/.test(t)) return "fetch";
+  if(/누가|누군지|범인|원인|가짜|서명|필체|위조|수법|어떻게|왜/.test(t)) return "probe";
+  if(/붙잡|잡아 달라|산 채로|생포/.test(t)) return "catch";
+  if(/쫓아내|몰아내|내보내|다른 데로 보내|못 하게|끌어내/.test(t)) return "drive";
+  if(q.kind==="수색" || /찾아 달라|찾아 줘/.test(t)) return "find";
+  if(/알아내|밝혀|조사|확인해|이유를|복원|맞춰/.test(t)) return "probe";
+  if((q.attrs||[])[0]==="wil") return "wil";
+  return "subdue"; }
 const STORY_KIND = {
   str:["\"{t}.\" 상대는 {f}. 말로 해서는 듣지 않는 부류라고 했다.", "\"{t}.\" {f} 쪽은 이미 한 번 경고를 무시했다고 한다."],
   agi:["\"{t}.\" 놓치면 다시 찾기 어렵다며, 오늘 안에 움직여 달라고 했다.", "\"{t}.\" 발이 빠른 상대라, 골목을 잘 아는 사람이 필요하다고 했다."],
@@ -9998,6 +10037,15 @@ const STORY_THREAT = {
   "도시 질병":"이 정도면 구역 하나가 흔들린다. 다친 사람이 벌써 몇 있다고 했다.",
   "도시 악몽":"이 일을 감당할 사무소는 많지 않다. 의뢰인도 그걸 알고 여기까지 찾아왔다.",
   "도시의 별":"도시 전체가 숨죽이고 지켜보는 일이다. 이름난 사무소들도 몇 번이나 손을 뗐다고 한다."};
+const STORY_THREAT_ABNO = {
+  "뜬소문":"본 사람은 몇 있는데, 가까이 가 본 사람은 없다.",
+  "도시 괴담":"골목 사람들 입에 벌써 몇 번 오르내렸다. 다들 그쪽 길로는 안 다닌다.",
+  "도시 전설":"이 구역에서는 꽤 알려진 이야기다. 쉽게 끝나지는 않을 것이다.",
+  "도시 질병":"구역 하나가 통째로 문을 걸어 잠갔다. 다친 사람이 벌써 몇 있다.",
+  "도시 악몽":"이 일을 감당할 사무소는 많지 않다. 의뢰인도 그걸 알고 여기까지 찾아왔다.",
+  "도시의 별":"도시 전체가 숨죽이고 지켜보는 일이다. 이름난 사무소들도 몇 번이나 손을 뗐다고 한다."};
+const lootLine = q => { const t = lootRumor(q); return t ? `그러고 보니, ${t}` : t; };
+const STORY_V = 2;   // 사연 문장 규칙이 바뀌면 올린다 — 저장된 사연은 다시 만든다
 function storyFill(t, q){ return t.replace(/\{c\}이\(가\)/g, jo(q.client, "이")).replace(/\{c\}/g, q.client).replace(/\{t\}/g, String(q.text).replace(/^지령: /,"").replace(/[.。]$/,"")).replace(/\{f\}/g, q.foe || "상대"); }
 /* ================= 1.2.3 · 의뢰별 고유 상세 사연 =================
    각 의뢰의 기존 문장과 의뢰인에 맞춘 독립적인 사건 서술이다.
@@ -10732,40 +10780,38 @@ function reqStory(q){
   if(custom && (q.kind==="일반" || q.kind==="호위" || q.kind==="수색") && !q.prescript && !q.hanaStar && !q.trio && !q.scarJob && !q.arc){
     const L = (q.grade===1&&q.threat==="도시의 별"?custom.map(gradeOneStarText):custom).slice();
     // 의뢰가 변형되어도 고유 사연의 핵심 사건은 변경하지 않으며 추가 조건만 덧붙인다.
-    if(q.loot) L.push(lootRumor(q));
+    if(q.loot) L.push(lootLine(q));
     if(q.nom) L.push("이 사무소를 직접 찾아온 의뢰다. 의뢰인은 평소보다 넉넉한 보수를 약속했다.");
-  
-    if(q.relic) L.push("현장에서 정체 모를 물건을 봤다는 제보가 더 들어왔다. 의뢰 목표는 그대로다.");
-    q.story = L; return L;
+    if(q.relic) L.push("의뢰와는 상관없는 이야기지만, 현장 근처에서 정체 모를 물건을 봤다는 제보도 들어왔다.");
+    q.story = L; q.storyV = STORY_V; return L;
   }
-  if(q.story) return q.story; const L = [];
+  if(q.story && q.storyV===STORY_V) return q.story; const L = [];
   if(q.prescript){ L.push("아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉엔 아무것도 적혀 있지 않았다.", "골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다.", `봉투 속 종이에는 한 줄뿐이다 — "${String(q.text).replace(/^지령: /,"")}"`, "따르면 사례가 온다. 따르지 않으면 대가를 치른다."); }
-  else if(q.hanaStar){ L.push("하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달되었다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다.", `"${q.text}"`, "협회는 이 일을 '지정 의뢰'라고 불렀다. 해내면 도시가 사무소 이름을 다시 부를 것이다. 실패하면, 아마 다른 이름으로.", q.bossLine || ""); }
-  else if(q.trio){ L.push("하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다.", `"${String(q.text).replace(/^하나 협회의 지명 — /,"")}"`, STORY_THREAT[threatOf(q)]); }
-  else if(q.scarJob){ L.push("흉터가 다시 왔다. 이번에는 금고 쪽을 보지 않았다.", `"${String(q.text).replace(/^남겨진 흉터의 의뢰 — /,"")}"`, "\"값은 넉넉히 치르지. 우리 사이에 그 정도는.\""); }
-  else if(q.kind==="환상체"){ L.push(storyFill(pick(STORY_OPEN), q), `"${q.text}."`, "의뢰인은 본 사람들한테 들은 그대로 옮겼다고 했다. 다들 두 번 다시 가까이 가고 싶지 않다고 했단다.", STORY_THREAT[threatOf(q)]); }
-  else if(q.distFoe){ L.push(storyFill(pick(STORY_OPEN), q), `"${String(q.text).replace(/[.。]$/,"")}."`, "사람이었던 무언가라고 했다. 이름을 부르면 돌아볼지도 모른다고, 의뢰인은 작게 덧붙였다."); }
+  else if(q.hanaStar){ L.push("하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달되었다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다.", `「${String(q.text).replace(/[.。]$/,"")}.」`, "협회는 이 일을 '지정 의뢰'라고 불렀다. 해내면 도시가 사무소 이름을 다시 부를 것이다. 실패하면, 아마 다른 이름으로.", q.bossLine || ""); }
+  else if(q.trio){ L.push("하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다.", `「${String(q.text).replace(/^하나 협회의 지명 — /,"").replace(/[.。]$/,"")}.」`, STORY_THREAT[threatOf(q)]); }
+  else if(q.scarJob){ L.push("흉터가 다시 왔다. 이번에는 금고 쪽을 보지 않고, 접은 종이 한 장을 내밀었다.", `「${String(q.text).replace(/^남겨진 흉터의 의뢰 — /,"").replace(/[.。]$/,"")}.」`, "\"값은 넉넉히 치르지. 우리 사이에 그 정도는.\""); }
+  else if(q.kind==="환상체"){
+    // 생김새·피해는 전해 들은 이야기로, 맡길 일은 의뢰서 글로 나눠 보여 준다
+    const t = String(q.text).replace(/[.。]$/,""), m = t.match(/^(.*[.。])\s*([^.。]*달라)$/);
+    if(m) L.push(storyOpen(q), `「${m[2]}.」`, "의뢰인이 전해 들은 이야기는 이랬다.", m[1]);
+    else L.push(storyOpen(q), "의뢰인이 전해 들은 이야기는 이랬다.", `${t}.`);
+    L.push(pick(["다들 두 번 다시 가까이 가고 싶지 않다고 했단다.","말을 마친 의뢰인은 한동안 창밖만 내다봤다.","의뢰인은 직접 본 건 아니라고 몇 번이나 덧붙였다."]), STORY_THREAT_ABNO[threatOf(q)]); }
+  else if(q.distFoe){ L.push(storyOpen(q), `「${String(q.text).replace(/[.。]$/,"")}.」`, "사람이었던 무언가라고 했다. 이름을 부르면 돌아볼지도 모른다고, 의뢰인은 작게 덧붙였다."); }
   else { const k = q.kind==="호위" || q.kind==="수색" ? q.kind : (q.attrs||["str"])[0];
-    L.push(q.assoc && ASSOCS[q.assoc] ? `${ASSOCS[q.assoc].n} 지부의 직원이 서식에 맞춘 의뢰서를 들고 왔다. 귀퉁이에 ${ASSOCS[q.assoc].sig}의 문장이 찍혀 있다.` : storyFill(pick(STORY_OPEN), q));
-    // 기존 의뢰 역시 게시판 문장 그대로 말하도록 한다. 범용 수식문을 매번 조립하지 않는다.
-    L.push(`"${String(q.text).replace(/[.。]$/,'')}"`);
-    const details={
-      str:["상대와 몇 번 말을 섞어 봤지만 소용없었다고 했다.","더 다치는 사람이 나오기 전에 끝내 달라는 부탁이었다.","현장에 가 보면 누가 문제인지 바로 알 수 있을 거라고 했다."],
-      agi:["어디로 갔는지는 안다. 따라잡을 수 있느냐는 또 다른 문제다.","시간이 흐를수록 찾기 어려워진다며, 당장 움직여 달라고 했다.","의뢰인은 마지막으로 본 곳을 짚어 보이고는 자리를 비켜 주었다."],
-      tec:["억지로 열거나 부수면 곤란하다며, 현장은 손대지 않고 그대로 뒀다고 했다.","의뢰인은 고개를 숙인 채, 확인할 수 있는 것부터 찾아 달라고 부탁했다.","범인이라고 못 박을 증거가 없어서, 아직 누구한테도 책임을 묻지 못했다고 했다."],
-      호위:["목적지까지 데려다주기만 하면 된다고 했다. 가는 길에 무슨 일이 생길지는 아무도 장담하지 못했다.","\"혹시 무슨 일이 생기면, 물건보다 사람부터 챙겨 주세요.\"","출발 시각은 정해졌다. 함께 가는 사람에게는 무사히 닿는 게 더 중요하다."],
-      wil:["이야기하는 내내 의뢰인의 눈이 자꾸 창밖을 향했다.","처음 듣는 종류의 이야기였다. 의뢰인도 제 말을 다 믿지는 못하는 눈치였다.","가까이 가 본 사람들은 저마다 다른 걸 봤다고 했다. 같은 건 하나, 다시는 가고 싶지 않다는 말뿐이었다."],
-      수색:["의뢰인이 기억하는 마지막 장소부터 가 봐야 할 것 같다.","찾는 물건을 벌써 옮겼을지도 몰라, 주변을 넓게 살펴야 한다.","본 게 많지 않다면서도, 의뢰인은 아는 건 하나도 빼놓지 않고 털어놓았다."]
-    };
-    L.push(pick(details[k]||details.str));
-    if(q.goal && STORY_GOAL[q.goal]) L.push(STORY_GOAL[q.goal]);
+    const t0 = String(q.text).replace(/^지령: /,"").replace(/[.。]$/,"");
+    L.push(q.assoc && ASSOCS[q.assoc] ? `${ASSOCS[q.assoc].n} 지부의 직원이 서식에 맞춘 의뢰서를 들고 왔다. 귀퉁이에 ${ASSOCS[q.assoc].sig}의 문장이 찍혀 있다.` : storyOpen(q));
+    // 게시판 문장은 의뢰인의 말이 아니라 의뢰서에 적힌 글이다
+    L.push(`「${t0}.」`);
+    const tk = storyTailKind(q, t0); L.push(pick(STORY_TAIL[tk]));
+    if(q.goal==="제압" && tk==="subdue") L.push("\"죽일 필요까진 없어요.\"");
+    if(q.goal==="사살" && tk!=="kill" && !/살려 둘|끝내/.test(t0)) L.push(STORY_TAIL.kill[0]);
     if(q.synd){ const sy = SYNDICATES.find(x=>x.id===q.synd); if(sy) L.push(`뒤에 ${sy.n}이(가) 있다는 말이 돈다. 그 이름을 듣자 사무소 안이 잠깐 조용해졌다.`.replace(`${sy.n}이(가)`, jo(sy.n,"이"))); }
     if(q.hazard) L.push("보수는 평소보다 높다. 그만큼 위험하다는 뜻이다."); }
-  if(q.loot) L.push(lootRumor(q));
+  if(q.loot) L.push(lootLine(q));
   if(q.nom) L.push("이 사무소를 콕 집어 찾아왔다고 했다. 지금 급수로는 조금 버거운 일이라는 걸 의뢰인도 알았다. 그래서 값을 더 쳐주겠다고.");
 
-  if(q.relic) L.push("의뢰서 맨 아래에 누군가 몇 줄을 덧붙여 두었다. 현장에서 유적에서 올라온 물건을 봤다는 사람이 있다고. 어느 공방에서도 만든 적 없는 물건이라고.", "골목엔 가짜 유물이 흔하다. 진짜라 해도, 그걸 쥘 수 있는 사람은 더 드물다.");
-  q.story = L.filter(Boolean); return q.story; }
+  if(q.relic) L.push("의뢰서 맨 아래에 누군가 몇 줄을 덧붙여 두었다. 그 근처에서 유적 물건을 봤다는 사람이 있다고. 어느 공방에서도 만든 적 없는 물건이라고.", "골목엔 가짜 유물이 흔하다. 진짜라 해도, 그걸 쥘 수 있는 사람은 더 드물다.");
+  q.story = L.filter(Boolean); q.storyV = STORY_V; return q.story; }
 async function openAccept(qid){
   const q = S.requests.find(x=>x.id===qid); if(!q) return;
   const story = reqStory(q).map(t=>`<p>${esc(t)}</p>`).join(""); save();
