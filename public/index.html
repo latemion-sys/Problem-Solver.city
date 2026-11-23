@@ -2635,7 +2635,7 @@ function makeRequest(grade, opts={}){
   }
   const [base0, req0, threat0] = REQ_BASE[grade];
   // 9급 가운데 일부는 뜬소문이 아니라 도시 괴담 — 조금 더 까다롭고 보수도 낫다
-  const kw = grade===9 && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
+  const kw = grade===9 && !opts.noKw && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
   const key = attrs[0];
   let text, client, foe = null, chase = null, row, scene = null;
   const ab = kind==="환상체" ? pickAbno(grade) : null;
@@ -3479,6 +3479,18 @@ function dailyReqN(){ return ((S && S.fixers) ? S.fixers.length : 1) + 1; }
 const reqCap = () => dailyReqN();
 const isSpecialReq = q => !!(q.special || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
 const reqRoom = () => Math.max(0, reqCap() - S.requests.filter(q=>!q.accepted && !isSpecialReq(q)).length);
+// 사무소 등급별 의뢰 재해 등급 비중(%) — 9급 사무소는 기존 방식 그대로
+const REQ_MIX = {
+  8:[["뜬소문",70],["도시 괴담",20],["도시 전설",10]],
+  7:[["뜬소문",40],["도시 괴담",35],["도시 전설",25]],
+  6:[["뜬소문",20],["도시 괴담",40],["도시 전설",40]],
+  5:[["도시 괴담",50],["도시 전설",35],["도시 질병",15]],
+  4:[["도시 괴담",20],["도시 전설",35],["도시 질병",35],["도시 악몽",10]],
+  3:[["도시 괴담",10],["도시 질병",60],["도시 악몽",30]],
+  2:[["도시 질병",50],["도시 악몽",40],["도시의 별",10]],
+  1:[["도시 악몽",60],["도시의 별",40]],
+};
+const THREAT_GRADES = {"뜬소문":[9], "도시 괴담":[8], "도시 전설":[7,6], "도시 질병":[5,4], "도시 악몽":[3,2], "도시의 별":[1]};
 function genRequestsInner(){
   let n = Math.min(dailyReqN(), reqRoom());
   if(S.day<=3){
@@ -3495,9 +3507,14 @@ function genRequestsInner(){
   if(S.gossip && S.gossip >= S.day && n > 1) n--;   // 현장 사건 '소문'을 내버려 두면 그다음 날 의뢰가 하나 줄어든다
   if(n <= 0) return;
   for(let i=0;i<n;i++){
-    const r = Math.random();
-    const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9);
-    S.requests.push(maybeRuinsRequest(makeRequest(g)));
+    const T = REQ_MIX[S.officeGrade];
+    if(!T){ const r = Math.random(); const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9); S.requests.push(maybeRuinsRequest(makeRequest(g))); continue; }
+    // 사무소 등급별 재해 등급 비중 → 그 재해 등급의 의뢰 등급 가운데 사무소 등급에 가장 가까운 쪽
+    let r = Math.random()*100, th = T[T.length-1][0]; for(const [k,p] of T){ if(r < p){ th = k; break; } r -= p; }
+    const cand = THREAT_GRADES[th], best = Math.min(...cand.map(x=>Math.abs(x - S.officeGrade))), gs = cand.filter(x=>Math.abs(x - S.officeGrade)===best), g = pick(gs);
+    const q = makeRequest(g, th==="뜬소문" ? {noKw:true} : {});
+    if(th==="도시 괴담" && g===9 && q.threat!=="도시 괴담") q.threat = "도시 괴담";
+    S.requests.push(maybeRuinsRequest(q));
   }
   if(S.officeGrade > 1 && Math.random() < NOM_P && !S.requests.some(q=>q.nom) && reqRoom() > 0) S.requests.push(nominate(makeRequest(S.officeGrade - 1)));
   // 1급 사무소: 기존의 드문 도시의 별 의뢰를 1급 기준으로 다시 게시한다(특색급 의뢰 생성 금지).
