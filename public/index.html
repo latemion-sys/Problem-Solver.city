@@ -10045,7 +10045,16 @@ const STORY_THREAT_ABNO = {
   "도시 악몽":"이 일을 감당할 사무소는 많지 않다. 의뢰인도 그걸 알고 여기까지 찾아왔다.",
   "도시의 별":"도시 전체가 숨죽이고 지켜보는 일이다. 이름난 사무소들도 몇 번이나 손을 뗐다고 한다."};
 const lootLine = q => { const t = lootRumor(q); return t ? `그러고 보니, ${t}` : t; };
-const STORY_V = 2;   // 사연 문장 규칙이 바뀌면 올린다 — 저장된 사연은 다시 만든다
+const STORY_V = 2;   // 사연 문장 규칙이 바뀌면 올린다 — 저장된 범용 사연은 다시 만든다
+function storyIsOldGeneric(q){ const st = q.story; if(!Array.isArray(st) || !st.length) return true;
+  const t0 = String(q.text||"").replace(/^지령: /,"").replace(/[.。]$/,"");
+  return st.some(l => l===`"${t0}"` || l===`"${t0}."` || l===`"${q.text}."`); }
+/* 의뢰 목록에 딸린 장면 — 의뢰 문장으로 찾는다(범용 사연으로 덮였던 저장을 되살릴 때도 쓴다) */
+let SCENE_BY_TEXT = null;
+function authoredScene(q){
+  if(!SCENE_BY_TEXT){ SCENE_BY_TEXT = {}; REQ_POOL.forEach(P=>Object.values(P).forEach(v=>{ if(Array.isArray(v)) v.forEach(r=>{ if(Array.isArray(r) && r[3] && Array.isArray(r[3])) SCENE_BY_TEXT[r[0]] = r[3]; }); })); }
+  if(q.kind==="환상체" || q.arc || q.prescript || q.hanaStar || q.trio || q.scarJob) return null;
+  return SCENE_BY_TEXT[q.text] || null; }
 function storyFill(t, q){ return t.replace(/\{c\}이\(가\)/g, jo(q.client, "이")).replace(/\{c\}/g, q.client).replace(/\{t\}/g, String(q.text).replace(/^지령: /,"").replace(/[.。]$/,"")).replace(/\{f\}/g, q.foe || "상대"); }
 /* ================= 1.2.3 · 의뢰별 고유 상세 사연 =================
    각 의뢰의 기존 문장과 의뢰인에 맞춘 독립적인 사건 서술이다.
@@ -10785,7 +10794,12 @@ function reqStory(q){
     if(q.relic) L.push("의뢰와는 상관없는 이야기지만, 현장 근처에서 정체 모를 물건을 봤다는 제보도 들어왔다.");
     q.story = L; q.storyV = STORY_V; return L;
   }
-  if(q.story && q.storyV===STORY_V) return q.story; const L = [];
+  // 작가가 쓴 사연(사건 이야기·사무소 이야기·의뢰 목록의 장면)은 그대로 둔다.
+  // 예전 범용 사연(게시판 문장을 대사처럼 따옴표에 넣은 것)만 다시 만든다.
+  if(!q.arc && q.officeStoryId==null){ const sc = authoredScene(q);
+    if(sc){ if(!q.storyAuth){ q.story = q.grade===1 && q.threat==="도시의 별" ? sc.map(gradeOneStarText) : sc.slice(); q.storyAuth = true; } return q.story; } }
+  if(q.story && (q.storyV===STORY_V || q.arc || q.officeStoryId!=null || !storyIsOldGeneric(q))) return q.story;
+  const L = [];
   if(q.prescript){ L.push("아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉엔 아무것도 적혀 있지 않았다.", "골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다.", `봉투 속 종이에는 한 줄뿐이다 — "${String(q.text).replace(/^지령: /,"")}"`, "따르면 사례가 온다. 따르지 않으면 대가를 치른다."); }
   else if(q.hanaStar){ L.push("하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달되었다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다.", `「${String(q.text).replace(/[.。]$/,"")}.」`, "협회는 이 일을 '지정 의뢰'라고 불렀다. 해내면 도시가 사무소 이름을 다시 부를 것이다. 실패하면, 아마 다른 이름으로.", q.bossLine || ""); }
   else if(q.trio){ L.push("하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다.", `「${String(q.text).replace(/^하나 협회의 지명 — /,"").replace(/[.。]$/,"")}.」`, STORY_THREAT[threatOf(q)]); }
