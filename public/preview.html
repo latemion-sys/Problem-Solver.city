@@ -3568,7 +3568,7 @@ function teamPower(team, attrs){ const ps = team.map(f=>power(f,attrs)).sort((a,
 function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.1}[f.ego.type] || 0; return Math.min(r,0.7); }
 function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.25}[f.ego.type] || 0; return Math.min(r,0.75); }
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
-const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 사람이 끼면 성공률 -10%p
+const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 사람이 끼면 성공률 -7.5%p
 /* 신(心) · 망(望)
    직접 싸우는 전투: 신을 깨우친 해결사는 신이 꺼진 채로 시작한다. 4번째 칸 '신(心)을 몸에 두른다'(정신력 -5, 위력 +1) →
    그 뒤 '무기에 망(望)을 감는다'(익힌 망까지, 한 겹마다 위력 +1, 정신력 8 · 15 · 21 · 26 · 50). 둘 다 턴을 쓰지 않는 추가 행동이며 한 턴에 한 번.
@@ -3641,9 +3641,9 @@ function canGo(f){ return f.hp > 0 && bodyServiceReady(f) && f.lastDispatch!==S.
 /* 강행군: 오늘 이미 출동한 해결사를 하루 한 번 더 내보낸다. 결과와 상관없이 가장 적게 깎일 때(성공 · 안정)의 2.5배가 깎인다 */
 function canMarch(f){ return f.hp > 0 && bodyServiceReady(f) && f.lastDispatch===S.day && (f.unavailUntil||0) < S.day && f.marchDay!==S.day; }
 const canSend = f => canGo(f) || canMarch(f);
-/* 피로: 사흘 연속 출동한 해결사는 나흘째부터 '피로'가 붙는다 — 그 사람이 낀 출동은 성공률 -10%p, 그 사람이 받는 피해 +20%.
+/* 피로: 나흘 연속 출동한 해결사는 닷새째부터 '피로'가 붙는다 — 그 사람이 낀 출동은 성공률 -7.5%p, 그 사람이 받는 피해 +15%.
    하루 쉬면(출동하지 않으면) 피로가 풀리고, 체력·정신력을 평소(20%)보다 15%p 더 회복한다. 쉴지 버틸지는 플레이어가 고른다. */
-const STREAK_MAX = 3, TIRED_RATE = 10, TIRED_DMG = 1.2, REST_BONUS = 0.15;
+const STREAK_MAX = 4, TIRED_RATE = 7.5, TIRED_DMG = 1.15, REST_BONUS = 0.15;   // 나흘 연속 출동하면 피로 · 페널티는 예전(-10%p · +20%)보다 25% 완화
 const MARCH_K = 2.5;
 function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30?["나쁨","b"]:["위험","d"]; }
 
@@ -6759,7 +6759,7 @@ function mgAbno(ctx){
     const shown = know(1) ? a.n : "정체불명의 환상체", riskTxt = know(2) ? a.risk + (a.sin ? ` · ${a.sin}` : "") : "???";
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
     const m = mgOpen(`${a.risk==="죄종"?"죄종 조우":"환상체 의뢰"} · 관측`, a.risk==="죄종" ? "죄종은 환상체와 별개로 취급한다. 지켜보고 위험을 가늠한 뒤, 사살해야 한다." : "현장에 닿으면 환상체의 상태부터 살핀다. 배회 중이면 행동으로 달래 알로 재우고, 날뛰거나 폭주하면 전투로 제압한다.", ctx, 300);
-    const rampP = a.noFight ? 0 : ({죄종:0.25, ZAYIN:0.12, TETH:0.25, HE:0.3, WAW:0.35, ALEPH:0}[a.risk] || 0.25) + (a.risk==="ALEPH" ? 0 : q.hazard ? 0.15 : 0);   // ALEPH는 언제나 배회로 마주친다
+    const rampP = a.noFight ? 0 : ({죄종:0.25, ZAYIN:0.2, TETH:0.4, HE:0.5, WAW:0.6, ALEPH:0.8}[a.risk] || 0.25);   // 날뜀으로 마주칠 확률: ZAYIN 20 · TETH 40 · HE 50 · WAW 60 · ALEPH 80%
     const G = {mood:20, ctr:a.ctr, max:a.ctr, state: q.__state || (Math.random() < rampP ? "rage" : "calm"), log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, blessed:null, embers:0, tongue:0, sac:0, dead:[], gaze:{},
       bench:[], out:{}, heat:{}, coatAsked:{}, frost:{}, flowers:[], lure:0, dream:0, floor:0, babel:null, nailSeq:null, nailPos:0, order:null};
     const NAILS = ["엄지","검지","중지","약지","새끼"];
@@ -8805,14 +8805,14 @@ async function endDayInner(reason){
     else if(f.addict){ f.addictClean = (f.addictClean||0) + 1; if(f.addictClean >= ADDICT_CLEAN){ f.addict = false; f.addictClean = 0; accLines.push(`<span style="color:#9fe8b0">${esc(f.name)}: 엔케팔린 중독이 풀렸다</span>`); } }
     const k = recK(f); f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*kH*k)); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*kM*k)); });
   const abLines = abnoNightFx().concat(accLines);
-  // 템포: 사흘 연속 출동하면 피로가 붙고, 하루 쉬면 풀린다
+  // 템포: 나흘 연속 출동하면 피로가 붙고, 하루 쉬면 풀린다
   const tiredNew = [], rested = [];
   S.fixers.forEach(f=>{ const worked = f.lastDispatch===ended;
     if(worked){ f.streak = (f.streak||0) + 1; if(f.streak >= STREAK_MAX && !f.tired){ f.tired = true; tiredNew.push(f.name); } }
     else { if((f.streak||0) > 0 || f.tired){ const was = f.tired; f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*REST_BONUS*recK(f))); f.mp = Math.min(f.mpMax, f.mp + Math.round(f.mpMax*REST_BONUS*recK(f))); if(was) rested.push(f.name); }
       if(accFx(f,"sleep")){ f.hp = Math.min(f.hpMax, f.hp + Math.round(f.hpMax*0.1*recK(f))); }
       f.streak = 0; f.tired = false; } });
-  if(tiredNew.length){ abLines.push(`<span style="color:#e7a07c">${tiredNew.map(esc).join(", ")}: 사흘 연속 출동 — 피로 (출동 시 성공률 -${TIRED_RATE}% · 받는 피해 +${Math.round((TIRED_DMG-1)*100)}%, 하루 쉬면 풀린다)</span>`); addLog(`${tiredNew.join(", ")}: 피로가 쌓였다`); }
+  if(tiredNew.length){ abLines.push(`<span style="color:#e7a07c">${tiredNew.map(esc).join(", ")}: 나흘 연속 출동 — 피로 (출동 시 성공률 -${TIRED_RATE}% · 받는 피해 +${Math.round((TIRED_DMG-1)*100)}%, 하루 쉬면 풀린다)</span>`); addLog(`${tiredNew.join(", ")}: 피로가 쌓였다`); }
   if(rested.length){ abLines.push(`<span style="color:#9fe8b0">${rested.map(esc).join(", ")}: 하루 쉬어 피로가 풀렸다 (체력·정신력 +${Math.round(REST_BONUS*100)}% 추가 회복)</span>`); }
   // 마감
   const expired = [];
@@ -15975,7 +15975,7 @@ function fxTestPanel(){
       }); return; }
     if(k==="relicok" || k==="relicno"){ closeAll(); const R = pick(RELICS), f = L, fit = k==="relicok" ? {fate:24, str:18, gr:6, v:48, tier:relicTier(48)} : {fate:-22, str:14, gr:2, v:0};
       await relicScene(R, f, fit, k==="relicok"); if(k==="relicok"){ const it = relicItem(R, f, fit.tier), old = f.gear[R.slot]; f.gear[R.slot] = it; if(old && !old.relic){ S.inventory = S.inventory||[]; S.inventory.push(old); } S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 시험`}); } save(); render(); return; }
-    if(k==="streak"){ S.fixers.forEach(f=>{ f.streak = STREAK_MAX - 1; f.lastDispatch = S.day; }); save(); render(); return toast("모두 이틀 연속 출동 + 오늘 출동 — 하루 끝내기를 누르면 피로가 붙는다"); }
+    if(k==="streak"){ S.fixers.forEach(f=>{ f.streak = STREAK_MAX - 1; f.lastDispatch = S.day; }); save(); render(); return toast("모두 사흘 연속 출동 + 오늘 출동 — 하루 끝내기를 누르면 피로가 붙는다"); }
     if(k==="money10m"){ S.money += 10000000; save(); render(); return toast(`자금 +${won(10000000)} → ${won(S.money)}`); }
     if(k==="en-assoc"){ closeAll(); S.officeGrade = Math.min(S.officeGrade, 4); S.assocAsked = {}; S.assocJoined = null; S.assocObs = null; const P = Math.random; Math.random = () => 0; try{ return await assocOffer(); } finally { Math.random = P; } }
     if(k==="en-assoc2"){ closeAll(); S.officeGrade = Math.min(S.officeGrade, 4); S.assocJoined = null; if(!S.assocObs){ S.assocObs = {id: pick(Object.keys(ASSOCS)), day:S.day, ok:0, n:0, win:0, lost:0}; } Object.assign(S.assocObs, {ok:ASSOC_OBS_OK, n:30, win:30, lost:0}); S.assocObs.day = S.day - ASSOC_OBS_DAYS; S.assocAsked = {}; return assocOffer(); }
