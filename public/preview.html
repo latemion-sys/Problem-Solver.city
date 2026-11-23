@@ -3471,8 +3471,14 @@ function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequ
   if(S.day <= EARLY_DL_DAYS){ const nF = Math.max(1, S.fixers.filter(f=>f.hp > 0).length), fresh = S.requests.filter(q=>!before.has(q.id) && q.deadline!=null);
     const load = {}; S.requests.forEach(q=>{ if(before.has(q.id) && q.deadline!=null) load[q.deadline] = (load[q.deadline]||0) + 1; });
     fresh.forEach(q=>{ let d = 2; while((load[d]||0) >= nF) d++; q.deadline = d; load[d] = (load[d]||0) + 1; }); } }
+// 하루에 새로 들어오는 일반 의뢰 수(사무소 등급별): 8 · 7급 2개, 6 · 5급 3개, 4 · 3급 3~4개, 2급 이상 4개
+function dailyReqN(g){ return g >= 7 ? 2 : g >= 5 ? 3 : g >= 3 ? (Math.random() < 0.5 ? 3 : 4) : 4; }
+// 게시판 상한: 수락하지 않은 일반 의뢰가 10개면 더 들어오지 않는다(기한이 지나 빠진 자리만큼 다시 채워진다). 특수 의뢰는 세지 않는다
+const REQ_CAP = 10;
+const isSpecialReq = q => !!(q.special || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
+const reqRoom = () => Math.max(0, REQ_CAP - S.requests.filter(q=>!q.accepted && !isSpecialReq(q)).length);
 function genRequestsInner(){
-  let n = 12 - S.officeGrade; // 9급 3개, 8급 4개, 7급 5개 ...
+  let n = Math.min(dailyReqN(S.officeGrade), reqRoom());
   if(S.day<=3){
     // 초반 3일: 각 해결사의 가장 높은 능력치에 맞춘 쉬운 의뢰(성공률 90% 이상)
     for(let i=0;i<n;i++){
@@ -3485,12 +3491,13 @@ function genRequestsInner(){
     return;
   }
   if(S.gossip && S.gossip >= S.day && n > 1) n--;   // 현장 사건 '소문'을 내버려 두면 그다음 날 의뢰가 하나 줄어든다
+  if(n <= 0) return;
   for(let i=0;i<n;i++){
     const r = Math.random();
     const g = clamp(S.officeGrade + (r<0.5?0:r<0.8?1:2), S.officeGrade, 9);
     S.requests.push(maybeRuinsRequest(makeRequest(g)));
   }
-  if(S.officeGrade > 1 && Math.random() < NOM_P && !S.requests.some(q=>q.nom)) S.requests.push(nominate(makeRequest(S.officeGrade - 1)));
+  if(S.officeGrade > 1 && Math.random() < NOM_P && !S.requests.some(q=>q.nom) && reqRoom() > 0) S.requests.push(nominate(makeRequest(S.officeGrade - 1)));
   // 1급 사무소: 기존의 드문 도시의 별 의뢰를 1급 기준으로 다시 게시한다(특색급 의뢰 생성 금지).
   if(S.officeGrade===1 && Math.random()<0.1 && !S.requests.some(q=>q.starNom)){
     const q=makeRequest(1, {kind:"일반", attrs:["str","wil"], goal:"사살", noRelic:true});
