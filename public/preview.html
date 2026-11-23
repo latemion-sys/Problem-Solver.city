@@ -4557,7 +4557,7 @@ function mgCombat(ctx){
     const foe = {name: q.foe || FOE_NAMES[g0] || "적", wt:fwt, kit, spec: fwt==="none" ? null : Object.assign(defaultSpec(fwt), {v:kit.v, metal: kit.worn ? pick(RUST_METALS) : pick(["#b9aca9","#aab5b1","#8e959e","#5f6670"]), len: kit.worn ? 0.85 + Math.random()*0.15 : 0.95 + Math.random()*0.15}), parts:{}, cards: AB ? AB.cards.map(c=>Object.assign({},c)) : DF ? DF.cards.map(c=>Object.assign({},c)) : CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1-(kit.worn?1:0)), b:c.b-1-(kit.worn?1:0)}))};
     foe.aug = kit.aug;
     /* ---- 림버스식 합 ----
-       스킬 = 기본 위력 + 코인 n개(앞면이면 코인 위력만큼 더한다). 정신력(SP)이 높을수록 앞면이 잘 나온다(앞면 확률 50+SP%).
+       스킬 = 기본 위력 + 코인 n개(앞면이면 코인 위력만큼 더한다). 정신력(SP)이 높을수록 앞면이 잘 나온다(+15에서 65%, +45에서 90%).
        합: 양쪽이 코인을 던져 최종 위력이 낮은 쪽 코인이 하나 깨지고 다시 던진다. 한쪽 코인이 다 깨질 때까지.
        이긴 쪽은 남은 코인 수만큼 연달아 친다(코인마다 그때 던진 위력만큼 피해). 합이 길어질수록 피해가 조금 커진다.
        기본 방어: 합을 진행하지 않고 상대의 공격을 직접 받아 피해를 절반으로 줄인다.
@@ -4644,7 +4644,9 @@ function mgCombat(ctx){
       sk.def = !!T.def; return {T, sk, card: Object.assign({}, base, {n:T.n, def:!!T.def})}; }
     const MOVES = ["기본 공격","방어","기술"];
     const foeSk = () => (foe.daze || foe.down) ? Object.assign({}, foeSkill, {base: Math.max(1, foeSkill.base - (foe.daze ? 2 : 0) - (foe.down||0))}) : foeSkill;
-    const headP = (sp,extra=0) => clamp(50+sp+extra,5,95)/100;
+    // 정신력 → 코인 앞면 확률: 0 이하는 50+정신력%, +15에서 65%, 그 위로는 완만하게 올라 +45에서 90%
+    const spHead = sp => sp <= 15 ? 50 + sp : 65 + (Math.min(sp,45) - 15)*25/30;
+    const headP = (sp,extra=0) => clamp(spHead(sp)+extra,5,95)/100;
     const flip = (n,sp,extra=0)=>{ const r=[]; for(let i=0;i<n;i++)r.push(Math.random()<headP(sp,extra)); return r; };
     const tecClashBonus = ()=>statClashHeadPlus(party[act].f);
     const powOf = (sk, heads)=> sk.base + heads.filter(Boolean).length*sk.cp;
