@@ -3473,13 +3473,14 @@ function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequ
     const load = {}; S.requests.forEach(q=>{ if(before.has(q.id) && q.deadline!=null) load[q.deadline] = (load[q.deadline]||0) + 1; });
     fresh.forEach(q=>{ let d = 2; while((load[d]||0) >= nF) d++; q.deadline = d; load[d] = (load[d]||0) + 1; }); } }
 // 하루에 새로 들어오는 일반 의뢰 수(사무소 등급별): 8 · 7급 2개, 6 · 5급 3개, 4 · 3급 3~4개, 2급 이상 4개
-function dailyReqN(g){ return g >= 7 ? 2 : g >= 5 ? 3 : g >= 3 ? (Math.random() < 0.5 ? 3 : 4) : 4; }
-// 게시판 상한: 수락하지 않은 일반 의뢰가 10개면 더 들어오지 않는다(기한이 지나 빠진 자리만큼 다시 채워진다). 특수 의뢰는 세지 않는다
-const REQ_CAP = 10;
+// 하루 의뢰 수 = 사무소 해결사 수(대표 포함) + 1
+function dailyReqN(){ return ((S && S.fixers) ? S.fixers.length : 1) + 1; }
+// 게시판 상한: 수락하지 않은 일반 의뢰가 '사무소 해결사 수 + 1'개면 더 들어오지 않는다(기한이 지나 빠진 자리만큼 다시 채워진다). 특수 의뢰는 세지 않는다
+const reqCap = () => dailyReqN();
 const isSpecialReq = q => !!(q.special || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
-const reqRoom = () => Math.max(0, REQ_CAP - S.requests.filter(q=>!q.accepted && !isSpecialReq(q)).length);
+const reqRoom = () => Math.max(0, reqCap() - S.requests.filter(q=>!q.accepted && !isSpecialReq(q)).length);
 function genRequestsInner(){
-  let n = Math.min(dailyReqN(S.officeGrade), reqRoom());
+  let n = Math.min(dailyReqN(), reqRoom());
   if(S.day<=3){
     // 초반 3일: 각 해결사의 가장 높은 능력치에 맞춘 쉬운 의뢰(성공률 90% 이상)
     for(let i=0;i<n;i++){
@@ -8696,7 +8697,7 @@ function genRecruits(){
 }
 /* 미리보기 전용: 대표를 제외한 동료 인원 한도는 공방의 사무소 확장으로 늘어난다. */
 const OFFICE_EXTENSIONS = [
-  {grade:7,max:4,cost:100000,label:"1차 확장"},
+  {grade:9,max:5,cost:100000,label:"1차 확장"},
   {grade:5,max:7,cost:400000,label:"2차 확장"},
   {grade:3,max:10,cost:1200000,label:"3차 확장"}
 ];
@@ -8876,7 +8877,7 @@ async function openShop(startTab){
         const owned=i<level, now=i===level, accessible=S.officeGrade<=step.grade;
         const status=owned?"확장 완료":now?(accessible?"확장 가능":"등급 미달"):"앞 단계 필요";
         return `<div class="item"><div style="flex:1"><b>${step.label}</b> <span class="badge">${status}</span>
-          <div class="d">사무소 ${gName(step.grade)} 이상 · 동료 ${step.max}명까지 (대표 제외)</div>
+          <div class="d">${step.grade>=9?"등급 제한 없음":`사무소 ${gName(step.grade)} 이상`} · 사무소 인원 ${step.max+1}명까지 (대표 포함)</div>
           <div class="d">확장 비용 ${won(step.cost)}</div></div></div>`;
       }).join("");
       return tabs+`<p class="muted">대표를 제외한 고용 동료를 늘리기 위해 사무소를 확장합니다. 확장은 1차부터 차례로 진행하며, 기존 동료는 그대로 남습니다.</p>
