@@ -7426,8 +7426,11 @@ async function ledgerOffer(first){
   const btns = [{t:"내일도 문을 연다", v:"go"}];
   if(heir && !alone) btns.push({t:`${heir.name}에게 열쇠를 넘긴다`, v:"heir"});
   if(leaderColor() && !alone) btns.push({t:`[${leaderColor().title}] — 간판을 내리고 사라진다`, v:"color"});
+  const lean = typeof alignLean==="function" ? alignLean() : null;
+  if(lean && LEAN_END[lean] && !alone) btns.push({t:LEAN_END[lean].btn, v:"lean"});
   btns.push({t:"장부를 덮는다", v:"end", primary:true});
   const v = await modal("장부", body, btns);
+  if(v==="lean") return leanEnding(lean);
   if(v==="end") await (alone ? deskEnding() : ledgerEnding());
   else if(v==="heir") await heirEnding(heir);
   else if(v==="color") await rumorEnding();
@@ -7441,7 +7444,7 @@ async function endingClose(name, epi, col, cont){
   await endingCard(name, col); if(!S) return;
   ac("end"); acSet("ending", name);
   S.records.push({day:S.day, name:S.officeName, what:"엔딩", note:name}); S.over = true; save(); render();
-  const v = await modal(`엔딩 — ${name}`, `<p class="muted" style="line-height:1.7">${epi}</p>
+  const v = await modal(`엔딩 — ${name}`, `<p class="muted" style="line-height:1.7">${epi}${typeof leanCoda==="function" && !(typeof LEAN_END!=="undefined" && Object.values(LEAN_END).some(e=>e.name===name)) ? leanCoda() : ""}</p>
     <div class="kv"><span>버틴 날</span><b>${S.day}일</b><span>사무소 등급</span><b>${gName(S.officeGrade)} 사무소</b><span>잃은 사람</span><b>${lossCount()}명</b><span>함께한 해결사</span><b>${S.fixers.length}명</b></div>`,
     [{t:"사무소를 계속 운영한다", v:"cont"}, {t:"새 게임", primary:true, v:"new"}]);
   if(v==="cont" && S){
@@ -7464,7 +7467,10 @@ const ENDING_INFO = {
   "소문이 된 색":{no:6, en:"A COLOR TURNED RUMOR",   col:null,      q:"칭호는 협회가 주고, 이름은 골목이 기억한다."},
   "공방의 도면": {no:7, en:"BLUEPRINT",              col:"#8fc2f0", q:"좋은 무기는 주인보다 오래 산다."},
   "지령":        {no:8, en:"PRESCRIPT",              col:"#f1efe9", q:"의심하지 마라. 묻지도 마라. 따르라."},
-  "협회 직속 사무소":{no:9, en:"ASSOCIATE OFFICE",   col:null,      q:"간판은 그대로다. 그 위에 문장 하나가 더해졌을 뿐."}};
+  "협회 직속 사무소":{no:9, en:"ASSOCIATE OFFICE",   col:null,      q:"간판은 그대로다. 그 위에 문장 하나가 더해졌을 뿐."},
+  "열린 문":     {no:10, en:"THE OPEN DOOR",         col:"#e8c98a", q:"값을 묻지 않는 문은, 이 도시에서 가장 비싼 문이다."},
+  "팔린 간판":   {no:11, en:"SOLD SIGNBOARD",        col:"#c9a86a", q:"이름에도 시세가 있다."},
+  "명부의 한 줄":{no:12, en:"ONE LINE IN THE REGISTER", col:"#9fb3c8", q:"규약은 아무도 기억하지 않는 것들까지 기억한다."}};
 function endingCard(name, col){
   const I = ENDING_INFO[name] || {no:0, en:"", q:""}, c = col || I.col || "#e8c98a";
   const el = document.createElement("div"); el.className = "endcard"; el.style.setProperty("--ec", c);
@@ -7493,11 +7499,13 @@ async function ledgerEnding(){
 async function wingOffer(){
   if(!S || S.over || S.wingAsked || S.debt>0 || S.officeGrade>2) return;
   S.wingAsked = S.day; save();
-  const v = await modal("손님", `<p class="ledger-q">문을 연 건 깨끗한 정장 차림의 사람이었다. 옷깃에 어느 날개의 배지가 달려 있다.<br><br>
-    "${esc(S.officeName)}. 요즘 이 구역에서 이름이 자주 들리더군요. 저희 쪽에서 사무소를 통째로 모셔 가고 싶습니다.
-    해결사 전원 정규직, 둥지 안 숙소, 치료비 전액. 간판만 내려 주시면 됩니다."<br><br>
-    대표는 벽에 걸린 간판을 올려다보았다.</p><p class="muted" style="font-size:12px">이 제안은 한 번뿐이다.</p>`,
-    [{t:"거절한다", v:"no"}, {t:"간판을 내린다", v:"yes", primary:true}]);
+  const v = await offerVN("손님", [["","문을 연 건 깨끗한 정장 차림의 사람이었다. 옷깃에 어느 날개의 배지가 달려 있다."],
+      ["날개의 사람",`"${S.officeName}. 요즘 이 구역에서 이름이 자주 들리더군요. 저희 쪽에서 사무소를 통째로 모셔 가고 싶습니다."`],
+      ["날개의 사람","\"해결사 전원 정규직, 둥지 안 숙소, 치료비 전액. 간판만 내려 주시면 됩니다.\""],
+      ["","대표는 벽에 걸린 간판을 올려다보았다. 이 제안은 한 번뿐이다."]], "간판을 어떻게 할까?",
+    [{v:"yes", t:"간판을 내린다. 다들 이제 좀 편하게 살아도 된다", al:{현실:1}},
+     {v:"no", t:"거절한다. 이 간판 아래서 버텨 온 사람들이 있다", al:{정의:1}},
+     {v:"no", t:"거절한다. 협회 명부에 오른 사무소로 남겠다", al:{질서:1}}]);
   if(v==="yes") return nestEnding();
   addLog("날개의 제안을 거절했다. 간판은 그대로 걸려 있다.");
 }
@@ -7630,10 +7638,13 @@ const svgKind = w => ({blade:"blade",great:"blade",long:"blade",rapier:"blade",t
 async function workshopOffer(){
   if(!S || S.over || S.wsAsked || S.debt>0) return; const f = uniqueHolder(); if(!f) return;
   const g = f.gear.weapon, maker = g.maker || "공방"; S.wsAsked = S.day; save();
-  const v = await modal("공방에서 온 사람", `<p class="ledger-q">${esc(maker)}의 장인이 직접 찾아왔다. 기름 냄새가 밴 손으로 ${esc(jo(f.name,"이"))} 든 <b>${esc(g.name)}</b>을(를) 한참 들여다본다.<br><br>
-    "이건 우리가 벼린 것 중에서도 손에 꼽소. 도면을 떠서 공방 이름으로 내고 싶소. 대신 이 물건은 공방 진열장에 들어가고, 쓰던 사람은… 시험 해결사로 공방에 와 주면 좋겠소."<br><br>
-    대표는 벽에 걸린 간판과 ${esc(jo(g.name,"을"))} 번갈아 보았다.</p><p class="muted" style="font-size:12px">이 제안은 한 번뿐이다.</p>`,
-    [{t:"돌려보낸다", v:"no"}, {t:"도면을 뜬다", v:"yes", primary:true}]);
+  const v = await offerVN("공방에서 온 사람", [["",`${maker}의 장인이 직접 찾아왔다. 기름 냄새가 밴 손으로 ${jo(f.name,"이")} 든 ${jo(g.name,"을")} 한참 들여다본다.`],
+      [`${maker}의 장인`,"\"이건 우리가 벼린 것 중에서도 손에 꼽소. 도면을 떠서 공방 이름으로 내고 싶소.\""],
+      [`${maker}의 장인`,"\"대신 이 물건은 공방 진열장에 들어가고, 쓰던 사람은… 시험 해결사로 공방에 와 주면 좋겠소.\""],
+      ["",`대표는 벽에 걸린 간판과 ${jo(g.name,"을")} 번갈아 보았다. 이 제안은 한 번뿐이다.`]], "장인에게 뭐라고 할까?",
+    [{v:"yes", t:"도면을 뜬다. 좋은 무기는 주인보다 오래 사는 법이다", al:{현실:1}},
+     {v:"no", t:"돌려보낸다. 무기는 그걸 쥐고 싸운 사람의 것이다", al:{정의:1}},
+     {v:"no", t:"공방 규약대로 등록만 해 두고, 무기는 돌려받는다", al:{질서:1}}]);
   if(v==="yes") return workshopEnding(f);
   addLog(`${maker}의 장인을 돌려보냈다. ${jo(g.name,"은")} 여전히 ${f.name}의 손에 있다.`);
 }
@@ -7805,8 +7816,12 @@ async function assocOffer(){
   if(O.ok < ASSOC_OBS_OK || obsRate(O) < ASSOC_OBS_RATE || (O.lost||0) > 1 || S.day - O.day < ASSOC_OBS_DAYS) return;
   S.assocAsked[O.id] = S.day; S.assocObs = null; save();
   const v = await modal(`협회 관찰 완료 — ${A.n}의 직속 사무소 제안`, assocLetter(O.id, "관찰 완료 및 직속 사무소 제안", ASSOC_FORM[O.id].done,
-    `<p class="muted" style="font-size:12px;margin-top:10px">해결사들이 대표를 바라보았다. ${A.n}의 제안은 한 번뿐이다.</p>`), [{t:"사양한다", v:"no"}, {t:"직속 사무소가 된다", v:"yes", primary:true}]);
-  if(v==="yes") return assocEnding(O.id);
+    `<p class="muted" style="font-size:12px;margin-top:10px">해결사들이 대표를 바라보았다. ${A.n}의 제안은 한 번뿐이다.</p>`), [{t:"답을 고른다", v:"go", primary:true}]);
+  const v2 = v==="go" ? await offerVN(`${A.n}의 제안`, [["","해결사들이 대표를 바라보았다. 누구도 먼저 입을 열지 않았다."]], "뭐라고 답할까?",
+    [{v:"yes", t:"직속 사무소가 된다. 협회의 문장 아래서 일하겠다", al:{질서:1}},
+     {v:"no", t:"사양한다. 골목에서 오는 의뢰를 계속 받겠다", al:{정의:1}},
+     {v:"no", t:"사양한다. 협회 몫을 떼어 줄 만큼 남는 장사가 아니다", al:{현실:1}}]) : v;
+  if(v2==="yes") return assocEnding(O.id);
   addLog(`${A.n}의 직속 제안을 사양했다.`); }
 function assocScene(id){
   // 사람 그림 없이 — ① 직속 계약서에 이름이 하나씩 적히고 협회 도장이 찍힌다 ② 사무소 옷걸이의 코트가 하나씩 협회 제복으로 바뀐다
@@ -9187,6 +9202,7 @@ async function openRecords(){
   const rec = S.records.slice().reverse();
   await modal("기록", `<div class="tabs"><button class="on" data-rec-tab="people">사무소 인사 기록</button><button data-rec-tab="surroundings">주변 상황</button></div><div id="record-tab-view">
    ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}</div>
+   ${(S.choiceLog||[]).length ? `<h4 style="margin:16px 0 6px">지나온 선택</h4><div class="list">${S.choiceLog.slice().reverse().slice(0,30).map(c=>`<div class="item"><div class="d">${c.day}일차 · ${esc(c.t)}</div></div>`).join("")}</div>${alignLean() ? `<p class="muted" style="font-size:12px;margin-top:6px">${esc({정의:"사람들은 이 사무소를 '사람부터 챙기는 곳'이라고 부른다.",현실:"사람들은 이 사무소를 '값은 비싸도 확실한 곳'이라고 부른다.",질서:"사람들은 이 사무소를 '규약대로 일하는 곳'이라고 부른다."}[alignLean()])}</p>` : ""}` : ""}
    ${S.ledger && S.debt<=0 ? `<h4 style="margin:16px 0 6px">장부</h4><p class="muted" style="font-size:12px">서랍 속 낡은 장부. 원할 때 덮을 수 있다.</p><button class="primary" data-x="trio">장부를 펼친다</button>` : ""}
    <h4 style="margin:16px 0 6px">저장 관리</h4>
    <p class="muted" style="font-size:12px">진행 상황은 이 브라우저에 자동 저장된다. 기기 변경·브라우저 데이터 삭제에 대비해 저장 파일을 별도로 보관할 수 있다.</p>
@@ -9375,7 +9391,17 @@ async function relicTry(q, team){
   if(old && !old.relic){ S.inventory = S.inventory || []; S.inventory.push(old); }
   S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — ${RELIC_FIND_NOTE[X.mode]}, 적합도 ${fit.v}, 귀속 · ${SEAL_NAME[it.seal]}`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic");
   try{ pushRumor(`${S.officeName}의 누군가가 유적에서 올라온 진짜 유물을 손에 넣었다는 말이 돈다.`, true, performance.now(), "major"); }catch(_){}
-  save(); render(); }
+  save(); render();
+  // 유물을 손에 넣은 뒤 — 이 사실을 어떻게 다룰지 고른다(유물 자체는 그대로 귀속)
+  if(typeof offerVN==="function" && S && !S.over){
+    const v = await offerVN("유물", [["",`${jo(f.name,"이")} 쥔 ${jo(R.name,"은")} 이제 다른 손을 받아들이지 않는다.`],
+        ["","소문은 벌써 골목을 돌고 있다. 유적에서 올라온 진짜를 쥔 사무소가 있다고."]], "이 일을 어떻게 다룰까?",
+      [{v:"keep", t:"입을 닫는다. 쥔 사람이 곧 주인이다", al:{현실:1}},
+       {v:"report", t:"하나 협회에 유물 소지 신고를 올린다", al:{질서:1}},
+       {v:"share", t:"유적에서 다친 짐꾼들 치료비를 사무소가 댄다", al:{정의:1}}]);
+    if(v==="report"){ changeOfficeTrust(2, `유물 소지 신고 · ${R.name}`); addLog(`하나 협회에 유물 「${R.name}」 소지 신고를 올렸다.`); }
+    else if(v==="share"){ const c = Math.min(S.money, 20000); S.money -= c; addLog(`유적에서 다친 짐꾼들 치료비로 ${won(c)}을 보냈다.`); }
+    save(); render(); } }
 /* 유물 연출 — 원작의 유물: 도시 아래 '유적'에서 나오는, 드물고 손에 넣기 어려운 물건. 별과 얽혀 있다고 하며(별에서 벼려졌다는 것도 있다),
    아무나 쥘 수 없고 적성을 요구한다. 적성 없이 쥐면 다치기도 한다. 귀할수록 강하고 까다롭다. 가짜도 많이 돈다.
    ① 하강 — 도시 아래, 유적으로 ② 출현 — 성운 속에서 별빛이 모여 물건이 떠오른다 ③ 적성 — 유물이 손을 시험한다(공명 파동 · 적합도)
@@ -10061,6 +10087,76 @@ function arcEnding(A){ const V = ARC_VN[A.id]; if(!V) return {end:A.end, lines:[
   const F = arcFlags(A.id), last = F[A.ch.length-1], E = (V.ends && V.ends[last]) || {end:A.end, lines:[]};
   const ex = V.extra && Object.keys(V.extra).filter(c=>arcCond(A.id, c)).map(c=>V.extra[c]);
   return {end:E.end, lines:(E.lines||[]).concat(ex||[])}; }
+
+/* 특수 의뢰를 맡기 전 장면 — 지령·하나 협회 지정·지명·흉터의 의뢰.
+   refuse:true인 선택은 그 자리에서 의뢰를 거절한다. trust는 사무소 신뢰도 변화. */
+const SPECIAL_VN = {
+  prescript: q => ({title:"지령", lines:[
+      ["","아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉에는 아무것도 적혀 있지 않다."],
+      ["","골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다."],
+      ["",`봉투 속 종이에는 한 줄뿐이다. 「${String(q.text).replace(/^지령: /,"").replace(/[.。]$/,"")}.」`],
+      ["","이 도시에서 지령을 어긴 사람이 어떻게 되는지는, 다들 들어서 안다."]],
+    ask:"지령서를 어떻게 할까?",
+    opts:[{k:"obey", t:"따른다. 묻지 않는 편이 오래 산다", al:{현실:1}},
+      {k:"tear", t:"찢는다. 얼굴도 모르는 자의 말로 사람을 움직이진 않는다", al:{정의:1}, refuse:true},
+      {k:"report", t:"봉투째 협회 지부에 신고한다", al:{질서:1}, refuse:true, trust:2, after:[["","협회 직원은 봉투를 보더니 아무 말 없이 서랍에 넣었다. 접수증은 받았다."]]}]}),
+  hanaStar: q => ({title:"하나 협회 지정 의뢰", lines:[
+      ["","하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달됐다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다."],
+      ["하나 협회 연락관","\"협회는 귀 사무소를 지정했습니다. 해내면, 도시가 사무소 이름을 다시 부를 겁니다.\""],
+      ["하나 협회 연락관","\"실패해도 기록은 남습니다. 어느 쪽이든요.\""]],
+    ask:"뭐라고 답할까?",
+    opts:[{k:"accept", t:"\"협회 지정이라면, 받들겠습니다.\"", al:{질서:1}},
+      {k:"price", t:"\"도시의 별을 상대하는 값으로는 모자랍니다. 더 쳐주시죠.\"", al:{현실:1}, eff:{rw:1.2}, trust:-2, after:[["하나 협회 연락관","\"…기록해 두죠. 귀 사무소는 값을 먼저 묻는다고.\""]]},
+      {k:"people", t:"\"구역 사람들 대피부터 협회가 맡아 주십시오. 그게 조건입니다.\"", al:{정의:1}, eff:{dl:1}, after:[["하나 협회 연락관","\"대피반을 하루 먼저 보내겠습니다. 그만큼 기한도 늘려 드리죠.\""]]}]}),
+  trio: q => ({title:"하나 협회 지명", lines:[
+      ["","하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다."],
+      ["하나 협회 연락관","\"거절하셔도 됩니다. 다만 지명이 다시 오는 일은 드뭅니다.\""]],
+    ask:"뭐라고 답할까?",
+    opts:[{k:"accept", t:"\"지명을 받겠습니다.\"", al:{질서:1}},
+      {k:"price", t:"\"지명이면 보수도 지명값으로 받아야겠죠.\"", al:{현실:1}, eff:{rw:1.15}, trust:-1},
+      {k:"why", t:"\"왜 하필 저희입니까? 현장에 있는 사람들 얘기부터 듣겠습니다.\"", al:{정의:1}, eff:{req:-1}, after:[["하나 협회 연락관","\"…현장 보고서를 함께 드리죠. 읽어 두면 도움이 될 겁니다.\""]]}]}),
+  scarJob: q => ({title:"남겨진 흉터", lines:[
+      ["","흉터가 다시 왔다. 이번에는 금고 쪽을 보지 않았다."],
+      ["남겨진 흉터","\"빚은 다 갚았지. 이건 장부 밖의 일이야.\""],
+      ["남겨진 흉터","\"값은 넉넉히 치르지. 우리 사이에 그 정도는.\""]],
+    ask:"흉터의 일을 받을까?",
+    opts:[{k:"take", t:"받는다. 장부 밖이라도 돈은 돈이다", al:{현실:1}},
+      {k:"terms", t:"받되, 사람 목숨은 거두지 않는다는 조건을 붙인다", al:{정의:1}, eff:{goal:"제압", rw:0.85}, after:[["남겨진 흉터","\"…까다롭군. 좋아, 그렇게 하지.\""]]},
+      {k:"no", t:"거절한다. 빚은 장부 안에서 끝났다", al:{질서:1}, refuse:true, after:[["남겨진 흉터","\"그래. 그것도 셈이지.\""]]}]})
+};
+const specialKind = q => q.prescript ? "prescript" : q.hanaStar ? "hanaStar" : q.trio ? "trio" : q.scarJob ? "scarJob" : null;
+/* 돌아오는 값: 거절했으면 true */
+async function specialVN(q){
+  const k = specialKind(q); if(!k || q.spVN) return false;
+  const D = SPECIAL_VN[k](q); const o = await vnPlay(D.title, D.lines, D.ask, D.opts);
+  if(!S || !o) return false;
+  q.spVN = o.k; vnApplyAlign(o, `${D.title} — ${vnFill(o.t).replace(/^"|"$/g,"")}`); vnApplyEff(q, o.eff);
+  if(o.trust) changeOfficeTrust(o.trust, `${D.title} · ${o.trust>0 ? "협회 신고" : "보수 요구"}`);
+  if(o.refuse){ S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id]; if(openQ===q.id) openQ = null;
+    if(q.prescript){ idxFail(); addLog("지령을 거절했다. 그날 밤부터 출근길마다 누군가 뒤를 밟았다. 모두 체력 -10%"); }
+    else addLog(`의뢰를 거절했다 — ${q.client}`);
+    save(); render(); return true; }
+  save(); return false; }
+
+/* 한 번뿐인 제안 — 고른 말에 따라 성향이 기운다. 결과(받는다/거절한다)는 원래와 같다 */
+async function offerVN(title, lines, ask, opts){ const o = await vnPlay(title, lines, ask, opts); if(!S || !o) return null;
+  vnApplyAlign(o, `${title} — ${vnFill(o.t).replace(/^"|"$/g,"")}`); save(); return o.v; }
+
+/* 성향이 크게 기울었을 때만 열리는 결말 */
+const LEAN_END = {
+  정의:{name:"열린 문", btn:"골목에 문을 열어 둔다 — 값을 못 치르는 사람도 받는다", col:"#e8c98a",
+    epi:["{o}의 문에는 그날부터 가격표가 붙지 않았다.","값을 치르지 못하는 사람들이 찾아왔다. 국밥 한 그릇, 고친 우산 하나, 고맙다는 말 한마디가 보수였다.","사무소는 가난해졌다. 대신 골목의 밤이 조금 덜 무서워졌다."]},
+  현실:{name:"팔린 간판", btn:"간판을 판다 — 이름값이 가장 높을 때", col:"#c9a86a",
+    epi:["{o}의 간판은 그 주에 가장 높은 값을 부른 사무소에 팔렸다.","해결사들은 넉넉한 퇴직금을 받았다. 대표는 남은 돈을 세어 보고, 처음으로 숫자가 모자라지 않다는 걸 알았다.","골목은 새 간판에 금방 익숙해졌다. 이름은 그렇게 쉽게 바뀌는 것이었다."]},
+  질서:{name:"명부의 한 줄", btn:"협회 명부에 폐업 신고를 올리고, 규약대로 문을 닫는다", col:"#9fb3c8",
+    epi:["{o}은(는) 하나 협회 명부의 절차대로 문을 닫았다. 미결 의뢰 없음, 미납 채무 없음, 분쟁 기록 없음.","협회 직원은 서류를 넘기다 한 번 고개를 들었다. 이렇게 깨끗한 폐업 신고는 오랜만이라고.","명부에는 한 줄이 남았다. 이 도시에서 그건 꽤 드문 일이다."]}};
+const LEAN_CODA = {
+  정의:"사람들은 그 사무소를 떠올릴 때 보수보다 먼저, 누군가를 지켜 준 밤을 이야기했다.",
+  현실:"장부의 마지막 쪽은 흑자였다. 이 도시에서 그보다 확실한 증명은 없다.",
+  질서:"협회 기록에는 사무소의 이름 옆에 '규약 위반 없음'이라는 짧은 문구가 남았다."};
+function leanCoda(){ const k = typeof alignLean==="function" ? alignLean() : null; return k ? `<br><br>${LEAN_CODA[k]}` : ""; }
+async function leanEnding(k){ const E = LEAN_END[k]; if(!E) return;
+  await endingClose(E.name, E.epi.map(t=>esc(vnFill(t.replace(/\{o\}은\(는\)/g, jo(S.officeName,"은"))))).join("<br><br>"), E.col); }
 
 const arcState = () => (S.arcs = S.arcs || {i:0, ch:0, done:[]});
 function arcReq(A, ci){
@@ -11130,6 +11226,7 @@ function reqStory(q){
 async function openAccept(qid){
   const q = S.requests.find(x=>x.id===qid); if(!q) return;
   if(q.arc && !q.arcVN && typeof ARC_VN!=="undefined" && ARC_VN[q.arc.id]){ await arcVN(q); if(!S || !S.requests.includes(q)) return; }
+  if(!q.accepted && specialKind(q) && !q.spVN){ if(await specialVN(q)) return; if(!S || !S.requests.includes(q)) return; }
   const story = reqStory(q).map(t=>`<p>${esc(t)}</p>`).join(""); save();
   const v = await modal(`의뢰 — ${q.client}`, `<div class="acc-story${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${story}</div>
     <div class="kv"><span>의뢰</span><b>${esc(q.text)}</b><span>종류</span><b>${esc(requestDisplayKind(q))}${q.goal ? ` · ${q.goal}` : ""}</b><span>예상 재해 등급(게임 기준)</span><b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)} <span class="muted" style="font-weight:400">(${gName(q.grade)} 수준)</span></b>
@@ -14957,7 +15054,7 @@ function fxTestPanel(){
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
    <div class="g"><select id="fxrk"><option value="str">일반 · 물리</option><option value="agi">일반 · 속도</option><option value="tec">일반 · 정밀</option><option value="호위">호위</option><option value="수색">수색</option><option value="환상체">환상체</option><option value="trio">하나 협회 지명</option><option value="distort">이상 · 뒤틀림 처리</option><option value="assoc">협회 의뢰</option><option value="synd">뒷골목 조직(무작위)</option>${SYNDICATES.map(x=>`<option value="syn:${x.id}">조직 · ${x.n}</option>`).join("")}</select>
-     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="nom">지명 의뢰 올리기</button><button data-adj="lootreq">특수 전리품 의뢰 올리기</button><select id="fxacc">${LOOT_ACC.map(x=>`<option value="${x.id}">${x.name}</option>`).join("")}</select><button data-adj="giveacc">대표에게 장신구 주기</button><button data-adj="lowhp">대표 체력·정신력 위험으로</button><button data-adj="dk">대표 뒤틀림 처치 +1</button><button data-adj="deye">대표에게 뒤틀림을 보는 눈</button><button data-adj="dreq">뒤틀림 처리 의뢰 올리기</button><button data-adj="reg">사무소 신뢰도 올리기</button><button data-adj="regban">사무소 신뢰도 내리기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><select id="fxvn">${ARCS.map((A,i)=>A.ch.map((_,c)=>`<option value="${i}:${c}">${A.n} ${c+1}장</option>`).join("")).join("")}</select><button data-adj="vnarc">장면 시험</button><button data-adj="vnend">매듭 장면 시험</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="astrape">유물 무기 봉인 단계 · 적성 시험</button><button data-adj="relicall">유물 생김새 모아 보기</button><button data-adj="shin80">대표 신 · 망 감기 준비</button><button data-adj="streak">사흘 연속 출동 → 피로</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
+     <select id="fxrg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><select id="fxrn"><option>1</option><option selected>3</option><option>5</option></select><button data-adj="req">게시판에 올리기</button><button data-adj="clear">게시판 비우기</button><button data-adj="nom">지명 의뢰 올리기</button><button data-adj="lootreq">특수 전리품 의뢰 올리기</button><select id="fxacc">${LOOT_ACC.map(x=>`<option value="${x.id}">${x.name}</option>`).join("")}</select><button data-adj="giveacc">대표에게 장신구 주기</button><button data-adj="lowhp">대표 체력·정신력 위험으로</button><button data-adj="dk">대표 뒤틀림 처치 +1</button><button data-adj="deye">대표에게 뒤틀림을 보는 눈</button><button data-adj="dreq">뒤틀림 처리 의뢰 올리기</button><button data-adj="reg">사무소 신뢰도 올리기</button><button data-adj="regban">사무소 신뢰도 내리기</button><button data-adj="week">이번 주 심사 기록 채우기</button></div><div style="margin-top:6px"><b style="font-size:12px">엔딩</b> <button data-adj="money10m">돈 1000만 추가</button><button data-adj="arcnext">사건 다음 장 게시</button><select id="fxvn">${ARCS.map((A,i)=>A.ch.map((_,c)=>`<option value="${i}:${c}">${A.n} ${c+1}장</option>`).join("")).join("")}</select><button data-adj="vnarc">장면 시험</button><button data-adj="vnend">매듭 장면 시험</button><select id="fxsp"><option value="prescript">지령</option><option value="hanaStar">하나 협회 지정</option><option value="trio">하나 협회 지명</option><option value="scarJob">흉터의 의뢰</option></select><button data-adj="vnsp">특수 장면 시험</button><select id="fxlean"><option>정의</option><option>현실</option><option>질서</option></select><button data-adj="vnlean">성향 결말 시험</button><button data-adj="hanastar">하나 협회 지정 도시의 별</button><button data-adj="relicreq">유물 의뢰 게시</button><button data-adj="relicok">유물 획득 연출</button><button data-adj="relicno">유물 실패 연출</button><button data-adj="astrape">유물 무기 봉인 단계 · 적성 시험</button><button data-adj="relicall">유물 생김새 모아 보기</button><button data-adj="shin80">대표 신 · 망 감기 준비</button><button data-adj="streak">사흘 연속 출동 → 피로</button><button data-adj="move5">5급 · 사무소 이전</button><button data-adj="rent">월세 정산(14일)</button><button data-adj="pawnfill">전당포 물건 채우기</button><button data-adj="trio">빚 청산(장부)</button><button data-adj="en-nest">둥지로</button><button data-adj="en-heir">물려준 열쇠</button><button data-adj="en-desk">빈 책상</button><button data-adj="en-scar">마지막 손님</button><button data-adj="en-color">소문이 된 색</button><button data-adj="en-ws">공방의 도면</button><button data-adj="en-idx">지령 게시</button><button data-adj="en-idx3">마지막 지령서</button><button data-adj="en-assoc">협회 관찰 편지</button><button data-adj="en-assoc2">관찰 완료 · 직속 제안</button></div>
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>환상체 · 죄종</b><div class="g"><select id="fxab" style="max-width:100%">${["죄종","ZAYIN","TETH","HE","WAW","ALEPH"].map(r=>`<optgroup label="${r}">${ABNOS.filter(a=>a.risk===r).map(a=>`<option value="${a.id}">${esc(a.n)}${a.canon?" ·원작":""}</option>${a.variant?`<option value="${a.id}~v">${esc(a.n)} (아종: ${esc(a.variant.n)})</option>`:""}`).join("")}</optgroup>`).join("")}</select>
@@ -15024,6 +15121,10 @@ function fxTestPanel(){
     if(k==="move5"){ closeAll(); S.officeGrade = Math.min(S.officeGrade, 5); S.moved = null; S.moveDue = 0; if(S.debt > 0){ S.debt = 0; S.repaidShown = true; } return officeMove(); }
     if(k==="rent"){ if(!S.moved){ S.moved = S.day; } const m0 = S.money, h = officeFees(RENT_DAYS*Math.max(1, Math.ceil(S.day/RENT_DAYS))); save(); render(); return toast(`월세 · 밤 처리: ${won(m0)} → ${won(S.money)}`); }
     if(k==="pawnfill"){ S.inventory = S.inventory||[]; S.inventory.push(Object.assign({}, pick(LOOT)), JSON.parse(JSON.stringify(pick(SHOP.filter(x=>x.slot==="weapon")))), JSON.parse(JSON.stringify(pick(SHOP.filter(x=>x.slot==="armor"))))); save(); render(); return toast("보관함에 물건 3개를 넣었다 — 관리에서 확인"); }
+    if(k==="vnsp"){ closeAll(); const kind = document.getElementById("fxsp").value; const q = makeRequest(Math.min(S.officeGrade, 3), {kind:"일반", attrs:["str"]});
+      if(kind==="prescript"){ q.prescript = true; q.text = `지령: ${q.text}`; } else if(kind==="hanaStar"){ q.hanaStar = true; } else if(kind==="trio"){ q.trio = true; q.text = `하나 협회의 지명 — ${q.text}`; } else { q.scarJob = true; q.text = `남겨진 흉터의 의뢰 — ${q.text}`; }
+      S.requests.unshift(q); save(); render(); return openAccept(q.id); }
+    if(k==="vnlean"){ closeAll(); const L = document.getElementById("fxlean").value; S.align = {정의:0, 현실:0, 질서:0}; S.align[L] = 4; repayAll(); S.repaidShown = true; save(); return ledgerOffer(true); }
     if(k==="vnarc"){ closeAll(); const [ai, ci] = (document.getElementById("fxvn").value||"0:0").split(":").map(Number); const X = arcState(); X.i = ai; X.ch = ci;
       S.requests = S.requests.filter(q=>!q.arc); const q = arcReq(ARCS[ai], ci); S.requests.unshift(q); save(); render(); return openAccept(q.id); }
     if(k==="vnend"){ closeAll(); const ai = +((document.getElementById("fxvn").value||"0:0").split(":")[0]); const A = ARCS[ai]; const E = arcEnding(A);
