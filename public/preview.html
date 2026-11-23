@@ -5956,6 +5956,43 @@ const ABNO_SIGN = {
     chk:G=>["str","agi","wil"][Math.min(2, G.flowers.length)],
     ok:{mood:8}, okT:"꽃이 다시 고개를 들었다. 다음 차례를 잇는다", bad:{mp:0.05}, badT:"물동이를 엎질렀다 — 꽃밭지기가 혀를 찬다", missT:"차례의 꽃이 말라 바스러졌다. 꽃밭에 붉은 물이 번진다",
     rage:{t:"피살이꽃이 붉게 피어 상처마다 피를 끌어당긴다", btn:"상처를 동여맨다", okT:"상처를 동여매자 꽃이 고개를 돌렸다", missT:"뼈 잇는 가지와 살 붙이는 꽃가루가 모두를 휘감고 피를 빨았다", sp:5, hp:5}},
+  // ── HE ──
+  ichthys:{t:()=>"배 속 붉은 물주머니가 꿀렁이며 부풀어 오른다", btn:"물주머니를 찔러 뺀다", d:"근력 판정 · 성공하면 물주머니가 한 칸 줄어든다", chk:"str",
+    ok:{mood:6, sac:-1}, okT:"물주머니에서 피 섞인 물이 빠져나갔다", bad:{mp:0.05, hurt:0.06}, badT:"주머니가 미끄러졌다 — 물이 튀어 살갗이 따갑다", missT:"물주머니가 한 칸 더 차올랐다",
+    missFx:{sac:1}, rage:{t:"물주머니가 터질 듯 부풀었다 — 잘린 목이 일행을 겨눈다", btn:"물주머니를 겨눈다", okT:"주머니를 찔러 물길을 돌렸다", missT:"잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다", sp:4, hp:6}},
+  freischutz:{t:()=>"사수가 총신을 닦으며 일곱 번째 탄환 이야기를 꺼낸다 — 눈이 이쪽을 잰다", btn:"눈을 피하지 않는다", d:"민첩(정의) 판정 · 약해 보이면 표적이 된다", chk:"agi",
+    ok:{mood:8}, okT:"끝까지 시선을 받아 냈다. 사수가 피식 웃으며 총을 내린다", bad:{mp:0.07}, badT:"눈을 피했다 — 조준경 너머의 시선이 등에 박힌다", missT:"아무도 대꾸하지 않자 사수가 탄창을 한 발씩 세기 시작한다"},
+  teddy:{t:()=>"곰 인형이 두 팔을 활짝 벌리고 다음 사람을 기다린다", btn:"다른 사람을 들여보낸다", d:"방금 행동한 이 대신 다른 사람이 다음 행동에 나서도록 바꾼다 · 혼자면 기분만 조금 오른다",
+    ok:{mood:6, swap:true}, okT:"새 얼굴이 다가가자 곰 인형이 반갑게 고개를 기울인다", missT:"같은 얼굴만 보이자 곰 인형의 팔에 힘이 들어간다"},
+  porccubus:{t:()=>"가시 끝에 이슬 같은 쾌감이 맺힌다. 손을 뻗고 싶어진다", btn:"가시에서 손을 뗀다", d:"재주(자제) 판정 · 흔들리면 쾌감에 정신이 들뜬다", chk:"tec",
+    ok:{mood:8}, okT:"손끝을 거두었다. 포큐버스가 아쉬운 듯 가시를 접는다", bad:{mp:0.07}, badT:"가시 끝을 살짝 스치고 말았다 — 머리가 멍하다", missT:"아무도 손을 거두지 않았다. 가시가 한 뼘 더 자란다",
+    rage:{t:"가시가 사방으로 돋으며 달콤한 독을 흩뿌린다", btn:"쾌감을 뿌리친다", okT:"숨을 참고 독을 털어 냈다", missT:"가시가 모두를 찔렀다 — 쾌감과 통증이 함께 번진다", sp:6, hp:4}},
+  redshoes:{t:()=>"빨간 구두가 누군가를 부르듯 또각, 또각 박자를 맞춘다", btn:"구두에서 눈을 뗀다", d:"재주(자제) 판정 · 홀리면 신어 보고 싶어진다", chk:"tec",
+    ok:{mood:8}, okT:"고개를 돌렸다. 구두 소리가 멎는다", bad:{mp:0.07}, badT:"구두 굽이 자꾸 눈에 밟힌다 — 발끝이 근질거린다", missT:"구두 소리가 점점 빨라진다. 누군가의 발이 박자를 따라간다"},
+  grudgeshooter:{t:()=>"사수가 조준경 너머로 누군가를 오래 겨눈다. 손가락이 방아쇠에 걸린다", btn:"엄폐한다", d:"민첩 판정 · 늦으면 총알이 스친다", chk:"agi",
+    ok:{mood:6}, okT:"엄폐물 뒤로 몸을 숨겼다. 사수가 조준을 거둔다", bad:{mp:0.04, hurt:0.07}, badT:"총알이 어깨를 스쳤다", missT:"아무도 숨지 않았다. 사수의 눈에 옛 전장이 겹친다",
+    rage:{t:"흉탄이 장전되는 소리가 울린다", btn:"엄폐한다", okT:"모두 엄폐물 뒤로 몸을 던졌다", missT:"흉탄이 쏟아졌다", sp:3, hp:7}},
+  carousel:{t:()=>"목마가 삐걱이며 저절로 흔들리기 시작한다. 가시가 하나둘 돋는다", btn:"고삐를 잡아 멈춘다", d:"근력 판정 · 실패하면 가시에 긁힌다", chk:"str",
+    ok:{mood:8}, okT:"고삐를 당기자 흔들림이 멎는다", bad:{mp:0.03, hurt:0.07}, badT:"고삐가 손에서 빠졌다 — 가시가 팔을 긁었다", missT:"흔들림이 커진다. 가시가 바깥을 향한다",
+    rage:{t:"목마가 가시를 세운 채 달려든다", btn:"옆으로 비킨다", okT:"목마가 허공을 가르고 지나갔다", missT:"가시 돋친 목마가 모두를 들이받았다", sp:3, hp:7}},
+  greenboots:{t:()=>"장화가 한 짝씩 저절로 행진 박자를 맞춘다. 발끝이 따라 움직인다", btn:"박자를 흩뜨린다", d:"민첩 판정 · 박자에 말리면 발이 장화로 들어갈 뻔한다", chk:"agi",
+    ok:{mood:8}, okT:"엇박으로 발을 굴러 박자를 깨뜨렸다. 장화가 멈칫한다", bad:{mp:0.06}, badT:"발끝이 장화 입구에 닿을 뻔했다", missT:"행진 박자가 골목을 메운다",
+    rage:{t:"장화가 행진 박자에 맞춰 다가온다", btn:"박자를 끊는다", okT:"엇박에 행진이 흐트러졌다", missT:"장화가 앞을 막는 모두를 짓밟고 지나갔다", sp:4, hp:6}},
+  stitchbear:{t:()=>"터진 실밥 사이로 솜이 흘러나온다. 곰이 빈 품을 내려다본다", btn:"실밥을 꿰매 준다", d:"재주 판정 · 서툴면 곰이 실망한다", chk:"tec",
+    ok:{mood:10}, okT:"한 땀 한 땀 꿰매자 곰이 품을 여민다", bad:{mp:0.06}, badT:"바늘이 엇나갔다 — 곰이 빤히 바라본다", missT:"솜이 다 흘러나왔다. 곰이 채울 것을 찾아 두리번거린다",
+    rage:{t:"곰이 터진 품을 활짝 벌리고 다가온다", btn:"품을 피한다", okT:"팔 사이로 빠져나왔다", missT:"곰이 모두를 끌어안아 숨통을 조였다", sp:5, hp:5}},
+  mothwedding:{t:()=>"나방들이 하객을 세듯 일행 머리 위를 맴돈다", btn:"고개 숙여 축하한다", d:"예를 갖추면 나방들이 내려앉는다",
+    ok:{mood:8}, okT:"고개를 숙이자 나방들이 신부 곁으로 돌아간다", missT:"축하하지 않는 하객이 있다 — 나방들이 날개를 비빈다",
+    rage:{t:"나방 떼가 하객을 데려가려 날아오른다", btn:"불빛을 가린다", okT:"불빛을 가리자 나방들이 방향을 잃었다", missT:"나방 떼가 모두를 휩쓸고 지나갔다", sp:7, hp:3}},
+  biik:{t:()=>"한쪽 날개가 짝을 찾아 허공을 퍼덕인다", btn:"짝을 불러 나란히 선다", d:"한 쌍으로 묶인 두 사람이 나란히 서 준다",
+    ok:{mood:10}, okT:"두 사람이 나란히 서자 날개가 하나로 맞물린다", missT:"짝 잃은 날개가 홀로 퍼덕인다",
+    rage:{t:"두 날개가 따로 퍼덕이며 크게 흔들린다", btn:"나란히 선다", okT:"나란히 서자 날갯짓이 가라앉았다", missT:"엇갈린 날갯바람이 모두를 휩쓸었다", sp:6, hp:4}},
+  skel:{t:()=>"거대한 그림자가 앞을 막아선다. 비켜 갈 길이 보이지 않는다", btn:"피하지 않고 버틴다", d:"의지 판정 · 곧게 버티면 고래가 길을 연다", chk:"wil",
+    ok:{mood:10}, okT:"제자리에서 버텼다. 고래가 천천히 몸을 비킨다", bad:{mp:0.06}, badT:"한 발 물러설 뻔했다 — 그림자가 더 짙어진다", missT:"아무도 버티지 않았다. 그림자가 더 넓게 퍼진다",
+    rage:{t:"고래가 몸을 틀어 길을 막는다", btn:"곧게 버틴다", okT:"버티자 고래가 몸을 돌렸다", missT:"고래의 몸이 모두를 덮쳤다", sp:4, hp:6}},
+  erlking:{t:()=>"안개 속에서 '얘야, 이리 오렴' 하는 부름이 들려온다", btn:"아이의 귀를 막아 준다", d:"의지 판정 · 성공하면 부름이 한 칸 옅어진다", chk:"wil",
+    ok:{mood:6, lure:-1}, okT:"「얘야, 그건 안개란다.」 부름이 멀어진다", bad:{mp:0.06}, badT:"부름이 손가락 사이로 새어 들어왔다", missT:"부름이 짙어진다",
+    missFx:{lure:1}, rage:{t:"마왕이 안개 속에서 아이를 부른다", btn:"아이를 붙잡는다", okT:"아이의 손을 꼭 붙잡았다", missT:"부름이 모두의 정신을 흐렸다", sp:8}},
 };
 const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
 /* 전투 분류: 사살(죄종) · 전투형 · 조건부 전투 · 기믹형(전투 없음 — 그 자리에 머물고, 실패하면 재앙) · 전투 불가(손대면 즉사·중상 기믹, 맞서 싸울 수 없음) */
@@ -6477,6 +6514,7 @@ function mgAbno(ctx){
       G.sign = {f: f ? f.id : null}; G.signLast = G.turn; G.sign.txt = SG.t(G, f);
       say(`<b style="color:#ffb35a">징후 — ${esc(G.sign.txt)}</b>`); }
     function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
+      if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = Math.max(1, Math.floor(x.hpMax*0.1)); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 -10%)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
       say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1`);
       if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
     function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil"); G.sign = null;
@@ -6490,6 +6528,9 @@ function mgAbno(ctx){
       if(E.mp && !ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; out.push(`정신력 -${v}`); }
       if(E.frost && G.frost && G.frost[f.id]){ G.frost[f.id] = Math.max(0, G.frost[f.id] + E.frost); out.push(`서리 ${G.frost[f.id]}/3`); }
       if(E.hurt && !ok){ const v = Math.max(1, Math.floor(f.hpMax*E.hurt)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
+      if(E.sac && G.sac){ G.sac = Math.max(0, G.sac + E.sac); out.push(`물주머니 ${G.sac}/3`); }
+      if(E.lure && G.child!=null){ G.lure = Math.max(0, G.lure + E.lure); out.push(`부름 ${G.lure}/4`); }
+      if(E.swap){ const o = freeT().filter(x=>x.id!==G.last); if(o.length){ G.pick = o.sort((x,y)=>power(y,["tec"])-power(x,["tec"]))[0].id; out.push(`다음 차례: ${o[0] && ctx.team.find(x=>x.id===G.pick).name}`); } }
       if(E.tongue){ G.tongue = Math.max(0, G.tongue + E.tongue); out.push(E.tongue > 0 ? `혀에 맞았다(${G.tongue})` : `혀에 맞은 횟수 -1`); }
       const chkT = sgChk() ? ` <span class="muted">(${ATTR_NAME[sgChk()]} 판정 ${ok ? "성공" : "실패"})</span>` : "";
       say(`대응 · ${esc(jo(f.name,"이"))} ${esc(sgBtn())}${chkT} — <span style="color:${ok ? "#8fd6a0" : "#e0c64a"}">${esc(ok ? SG.okT : SG.badT)}</span>${out.length ? ` (${out.join(" · ")})` : ""}${ok ? "" : ` · <span class="muted">카운터는 지켰다</span>`}`);
@@ -15561,7 +15602,7 @@ function fxTestPanel(){
       codexSave(d); return toast(`기프트 ${n}개를 도감에 추가했다`); }
     if((k==="rage" || k==="signrage") && A.noFight) return toast(`이 환상체는 날뛰지 않는다(${FIGHT_TXT[fightType(A)][0]})`);
     const team = S.fixers.slice(0, Math.max(1, +el.querySelector("#fxn").value)).filter(Boolean);
-    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN·TETH만 적용됨)"); q.__signNow = true; }
+    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN·TETH·HE만 적용됨)"); q.__signNow = true; }
     S.requests.push(q); const r = await runMinigames(q, team); toast(r.abno && r.abno.how==="ctrl" ? "통제 성공" : r.abno && r.abno.how==="sup" ? "제압 성공" : "실패");
     if(r.abno){ const L = []; const lost = abnoApply(q, team, Object.assign({}, r.abno, {battle: r.combat && r.combat.battle}), L); if(r.abno.how) await abnoReward(q, team, r.abno, L);
       S.requests = S.requests.filter(x=>x.id!==q.id);
