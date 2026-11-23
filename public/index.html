@@ -485,6 +485,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .mg-f{display:flex;justify-content:flex-end;padding:6px 14px 12px}
 .pk-text{background:#0f0e13;border:1px solid #3a3740;border-radius:6px;padding:9px 12px;font-size:14px;min-height:40px;cursor:pointer}
 .mg-ctrl{flex-wrap:wrap}.pk-moves{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1 1 100%}
+.pk-moves button.pk-sign{border-color:#b86a3c;background:linear-gradient(180deg,#2b1a10,#170e08)}.pk-moves button.pk-sign b{color:#ffb35a}
 .pk-moves button.pk-shin{border-color:#b8913c;background:linear-gradient(180deg,#2b2414,#18140c)}.pk-moves button.pk-shin b{color:#ffd98a}.pk-moves button.pk-shin:disabled{opacity:.55}
 .pk-moves button{text-align:left;padding:8px 10px;font-size:14px;display:flex;flex-direction:column;gap:2px}.pk-moves small{color:var(--muted);font-size:11px}
 .pk-moves i{font-style:normal}.pk-moves i.good{color:var(--green)}.pk-moves i.bad{color:var(--red)}
@@ -4383,6 +4384,21 @@ function mgCombat(ctx){
       if(me.mangLive >= cap) return `<button data-sk="4" class="pk-shin" disabled><b>무기에 망(望)을 감는다</b><small>${cap ? `익힌 망 ${cap}겹을 모두 감았다` : "아직 익힌 망이 없다"} · 신 위력 +${SHIN_POW}${me.mangLive ? ` · 망 위력 +${me.mangLive}` : ""}</small></button>`;
       const c = MANG_MP[me.mangLive], no = used || f.mp <= c;
       return `<button data-sk="4" class="pk-shin" ${no?"disabled":""}><b>무기에 망(望)을 감는다</b><small>추가 행동 — 턴을 쓰지 않는다 · 망 ${me.mangLive} → ${me.mangLive+1} · 위력 +1 · 정신력 -${c}${used?"<br>이번 턴에는 이미 썼다":f.mp<=c?"<br>정신력이 모자라다":""}</small></button>`; }
+    // 환상체 고유 기믹(날뜀): 징후가 뜨면 신 곁에 대응 버튼 · 놓치면 턴이 끝날 때 피해
+    const FSG = AB && !AB.kill && !AB.possessed ? ((signOf(AB)||{}).rage || null) : null; foe.signLast = 0;
+    const RISK_SIGN = {ZAYIN:1, TETH:1.4, HE:1.8, WAW:2.4, ALEPH:3}[AB && AB.risk] || 1;
+    function foeSignSpawn(force){ if(!FSG || foe.sign || foe.hp<=0 || outcome) return "";
+      if(!force && !(turn - foe.signLast >= 2 || Math.random() < 0.55)) return ""; foe.sign = true; foe.signLast = turn;
+      return `<b style="color:#ffb35a">징후 — ${esc(FSG.t)}</b>`; }
+    function foeSignMiss(){ if(!FSG || !foe.sign || foe.hp<=0) return ""; foe.sign = false;
+      const sp = Math.round((FSG.sp||0)*RISK_SIGN), hp = Math.round((FSG.hp||0)*RISK_SIGN);
+      party.forEach(p=>{ if(p.hp<=0) return; if(sp) p.sp = clamp(p.sp - sp, -45, 45); if(hp) p.hp = Math.max(0, p.hp - Math.max(1, Math.round(hp*(1-redHP(p.f)*0.5)))); });
+      return `<b style="color:#ff8a7a">징후를 놓쳤다 — ${esc(FSG.missT)}</b>${sp ? ` (모두 정신력 -${sp})` : ""}${hp ? ` (모두 체력 -${hp})` : ""}`; }
+    function foeSignBtn(){ if(!FSG || !foe.sign || foe.hp<=0) return "";
+      return `<button data-sk="5" class="pk-sign"><b>${esc(FSG.btn)}</b><small>징후 대응 — 추가 행동 · 턴을 쓰지 않는다${FSG.d ? " · "+esc(FSG.d) : ""}<br><span style="color:#ff8a7a">놓치면 턴이 끝날 때 ${[FSG.sp ? "모두 정신력 피해" : "", FSG.hp ? "모두 체력 피해" : ""].filter(Boolean).join(" · ")}</span></small></button>`; }
+    function foeSignAct(){ if(!FSG || !foe.sign) return; const me = party[act]; foe.sign = false;
+      if(FSG.cost) me.hp = Math.max(1, me.hp - FSG.cost); me.sp = clamp(me.sp + 2, -45, 45);
+      tick = [`<span style="color:#8fd6a0">${esc(jo(me.name,"이"))} ${esc(FSG.btn)} — ${esc(FSG.okT)}</span>${FSG.cost ? ` (체력 -${FSG.cost})` : ""}`].concat(tick ? [tick] : []).join("<br>"); skillMenu(); }
     function shinAct(){ const me = party[act], f = me.f; if(!f.shin || f.shinOff === true || me.extraTurn === turn) return;
       const wrap = me.shinLive; if(wrap && me.mangLive >= mangCap(f)) return;
       const c = wrap ? MANG_MP[me.mangLive] : SHIN_MP; if(f.mp <= c) return;
@@ -4423,6 +4439,7 @@ function mgCombat(ctx){
         <button data-sk="1" ${foeSkill.def?"disabled":""}><b>방어</b><small>${dc.n} · 합 없음 · 받는 피해 50% 감소 · 민첩 고정 감소 ${statGuardMinus(me.f)} · 반격 없음${foeSkill.def?"<br>적이 방어 중이므로 선택 불가":""}</small></button>
         <button data-sk="2" class="pk-tech" ${!hasBullet&&!tk.sk.def?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · ${tsk.def?"방어 기술":`피해 계수 ${(TECH_DAMAGE_MUL[tk.T.id]||1).toFixed(2)}배 · 기본 피해 약 ${techniqueShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}`}<br><span style="color:${ct}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${lt} ${Math.round(pT*100)}%`}</span> · ${tk.T.d}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
       { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", sb); } }
+      { const gb = foeSignBtn(); if(gb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", gb); } }
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
@@ -4622,7 +4639,7 @@ function mgCombat(ctx){
     }
     function turnEnd(){
       // 턴이 끝날 때: 화상이 타오르고, 재생이 상처를 메우고, 보호막이 다시 선다
-      const tk = [];
+      const tk = []; { const sm = foeSignMiss(); if(sm) tk.push(sm); }
       if(foe.burn > 0){ foe.hp = Math.max(0, foe.hp - foe.burn); tk.push(`${foe.brand ? "낙인 " : ""}화상 — ${jo(foe.name,"이")} ${foe.burn}의 피해`); if(!foe.brand) foe.burn--; }
       party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } if(p.sp2==="shield") p.shield = 10; });
       if(AB && AB.aoe && turn % AB.aoe === 0 && foe.hp > 0){ const hung = [];
@@ -4656,7 +4673,7 @@ function mgCombat(ctx){
       if(foe.hp<=0){ if(revive()){ tick = [tick, foe.reviveNote].filter(Boolean).join(" · "); foe.reviveNote = null; } else return finishMenu(); }
       if(party.every(p=>p.hp<=0)) return finish("lost");
       if(party[act].hp<=0) act = party.findIndex(p=>p.hp>0);
-      turn++; { const fs = foeShinStep(); if(fs) tick = [tick, fs].filter(Boolean).join(" · "); } pickFoeSkill(); skillMenu(); }
+      turn++; { const fs = foeShinStep(); if(fs) tick = [tick, fs].filter(Boolean).join(" · "); } { const sg = foeSignSpawn(); if(sg) tick = [tick, sg].filter(Boolean).join("<br>"); } pickFoeSkill(); skillMenu(); }
     function finish(why){
       if(done) return; done = true;
       const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0), prog = 1 - foe.hp/foe.max;
@@ -4672,6 +4689,7 @@ function mgCombat(ctx){
     }
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
       if(b.dataset.sk==="4"){ if(phase==="skill") shinAct(); }
+      else if(b.dataset.sk==="5"){ if(phase==="skill") foeSignAct(); }
       else if(b.dataset.sk!==undefined && phase==="skill"){ party[act].fought = true; resolveClash(+b.dataset.sk,b.dataset.ammoType); }
       else if(b.dataset.fin && phase==="finish"){ outcome = b.dataset.fin; m.ctrl.innerHTML = ""; finish(); }
       else if(b.dataset.lamp && phase==="lamp"){ const mk = foe.lampPick;
@@ -4862,7 +4880,7 @@ function mgCombat(ctx){
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    { const fs = foeShinStep(); if(fs) AXN.push(fs); } pickFoeSkill(); tick = AXN.join("<br>");
+    { const fs = foeShinStep(); if(fs) AXN.push(fs); } if(q.__signNow){ const sg = foeSignSpawn(true); if(sg) AXN.push(sg); } pickFoeSkill(); tick = AXN.join("<br>");
     // 큰 새: 일대가 어두워지고, 체력이 가장 약한 이를 등불로 홀린다
     if(AB && AB.fx==="lamp"){ const mk = party.slice().sort((x,y)=>x.f.hpMax - y.f.hpMax)[0];
       if(party.length < 2){ foe.lampMark = mk; tick = (tick ? tick+"<br>" : "") + `<b style="color:#ff8a7a">일대가 어둠에 잠겼다. 등불이 ${esc(jo(mk.name,"을"))} 부른다 — 3턴 안에 쓰러뜨리지 못하면 끌려간다</b>`; }
@@ -5859,6 +5877,41 @@ const ABNOS = [
    gifts:{a:{n:"탑 브로치", mpRed:0.06, bonus:{wil:4,tec:3}}, b:{n:"천구를 받드는 자", hpRed:0.15, bonus:{str:6,agi:-1}}}},
 ];
 const ABNO_BY = Object.fromEntries(ABNOS.map(a=>[a.id, a]));
+/* ================= 환상체 고유 기믹(징후) =================
+   배회: 환상체마다 정해진 '징후'가 이따금 나타난다. 징후가 떠 있으면 네 가지 행동 곁에 대응 버튼이 생긴다.
+         대응은 추가 행동이다(회차를 쓰지 않는다). 대응하지 않고 다음 행동으로 넘어가면 광폭 카운터 -1.
+         판정이 붙은 대응은 실패하면 정신력이 조금 깎이지만, 카운터는 지켜진다.
+   날뜀: 전투 중에도 징후가 나타나고(더 잦다), 신(心) 곁에 대응 버튼이 생긴다. 놓치면 턴이 끝날 때 피해를 입는다.
+         ZAYIN도 정신력 피해를 준다. 싸우지 않는 환상체(noFight)는 배회 기믹만 있다.
+   원작 환상체는 로보토미 코퍼레이션의 관리 지침을 따랐다:
+     단 한번의 악 — "정직한 직원을 보내라" · 고해 작업 / 웰치어스 — 일꾼이 건네는 캔, 기분 나쁠 때의 캔은 위험
+     만지지 마 — 수용실이 번쩍이며 누르라고 속인다. 전부 속임수다 / 요정의 축제 — 요정들이 따라붙어 상처를 돌본다 */
+const ABNO_SIGN = {
+  onesin:{t:()=>"해골의 눈구멍이 희미하게 밝아진다 — 누군가의 고해를 기다린다", btn:"죄를 털어놓는다", d:"정직하게 털어놓으면(의지 판정) 정신이 맑아진다 · 거짓이 섞이면 해골이 그것을 삼킨다", chk:"wil",
+    ok:{mood:8, mp:0.06}, okT:"솔직한 고백이었다. 해골이 고요히 고개를 숙인다", bad:{mp:0.04}, badT:"말끝에 거짓이 섞였다 — 해골이 그것을 맛있게 삼켰다", missT:"아무도 입을 열지 않았다. 빛이 서운하게 가라앉는다"},
+  wellcheers:{t:G=>`자판기가 덜컹 — 캔 하나가 굴러 나왔다. ${G.mood < 25 ? "캔 빛깔이 푸르다. 일꾼들의 기분이 좋지 않다" : "붉은 캔이다. 새우 일꾼이 이쪽을 본다"}`, btn:"캔을 받아 둔다", d:"뚜껑은 따지 않는다 · 일꾼들의 호의를 거절하지 않는 것이 중요하다",
+    ok:{mood:6}, okT:"캔을 받아 주머니에 넣었다. 새우 일꾼이 엄지를 든다", missT:"굴러 나온 캔을 아무도 줍지 않았다. 일꾼들이 서로 눈짓한다"},
+  donttouch:{t:()=>`버튼 둘레가 ${pick(["황금빛으로","무지갯빛으로","해골 무늬로","돈다발 그림으로","'지금 누르면 보상!'이라는 글자로"])} 번쩍인다 — 눌러 보라는 것만 같다`, btn:"속지 않는다", d:"번쩍임은 속임수다 · 의지가 약하면 손끝이 흔들린다(의지 판정)", chk:"wil",
+    ok:{mood:10}, okT:"눈을 감고 손을 주머니에 넣었다. 상자가 다시 조용해졌다", bad:{mp:0.05}, badT:"손가락이 버튼 바로 위에서 멈췄다 — 식은땀이 흐른다", missT:"번쩍임에 홀린 듯 다들 버튼만 바라봤다 — 누르고 싶은 충동이 커졌다"},
+  fairy:{target:true, t:(G,f)=>`요정들이 ${f.name}의 어깨에 우르르 내려앉아 꽃잎 접시를 내민다 — 축제가 열렸다`, btn:"축제에 어울려 준다", d:"대상: 요정이 내려앉은 사람 · 요정의 보살핌으로 체력이 돌아온다",
+    ok:{mood:8, hp:0.08}, okT:"요정들이 흡족하게 날갯짓한다 — 상처가 아문다", missT:"접시를 받아 주지 않았다. 요정들의 눈빛이 굶주려 보인다"},
+  toad:{t:()=>"두꺼비가 끅, 끅 울먹인다. 파란 진액이 줄줄 흐른다", btn:"눈물을 닦아 준다", d:"재주 판정 · 손이 미끄러지면 혀에 맞는다", chk:"tec",
+    ok:{mood:8, tongue:-1}, okT:"진액을 닦아 내자 울음이 잦아든다", bad:{mp:0.05, tongue:1}, badT:"손이 미끄러졌다 — 혀에 뺨을 맞고 괜히 서러워졌다", missT:"아무도 달래 주지 않았다. 울음이 커진다",
+    rage:{t:"두꺼비가 목 놓아 울기 시작한다", btn:"울음을 달랜다", okT:"등을 두드리자 울음이 잦아들었다", missT:"울음이 터졌다 — 그 소리에 모두의 마음이 무너진다", sp:8}},
+  tornmail:{t:()=>"편지 한 통이 발치에 떨어져 저절로 펼쳐지려 한다", btn:"읽지 않고 접어 둔다", d:"재주 판정 · 남의 사연을 읽으면 마음이 무거워진다", chk:"tec",
+    ok:{mood:10}, okT:"글씨가 보이기 전에 반듯하게 접었다. 다발이 조용해진다", bad:{mp:0.06}, badT:"접다가 한 줄을 읽고 말았다 — 모르는 이의 슬픔이 스며든다", missT:"펼쳐진 편지를 아무도 접지 않았다. 남의 사연이 골목에 흩날린다"},
+  twotail:{target:true, t:(G,f)=>`고양이가 ${f.name}의 무릎에 올라와 몸을 둥글게 만다`, btn:"쓰다듬어 준다", d:"대상: 고양이가 고른 사람 · 주인 노릇을 해 주면 정신력이 조금 돌아온다",
+    ok:{mood:8, mp:0.04}, okT:"가르릉 — 고양이가 눈을 가늘게 뜬다", missT:"아무도 쓰다듬지 않았다. 두 꼬리가 바짝 섰다",
+    rage:{t:"고양이가 등을 세우고 주인을 찾듯 울어 댄다", btn:"이름을 불러 준다", okT:"고양이가 귀를 쫑긋 세우고 잠시 멈칫했다", missT:"주인을 찾지 못한 발톱이 모두를 할퀴었다", sp:7}},
+  blackwater:{t:()=>"잔이 넘칠 듯 거품이 차오른다. 노란 눈이 잔 너머에서 이쪽을 본다", btn:"잔 속을 들여다본다", d:"의지 판정 · 눈을 피하지 않으면 거품이 가라앉는다", chk:"wil",
+    ok:{mood:10}, okT:"잔 속을 똑바로 들여다보았다. 노란 눈이 먼저 시선을 피했다", bad:{mp:0.05}, badT:"검은 거품 너머가 보이지 않는다 — 머릿속이 끈적해진다", missT:"아무도 잔을 보지 않았다. 검은 탄산이 발목까지 차올랐다"},
+  lonefairy:{target:true, t:(G,f)=>`요정이 ${f.name}의 소매를 붙잡고 배를 문지르며 운다`, btn:"먹을 것을 나눈다", d:"대상: 소매를 붙잡힌 사람 · 체력을 조금 내어 준다(체력 -4%)", cost:{hp:0.04},
+    ok:{mood:12}, okT:"요정이 조그맣게 오물거린다. 몸빛이 조금 밝아졌다", missT:"아무도 먹을 것을 내주지 않았다. 작은 이빨이 반짝인다",
+    rage:{t:"굶주린 요정이 이빨을 드러내고 맴돈다", btn:"먹을 것을 던져 준다", d:"대응한 이 체력 -3", cost:3, okT:"요정이 먹이를 쫓아 잠시 물러났다", missT:"굶주린 요정이 모두를 깨물었다", sp:6, hp:5}},
+  confession:{t:()=>"이마의 표식이 욱신거린다. 해골의 기도가 빨라진다", btn:"무릎 꿇는다", d:"함께 기도해 주면 정신이 조금 가벼워진다",
+    ok:{mood:8, mp:0.03}, okT:"잠시 무릎을 꿇고 함께 기도했다. 기도 소리가 낮아진다", missT:"아무도 무릎 꿇지 않았다. 가시관이 바닥을 긁는다"},
+};
+const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
 /* 전투 분류: 사살(죄종) · 전투형 · 조건부 전투 · 기믹형(전투 없음 — 그 자리에 머물고, 실패하면 재앙) · 전투 불가(손대면 즉사·중상 기믹, 맞서 싸울 수 없음) */
 const ABNO_UNFIGHTABLE = ["wall","spiderbud","armor","headlessmantis","bluestar"];
 const fightType = a => a.kill ? "kill" : a.rule2==="ranged" ? "cond" : !a.noFight ? "battle" : ABNO_UNFIGHTABLE.includes(a.id) ? "none" : a.gentle ? "gentle" : "gimmick";
@@ -6370,7 +6423,35 @@ function mgAbno(ctx){
     // 행동 성공 확률: 능력치가 요구치에 가까울수록 오른다. 최고 반응이라도 97%를 넘지 않는다
     const actP = (lv, ratio) => lv==="최고" ? clamp(0.35 + 0.55*ratio, 0.05, 0.97) : lv==="좋음" ? clamp(0.25 + 0.55*ratio, 0.05, 0.97) : lv==="보통" ? clamp(0.2 + 0.5*ratio, 0.05, 0.9) : 0;
     const tagOf = f => benched(f) ? ` · ${a.fx==="frost" ? "얼어붙음" : a.fx==="tower" ? "탑을 짊어짐" : a.fx==="jade" ? "꿈에 빠짐" : a.fx==="erl" ? "정신을 놓음" : "행동 불가"}` : blessedF(f) ? " · 축복(행동 불가)" : flameOf(f) ? ` · ${["푸른","주황","붉은"][flameOf(f)-1]} 불꽃` : "";
-    function menu(){
+    // 고유 기믹: 징후 → 대응(추가 행동) · 놓치면 카운터 -1
+    const SG = signOf(a); G.signLast = 0;
+    function signSpawn(force){ if(!SG || G.sign || G.done || G.state!=="calm") return;
+      if(!force && !(G.turn - G.signLast >= 3 || Math.random() < 0.45)) return;
+      const T = freeT().length ? freeT() : ctx.team, f = SG.target ? pick(T) : null;
+      G.sign = {f: f ? f.id : null}; G.signLast = G.turn; G.sign.txt = SG.t(G, f);
+      say(`<b style="color:#ffb35a">징후 — ${esc(G.sign.txt)}</b>`); }
+    function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
+      say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1`);
+      if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
+    function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(SG.chk || "wil"); G.sign = null;
+      const out = [];
+      if(SG.cost && SG.cost.hp){ const v = Math.max(1, Math.floor(f.hpMax*SG.cost.hp)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
+      const ratio = SG.chk ? power(f,[SG.chk]) / Math.max(1, q.req) : 1, ok = !SG.chk || Math.random() < clamp(0.35 + 0.5*ratio, 0.15, 0.95);
+      const E = ok ? SG.ok : (SG.bad || {});
+      if(E.mood){ G.mood = Math.min(100, G.mood + E.mood); out.push(`기분 +${E.mood}`); }
+      if(E.hp){ const v = Math.floor(f.hpMax*E.hp); f.hp = Math.min(f.hpMax, f.hp + v); out.push(`체력 +${v}`); }
+      if(E.mp && ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.min(f.mpMax, f.mp + v); out.push(`정신력 +${v}`); }
+      if(E.mp && !ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; out.push(`정신력 -${v}`); }
+      if(E.tongue){ G.tongue = Math.max(0, G.tongue + E.tongue); out.push(E.tongue > 0 ? `혀에 맞았다(${G.tongue})` : `혀에 맞은 횟수 -1`); }
+      const chkT = SG.chk ? ` <span class="muted">(${ATTR_NAME[SG.chk]} 판정 ${ok ? "성공" : "실패"})</span>` : "";
+      say(`대응 · ${esc(jo(f.name,"이"))} ${esc(SG.btn)}${chkT} — <span style="color:${ok ? "#8fd6a0" : "#e0c64a"}">${esc(ok ? SG.okT : SG.badT)}</span>${out.length ? ` (${out.join(" · ")})` : ""}${ok ? "" : ` · <span class="muted">카운터는 지켰다</span>`}`);
+      if(!settle(f)) menu(); }
+    function signBtn(){ if(!SG || !G.sign || G.done) return; const mv = m.ctrl.querySelector(".pk-moves"); if(!mv) return;
+      const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(SG.chk || "wil");
+      mv.insertAdjacentHTML("afterbegin", `<button data-sign="1" class="pk-sign"><b>${esc(SG.btn)}</b><small>징후 대응 — 회차를 쓰지 않는다 · ${esc(SG.d)}<br>${esc(f.name)}${SG.chk ? ` · ${ATTR_NAME[SG.chk]} ${power(f,[SG.chk])} / 요구치 ${q.req}` : ""}<br><span style="color:#ff8a7a">대응하지 않고 행동하면 ${ctrName} -1</span></small></button>`); }
+    function menu(){ if(G.signDue || (q.__signNow && !G.signForced)){ const fc = q.__signNow && !G.signForced; G.signDue = false; G.signForced = true; signSpawn(fc); }
+      menuBase(); signBtn(); }
+    function menuBase(){
       const chips = `<div class="pk-who"><span class="muted">행동하는 이</span><button class="${G.pick==null?"on":""}" data-pk="auto">자동(능력치 높은 이)</button>${ctx.team.map(f=>`<button class="${G.pick===f.id?"on":""}" data-pk="${f.id}">${esc(f.name)}${tagOf(f)}</button>`).join("")}</div>`;
       const merc = a.fx==="mercenary" && G.ctr > 0 ? `<button data-merc="list"><b>하청을 맡긴다</b><small>게시판의 물리 의뢰 하나를 보수의 40%를 떼고 대신 처리해 준다<br><span style="color:#ff8a7a">그 대가로 광폭 카운터 -1</span></small></button>` : "";
       const mb = a.fx==="bullet" && !G.bullet ? `<button data-mb="1"><b>마탄을 의뢰한다</b><small>자금의 10%(${won(bulletCost())}) · 다음 전투가 시작될 때 적을 꿰뚫는다<br>지금까지 의뢰한 마탄: ${abRec().frei}발</small></button>` : "";
@@ -6392,7 +6473,7 @@ function mgAbno(ctx){
       S.money -= c; const RC = abRec(); RC.frei++; abRecSave(RC); S.bullets = (S.bullets||[]).concat([{n: RC.frei}]); G.bullet = true;
       say(`사수가 탄환 한 발을 깎아 장전했다 — 자금 -${won(c)}. <span class="muted">지금까지 의뢰한 마탄 ${abRec().frei}발째. 다음 전투가 시작될 때 날아간다.</span>`); menu(); }
     // 만지지 마: 지켜볼수록 충동이 커진다
-    function watch(){ if(G.done) return; G.turn++; const f = workerFor("wil"), ratio = power(f,["wil"]) / Math.max(1, q.req), p = clamp(0.12 - 0.25*(ratio - 1), 0.03, 0.35);
+    function watch(){ if(G.done) return; if(signMiss()) return; G.signDue = true; G.turn++; const f = workerFor("wil"), ratio = power(f,["wil"]) / Math.max(1, q.req), p = clamp(0.12 - 0.25*(ratio - 1), 0.03, 0.35);
       let line = `${G.turn}회차 · ${esc(jo(f.name,"이"))} 버튼을 지켜본다 — `; G.last = f.id;
       if(Math.random() < p){ say(line + `<span style="color:#ff8a7a">손가락이 저도 모르게 버튼을 눌렀다</span>`); return doom(f); }
       const gain = Math.round(24 * clamp(0.6 + 0.4*ratio, 0.6, 1.2)); G.mood = Math.min(100, G.mood + gain); line += `<span style="color:#8fd6a0">${esc(a.like)}</span> (기분 +${gain})`;
@@ -6418,7 +6499,8 @@ function mgAbno(ctx){
       say(`<b style="color:#ff8a7a">${why ? esc(why)+" — " : ""}${esc(D ? D.t : "재앙이 일어났다")}</b><br><span class="muted">${a.noFight ? "이 환상체와는 싸울 수 없다 — 의뢰 실패" : "의뢰 실패"}</span>`);
       end({win:false, score:0, doom:D, victim: f ? f.id : null, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin}, "통제 실패"); }
     function work(k){
-      if(G.done) return; G.turn++; const w = WORKS.find(x=>x.k===k), f = workerFor(k), lv = a.pref[k], st = power(f,[k]), ratio = st / Math.max(1, q.req);
+      if(G.done) return; if(blessedF(workerFor(k))){ say(`${esc(jo(workerFor(k).name,"은"))} 기사의 축복을 받았다 — 축복받은 이는 행동할 수 없다.`); return menu(); }
+      if(signMiss()) return; G.signDue = true; G.turn++; const w = WORKS.find(x=>x.k===k), f = workerFor(k), lv = a.pref[k], st = power(f,[k]), ratio = st / Math.max(1, q.req);
       if(blessedF(f)){ G.turn--; say(`${esc(jo(f.name,"은"))} 기사의 축복을 받았다 — 축복받은 이는 행동할 수 없다.`); return menu(); }
       const prev = G.last; G.last = f.id;
       let line = `${G.turn}회차 · ${esc(f.name)}의 ${w.n} 행동 — `;
@@ -6613,6 +6695,7 @@ function mgAbno(ctx){
       const of = e.target.closest("button[data-of]"); if(of && G.offerFn){ const fn = G.offerFn; G.offerFn = null; fn(of.dataset.of); return; }
       const sd = e.target.closest("button[data-sd]"); if(sd && G.soda){ drinkSoda(sd.dataset.sd==="1"); return; }
       if(e.target.closest("button[data-watch]")){ watch(); return; }
+      if(e.target.closest("button[data-sign]")){ signAct(); return; }
       const mc = e.target.closest("button[data-merc]"); if(mc){ const v = mc.dataset.merc; if(v==="list") mercList(); else if(v==="cancel") menu(); else mercDo(+v); return; } if(e.target.closest("button[data-mb]")){ orderBullet(); return; }
       const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
@@ -15273,7 +15356,7 @@ function fxTestPanel(){
    <b>날씨</b><div class="g">${WEATHERS.map(([k,n])=>`<button data-wx="${k}|0">${n} 낮</button><button data-wx="${k}|1">${n} 밤</button>`).join("")}</div>
    <b>재해 등급 · 특색 심사</b><div class="g"><button data-cs="star">대표를 1급으로 · 도시의 별 3건</button><button data-cs="mail">하나 협회 편지 날아오기</button><button data-cs="pass">심사 — 통과 쪽으로</button><button data-cs="fail">심사 — 보류 쪽으로</button><button data-cs="retry">재심사 요청 가능으로</button><button data-cs="board">도시의 별 의뢰 올리기</button></div>
    <b>환상체 · 죄종</b><div class="g"><select id="fxab" style="max-width:100%">${["죄종","ZAYIN","TETH","HE","WAW","ALEPH"].map(r=>`<optgroup label="${r}">${ABNOS.filter(a=>a.risk===r).map(a=>`<option value="${a.id}">${esc(a.n)}${a.canon?" ·원작":""}</option>${a.variant?`<option value="${a.id}~v">${esc(a.n)} (아종: ${esc(a.variant.n)})</option>`:""}`).join("")}</optgroup>`).join("")}</select>
-     <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="cityall">도시 일람 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">모든 기프트를 도감에 추가</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
+     <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="sign">기믹 징후 바로 띄우기</button><button data-ab="signrage">날뜀 + 징후 바로 띄우기</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="cityall">도시 일람 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">모든 기프트를 도감에 추가</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
    <b>원작 환상체 기믹 시험</b><div class="g"><button data-ab="bless">대표에게 기사의 축복</button><button data-ab="despair">축복받은 이 쓰러뜨리기</button><button data-ab="flame">대표에게 용기의 불꽃 +1</button><button data-ab="feast">대표에게 요정의 축제</button><button data-ab="prick">대표가 가시에 찔림</button><button data-ab="solitude">대표에게 고독</button><button data-ab="bullet">마탄 2발(6·7번째 탄환)</button><button data-ab="skin">가죽 쓴 동료의 방문</button><button data-ab="gun">대표에게 총 쥐여 주기</button><button data-ab="sup5">환상체 제압 수 +5</button><button data-ab="clear">기믹 상태 모두 지우기</button></div>`;
   document.body.appendChild(el);
   el.insertAdjacentHTML("beforeend",`<h4>3D 인물 그림</h4><div class="g"><button data-spr3="toggle">3D 그림 켜기/끄기</button><button data-spr3="view">무기 · 공격 방식 보기</button></div>`);
@@ -15428,9 +15511,9 @@ function fxTestPanel(){
       ABNOS.forEach(x=>[x.id].concat(x.variant ? [x.id+"~v"] : []).forEach(v=>{ const e = d[v] = Object.assign({seen:0, ctrl:0, sup:0, gifts:[]}, d[v]||{}); e.gifts = e.gifts || [];
         ["a","b"].forEach(h=>{ const G = x.gifts && x.gifts[h]; if(G && G.n && !e.gifts.includes(G.n)){ e.gifts.push(G.n); n++; } }); }));
       codexSave(d); return toast(`기프트 ${n}개를 도감에 추가했다`); }
-    if(k==="rage" && A.noFight) return toast(`이 환상체는 날뛰지 않는다(${FIGHT_TXT[fightType(A)][0]})`);
+    if((k==="rage" || k==="signrage") && A.noFight) return toast(`이 환상체는 날뛰지 않는다(${FIGHT_TXT[fightType(A)][0]})`);
     const team = S.fixers.slice(0, Math.max(1, +el.querySelector("#fxn").value)).filter(Boolean);
-    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" ? "rage" : "calm";
+    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN만 적용됨)"); q.__signNow = true; }
     S.requests.push(q); const r = await runMinigames(q, team); toast(r.abno && r.abno.how==="ctrl" ? "통제 성공" : r.abno && r.abno.how==="sup" ? "제압 성공" : "실패");
     if(r.abno){ const L = []; const lost = abnoApply(q, team, Object.assign({}, r.abno, {battle: r.combat && r.combat.battle}), L); if(r.abno.how) await abnoReward(q, team, r.abno, L);
       S.requests = S.requests.filter(x=>x.id!==q.id);
