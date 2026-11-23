@@ -9513,7 +9513,7 @@ let saveWarningShown=false;
 function save(){
   if(S){ S.money = Math.max(0, Number(S.money)||0); migrate1247(S); syncAllStatVitals(S); }
   if(S&&!FXTEST){
-    try{ localStorage.setItem(SAVE_KEY,JSON.stringify(S));saveWarningShown=false; }
+    try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({}, S, {ending: undefined})));/* 하루 정산 중 잠금(ending)은 저장하지 않는다 */saveWarningShown=false; }
     catch(e){if(!saveWarningShown){saveWarningShown=true;const w=document.getElementById("save-warning");
       if(w){w.hidden=false;w.textContent="저장 공간이 부족하거나 차단되어 자동 저장하지 못했습니다. 기록 → 저장 파일 내려받기로 백업해 주세요.";}
       else if(typeof toast==="function") toast("자동 저장 실패: 저장 파일을 내려받아 백업해 주세요."); } }
@@ -9524,7 +9524,8 @@ const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); }
 function relicRefresh(f){ if(!f || !f.gear) return; ['weapon','armor','acc'].forEach(sl=>{ const g = f.gear[sl]; if(!g || !g.relic) return; if(g.id==="relic-horus") g.id = "relic-tyr"; const R = RELICS.find(r=>"relic-"+r.id===g.id); if(!R) return;
   const it = relicItem(R, {id:g.bound, name:g.boundName}, g.seal||0); if(g.sealFree!=null) it.sealFree = g.sealFree; f.gear[sl] = it; }); }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ d.fixers.forEach(f=>{ try{ relicRefresh(f); }catch(_){ } }); d.money = Math.max(0, Number(d.money)||0); pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); if(!Number.isFinite(d.officeTrust)){
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ delete d.ending;   // 정산 도중 저장된 잠금이 남아 '하루 끝내기'가 막히지 않게
+ d.fixers.forEach(f=>{ try{ relicRefresh(f); }catch(_){ } }); d.money = Math.max(0, Number(d.money)||0); pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); if(!Number.isFinite(d.officeTrust)){
     const oldDone=Object.values(d.clients||{}).reduce((v,c)=>v+Math.max(0,Number(c&&c.n)||0),0);
     d.officeTrust=clamp(50+oldDone*2,0,100);
   }
