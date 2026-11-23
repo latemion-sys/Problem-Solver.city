@@ -11383,18 +11383,18 @@ const RUINS_ROOMS={"wing":{"n":"몰락한 날개의 잔당","sub":"엔케팔린 
 /* 의뢰인 등장 문장. 사람·가게·단체·익명을 나눠, 단체가 모자를 쥐고 들어오는 일이 없게 한다.
    등장 문장 다음에는 의뢰서(쪽지)에 적힌 글이 「」로 이어진다. */
 const STORY_OPEN = {
-  person:["오후 늦게, {w}이(가) 사무소 문을 두드렸다. 내민 쪽지엔 이렇게 적혀 있었다.",
+  person:["오후 늦게 {w}이(가) 사무소 문을 두드리고는 쪽지 한 장을 내밀었다.",
     "{w}이(가) 의자에 앉기도 전에 접은 종이부터 내밀었다.",
-    "점심 무렵, {w}이(가) 모자를 손에 쥔 채 들어와 의뢰서를 건넸다.",
-    "비가 그친 아침, 접수대 위에 {w}의 이름이 적힌 봉투가 놓여 있었다.",
+    "점심 무렵에 {w}이(가) 모자를 손에 쥔 채 들어와 의뢰서를 건넸다.",
+    "비가 그친 아침에 보니 접수대 위에 {w}의 이름이 적힌 봉투가 놓여 있었다.",
     "{w}이(가) 문간에서 한참 망설이다 들어왔다. 건넨 종이엔 몇 번이나 고쳐 쓴 흔적이 있었다."],
-  org:["비가 그친 아침, {c}에서 사람 하나가 쪽지를 들고 찾아왔다.",
-    "오후 늦게, {c}의 도장이 찍힌 의뢰서가 배달됐다.",
+  org:["비가 그친 아침에 {c}에서 사람 하나가 쪽지를 들고 찾아왔다.",
+    "오후 늦게 {c}의 도장이 찍힌 의뢰서가 배달됐다.",
     "{c}에서 나온 직원이 서류 봉투를 접수대에 올려놓았다.",
-    "점심 무렵, {c} 쪽 사람이 모자를 손에 쥔 채 들어와 의뢰서를 건넸다."],
+    "점심 무렵에 {c} 쪽 사람이 모자를 손에 쥔 채 들어와 의뢰서를 건넸다."],
   anon:["아침에 보니 문틈에 봉투 하나가 끼워져 있었다. 보낸 사람 이름은 없었다.",
     "누가 두고 갔는지 모를 봉투가 접수대 위에 놓여 있었다.",
-    "늦은 밤, 우편함에 이름 없는 봉투가 들어 있었다."]};
+    "늦은 밤에 보니 우편함에 이름 없는 봉투가 들어 있었다."]};
 const CLIENT_SHOP = /(사진관|슈퍼|생선 가게|부품상'|수리점|정비소|'둥근 저울'|'두 바퀴'|'손끝')$/;
 const CLIENT_ORG = /(조합|중개소|연구소|사무실|관리소|사무소|상인회|공방|연락실|조사실|작전실|조사반|감사실|대응실|모임|연합|업체|진료소|위원회|출판사)$/;
 function clientKind(c){ c = String(c||""); if(/^익명/.test(c)) return "anon"; if(CLIENT_SHOP.test(c)) return "shop"; if(CLIENT_ORG.test(c)) return "org"; return "person"; }
@@ -11448,10 +11448,34 @@ const STORY_THREAT_ABNO = {
   "도시 악몽":"이 일을 감당할 사무소는 많지 않다. 의뢰인도 그걸 알고 여기까지 찾아왔다.",
   "도시의 별":"도시 전체가 숨죽이고 지켜보는 일이다. 이름난 사무소들도 몇 번이나 손을 뗐다고 한다."};
 const lootLine = q => { const t = lootRumor(q); return t ? `그러고 보니, ${t}` : t; };
-const STORY_V = 2;   // 사연 문장 규칙이 바뀌면 올린다 — 저장된 범용 사연은 다시 만든다
+
+/* 의뢰서 내용을 「」로 그대로 옮기지 않고, 사무소 사람이 전해 주듯 풀어 쓴다.
+   "~해 달라"는 부탁은 "~해 달라는 것이었다"로, 사정을 적은 문장은 "~다고 했다"로 바꾼다. */
+function retellBg(x, now){ x = x.trim().replace(/[.。]$/,""); if(!x) return ""; const V = now ? "한다" : "했다";
+  if(/(고 했다|고 한다|라고 한다|라고 했다)$/.test(x)) return x + ".";
+  if(/ 말 것$/.test(x)) return x.replace(/ 말 것$/," 말라는 당부도 붙어 있었다.");
+  if(/이다$/.test(x)) return x.replace(/이다$/,`이라고 ${V}.`);
+  if(/다$/.test(x)) return x + `고 ${V}.`;
+  return now ? x + "." : `"${x}." 의뢰인은 그렇게 못 박았다.`;
+}
+function retellReq(text){
+  const t = String(text||"").replace(/[.。]\s*$/,"");
+  const parts = t.split(/(?<=[.。])\s+/).map(x=>x.trim()).filter(Boolean);
+  const ri = parts.findIndex(x=>/달라[.。]?$|달라\./.test(x) || /달라$/.test(x.replace(/[.。]$/,"")));
+  if(ri < 0) return [`의뢰서에는 이렇게 적혀 있었다 — ${t}.`];
+  const req = parts[ri].replace(/[.。]$/,""), before = parts.slice(0,ri), after = parts.slice(ri+1);
+  const out = [];
+  if(before.length){ out.push(`의뢰서에 따르면 ${before.map(x=>retellBg(x,true)).join(" ")}`); out.push(`그러니 ${req}는 내용이었다.`); }
+  else out.push(`의뢰 내용은 ${req}는 것이었다.`);
+  after.forEach(x=>{ const r = retellBg(x,false); if(r) out.push(r); });
+  return [out.join(" ")];
+}
+const SAY_LEAD = ["의뢰인이 덧붙였다.","의뢰인이 입을 열었다.","의뢰인이 조용히 말했다.","잠시 뒤, 의뢰인이 말을 이었다."];
+const withLead = l => /^"/.test(l) ? `${pick(SAY_LEAD)} ${l}` : l;
+const STORY_V = 3;   // 사연 문장 규칙이 바뀌면 올린다 — 저장된 범용 사연은 다시 만든다
 function storyIsOldGeneric(q){ const st = q.story; if(!Array.isArray(st) || !st.length) return true;
   const t0 = String(q.text||"").replace(/^지령: /,"").replace(/[.。]$/,"");
-  return st.some(l => l===`"${t0}"` || l===`"${t0}."` || l===`"${q.text}."`); }
+  return st.some(l => l===`"${t0}"` || l===`"${t0}."` || l===`"${q.text}."` || (q.storyV!==STORY_V && l===`「${t0}.」`)); }
 /* 의뢰 목록에 딸린 장면 — 의뢰 문장으로 찾는다(범용 사연으로 덮였던 저장을 되살릴 때도 쓴다) */
 let SCENE_BY_TEXT = null;
 function authoredScene(q){
@@ -12204,23 +12228,23 @@ function reqStory(q){
   if(q.story && (q.storyV===STORY_V || q.arc || q.officeStoryId!=null || !storyIsOldGeneric(q))) return q.story;
   const L = [];
   if(q.prescript){ L.push("아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉엔 아무것도 적혀 있지 않았다.", "골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다.", `봉투 속 종이에는 한 줄뿐이다 — "${String(q.text).replace(/^지령: /,"")}"`, "따르면 사례가 온다. 따르지 않으면 대가를 치른다."); }
-  else if(q.hanaStar){ L.push("하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달되었다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다.", `「${String(q.text).replace(/[.。]$/,"")}.」`, "협회는 이 일을 '지정 의뢰'라고 불렀다. 해내면 도시가 사무소 이름을 다시 부를 것이다. 실패하면, 아마 다른 이름으로.", q.bossLine || ""); }
-  else if(q.trio){ L.push("하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다.", `「${String(q.text).replace(/^하나 협회의 지명 — /,"").replace(/[.。]$/,"")}.」`, STORY_THREAT[threatOf(q)]); }
-  else if(q.scarJob){ L.push("흉터가 다시 왔다. 이번에는 금고 쪽을 보지 않고, 접은 종이 한 장을 내밀었다.", `「${String(q.text).replace(/^남겨진 흉터의 의뢰 — /,"").replace(/[.。]$/,"")}.」`, "\"값은 넉넉히 치르지. 우리 사이에 그 정도는.\""); }
+  else if(q.hanaStar){ L.push("하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달되었다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다.", ...retellReq(q.text), "협회는 이 일을 '지정 의뢰'라고 불렀다. 해내면 도시가 사무소 이름을 다시 부를 것이다. 실패하면, 아마 다른 이름으로.", q.bossLine || ""); }
+  else if(q.trio){ L.push("하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다.", ...retellReq(String(q.text).replace(/^하나 협회의 지명 — /,"")), STORY_THREAT[threatOf(q)]); }
+  else if(q.scarJob){ L.push("흉터가 다시 왔다. 이번에는 금고 쪽을 보지 않고, 접은 종이 한 장을 내밀었다.", ...retellReq(String(q.text).replace(/^남겨진 흉터의 의뢰 — /,"")), "\"값은 넉넉히 치르지. 우리 사이에 그 정도는.\""); }
   else if(q.kind==="환상체"){
     // 생김새·피해는 전해 들은 이야기로, 맡길 일은 의뢰서 글로 나눠 보여 준다
     const t = String(q.text).replace(/[.。]$/,""), m = t.match(/^(.*[.。])\s*([^.。]*달라)$/);
-    if(m) L.push(storyOpen(q), `「${m[2]}.」`, "의뢰인이 전해 들은 이야기는 이랬다.", m[1]);
+    if(m) L.push(storyOpen(q), ...retellReq(m[2]), "의뢰인이 전해 들은 이야기는 이랬다.", m[1]);
     else L.push(storyOpen(q), "의뢰인이 전해 들은 이야기는 이랬다.", `${t}.`);
     L.push(pick(["다들 두 번 다시 가까이 가고 싶지 않다고 했단다.","말을 마친 의뢰인은 한동안 창밖만 내다봤다.","의뢰인은 직접 본 건 아니라고 몇 번이나 덧붙였다."]), STORY_THREAT_ABNO[threatOf(q)]); }
-  else if(q.distFoe){ L.push(storyOpen(q), `「${String(q.text).replace(/[.。]$/,"")}.」`, "사람이었던 무언가라고 했다. 이름을 부르면 돌아볼지도 모른다고, 의뢰인은 작게 덧붙였다."); }
+  else if(q.distFoe){ L.push(storyOpen(q), ...retellReq(q.text), "사람이었던 무언가라고 했다. 이름을 부르면 돌아볼지도 모른다고, 의뢰인은 작게 덧붙였다."); }
   else { const k = q.kind==="호위" || q.kind==="수색" ? q.kind : (q.attrs||["str"])[0];
     const t0 = String(q.text).replace(/^지령: /,"").replace(/[.。]$/,"");
     L.push(q.assoc && ASSOCS[q.assoc] ? `${ASSOCS[q.assoc].n} 지부의 직원이 서식에 맞춘 의뢰서를 들고 왔다. 귀퉁이에 ${ASSOCS[q.assoc].sig}의 문장이 찍혀 있다.` : storyOpen(q));
     // 게시판 문장은 의뢰인의 말이 아니라 의뢰서에 적힌 글이다
-    L.push(`「${t0}.」`);
-    const tk = storyTailKind(q, t0); L.push(pick(STORY_TAIL[tk]));
-    if(q.goal==="제압" && tk==="subdue") L.push("\"죽일 필요까진 없어요.\"");
+    L.push(...retellReq(t0));
+    const tk = storyTailKind(q, t0); L.push(withLead(pick(STORY_TAIL[tk])));
+    if(q.goal==="제압" && tk==="subdue") L.push("\"죽일 필요까진 없어요.\" 의뢰인이 한 번 더 못 박았다.");
     if(q.goal==="사살" && tk!=="kill" && !/살려 둘|끝내/.test(t0)) L.push(STORY_TAIL.kill[0]);
     if(q.synd){ const sy = SYNDICATES.find(x=>x.id===q.synd); if(sy) L.push(`뒤에 ${sy.n}이(가) 있다는 말이 돈다. 그 이름을 듣자 사무소 안이 잠깐 조용해졌다.`.replace(`${sy.n}이(가)`, jo(sy.n,"이"))); }
     if(q.hazard) L.push("보수는 평소보다 높다. 그만큼 위험하다는 뜻이다."); }
