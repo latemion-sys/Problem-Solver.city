@@ -485,6 +485,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .mg-f{display:flex;justify-content:flex-end;padding:6px 14px 12px}
 .pk-text{background:#0f0e13;border:1px solid #3a3740;border-radius:6px;padding:9px 12px;font-size:14px;min-height:40px;cursor:pointer}
 .mg-ctrl{flex-wrap:wrap}.pk-moves{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1 1 100%}
+.pk-moves button.pk-shin{border-color:#b8913c;background:linear-gradient(180deg,#2b2414,#18140c)}.pk-moves button.pk-shin b{color:#ffd98a}.pk-moves button.pk-shin:disabled{opacity:.55}
 .pk-moves button{text-align:left;padding:8px 10px;font-size:14px;display:flex;flex-direction:column;gap:2px}.pk-moves small{color:var(--muted);font-size:11px}
 .pk-moves i{font-style:normal}.pk-moves i.good{color:var(--green)}.pk-moves i.bad{color:var(--red)}
 .pk-sw{flex:1 1 100%;margin-top:2px}
@@ -1618,7 +1619,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "V.a1.2.6.8"; // 개인 신뢰 · 주변 사무소 · 지부 탐사 · 연속 사건
+const VERSION = "V.a1.2.7"; // 신(心) · 망(望) 전투 추가 행동 · 신을 깨우친 적 · 금빛 신 · 망 고리 연출
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -3510,7 +3511,10 @@ function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r +
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
 const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 사람이 끼면 성공률 -10%p
 /* 신(心) · 망(望)
-   신: 그 해결사가 나서면 의뢰 성공률 +1%p(상한 97%를 넘어설 수 있다), 전투 위력 +1. 쓸 때마다 정신력 -5.
+   직접 싸우는 전투: 신을 깨우친 해결사는 신이 꺼진 채로 시작한다. 4번째 칸 '신(心)을 몸에 두른다'(정신력 -5, 위력 +1) →
+   그 뒤 '무기에 망(望)을 감는다'(익힌 망까지, 한 겹마다 위력 +1, 정신력 8 · 15 · 21 · 26 · 50). 둘 다 턴을 쓰지 않는 추가 행동이며 한 턴에 한 번.
+   전투 중 정신력이 -20 이하로 떨어지면 망이 풀리고, -35 이하면 신도 꺼진다. 2급 이상 인간 적 가운데 아주 일부도 신을 깨우친 채 나온다.
+   자동 진행: 신: 그 해결사가 나서면 의뢰 성공률 +1%p(상한 97%를 넘어설 수 있다), 전투 위력 +1. 쓸 때마다 정신력 -5.
    신을 자주 쓰다 보면(나선 횟수) 무기에 망(望)을 감을 수 있다 — 망 하나마다 신과 따로 위력 +1, 대신 쓸 때 정신력이 더 든다(1~5망: 8 · 15 · 21 · 26 · 50). 최대 5망.
    관리에서 신 · 망을 켜고 끌 수 있다(끄면 효과도 대가도 없다). */
 const SHIN_RATE = 1, SHIN_POW = 1, SHIN_MP = 5, MANG_MAX = 5, MANG_MP = [8, 15, 21, 26, 50], MANG_NEED = [8, 20, 35, 55, 80];
@@ -4219,6 +4223,7 @@ function mgCombat(ctx){
     const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 스킬을 골라 코인을 던져 합을 겨룬다 — 위력이 낮은 쪽 코인이 깨지고, 승리하면 무기·기술·남은 코인에 따라 피해를 준다. 쓰러뜨린 뒤 ${goal}하면 성공, 모두 쓰러지면 실패 — 턴 제한은 없다.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100+statHpPlus(f), shownHp:100+statHpPlus(f), max:100+statHpPlus(f), lg:leadGear(f), wt: weaponTypeOf(wGear(f)) || "none", spec: weaponSpecOf(wGear(f)), armor: armorSpecOf(aGear(f)), sp2: f.ego && f.ego.special || null, wsp: (wspOf(wGear(f))||{}).id || null, ye:0, wchg:0, hits:0, charge:0, shield:0, endured:false}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
+    party.forEach(p=>{ p.shinLive = false; p.mangLive = 0; p.shinUsed = false; p.mangPeak = 0; p.extraTurn = 0; });   // 신(心) · 망(望): 전투 안에서 두르고 감는다
     const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null,
       reqC = DF && DIST_TIER[DF.th] ? Math.max(1, q.req - DIST_TIER[DF.th].req) : q.req,   // 뒤틀림: 합 전투는 그 등급의 본래 요구치로 겨룬다(가산된 요구치는 자동 진행 성공률에만)
       kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
@@ -4243,6 +4248,9 @@ function mgCombat(ctx){
     foe.max = Math.max(1,Math.round(foeHpValue(q,AB,DF,g0) * (foe.aug ? clamp(0.85+0.15*augMul,0.85,1.2) : 1)));
     foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = !AB&&!DF ? (FOE_SP_BALANCE[g0]||0) : 0;
     foe.baseDamage = foeDmgValue(q,AB,DF,g0);
+    // 신(心)을 깨우친 인간 적: 2급 이상 가운데 아주 일부. 첫 턴에 신을 두르고, 그 뒤 망을 한 겹씩 감는다(추가 행동)
+    foe.shinMax = 0; foe.shinLive = false; foe.mangLive = 0;
+    if(!AB && !DF && g0 <= 2 && (q.foeShin || Math.random() < (g0 >= 2 ? 0.03 : g0 === 1 ? 0.06 : 0.2))) foe.shinMax = g0 >= 2 ? 1 : g0 === 1 ? 2 : 3;
     if(!AB&&!DF&&g0<=4)foe.skills.forEach(sk=>{sk.cp+=1;});
     const bonus = me => relicFx(me.f,"tyr") ? 0 : clamp(Math.round((power(me.f,["str"])/Math.max(1,reqC) - 1)*5), -4, 4);   // 요구치에 못 미치면 크게 밀린다(최대 -4)
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
@@ -4288,7 +4296,8 @@ function mgCombat(ctx){
     const antiDist = me => DF ? distEdge(me.f, DF.th) : null;
     const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } }
       if(me.wsp==="cloud") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
-    const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base + shinPow(me.f)), cp: sk.cp + supCp() + w.cp}); };   // 신 +1 · 망 하나당 +1
+    const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
+    const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base + livePow(me)), cp: sk.cp + supCp() + w.cp}); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
     const techOf = me => { const rt = relicTechOf(me.f); if(rt) return Object.assign({id:rt}, TECHS[rt]); const id = me.f.tech && techFits(me.f.tech, me.wt) ? me.f.tech : "allout"; return Object.assign({id}, TECHS[id]); };
@@ -4343,7 +4352,29 @@ function mgCombat(ctx){
     // 뒤틀림은 다음 두 수까지 미리 정해 둔다 — '뒤틀림을 보는 눈'을 가진 이가 있으면 그것이 보인다
     function pickFoeSkill(){ if(AB && AB.movement) foe.allow = rnd(0,2);
       if(DF){ foe.q = foe.q || []; while(foe.q.length < 3) foe.q.push(rollFoeSkill(turn + foe.q.length)); foeSkill = foe.q.shift(); }
-      else foeSkill = rollFoeSkill(turn); }
+      else foeSkill = rollFoeSkill(turn);
+      { const fb = foeLivePow(); if(fb) foeSkill = Object.assign({}, foeSkill, {base: foeSkill.base + fb}); } }
+    const foeLivePow = () => foe.shinMax ? (foe.shinLive ? SHIN_POW : 0) + foe.mangLive : 0;
+    function foeShinStep(){ if(!foe.shinMax || foe.hp<=0 || outcome) return "";
+      if(!foe.shinLive){ foe.shinLive = true; return `<b style="color:#ffd27a">${esc(jo(foe.name,"이"))} 신(心)을 몸에 둘렀다 — 황금빛이 일렁인다</b>`; }
+      if(foe.mangLive < foe.shinMax && (turn % 2 === 0 || foe.hp < foe.max*0.5)){ foe.mangLive++; return `<b style="color:#ffe6a8">${esc(jo(foe.name,"이"))} 무기에 망(望)을 감았다 — 망 ${foe.mangLive}</b>`; }
+      return ""; }
+    // 4번째 칸: 신을 두르고, 그 뒤 망을 감는다. 턴을 쓰지 않는 추가 행동(한 턴에 한 번)
+    const mangCap = f => f.mangOff === true ? 0 : Math.min(MANG_MAX, f.mang||0);
+    function shinBtn(me){ const f = me.f; if(!f.shin || f.shinOff === true) return "";
+      const used = me.extraTurn === turn, cap = mangCap(f);
+      if(!me.shinLive){ const c = SHIN_MP, no = used || f.mp <= c;
+        return `<button data-sk="4" class="pk-shin" ${no?"disabled":""}><b>신(心)을 몸에 두른다</b><small>추가 행동 — 턴을 쓰지 않는다 · 위력 +${SHIN_POW} · 정신력 -${c}${used?"<br>이번 턴에는 이미 썼다":f.mp<=c?"<br>정신력이 모자라다":""}</small></button>`; }
+      if(me.mangLive >= cap) return `<button data-sk="4" class="pk-shin" disabled><b>무기에 망(望)을 감는다</b><small>${cap ? `익힌 망 ${cap}겹을 모두 감았다` : "아직 익힌 망이 없다"} · 신 위력 +${SHIN_POW}${me.mangLive ? ` · 망 위력 +${me.mangLive}` : ""}</small></button>`;
+      const c = MANG_MP[me.mangLive], no = used || f.mp <= c;
+      return `<button data-sk="4" class="pk-shin" ${no?"disabled":""}><b>무기에 망(望)을 감는다</b><small>추가 행동 — 턴을 쓰지 않는다 · 망 ${me.mangLive} → ${me.mangLive+1} · 위력 +1 · 정신력 -${c}${used?"<br>이번 턴에는 이미 썼다":f.mp<=c?"<br>정신력이 모자라다":""}</small></button>`; }
+    function shinAct(){ const me = party[act], f = me.f; if(!f.shin || f.shinOff === true || me.extraTurn === turn) return;
+      const wrap = me.shinLive; if(wrap && me.mangLive >= mangCap(f)) return;
+      const c = wrap ? MANG_MP[me.mangLive] : SHIN_MP; if(f.mp <= c) return;
+      f.mp = Math.max(1, f.mp - c); me.sp = clamp(me.sp - Math.max(1, Math.round(c/Math.max(1, f.mpMax)*30)), -45, 45); me.extraTurn = turn; me.shinUsed = true;
+      const line = !wrap ? (me.shinLive = true, `<b style="color:#ffd27a">${esc(jo(me.name,"이"))} 신(心)을 몸에 둘렀다 — 황금빛이 일렁인다 (위력 +${SHIN_POW} · 정신력 -${c})</b>`)
+        : (me.mangLive++, me.mangPeak = Math.max(me.mangPeak, me.mangLive), `<b style="color:#ffe6a8">${esc(jo(me.name,"이"))} 소망을 꼬아 무기에 망(望)을 한 겹 감았다 — 망 ${me.mangLive} (위력 +1 · 정신력 -${c})</b>`);
+      tick = [line].concat(tick ? [tick] : []).join("<br>"); skillMenu(); }
     const coinStr = sk => "●".repeat(sk.coins);
     function statusLine(){ const me = party[act], a = [], b = [];
       if(foe.clock != null) a.push(`징벌 새의 시간 ${Math.max(0, foe.clock - turn + 1)}턴`); if(AB && AB.movement) a.push(`이번 악장: <b>${["공격","방어","기술"][foe.allow]}</b>만 닿는다`);
@@ -4376,6 +4407,7 @@ function mgCombat(ctx){
         <button data-sk="0" ${!hasBullet?"disabled":""}><b>기본 공격</b><small>${ak.map(c=>c.n).join(" · ")} 가운데 하나가 나간다 · 합 위력 ${lo}~${hi} · 기본 피해 약 ${baseShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}<br><span style="color:${ca}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${la} ${Math.round(pA*100)}%`}</span></small></button>
         <button data-sk="1" ${foeSkill.def?"disabled":""}><b>방어</b><small>${dc.n} · 합 없음 · 받는 피해 50% 감소 · 민첩 고정 감소 ${statGuardMinus(me.f)} · 반격 없음${foeSkill.def?"<br>적이 방어 중이므로 선택 불가":""}</small></button>
         <button data-sk="2" class="pk-tech" ${!hasBullet&&!tk.sk.def?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · ${tsk.def?"방어 기술":`피해 계수 ${(TECH_DAMAGE_MUL[tk.T.id]||1).toFixed(2)}배 · 기본 피해 약 ${techniqueShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}`}<br><span style="color:${ct}">${foeSkill.def?"적 방어 · 피해 감소":`합 ${lt} ${Math.round(pT*100)}%`}</span> · ${tk.T.d}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
+      { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", sb); } }
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
@@ -4603,10 +4635,13 @@ function mgCombat(ctx){
         party.forEach(p=>{ if(p===foe.fuseMark && p.hp > 0) p.hp = Math.max(0, p.hp - 80); });
         tick = tk.concat([`<b style="color:#ff8a7a">성냥불이 터졌다. 소녀가 ${esc(jo(foe.fuseMark.name,"을"))} 끌어안고 폭발했다</b>`]).join(" · "); m.info.innerHTML = `<div class="pk-text">${tick}</div>`; return finish("fuse"); }
       tick = tk.join(" · ");
+      party.forEach(p=>{ if(!p.shinLive || p.hp<=0) return;
+        if(p.sp <= -35){ p.shinLive = false; p.mangLive = 0; tick = [tick, `<span style="color:#b9a890">${esc(p.name)}: 마음이 흐트러져 신(心)이 꺼졌다</span>`].filter(Boolean).join(" · "); }
+        else if(p.mangLive && p.sp <= -20){ p.mangLive = 0; tick = [tick, `<span style="color:#b9a890">${esc(p.name)}: 정신력이 바닥나 감아 둔 망(望)이 풀렸다</span>`].filter(Boolean).join(" · "); } });
       if(foe.hp<=0){ if(revive()){ tick = [tick, foe.reviveNote].filter(Boolean).join(" · "); foe.reviveNote = null; } else return finishMenu(); }
       if(party.every(p=>p.hp<=0)) return finish("lost");
       if(party[act].hp<=0) act = party.findIndex(p=>p.hp>0);
-      turn++; pickFoeSkill(); skillMenu(); }
+      turn++; { const fs = foeShinStep(); if(fs) tick = [tick, fs].filter(Boolean).join(" · "); } pickFoeSkill(); skillMenu(); }
     function finish(why){
       if(done) return; done = true;
       const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0), prog = 1 - foe.hp/foe.max;
@@ -4617,11 +4652,12 @@ function mgCombat(ctx){
       else if(why==="fuse"){ score = 0.1; text = "성냥불이 터졌다. 소녀는 재가 되어 흩어졌다. 의뢰 실패"; }
       else { score = 0.4*prog; text = "목표를 이루지 못했다 — 의뢰 실패"; }
       if(win && score < CLEAN_WIN && !AB) text = text.replace(/ — (의뢰|제압) 성공$/, "") + " — 다만 상처가 깊다. 어떻게 마무리될지는 판정으로 정해진다";
-      const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:Math.round(100*p.hp/p.max), sp:p.sp, fought: p.fought, death: p.death || null, wound: p.hp<=0 ? 3 : woundOf(p.hp,p.max)}))};
+      const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:Math.round(100*p.hp/p.max), sp:p.sp, fought: p.fought, shinUsed: !!p.shinUsed, mangPeak: p.mangPeak||0, death: p.death || null, wound: p.hp<=0 ? 3 : woundOf(p.hp,p.max)}))};
       setTimeout(()=>{ mgResult(m, res.score, text).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
-      if(b.dataset.sk!==undefined && phase==="skill"){ party[act].fought = true; resolveClash(+b.dataset.sk,b.dataset.ammoType); }
+      if(b.dataset.sk==="4"){ if(phase==="skill") shinAct(); }
+      else if(b.dataset.sk!==undefined && phase==="skill"){ party[act].fought = true; resolveClash(+b.dataset.sk,b.dataset.ammoType); }
       else if(b.dataset.fin && phase==="finish"){ outcome = b.dataset.fin; m.ctrl.innerHTML = ""; finish(); }
       else if(b.dataset.lamp && phase==="lamp"){ const mk = foe.lampPick;
         if(b.dataset.lamp==="out"){ party.splice(party.indexOf(mk), 1); act = 0; tick = `${esc(jo(mk.name,"을"))} 어둠 밖으로 빼냈다. 남은 이들이 싸운다.`; }
@@ -4731,12 +4767,12 @@ function mgCombat(ctx){
         c.restore();
       } else {
       if(DF && outcome!=="사살") drawDistortFx(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, DF.lvl, now/1000, 1-fworst);
-      drawFixer(c, POS.foe.x+fp.dx + (DF ? (Math.random()-0.5)*DF.lvl*1.5 : 0), POS.foe.gy+fp.dy, POS.foe.h*0.96*(DF ? 1 + 0.04*DF.lvl : 1), {face:-1, spr: !DF, col: DF ? hexMix(fcol, "#2a0810", 0.45) : fcol, state: "combat", weapon: foe.spec, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot}); }
+      drawFixer(c, POS.foe.x+fp.dx + (DF ? (Math.random()-0.5)*DF.lvl*1.5 : 0), POS.foe.gy+fp.dy, POS.foe.h*0.96*(DF ? 1 + 0.04*DF.lvl : 1), {face:-1, spr: !DF, col: DF ? hexMix(fcol, "#2a0810", 0.45) : fcol, state: "combat", weapon: foe.mangLive && foe.spec ? Object.assign({}, foe.spec, {mang: foe.mangLive}) : foe.spec, shin: foe.shinLive && !outcome ? {murk: 0} : null, mk: 0, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot}); }
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
       const mcol = hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash);
       const mhp = me.shownHp==null ? me.hp : me.shownHp;
-      drawFixer(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, spr:true, col:mcol, state:"combat", weapon: me.spec, armor: me.armor, sw:mp.sw, atk: mp.atk, rot: mp.rot + mrot,
+      drawFixer(c, POS.me.x+mp.dx - (1-ease(ent))*260, POS.me.gy+mp.dy, POS.me.h*0.96, {face:1, spr:true, col:mcol, state:"combat", weapon: me.mangLive && me.spec ? Object.assign({}, me.spec, {mang: me.mangLive}) : me.spec, shin: me.shinLive && me.hp > 0 ? {murk: clamp(-me.sp/40, 0, 1), ally: true} : null, mk: clamp(-me.sp/40, 0, 1), armor: me.armor, sw:mp.sw, atk: mp.atk, rot: mp.rot + mrot,
         acc: me.lg && me.lg.acc ? me.lg.accColor : null});
     }
     function overlay(now, keep){
@@ -4811,7 +4847,7 @@ function mgCombat(ctx){
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    pickFoeSkill(); tick = AXN.join("<br>");
+    { const fs = foeShinStep(); if(fs) AXN.push(fs); } pickFoeSkill(); tick = AXN.join("<br>");
     // 큰 새: 일대가 어두워지고, 체력이 가장 약한 이를 등불로 홀린다
     if(AB && AB.fx==="lamp"){ const mk = party.slice().sort((x,y)=>x.f.hpMax - y.f.hpMax)[0];
       if(party.length < 2){ foe.lampMark = mk; tick = (tick ? tick+"<br>" : "") + `<b style="color:#ff8a7a">일대가 어둠에 잠겼다. 등불이 ${esc(jo(mk.name,"을"))} 부른다 — 3턴 안에 쓰러뜨리지 못하면 끌려간다</b>`; }
@@ -6749,7 +6785,12 @@ async function dispatch(qid, fids, modeArg){
   });
   team.forEach(f=>{ const k = weaponTypeOf(wGear(f)) || "none"; f.wuse = f.wuse || {}; f.wuse[k] = (f.wuse[k]||0) + 1; });
   // 신(心) · 망(望)을 쓴 대가: 정신력. 신을 쓴 횟수가 쌓이면 무기에 망을 감을 수 있다
-  team.forEach(f=>{ if(!shinOn(f)) return; const c = shinCost(f), m = mangN(f); f.mp = Math.max(1, f.mp - c); f.shinUses = (f.shinUses||0) + 1;
+  team.forEach(f=>{ const cb = combat && combat.battle ? combat.battle.find(x=>x.f===f) : null;
+    if(cb && f.shin){   // 직접 싸운 전투: 신 · 망은 전투 안에서 두르고 감았고, 정신력도 그때 썼다
+      if(cb.shinUsed){ f.shinUses = (f.shinUses||0) + 1; lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 전투에서 신(心)을 둘렀다${cb.mangPeak ? ` · 망(望) ${cb.mangPeak}겹` : ""}</span>`);
+        if(mangReady(f) && f.mangHint !== (f.mang||0)){ f.mangHint = f.mang||0; lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`); addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`); } }
+      return; }
+    if(!shinOn(f)) return; const c = shinCost(f), m = mangN(f); f.mp = Math.max(1, f.mp - c); f.shinUses = (f.shinUses||0) + 1;
     lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 신(心)${m ? ` · 망(望) ${m}` : ""}</span> — 정신력 -${c}`);
     if(mangReady(f) && f.mangHint !== (f.mang||0)){ f.mangHint = f.mang||0; lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`); addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`); } });
   // 환상체 기믹: 쇳물에 녹는 무기 · 따라붙은 요정 · 고양이의 회수
@@ -13549,7 +13590,7 @@ const RTW = (()=>{
   const FS = `#version 300 es
     precision highp float;
     in vec3 wpos; in vec3 wn; in float vm; in vec3 opos; out vec4 o;
-    uniform vec3 sun; uniform vec3 eye; uniform vec3 metal; uniform vec3 glow; uniform vec3 cloth; uniform int outline; uniform vec3 lineCol; uniform int glowOn; uniform float tm; uniform vec3 ecol; uniform int haloSet; uniform vec3 sr;
+    uniform vec3 sun; uniform vec3 eye; uniform vec3 metal; uniform vec3 glow; uniform vec3 cloth; uniform int outline; uniform vec3 lineCol; uniform int glowOn; uniform float tm; uniform vec3 ecol; uniform int haloSet; uniform vec3 sr; uniform float mk;
     float hsh(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x + p.y + p.z)); }
     float vnoise(vec3 x){ vec3 i = floor(x), f = fract(x); f = f*f*(3.0-2.0*f);
       return mix(mix(mix(hsh(i), hsh(i+vec3(1,0,0)), f.x), mix(hsh(i+vec3(0,1,0)), hsh(i+vec3(1,1,0)), f.x), f.y),
@@ -13577,14 +13618,27 @@ const RTW = (()=>{
       if(t<pos.y){ float f=(t-pos.x)/(pos.y-pos.x); f=f*f*(3.0-2.0*f); return mix(a,b,f); }
       float f=(t-pos.y)/(pos.z-pos.y); f=f*f*(3.0-2.0*f); return mix(b,c,f); }
     vec3 srgb(vec3 x){ x=clamp(x,0.0,1.0); return mix(12.92*x, 1.055*pow(x,vec3(1.0/2.4))-0.055, step(0.0031308,x)); }
+    // 망(望): 달빛처럼 아른거리는 황금빛. 고리 둘레(opos = 고리 자신의 좌표)를 따라 흰 금과 금 사이를 천천히 오가며 밝기가 잔잔히 일렁인다
+    vec3 mangCol(vec3 q){
+      float u = atan(q.y, q.x)/6.2832;
+      if(mk > 0.35 && hsh(vec3(floor(u*40.0), floor(tm*3.0), 7.0)) < (mk-0.35)*0.55) discard;   // 정신력이 낮으면 가닥이 끊긴다
+      float sh = 0.5 + 0.5*sin(u*12.566 + tm*0.9 + q.z*3.0);
+      vec3 b = mix(vec3(0.87, 0.58, 0.16), vec3(1.0, 0.90, 0.66), 0.25 + 0.35*sh);
+      float shim = 0.82 + 0.18*sin(tm*1.6 + u*88.0)*sin(tm*0.7 + u*31.0), flow = 0.78 + 0.22*sin(u*31.4 - tm*4.5);
+      float fl = mk > 0.2 ? 0.75 + 0.25*sin(tm*23.0)*sin(tm*7.3) : 1.0;
+      return mix(b, vec3(0.09, 0.08, 0.075), mk*0.7)*shim*flow*fl*(1.0 - mk*0.3); }
     void main(){
       if(outline==1 && ((int(vm+0.5)>=22 && int(vm+0.5)<=24) || int(vm+0.5)==26 || int(vm+0.5)==32 || int(vm+0.5)==35)) discard;
+      if(outline==1 && int(vm+0.5)==40){ o = vec4(srgb(vec3(0.36, 0.25, 0.08)*(1.0 - mk*0.5)),1.0); return; }
+      if(outline==3){ if(int(vm+0.5)!=40) discard; o = vec4(srgb(mangCol(opos)*1.2),1.0); return; }
       if(outline==1){ o = vec4(srgb((int(vm+0.5)==18 || int(vm+0.5)==25) ? ecol*1.1 : lineCol),1.0); return; }
       int mm = int(vm+0.5); if(outline==2){ if(haloSet==1 ? (mm!=18 && (mm<22 || mm>26) && mm!=32) : (mm!=0 && mm!=3 && mm!=8)) discard; o = vec4(srgb(haloSet==1 ? ecol : glow),1.0); return; }
       vec3 N = normalize(wn); if(!gl_FrontFacing) N = -N;
       int m = int(vm+0.5);
       if(m==3 || (m==8 && glowOn==1)){ o = vec4(srgb(glow*1.6),1.0); return; }
       if(m==18){ o = vec4(srgb(energy(N)),1.0); return; }
+      if(m==40){ vec3 b = mangCol(opos); float f = pow(abs(dot(N, eye)), 0.7);
+        o = vec4(srgb(mix(b*0.5, mix(b, vec3(1.0, 0.98, 0.92), 0.28*(1.0 - mk)), f)*1.05), 1.0); return; }
       if(m==25){ // 빛: 날을 따라 흐르는 결
         float fl = 0.80 + 0.20*sin(opos.z*48.0 - tm*7.0) * sin(opos.z*13.0 + tm*2.3);
         float f = pow(abs(dot(N, eye)), 0.8);
@@ -13656,7 +13710,7 @@ const RTW = (()=>{
       gl = cv.getContext("webgl2", {antialias:true, premultipliedAlpha:true, preserveDrawingBuffer:true, alpha:true});
       if(!gl) return ok = false;
       PM = prog(VS, FS); PB = prog(VSB, FSB);
-      ["M","V","P","LW","ext","sun","eye","metal","glow","cloth","outline","lineCol","glowOn","tm","ecol","haloSet","sr","act"].forEach(n=>ULm[n] = gl.getUniformLocation(PM, n));
+      ["M","V","P","LW","ext","sun","eye","metal","glow","cloth","outline","lineCol","glowOn","tm","ecol","haloSet","sr","act","mk"].forEach(n=>ULm[n] = gl.getUniformLocation(PM, n));
       ["rc","bt","dt","dr","fr","nf","col","vb","trim","hasTrim","region"].forEach(n=>ULb[n] = gl.getUniformLocation(PB, n));
       quad = gl.createVertexArray(); gl.bindVertexArray(quad); const qb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, qb);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0, 1,0, 0,1, 1,1]), gl.STATIC_DRAW);
@@ -13690,6 +13744,65 @@ const RTW = (()=>{
     gl.bindVertexArray(null);
     return {vao, n: D.ix.length, type: D.ix instanceof Uint16Array ? gl.UNSIGNED_SHORT : gl.UNSIGNED_INT, H: D.H};
   }
+  /* 망(望) 고리: 세 가닥을 꼬아 엮은 금빛 튜브 + 가는 속심(반지름 1, z축 둘레). 무기마다 굵기 단면(prof)에 맞춰 늘려 감는다 */
+  let RING = null;
+  function ringMesh(){ if(RING) return RING;
+    const SEG = 120, SD = 6, STR = 4, nv = STR*(SEG+1)*SD, p0 = new Float32Array(nv*3), nn = new Float32Array(nv*3), dl = new Float32Array(nv*3), dw = new Float32Array(nv*3), mt = new Float32Array(nv).fill(40), ix = [];
+    const at = (s, u)=>{ const th = u*Math.PI*2, ph = 7*th + s*Math.PI*2/3, a = s<3 ? 0.15 : 0; return [Math.cos(th)*(1 + a*Math.cos(ph)), Math.sin(th)*(1 + a*Math.cos(ph)), a*Math.sin(ph)]; };
+    let v = 0;
+    for(let s=0;s<STR;s++){ const tb = s<3 ? 0.0255 : 0.0165, b0 = v;
+      for(let i=0;i<=SEG;i++){ const u = i/SEG, P0 = at(s,u), P1 = at(s,u+1e-3); let T = [P1[0]-P0[0], P1[1]-P0[1], P1[2]-P0[2]]; const tl = Math.hypot(...T); T = T.map(x=>x/tl);
+        let B = [T[1], -T[0], 0]; const bl = Math.hypot(...B)||1; B = B.map(x=>x/bl); const N = [B[1]*T[2]-B[2]*T[1], B[2]*T[0]-B[0]*T[2], B[0]*T[1]-B[1]*T[0]];
+        for(let j=0;j<SD;j++){ const an = j/SD*Math.PI*2, ca = Math.cos(an), sa = Math.sin(an), n = [N[0]*ca+B[0]*sa, N[1]*ca+B[1]*sa, N[2]*ca+B[2]*sa];
+          for(let q=0;q<3;q++){ p0[v*3+q] = P0[q] + n[q]*tb; nn[v*3+q] = n[q]; } dl[v*3] = u; dl[v*3+1] = s; v++; } }
+      for(let i=0;i<SEG;i++) for(let j=0;j<SD;j++){ const j2 = (j+1)%SD, a = b0+i*SD+j, b = b0+i*SD+j2, c2 = b0+(i+1)*SD+j, d = b0+(i+1)*SD+j2; ix.push(a,c2,b, b,c2,d); } }
+    RING = upload({p0, dl, dw, nn, hn: nn, mt, ix: new Uint16Array(ix), H:{ring:true}}); return RING; }
+  // 무기 단면: 가장 긴 축(대개 z)을 따라 24칸, 칸마다 다른 두 축의 최대 반폭
+  function profOf(D){ const [mn, mx] = D.H.bb, ex = [0,1,2].map(i=>mx[i]-mn[i]), a = ex.indexOf(Math.max(...ex)), b = (a+1)%3, c2 = (a+2)%3, NB = 24, rb = new Float32Array(NB), rc = new Float32Array(NB);
+    for(let i=0;i<D.p0.length/3;i++){ const k = Math.min(NB-1, Math.max(0, Math.floor((D.p0[i*3+a]-mn[a])/ex[a]*NB))); rb[k] = Math.max(rb[k], Math.abs(D.p0[i*3+b])); rc[k] = Math.max(rc[k], Math.abs(D.p0[i*3+c2])); }
+    return {a, b, c: c2, lo: mn[a], len: ex[a], rb, rc, NB}; }
+  // 고리 k의 행렬(행 우선 12개): 제 둘레로 돌고(spin) · 단면에 맞춰 늘리고 · 살짝 기울여 · 무기 축 위의 자리에
+  const RING_AT = [0.52, 0.63, 0.41, 0.74, 0.31], RING_TILT = [0.16, -0.12, 0.09, -0.14, 0.11];
+  function ringMat(P, k, t){ const f = RING_AT[k], i0 = Math.min(P.NB-1, Math.floor(f*P.NB)), pick3 = A => Math.max(A[Math.max(0,i0-1)], A[i0], A[Math.min(P.NB-1,i0+1)]);
+    const rx = pick3(P.rb), ry = pick3(P.rc), R1 = Math.max(rx, ry)*1.25 + P.len*0.04, R2 = Math.max(ry*1.25 + P.len*0.04, R1*0.62), R3 = Math.min(R1, R2);
+    const sp = (k%2 ? -1 : 1)*t*0.55 + k*1.7, cs = Math.cos(sp), ss = Math.sin(sp), ct = Math.cos(RING_TILT[k]), st = Math.sin(RING_TILT[k]);
+    // 지역 3x3: Rtilt(x축) · S · Rspin(z축)
+    const A = [R1*cs, -R1*ss, 0,  R2*ss, R2*cs, 0,  0, 0, R3];
+    const T3 = [A[0], A[1], A[2],  ct*A[3]-st*A[6], ct*A[4]-st*A[7], ct*A[5]-st*A[8],  st*A[3]+ct*A[6], st*A[4]+ct*A[7], st*A[5]+ct*A[8]];
+    const out = new Array(12).fill(0), rows = [P.b, P.c, P.a];   // 지역 x → 무기 b축, y → c축, z → a축(길이)
+    for(let r=0;r<3;r++) for(let cc=0;cc<3;cc++) out[rows[r]*4+cc] = T3[r*3+cc];
+    out[P.a*4+3] = P.lo + f*P.len; return out; }
+  let auraC = null, auraB = null;
+  /* 아군 신(心): 원작 설정의 '달빛 같은 기운을 몸에 불어넣고, 그 기운을 몸에 감는다'를 따른다.
+     뒤 반쪽 고리 → 몸 → 앞 반쪽 고리 순으로 그려, 금빛 기운의 띠가 몸을 감아 돌며 천천히 위로 피어오르게 한다. */
+  function shinPlume(c, h, t, front, mv){
+    const dim = 1 - mv*0.6, gc = (r,g,b,a)=>`rgba(${Math.round(r+(110-r)*mv*0.7)},${Math.round(g+(100-g)*mv*0.7)},${Math.round(b+(88-b)*mv*0.7)},${Math.max(0,a)})`;
+    const hs = k => { const x = Math.sin(k*127.1 + 311.7)*43758.5453; return x - Math.floor(x); };
+    c.save(); c.globalCompositeOperation = "lighter";
+    // 발치의 금빛 불꽃: 바닥 타원을 따라 혀가 날름거린다(뒤쪽 반은 몸 뒤, 앞쪽 반은 몸 앞)
+    const footN = 18, frx = h*0.19, fry = h*0.04; try{ c.filter = `blur(${Math.max(1, h*0.008)}px)`; }catch(_){ }
+    for(let j=0;j<footN;j++){ const a = j/footN*Math.PI*2 + 0.2*Math.sin(t*0.7), sa = Math.sin(a); if(front ? sa < 0 : sa >= 0) continue;
+      const fl = (0.55 + 0.45*Math.abs(Math.sin(t*(7 + hs(j)*5) + j*1.7)))*(front ? 0.6 : 1), fx = Math.cos(a)*frx, fy = sa*fry, fh = h*(0.05 + 0.06*fl), fw = h*(0.03 + 0.012*hs(j+9));
+      const g = c.createRadialGradient(fx, fy - fh*0.35, 0, fx, fy - fh*0.35, fh); g.addColorStop(0, gc(255,244,200,0.7*fl*dim)); g.addColorStop(0.4, gc(255,196,76,0.38*fl*dim)); g.addColorStop(1, gc(255,170,40,0));
+      c.save(); c.translate(fx, fy - fh*0.35); c.scale(fw/fh, 1); c.translate(-fx, -(fy - fh*0.35)); c.fillStyle = g; c.beginPath(); c.arc(fx, fy - fh*0.35, fh, 0, 7); c.fill(); c.restore(); }
+    try{ c.filter = "none"; }catch(_){ }
+    if(!front){
+      // 몸 뒤의 금빛 불길: 가운데 큰 빛 + 위로 흘러가는 불길 혀(가장자리는 흔들리며 갈라진다)
+      const pulse = 0.85 + 0.15*Math.sin(t*2.1) + 0.06*Math.sin(t*5.3);
+      { const g = c.createRadialGradient(0, -h*0.55, h*0.05, 0, -h*0.55, h*0.62); g.addColorStop(0, gc(255,236,170,0.55*pulse*dim)); g.addColorStop(0.45, gc(255,196,70,0.30*pulse*dim)); g.addColorStop(1, gc(255,170,40,0));
+        c.save(); c.scale(0.8, 1); c.fillStyle = g; c.beginPath(); c.arc(0, -h*0.55, h*0.62, 0, 7); c.fill(); c.restore(); }
+      for(let i=0;i<16;i++){ const sp = 0.45 + hs(i)*0.35, p = (t*sp + hs(i+3)) % 1, life = Math.sin(p*Math.PI), side = (i%2 ? 1 : -1)*(0.04 + hs(i+5)*0.13);
+        const cx = h*(side*(1 - p*0.35) + 0.05*Math.sin(t*1.6 + i*2.3)*(0.4 + p)), cy = -h*(0.05 + p*1.05), rx = h*(0.10 + 0.05*hs(i+7))*(1 - 0.35*p), ry = h*(0.20 + 0.10*p);
+        const g = c.createRadialGradient(cx, cy, 0, cx, cy, ry); g.addColorStop(0, gc(255,226,140,0.30*life*dim)); g.addColorStop(0.5, gc(255,190,64,0.16*life*dim)); g.addColorStop(1, gc(255,170,40,0));
+        c.save(); c.translate(cx, cy); c.scale(rx/ry, 1); c.translate(-cx, -cy); c.fillStyle = g; c.beginPath(); c.arc(cx, cy, ry, 0, 7); c.fill(); c.restore(); }
+
+    } else {
+      // 떠오르는 금빛 티끌
+      for(let j=0;j<10;j++){ const ph = (t*(0.18 + hs(j)*0.15) + hs(j+40)) % 1, a = Math.sin(ph*Math.PI);
+        const px = (hs(j+50) - 0.5)*h*0.42 + Math.sin(t*1.2 + j)*h*0.02, py = -h*(0.08 + ph*1.0);
+        c.fillStyle = gc(255,236,180,0.9*a*dim); c.shadowColor = gc(255,210,110,a*dim); c.shadowBlur = h*0.025;
+        c.beginPath(); c.arc(px, py, Math.max(0.7, h*0.006), 0, 7); c.fill(); } }
+    c.restore(); }
   // 모형 묶음: PNG 한 장(RGB 바이트) → GPU로 읽어 바이트 배열로(색 변환 없이)
   const packs = {};
   function pack(g){ let e = packs[g];
@@ -13708,7 +13821,7 @@ const RTW = (()=>{
     if(e && e.st===2) return e.m; if(e && e.st===3) return false;
     const R = IDX.mesh[key]; if(!R) return false;
     const P = pack(R[0]); if(P===null) return null; if(!P){ meshes[key] = {st:3}; return false; }
-    try{ const m = upload(decodeMesh(P.slice(R[1], R[1]+R[2]).buffer)); meshes[key] = {st:2, m}; return m; }catch(err){ console.warn("RTW mesh", key, err); meshes[key] = {st:3}; return false; } }
+    try{ const D = decodeMesh(P.slice(R[1], R[1]+R[2]).buffer), m = upload(D); m.prof = profOf(D); meshes[key] = {st:2, m}; return m; }catch(err){ console.warn("RTW mesh", key, err); meshes[key] = {st:3}; return false; } }
   function tex(path){ let e = texs[path];
     if(!e){ e = texs[path] = {st:0}; const im = new Image(); im.decoding = "async";
       im.onload = ()=>{ if(!ok) return; const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
@@ -13774,6 +13887,7 @@ const RTW = (()=>{
       if(pad) ["L","R"].forEach(sd=>parts.push([`arm_pad_${pad===2?"l":"s"}_${sd}`, bm(`clav.${sd}`), [0,0], "#7c838c"]));
       if(A.type===3) parts.push(["arm_cuirass", bm("chest"), [0,0], "#7c838c"]);
       if(A.collar) parts.push(["arm_collar", bm("chest"), [0,0], null]); }
+    const mainM = mk ? mesh(mk) : null, mangN = s && s.mang && mainM ? Math.min(5, s.mang|0) : 0;
     const GM = []; for(const p of parts){ const m = mesh(p[0]); if(m===null) return false; if(!m) continue;
       if(p[2]==="sty") p[2] = [L - (m.H.L0||1), Wd - (m.H.W0||1)];
       GM.push([m, ...p.slice(1)]); }
@@ -13818,6 +13932,12 @@ const RTW = (()=>{
         gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT); gl.uniform1i(ULm.outline, 1); gl.uniform3fv(ULm.lineCol, lc);
         gl.uniform1f(ULm.ext, m.H.armor ? R.lwb*0.5 : R.lw*(kk==="fist" ? 0.85 : 1)); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0);
       }
+      // 망(望): 주 무기마다 익힌(감은) 만큼 고리를 감는다
+      if(mangN > 0){ const RG = ringMesh(), tt = (o.t!=null ? o.t : performance.now()/1000) % 1000; gl.uniform1f(ULm.mk, o.mk||0); gl.uniform2f(ULm.LW, 0, 0); gl.uniform3f(ULm.sr, 0, 1, 0); gl.bindVertexArray(RG.vao);
+        for(const [m, M] of GM){ if(m !== mainM || !m.prof) continue;
+          for(let k=0;k<mangN;k++){ gl.uniformMatrix4fv(ULm.M, false, m4(mul(M, ringMat(m.prof, k, tt))));
+            gl.disable(gl.CULL_FACE); gl.uniform1i(ULm.outline, 0); gl.uniform1f(ULm.ext, 0); gl.drawElements(gl.TRIANGLES, RG.n, RG.type, 0);
+            gl.enable(gl.CULL_FACE); gl.cullFace(gl.FRONT); gl.uniform1i(ULm.outline, 1); gl.uniform1f(ULm.ext, R.lw*0.32/Math.max(0.01, m.prof.len*0.06)); gl.drawElements(gl.TRIANGLES, RG.n, RG.type, 0); } } }
       gl.bindVertexArray(null); gl.disable(gl.CULL_FACE);
     }
     // 3) 화면에 옮기기
@@ -13825,7 +13945,32 @@ const RTW = (()=>{
     const gxE = R.gx + mx, gyE = R.gy + myT, t = o.t!=null ? o.t : performance.now()/1000;
     c.save(); c.translate(x, gy); if(o.rot) c.rotate(o.rot); if(o.alpha!=null) c.globalAlpha *= o.alpha;
     if(st==="idle"){ c.scale(1, 1 + Math.sin(t*1.6 + x*0.37)*0.006); if(foe) c.scale(-1, 1); }
+    // 신(心): 몸 · 무기 실루엣을 황금빛으로 칠해 흐리게 겹친다 — 위로 타오르듯 일렁인다(정신력이 낮으면 탁해진다)
+    if(o.shin){ if(!auraC) auraC = document.createElement("canvas");
+      if(auraC.width < W || auraC.height < H){ auraC.width = Math.max(auraC.width, W); auraC.height = Math.max(auraC.height, H); }
+      const ax = auraC.getContext("2d"), mv = o.shin.murk||0, gc = (r,g,b)=>`rgb(${Math.round(r+(90-r)*mv*0.7)},${Math.round(g+(80-g)*mv*0.7)},${Math.round(b+(70-b)*mv*0.7)})`;
+      ax.globalCompositeOperation = "copy"; ax.drawImage(cv, 0, CH - H, W, H, 0, 0, W, H); ax.globalCompositeOperation = "source-in";
+      const gr = ax.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, gc(255,236,170)); gr.addColorStop(0.55, gc(255,192,72)); gr.addColorStop(1, gc(226,138,32)); ax.fillStyle = gr; ax.fillRect(0, 0, W, H); ax.globalCompositeOperation = "source-over";
+      const ga = c.globalAlpha*(o.shin.ally ? 0.55 : 1), fl = (0.78 + 0.22*Math.sin(t*2.3)*Math.sin(t*0.9 + 1.0))*(1 - mv*0.5);
+      c.save(); c.globalCompositeOperation = "lighter";
+      [[6, 0.85, -0.8], [14, 0.65, -2.4], [2.4, 0.5, -0.2]].forEach(([b, al, dy], i)=>{ c.globalAlpha = ga*al*fl*(0.85 + 0.15*Math.sin(t*3.1 + i*2.0));
+        try{ c.filter = `blur(${Math.max(1, b*k*dpr)}px)`; }catch(_){ }
+        c.drawImage(auraC, 0, 0, W, H, -gxE*k + Math.sin(t*1.7 + i)*k*h*0.002, -gyE*k + dy*k*h*0.012*(1 + 0.4*Math.sin(t*2.6 + i)), Wr*k, Hr*k); });
+      c.restore();
+      if(o.shin.ally) shinPlume(c, h, t, false, mv); }
     put();
+    // 아군 신: 발치의 앞쪽 불꽃 · 티끌은 몸 앞에
+    if(o.shin && o.shin.ally) shinPlume(c, h, t, true, o.shin.murk||0);
+    if(mangN > 0 && GM.length){   // 망 고리만 따로 그려 흐리게 겹친다(몸 · 무기 뒤로 간 부분은 가린다)
+      gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(PB); gl.depthFunc(gl.ALWAYS); gl.colorMask(false,false,false,false); gl.bindVertexArray(quad); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.useProgram(PM); gl.depthFunc(gl.LESS); gl.disable(gl.BLEND); gl.uniform1i(ULm.outline, 0); gl.uniform1f(ULm.ext, 0);
+      for(const [m, M, lwv] of GM){ const st2 = m.H.st; gl.uniform3f(ULm.sr, st2 ? st2[0] : 0, st2 ? st2[1] : 1, st2 ? st2[2]*act : 0); gl.uniformMatrix4fv(ULm.M, false, m4(M)); gl.uniform2f(ULm.LW, lwv[0], lwv[1]); gl.bindVertexArray(m.vao); gl.drawElements(gl.TRIANGLES, m.n, m.type, 0); }
+      gl.colorMask(true,true,true,true); const RG = ringMesh(), tt = (o.t!=null ? o.t : performance.now()/1000) % 1000; gl.uniform1i(ULm.outline, 3); gl.uniform2f(ULm.LW, 0, 0); gl.uniform3f(ULm.sr, 0, 1, 0); gl.bindVertexArray(RG.vao);
+      for(const [m, M] of GM){ if(m !== mainM || !m.prof) continue; for(let kq=0; kq<mangN; kq++){ gl.uniformMatrix4fv(ULm.M, false, m4(mul(M, ringMat(m.prof, kq, tt)))); gl.drawElements(gl.TRIANGLES, RG.n, RG.type, 0); } }
+      gl.bindVertexArray(null);
+      c.save(); c.globalCompositeOperation = "lighter"; c.globalAlpha *= 0.75*(1 - (o.mk||0)*0.45); try{ c.filter = `blur(${Math.max(1.5, 3.2*k*dpr)}px)`; }catch(_){ } put(); c.restore();
+    }
     // 발광: 무기만 발광색으로 한 번 더 그려 흐리게 겹친다(몸 뒤로 간 부분은 몸 깊이로 가림)
     if(s && (s.glow || s.relic) && mk && GM.length){
       gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
@@ -15104,7 +15249,7 @@ function fxTestPanel(){
   const el=document.createElement("div"); el.className="fxtest";
   el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
-   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
+   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
@@ -15283,6 +15428,11 @@ function fxTestPanel(){
     const wv=el.querySelector("#fxw").value, f0=S.fixers[0], lead = f0.gear.weapon && f0.gear.weapon.unique ? leadGear(f0) : {wtype:wv||null, spec: wv?defaultSpec(wv):null, weaponName: wv?el.querySelector("#fxw").selectedOptions[0].text:null, armor:el.querySelector("#fxa").checked, acc:el.querySelector("#fxc").checked, accColor:"150,230,255"};
     window.scrollTo(0,0); playScene(k,{attr:a,success:ok==="1",team:["대표","동료","세 번째","네 번째","다섯 번째"].slice(0,n),lead,client:"테스트 의뢰인"}); };
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
+    if(g==="shinme" || g==="shinfoe"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean), L = team[0];
+      if(g==="shinme"){ if(!L.shin || L.shin===true) L.shin = {name: L.name, sin:"", wish:"미리보기", day:S.day}; L.shinOff = false; L.mangOff = false; L.mang = Math.max(L.mang||0, 3); L.mp = L.mpMax; }
+      const gr = g==="shinfoe" ? Math.min(2, +el.querySelector("#fxgr").value) : +el.querySelector("#fxgr").value;
+      const q = {kind:"일반", text:"", goal: el.querySelector("#fxgoal").value, grade: gr, attrs:["str"], req: Math.max(1, teamPower(team,["str"])/kk), client:"테스트 의뢰인", foeShin: g==="shinfoe"};
+      const r = await mgCombat({q, team, idx:1, total:1}); save(); render(); toast(`신·망 시험 — ${r.win ? "승리" : "패배"}`); return; }
     const team=S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean); const at = g==="shield"||g==="escort"?["str","agi"]:g==="search"?["agi","tec"]:[g];
     const q={kind: g==="shield"||g==="escort"?"호위":g==="search"?"수색":"일반", text: g==="search" ? pick(REQ_POOL[reqTier(+el.querySelector("#fxgr").value)].srch)[0] : g==="escort" ? pick(REQ_POOL[reqTier(+el.querySelector("#fxgr").value)].esc)[0] : "", goal: el.querySelector("#fxgoal").value, grade:+el.querySelector("#fxgr").value, attrs:at, req: Math.max(1, teamPower(team,at)/kk), client:"테스트 의뢰인"};
     const r = await runMinigames(q, team); toast(r.decisive!=null ? `직접 수행 ${r.decisive?"성공":"실패"}` : `미니게임 점수 ${Math.round(r.score*100)}점`); });
