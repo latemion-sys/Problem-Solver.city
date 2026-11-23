@@ -6112,7 +6112,7 @@ const ABNOS = [
   {id:"orchestra", n:"고요한 오케스트라", risk:"ALEPH", canon:"L", code:"T-01-31", g:[1,0], fx:"overture", movement:true, form:"팔다리 없는 마네킹이 받침대에 세운 막대에 꽂혀 지휘자의 연미복을 입고 있다. 머리에는 8분음표 무늬가 박혀 있다. 공연이 시작되면 지휘봉을 쥔 두 손과 그림자 연주자들이 나타난다", look:"연미복을 걸친 팔다리 없는 마네킹이 막대 위에서 텅 빈 객석을 향해 서 있다",
    rumor:"구 시민회관에서 아무 소리도 나지 않는 공연이 열린다. 무대엔 연미복을 입은 마네킹 하나가 막대에 꽂혀 서 있고, 머리에 음표 무늬가 박혀 있다. 객석의 관객은 모두 숨져 있었다. 처리해 달라", pref:{str:"나쁨", agi:"보통", tec:"좋음", wil:"나쁨"}, ctr:2, rule:"goodDrops",
    
-   escape:"마주치는 순간 첫 음이 울려 모두의 정신력이 30% 깎이고, 그 뒤 정신력이 절반 아래인 이는 머리가 터져 즉사한다. 행동 결과가 나빠도, 지나치게 좋아도 카운터가 준다. 다하면 공연이 시작된다. 악장마다 공격·방어·기술 가운데 하나만 지휘자에게 닿는다",
+   escape:"배회하는 동안 멀리서 첫 음이 들려 정신력이 15% 깎인다(조우만으로 죽지는 않는다). 공연 사이의 침묵을 지켜야 한다 — 징후를 놓치면 모두의 정신력이 깎인다. 행동 결과가 나빠도, 지나치게 좋아도 카운터가 준다. 다하면 공연이 시작된다. 악장마다 공격·방어·기술 가운데 하나만 지휘자에게 닿는다",
    story:"옛 시민회관에 지휘자가 있었다. 그는 틀린 음을 바로잡는 것이 지휘자의 일이라고 여기지 않았다. 지휘대에 오른 지 오 분이면 악단 전체가 그의 손끝을 따랐다.\n어느 밤, 연주자가 하나도 오지 않았다. 객석만 가득 찼다. 지휘자는 지휘봉을 들었다. 연주자는 객석에서 모으면 된다.\n첫 악장은 침착하고 느렸다. 무대엔 아무도 없었는데 객석 모두가 첫 음을 들었다. 버티지 못한 머리들이 먼저 고개를 떨궜다.\n다음 악장부터는 유쾌하고 빨랐다. 사람들은 왜 왔는지 잊었고, 열광이 광기로 넘어가자 옆 사람을 할퀴었다. 악장이 바뀔 때마다 하나씩 일어나 무대로 올라갔다.\n연주자가 다 모이자, 아무도 들을 수 없지만 모두가 듣는 음악이 시작되었다. 부서진 것들에게서 가장 아름다운 연주가 시작된다는 것을, 지휘자는 처음부터 알았다.\n마지막 마디가 남았다. 그것은 듣는 음악이 아니다. 당신을 꿰뚫는 음악이다.",
    like:"지휘봉이 조용히 내려간다", dislike:"어딘가에서 첫 음이 울릴 듯하다",
    cards:[{n:"제1악장",a:5,b:12},{n:"제2악장",a:6,b:11},{n:"제3악장",a:5,b:14},{n:"정적",a:6,b:9,def:true}], hp:1.6,
@@ -6120,7 +6120,7 @@ const ABNOS = [
   {id:"bluestar", n:"푸른 별", risk:"ALEPH", canon:"L", code:"O-03-93", g:[1,0], fx:"pulse", form:"하늘에 떠서 맥박치는 커다란 푸른 심장. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다", look:"하늘 높이 푸른 심장 같은 별이 떠서 맥박치듯 울린다",
    rumor:"도심 하늘에 맥박치는 커다란 푸른 별이 떴다. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다. 그 소리를 들은 사람들이 하나둘 별을 향해 걸어갔다. 처리해 달라", pref:{str:"나쁨", agi:"좋음", tec:"나쁨", wil:"보통"}, ctr:2, low:"wil", lowStrict:true,
    noFight:true, doom:{t:"별이 울렸다", custom:"bluestar"},
-   escape:"마주치는 순간 맥박이 울려 모두의 정신력이 30% 깎이고, 정신이 무너진 이와 마음(의지)이 약한 이는 별에 흡수된다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘에 떠서 다시 맥박을 울린다",
+   escape:"배회하는 동안 멀리서 맥박이 들려 정신력이 15% 깎인다(조우만으로 흡수되지는 않는다). 맥박이 커질 때 마음을 다잡아야 한다 — 징후를 놓치면 모두의 정신력이 깎인다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘에 떠서 다시 맥박을 울린다",
    story:"절망이 가장 깊던 해, 구역 하늘에 푸른 별이 떴다. 스스로 신이라 한 적은 없었다. 사람들이 먼저 무릎을 꿇었다.\n모임이 생겼다. 그들은 서로를 죄인이라 불렀고, 죄인을 받아 주는 곳은 저 별뿐이라 믿었다. 별에 닿는 것은 죽음이 아니라 있어야 할 곳으로 돌아가는 일이라고. 구역은 모임을 금했다. 이 도시에서 신성한 것은 없어야 했다.\n금지는 오래가지 않았다. 별 가까이에선 반기는 노래와 함성이 들렸고, 맥박이 울릴 때마다 마음 약한 이부터 발끝이 땅에서 떨어졌다. 가족들은 그들을 침대에 묶었다. 묶인 이들은 밤새 창문 쪽으로 몸을 틀었다.\n이제 별 아래로 다리들이 매달려 흔들린다. 모임 사람들은 그것을 환영의 손짓이라 부른다. 모두가 돌아가고 나면 이 구역엔 별만 남을 것이다.\n— 뒷면 부록 —\n곧 별이 되어서 만나자.",
    like:"맥박이 느려진다", dislike:"푸른 빛이 맥박친다",
    gifts:{a:{n:"별 안대", mpRed:0.15, bonus:{wil:4}}, b:{n:"별의 소리", bonus:{agi:7,wil:2}}}},
@@ -6263,6 +6263,57 @@ const ABNO_SIGN = {
   erlking:{t:()=>"안개 속에서 '얘야, 이리 오렴' 하는 부름이 들려온다", btn:"아이의 귀를 막아 준다", d:"의지 판정 · 성공하면 부름이 한 칸 옅어진다", chk:"wil",
     ok:{mood:6, lure:-1}, okT:"「얘야, 그건 안개란다.」 부름이 멀어진다", bad:{mp:0.06}, badT:"부름이 손가락 사이로 새어 들어왔다", missT:"부름이 짙어진다", missDmg:{mp:0.05, t:"안개가 짙어져 모두의 정신이 흐려진다"},
     missFx:{lure:1}, rage:{t:"마왕이 안개 속에서 아이를 부른다", btn:"아이를 붙잡는다", okT:"아이의 손을 꼭 붙잡았다", missT:"부름이 모두의 정신을 흐렸다", sp:8}},
+  // ── WAW ──
+  knight:{t:G=>G.blessed ? "기사가 축복받은 이를 바라보며 투구 틈으로 눈물을 흘린다" : "기사가 축복을 내릴 사람을 찾듯 천천히 고개를 돌린다", btn:G=>G.blessed ? "축복받은 이가 곁을 지킨다" : "고개를 숙여 예를 갖춘다", d:"원작: 축복받은 이가 쓰러지면 기사는 절망한다 · 축복받은 이를 지켜 낸다", chk:"wil",
+    ok:{mood:10, mp:0.04}, okT:"기사가 조용히 검을 내렸다", bad:{mp:0.07}, badT:"기사의 슬픔이 고스란히 밀려들었다", missT:"아무도 기사를 돌아보지 않았다. 갑옷 틈으로 검은 물이 흐른다", missDmg:{mp:0.05, t:"기사의 절망이 방 안을 적셨다"},
+    rage:{t:"기사가 절망에 빠져 검을 치켜든다", btn:"방패를 맞댄다", okT:"방패를 맞대 버텼다", missT:"절망의 검이 모두를 베었다", sp:5, hp:6}},
+  littlered:{t:()=>"용병이 담배를 비벼 끄며 사냥감 이야기를 꺼낸다 — '늑대 냄새가 나는데'", btn:"사냥감 정보를 건넨다", d:"원작: 용병은 늑대를 쫓는다 · 정보를 주면 이쪽을 겨누지 않는다(재주 판정)", chk:"tec",
+    ok:{mood:10}, okT:"용병이 씩 웃으며 총을 거두었다", bad:{mp:0.05, hurt:0.05}, badT:"엉뚱한 정보였다 — 용병의 개머리판이 날아왔다", missT:"용병이 혀를 차며 이쪽을 훑어본다", missDmg:{hp:0.05, t:"용병이 위협 사격을 했다"},
+    rage:{t:"용병이 총구를 이쪽으로 돌린다", btn:"엄폐한다", okT:"엄폐물 뒤로 몸을 던졌다", missT:"용병의 탄창이 비워질 때까지 총알이 쏟아졌다", sp:3, hp:8}},
+  moth:{t:()=>"날개에서 붉은 불씨가 우수수 떨어진다", btn:"불씨를 털어 낸다", d:"민첩 판정 · 성공하면 불씨가 하나 사라진다", chk:"agi",
+    ok:{mood:8, embers:-1}, okT:"불씨를 털어 냈다. 나방이 날개를 접는다", bad:{mp:0.04, hurt:0.06}, badT:"불씨가 옷깃에 옮아 붙었다", missT:"불씨가 쌓였다", missFx:{embers:1}, missDmg:{hp:0.05, t:"떨어진 불씨가 모두의 살갗을 그슬렸다"},
+    rage:{t:"나방이 불타는 날개를 크게 펼친다", btn:"날개를 노린다", okT:"날갯짓이 한 박자 흐트러졌다", missT:"불꽃 날개가 모두를 휩쓸었다", sp:4, hp:7}},
+  spiral:{target:true, t:(G,f)=>`나선이 ${f.name}을(를) 뚫어지게 본다. 눈도 없는데`, btn:"다른 사람이 앞을 막는다", d:"대상: 시선을 받은 사람 · 같은 사람이 계속 시선을 받지 않게 한다",
+    ok:{mood:8, swap:true}, okT:"앞을 가로막자 나선의 시선이 흩어졌다", missT:"시선이 한 사람에게 박혀 떨어지지 않는다", missDmg:{mp:0.06, t:"경멸의 시선이 마음을 할퀸다"},
+    rage:{t:"나선이 시선을 한 점에 모은다", btn:"시선을 나눠 받는다", okT:"시선이 갈라져 흐려졌다", missT:"경멸이 모두를 꿰뚫었다", sp:8, hp:3}},
+  brokenlance:{t:()=>"기수가 지킬 사람을 찾듯 부러진 창끝을 떤다", btn:"다친 이를 등 뒤로 가린다", d:"기수 앞에서 다친 사람을 보이지 않게 한다",
+    ok:{mood:10}, okT:"기수가 안도한 듯 창을 내렸다", missT:"다친 이가 그대로 드러났다. 기수의 손이 떨린다", missDmg:{mp:0.05, t:"기수의 절망이 번졌다"},
+    rage:{t:"기수가 부러진 창을 앞세우고 돌진할 자세를 잡는다", btn:"옆으로 몸을 날린다", okT:"창끝이 허공을 꿰뚫었다", missT:"부러진 창이 모두를 꿰뚫고 지나갔다", sp:3, hp:8}},
+  onegram:{t:()=>"저울이 기울며 빼곡한 계약서를 내민다", btn:"계약서를 끝까지 읽는다", d:"재주 판정 · 조항 하나라도 놓치면 살이 달린다", chk:"tec",
+    ok:{mood:10}, okT:"독소 조항을 찾아 줄을 그었다. 상인이 웃음을 거둔다", bad:{mp:0.04, hurt:0.05}, badT:"한 줄을 놓쳤다 — 살 1g이 정확히 달려 나갔다", missT:"계약서가 서명 없이 저울 위에 놓였다", missDmg:{hp:0.04, t:"저울이 모두의 살을 조금씩 달았다"},
+    rage:{t:"저울 접시가 모두를 향해 기운다", btn:"저울을 바로잡는다", okT:"접시가 수평으로 돌아왔다", missT:"저울이 모두의 살을 달아 갔다", sp:3, hp:7}},
+  bluereception:{target:true, t:(G,f)=>`접수원이 ${f.name}의 이름이 적힌 의뢰서를 내민다`, btn:"다른 사람이 대신 받는다", d:"대상: 이름이 적힌 사람 · 사냥감이 직접 다가가면 안 된다",
+    ok:{mood:8, swap:true}, okT:"대리인이 의뢰서를 받아 접수원의 미소가 굳었다", missT:"의뢰서가 사냥감 앞에 그대로 놓였다", missDmg:{mp:0.05, t:"갈고리가 바닥을 긁는 소리"},
+    rage:{t:"갈고리가 의뢰서의 사냥감을 향한다", btn:"사냥감을 숨긴다", okT:"갈고리가 빈 곳을 찍었다", missT:"갈고리가 일행을 훑고 지나갔다", sp:4, hp:7}},
+  ashfly:{t:()=>"재가 흩날리며 꺼진 불씨가 다시 살아난다", btn:"재를 밟아 끈다", d:"민첩 판정 · 성공하면 불씨가 하나 사라진다", chk:"agi",
+    ok:{mood:8, embers:-1}, okT:"불씨를 밟아 껐다", bad:{mp:0.03, hurt:0.06}, badT:"잿불에 발을 데었다", missT:"불씨가 쌓였다", missFx:{embers:1}, missDmg:{hp:0.05, t:"잿불이 피어올랐다"},
+    rage:{t:"재 속 불씨가 한꺼번에 피어오른다", btn:"재를 흩뜨린다", okT:"불씨가 흩어져 사그라졌다", missT:"잿불이 모두를 감쌌다", sp:3, hp:8}},
+  dosan:{t:()=>"칼날 산이 한 뼘 솟는다. 업이 무거운 이의 발밑에서", btn:"업이 가벼운 이가 앞에 선다", d:"다음 행동에 업(사살 수)이 가벼운 사람이 나서게 한다",
+    ok:{mood:8, swap:true}, okT:"칼날이 조금 가라앉았다", missT:"업이 무거운 발밑에서 칼날이 자란다", missDmg:{hp:0.05, t:"칼날이 모두의 발바닥을 그었다"},
+    rage:{t:"발밑에서 칼날이 숲처럼 솟는다", btn:"칼날 사이를 디딘다", okT:"칼날 사이로 발을 옮겼다", missT:"칼날이 모두의 발을 꿰뚫었다", sp:3, hp:8}},
+  bloodtear:{t:()=>"피눈물이 '내 아이야' 하고 낮게 부른다", btn:"자식이 대답한다", d:"자식으로 정해진 이가(없으면 아무나) 대답해 준다 · 의지 판정", chk:"wil",
+    ok:{mood:10}, okT:"대답을 듣자 피눈물이 웃었다", bad:{mp:0.05, hurt:0.04}, badT:"대답이 떨렸다 — 아비가 이를 드러냈다", missT:"아무도 대답하지 않았다. 피눈물이 뚝뚝 떨어진다", missDmg:{hp:0.04, mp:0.03, t:"피를 빨리는 감각이 모두를 스친다"},
+    rage:{t:"아비가 자식을 찾아 피눈물을 쏟는다", btn:"자식이 손을 잡는다", okT:"손을 잡자 울음이 잦아들었다", missT:"피눈물이 모두의 피를 끌어당겼다", sp:5, hp:6}},
+  jade:{t:()=>"옥이 은은하게 빛나며 꿈을 보여 주려 한다", btn:"꿈에서 눈을 돌린다", d:"의지 판정 · 성공하면 꿈이 하나 옅어진다", chk:"wil",
+    ok:{mood:8, dream:-1}, okT:"꿈에서 눈을 돌렸다. 누각의 문이 닫힌다", bad:{mp:0.05}, badT:"붉은 누각이 잠깐 보였다", missT:"꿈이 짙어졌다", missDmg:{mp:0.05, t:"꿈결이 모두의 정신을 흐린다"}},
+  nails:{t:()=>"다섯 못 가운데 하나가 바르르 떤다", btn:"그 손가락을 접는다", d:"재주 판정 · 못에 걸린 법을 미리 피한다", chk:"tec",
+    ok:{mood:10}, okT:"손가락을 접자 못이 잠잠해졌다", bad:{mp:0.04, hurt:0.05}, badT:"손끝이 못에 찔렸다", missT:"못이 반쯤 솟았다", missDmg:{hp:0.04, t:"못이 바닥에서 솟아 발을 찔렀다"},
+    rage:{t:"다섯 못이 한꺼번에 솟는다", btn:"손을 펴 막는다", okT:"못이 손바닥 앞에서 멈췄다", missT:"못이 모두를 꿰었다", sp:4, hp:7}},
+  // ── ALEPH ──
+  orchestra:{t:()=>"지휘봉이 허공에서 멈춘다. 다음 악장 전의 침묵", btn:"숨을 죽인다", d:"원작: 공연 사이의 침묵을 깨면 안 된다 · 의지 판정", chk:"wil",
+    ok:{mood:8}, okT:"침묵이 지켜졌다. 지휘자가 만족한 듯 고개를 숙인다", bad:{mp:0.08}, badT:"숨소리가 새어 나갔다 — 귓속에서 음이 울린다", missT:"침묵이 깨졌다", missDmg:{mp:0.1, t:"한 음이 모두의 머릿속을 울렸다"},
+    rage:{t:"공연이 절정으로 치닫는다", btn:"귀를 막는다", okT:"음 하나를 흘려보냈다", missT:"공연이 모두의 정신을 찢었다", sp:7, hp:3}},
+  bluestar:{t:()=>"푸른 맥박이 다시 커진다. 하늘이 가까워지는 것 같다", btn:"마음을 다잡는다", d:"원작: 신중(의지)이 높지 않은 이는 별에 이끌린다 · 의지 판정", chk:"wil",
+    ok:{mood:8, mp:0.03}, okT:"발바닥을 땅에 붙이고 버텼다. 맥박이 멀어진다", bad:{mp:0.08}, badT:"몸이 잠깐 떠올랐다 — 정신이 아득하다", missT:"맥박이 한 번 더 크게 울렸다", missDmg:{mp:0.1, t:"푸른 맥박이 모두의 정신을 끌어당겼다"}},
+  nothing:{t:()=>"익숙한 목소리가 누군가의 이름을 부른다. 동료의 목소리다", btn:"대답하지 않는다", d:"원작: 그것은 목소리를 흉내 낸다 · 민첩(정의) 판정", chk:"agi",
+    ok:{mood:8}, okT:"대답하지 않았다. 목소리가 뚝 끊겼다", bad:{mp:0.07}, badT:"하마터면 대답할 뻔했다", missT:"누군가 대답해 버렸다", missDmg:{mp:0.08, t:"흉내 낸 목소리가 모두의 귀에 남는다"},
+    rage:{t:"그것이 동료의 목소리로 다가오라고 부른다", btn:"목소리를 무시한다", okT:"목소리를 흘려보냈다", missT:"촉수가 목소리를 따라 나선 이들을 덮쳤다", sp:5, hp:6}},
+  sun:{t:()=>"햇살이 숨 막히게 따뜻해진다. 외투를 벗고 싶어진다", btn:"외투 깃을 여민다", d:"의지 판정 · 견디면 태양이 다음을 기다린다", chk:"wil",
+    ok:{mood:8}, okT:"깃을 여미고 버텼다. 햇살이 조금 누그러진다", bad:{mp:0.05, hurt:0.04}, badT:"땀이 비 오듯 흐른다", missT:"햇살이 한층 뜨거워졌다", missDmg:{hp:0.05, mp:0.03, t:"뜨거운 햇살이 모두를 지치게 했다"},
+    rage:{t:"태양이 지붕 높이까지 내려온다", btn:"그늘로 숨는다", okT:"그늘로 몸을 피했다", missT:"작열하는 빛이 모두를 태웠다", sp:3, hp:7}},
+  eternity:{t:()=>"작은 거인이 탑을 고쳐 메며 끙 하고 앓는다. 누가 대신 들어 주길 바라는 눈치다", btn:"꾀를 낸다", d:"재주 판정 · 탑을 떠안지 않고 거인을 돕는다", chk:"tec",
+    ok:{mood:10}, okT:"탑을 받침대에 기대 주자 거인이 숨을 돌렸다", bad:{mp:0.04, hurt:0.05}, badT:"탑이 기울어 어깨를 짓눌렀다", missT:"거인의 어깨가 탑 무게에 짓눌린다", missDmg:{hp:0.05, t:"흔들리는 탑에서 계단 조각이 떨어졌다"},
+    rage:{t:"탑이 기울어 쏟아질 듯 흔들린다", btn:"탑을 받친다", okT:"무너지기 직전에 탑을 받쳤다", missT:"영원으로 솟은 탑이 무너져 내렸다", sp:3, hp:8}},
 };
 const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
 /* 전투 분류: 사살(죄종) · 전투형 · 조건부 전투 · 기믹형(전투 없음 — 그 자리에 머물고, 실패하면 재앙) · 전투 불가(손대면 즉사·중상 기믹, 맞서 싸울 수 없음) */
@@ -6708,7 +6759,7 @@ function mgAbno(ctx){
     const shown = know(1) ? a.n : "정체불명의 환상체", riskTxt = know(2) ? a.risk + (a.sin ? ` · ${a.sin}` : "") : "???";
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
     const m = mgOpen(`${a.risk==="죄종"?"죄종 조우":"환상체 의뢰"} · 관측`, a.risk==="죄종" ? "죄종은 환상체와 별개로 취급한다. 지켜보고 위험을 가늠한 뒤, 사살해야 한다." : "현장에 닿으면 환상체의 상태부터 살핀다. 배회 중이면 행동으로 달래 알로 재우고, 날뛰거나 폭주하면 전투로 제압한다.", ctx, 300);
-    const rampP = a.noFight ? 0 : ({죄종:0.25, ZAYIN:0.12, TETH:0.25, HE:0.3, WAW:0.35, ALEPH:0.35}[a.risk] || 0.25) + (q.hazard ? 0.15 : 0);
+    const rampP = a.noFight ? 0 : ({죄종:0.25, ZAYIN:0.12, TETH:0.25, HE:0.3, WAW:0.35, ALEPH:0}[a.risk] || 0.25) + (a.risk==="ALEPH" ? 0 : q.hazard ? 0.15 : 0);   // ALEPH는 언제나 배회로 마주친다
     const G = {mood:20, ctr:a.ctr, max:a.ctr, state: q.__state || (Math.random() < rampP ? "rage" : "calm"), log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, blessed:null, embers:0, tongue:0, sac:0, dead:[], gaze:{},
       bench:[], out:{}, heat:{}, coatAsked:{}, frost:{}, flowers:[], lure:0, dream:0, floor:0, babel:null, nailSeq:null, nailPos:0, order:null};
     const NAILS = ["엄지","검지","중지","약지","새끼"];
@@ -6784,6 +6835,7 @@ function mgAbno(ctx){
       G.sign = {f: f ? f.id : null}; G.signLast = G.turn; G.sign.txt = SG.t(G, f);
       say(`<b style="color:#ffb35a">징후 — ${esc(G.sign.txt)}</b>`); }
     function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
+      if(SG.missFx && SG.missFx.embers) G.embers = (G.embers||0) + SG.missFx.embers;
       if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = Math.max(1, Math.floor(x.hpMax*0.1)); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 -10%)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
       let dmgT = ""; if(SG.missDmg){ const D = SG.missDmg, parts = []; ctx.team.forEach(x=>{ if(D.mp){ const v = Math.floor(x.mpMax*D.mp); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; } if(D.hp){ const v = Math.max(1, Math.floor(x.hpMax*D.hp*(1 - redHP(x)*0.5))); x.hp = Math.max(1, x.hp - v); } });
         if(D.mp) parts.push(`모두 정신력 -${Math.round(D.mp*100)}%`); if(D.hp) parts.push(`모두 체력 -${Math.round(D.hp*100)}%`); dmgT = ` · <b style="color:#ff8a7a">${esc(D.t)} (${parts.join(" · ")})</b>`; }
@@ -6800,6 +6852,8 @@ function mgAbno(ctx){
       if(E.mp && !ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; out.push(`정신력 -${v}`); }
       if(E.frost && G.frost && G.frost[f.id]){ G.frost[f.id] = Math.max(0, G.frost[f.id] + E.frost); out.push(`서리 ${G.frost[f.id]}/3`); }
       if(E.hurt && !ok){ const v = Math.max(1, Math.floor(f.hpMax*E.hurt)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
+      if(E.embers && G.embers){ G.embers = Math.max(0, G.embers + E.embers); out.push(`불씨 ${G.embers}`); }
+      if(E.dream && G.dream){ G.dream = Math.max(0, G.dream + E.dream); out.push(`꿈 ${G.dream}/3`); }
       if(E.sac && G.sac){ G.sac = Math.max(0, G.sac + E.sac); out.push(`물주머니 ${G.sac}/3`); }
       if(E.lure && G.child!=null){ G.lure = Math.max(0, G.lure + E.lure); out.push(`부름 ${G.lure}/4`); }
       if(E.swap){ const o = freeT().filter(x=>x.id!==G.last); if(o.length){ G.pick = o.sort((x,y)=>power(y,["tec"])-power(x,["tec"]))[0].id; out.push(`다음 차례: ${o[0] && ctx.team.find(x=>x.id===G.pick).name}`); } }
@@ -7064,11 +7118,9 @@ function mgAbno(ctx){
     const lead = a.risk==="ALEPH" ? 5300 : 0; if(lead) alephIntro(shown);
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
-    if(a.fx==="overture" || a.fx==="pulse"){ const out = []; ctx.team.forEach(f=>{ const v = Math.floor(f.mp*0.3); f.mp -= v; out.push(`${esc(f.name)} 정신력 -${v}`); });
-      intro = (intro ? intro+"<br>" : "") + `<span style="color:#9ab8d8">${a.fx==="overture" ? "첫 음이 울렸다" : "푸른 맥박이 울렸다"} — ${out.join(" · ")}</span>`;
-      for(const f of ctx.team.slice()){ const gone = a.fx==="overture" ? f.mp < f.mpMax*0.5 : (f.mp <= f.mpMax*0.1 || power(f,["wil"]) < q.req*0.6);
-        if(gone){ intro += `<br><b style="color:#ff8a7a">${a.fx==="overture" ? `${esc(f.name)}의 머리가 터졌다` : `${esc(f.name)}가 떠올라 별의 심장으로 빨려 들어갔다`}</b>`;
-          if(killWorker(f, a.fx==="overture" ? "고요한 오케스트라의 첫 음에 머리가 터졌다" : "푸른 별의 심장으로 빨려 들어갔다", a.fx==="overture" ? "사망" : "실종")) return; } } }
+    // 완화: 조우하는 순간에는 정신력만 15% 깎이고 아무도 죽지 않는다. 이후의 위험은 징후(대응하지 않으면 모두 정신력 -10%)로 이어진다
+    if(a.fx==="overture" || a.fx==="pulse"){ const out = []; ctx.team.forEach(f=>{ const v = Math.floor(f.mp*0.15); f.mp = Math.max(1, f.mp - v); out.push(`${esc(f.name)} 정신력 -${v}`); });
+      intro = (intro ? intro+"<br>" : "") + `<span style="color:#9ab8d8">${a.fx==="overture" ? "멀리서 첫 음이 희미하게 울렸다" : "멀리서 푸른 맥박이 희미하게 울렸다"} — ${out.join(" · ")}</span><br><span class="muted">아직은 배회하고 있다. 징후를 놓치지 말 것</span>`; }
     if(a.kill){ G.state = "rage"; say(`${esc(shown)} — ${esc(a.look)}.<br><b style="color:#ff8a7a">죄종은 관리할 수 없다. 보는 즉시 사살한다.</b>`); setTimeout(fight, 2200 + lead); }
     else if(G.state==="rage"){ say(`${esc(shown)} — <b style="color:#ff8a7a">주변의 모든 것을 부수며 날뛰고 있다!</b> 곧바로 전투에 들어간다.`); setTimeout(fight, 1800 + lead); }
     else { const FT = FIGHT_TXT[fightType(a)]; say(`${esc(shown)} — ${esc(a.look)}. ${seen===1 ? "처음 보는 환상체다." : `${seen}번째 마주친다.`}${know(4) ? ` <span style="color:${FT[1]}">[${FT[0]}]</span>` : ""}${intro ? "<br>"+intro : ""}<br><span class="muted">행동을 골라 기분을 끝까지 올리면 알로 잠든다. 틀리면 ${jo(ctrName,"이")} 준다.</span>`); menu(); }
@@ -15963,7 +16015,7 @@ function fxTestPanel(){
       codexSave(d); return toast(`기프트 ${n}개를 도감에 추가했다`); }
     if((k==="rage" || k==="signrage") && A.noFight) return toast(`이 환상체는 날뛰지 않는다(${FIGHT_TXT[fightType(A)][0]})`);
     const team = S.fixers.slice(0, Math.max(1, +el.querySelector("#fxn").value)).filter(Boolean);
-    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN·TETH·HE만 적용됨)"); q.__signNow = true; }
+    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(죄종·뒤틀림 제외 전부 적용됨)"); q.__signNow = true; }
     S.requests.push(q); const r = await runMinigames(q, team); toast(r.abno && r.abno.how==="ctrl" ? "통제 성공" : r.abno && r.abno.how==="sup" ? "제압 성공" : "실패");
     if(r.abno){ const L = []; const lost = abnoApply(q, team, Object.assign({}, r.abno, {battle: r.combat && r.combat.battle}), L); if(r.abno.how) await abnoReward(q, team, r.abno, L);
       S.requests = S.requests.filter(x=>x.id!==q.id);
