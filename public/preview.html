@@ -5331,8 +5331,9 @@ function mgCombat(ctx){
       if(outcome && st.koAt==null) st.koAt = clock+300;
       st.shake = (st.shake||0)*0.86; st.aberr = (st.aberr||0)*0.9; st.flash = (st.flash||0)*0.88;
       if(outcome==="사살" && st.koAt!=null && !st.ember && clock-st.koAt>650){ st.ember = 1; const [x,y] = chestOf("foe"); addFx({kind:"pt", x:x+20, y:y+30, n:90, spd:40, dx:0, dy:-1, col:[1,0.55,0.25], seed:7}, 1600); }
-      if(G && glProbe.n >= 0){ glProbe.n++; if(glProbe.n > 3) glProbe.sum += dt;
-        if(glProbe.n === 24){ if(glProbe.sum/20 > 45){ try{ G.dispose(); }catch(_){ } G = null; glc.remove(); m.cvs.classList.remove("mg-over"); PERF.low = true; } glProbe.n = -1; } }
+      // 성능 확인: 처음 몇십 프레임은 셰이더·메시 준비로 원래 느리다. 그 뒤 60프레임을 재서, 정말 버거울 때(평균 80ms 넘게)만 전투 연출을 끈다.
+      if(G && glProbe.n >= 0){ glProbe.n++; if(glProbe.n > 40) glProbe.sum += dt;
+        if(glProbe.n === 100){ if(glProbe.sum/60 > 80){ try{ G.dispose(); }catch(_){ } G = null; glc.remove(); m.cvs.classList.remove("mg-over"); } glProbe.n = -1; } }
       if(G){
         const gd = fcv.width/W; fctx.setTransform(1,0,0,1,0,0); fctx.clearRect(0,0,fcv.width,fcv.height); fctx.setTransform(gd,0,0,gd,0,0);
         drawFighters(fctx, now);
