@@ -2055,7 +2055,7 @@ const LOOT_ACC = [
   {id:"calm", t:1, name:"정신 안정 키트", effect:"피로해도 받는 피해가 늘지 않는다(성공률이 깎이는 건 그대로)", desc:"진정제 몇 알과 호흡 마스크. 지친 머리를 억지로 가라앉힌다.",
    who:"상대는 며칠 밤을 새우고도 멀쩡하다고 한다. 약통 같은 걸 늘 품에 넣고 다닌다나.", site:"그 건물 의무실에 안정 키트가 하나 남아 있을 거라고 한다.",
    got:["상대의 허리춤에서 정신 안정 키트가 나왔다.","의무실 서랍에서 키트를 찾았다."]},
-  {id:"march", t:1, name:"피로 회복 앰플", effect:"강행군 때 깎이는 양이 1배에서 0.7배로", desc:"지친 몸을 하루 더 끌고 나가게 하는 싸구려 앰플. 뒤끝이 남는다.",
+  {id:"march", t:1, name:"피로 회복 앰플", effect:"강행군 때 깎이는 양이 1.1배에서 0.8배로", desc:"지친 몸을 하루 더 끌고 나가게 하는 싸구려 앰플. 뒤끝이 남는다.",
    who:"상대가 하루에 두 탕씩 뛰고도 버틴다고 한다. 목에 앰플을 꽂는 걸 봤다는 사람도 있다.", site:"그곳 탈의실 사물함에 앰플 상자가 숨겨져 있다는 말이 있다.",
    got:["상대의 소매에서 앰플 몇 개가 굴러 나왔다.","사물함 안쪽에서 앰플 상자를 찾았다."]},
   {id:"buffer", t:1, name:"신경 완충재", effect:"신경을 의체로 바꾼 사람만: 합에서 질 때 정신력 감소 절반", desc:"의체 신경 이음매에 끼우는 완충재. 얻어맞아도 머릿속이 덜 울린다.",
@@ -3657,7 +3657,7 @@ const LOSS_PCT = {ok:[10,15,20,25],fail:[35,43,52,60]};
 function damagePercent(f,q,success,wound,mental,march,doom=false){
   const red=mental ? redMP(f) : redHP(f), w=wound===1&&accFx(f,"lining")?0:Math.max(0,Math.min(3,wound));
   const gentle=q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
-  let pct=march ? Math.floor(LOSS_PCT.ok[0]*(1-red*0.5)*(accFx(f,"march")?0.7:MARCH_K))
+  let pct=march ? Math.floor(LOSS_PCT.ok[0]*(1-red*0.5)*(accFx(f,"march")?0.8:MARCH_K))
     : doom ? 0 : gentle&&!success ? 3 : Math.floor((success?LOSS_PCT.ok:LOSS_PCT.fail)[w]*(1-red*0.5));
   if(LIGHT_THREATS.includes(threatOf(q))) pct=Math.floor(pct/2);
   if(f.tired&&!accFx(f,"calm")) pct=Math.floor(pct*TIRED_DMG);
@@ -3683,13 +3683,13 @@ function estimate(team,q){
     l:[Math.min(...profiles.map(x=>x.fail[0])),Math.max(...profiles.map(x=>x.fail[1]))]};
 }
 function canGo(f){ return f.hp > 0 && bodyServiceReady(f) && f.lastDispatch!==S.day && (f.unavailUntil||0) < S.day; }
-/* 강행군: 오늘 이미 출동한 해결사를 하루 한 번 더 내보낸다. 결과와 상관없이 가장 적게 깎일 때(성공 · 안정)만큼 깎인다 */
+/* 강행군: 오늘 이미 출동한 해결사를 하루 한 번 더 내보낸다. 결과와 상관없이 가장 적게 깎일 때(성공 · 안정)의 1.1배가 깎인다 */
 function canMarch(f){ return f.hp > 0 && bodyServiceReady(f) && f.lastDispatch===S.day && (f.unavailUntil||0) < S.day && f.marchDay!==S.day; }
 const canSend = f => canGo(f) || canMarch(f);
 /* 피로: 나흘 연속 출동한 해결사는 닷새째부터 '피로'가 붙는다 — 그 사람이 낀 출동은 성공률 -7.5%p, 그 사람이 받는 피해 +15%.
    하루 쉬면(출동하지 않으면) 피로가 풀리고, 체력·정신력을 평소(20%)보다 15%p 더 회복한다. 쉴지 버틸지는 플레이어가 고른다. */
 const STREAK_MAX = 4, TIRED_RATE = 7.5, TIRED_DMG = 1.15, REST_BONUS = 0.15;   // 나흘 연속 출동하면 피로 · 페널티는 예전(-10%p · +20%)보다 25% 완화
-const MARCH_K = 1;   // 강행군: 가장 적게 깎일 때(성공·안정)만큼만 깎인다(예전 2.5배 → 1.25배 → 1배)
+const MARCH_K = 1.1;   // 강행군: 가장 적게 깎일 때(성공·안정)의 1.1배(예전 2.5배)
 function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30?["나쁨","b"]:["위험","d"]; }
 
 /* ================= 장비 정보(연출용) ================= */
@@ -7270,7 +7270,7 @@ async function dispatch(qid, fids, modeArg){
   let mental = isMental(q);
   const marching = team.filter(f=>!canGo(f) && canMarch(f));
   if(marching.length){ const nm = mental ? "정신력" : "체력";
-    const ok = await confirmBox("강행군", `${marching.map(f=>`<b>${esc(f.name)}</b>(${nm} ${Math.floor(LOSS_OK0*(1-(mental ? redMP(f) : redHP(f))*0.5)*(accFx(f,"march") ? 0.7 : MARCH_K))}%)`).join(", ")}${jo(marching[marching.length-1].name,"은").slice(-1)} 오늘 이미 의뢰를 다녀왔다. 한 번 더 내보내면 성공이든 실패든 ${nm}이 크게 깎인다. 그래도 보낼까?`);
+    const ok = await confirmBox("강행군", `${marching.map(f=>`<b>${esc(f.name)}</b>(${nm} ${Math.floor(LOSS_OK0*(1-(mental ? redMP(f) : redHP(f))*0.5)*(accFx(f,"march") ? 0.8 : MARCH_K))}%)`).join(", ")}${jo(marching[marching.length-1].name,"은").slice(-1)} 오늘 이미 의뢰를 다녀왔다. 한 번 더 내보내면 성공이든 실패든 ${nm}이 크게 깎인다. 그래도 보낼까?`);
     if(!ok) return; }
   const risky = team.filter(f=>{ const lh=level(f.hp,f.hpMax)[1], lm=level(f.mp,f.mpMax)[1]; return lh==="d" || (mental && lm==="d"); });
   if(risky.length){
@@ -7340,7 +7340,7 @@ async function dispatch(qid, fids, modeArg){
     const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
-    // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량만큼
+    // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 1.1배
     const pct = damagePercent(f,q,success,w,mental,march,!!(abnoR && abnoR.doom));
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
     const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
@@ -7900,7 +7900,7 @@ function showOmen(name, line, tone){ ac("omen");
 }
 
 /* 목소리의 틈 — 화면에는 보이지 않는다. 대표를 포함한 모두에게 있고 0에서 시작해 의뢰를 다녀올 때마다 1씩 벌어진다.
-   50이 되면 징조가 들리기 시작하고, 80이 되면 목소리가 들어온다(잃은 것이 있으면 뒤틀림, 없으면 E.G.O. 개화). 한 사람에게 한 번뿐이다. */
+   50이 되면 징조가 들리기 시작하고, 80이 되면 목소리가 들어온다(잃은 것이 있으면 뒤틀림 또는 E.G.O. 개화가 반반, 없으면 E.G.O. 개화). 한 사람에게 한 번뿐이다. */
 const RIFT_OMEN = 50, RIFT_BREAK = 80;
 function riftOmen(f){ if(!S || !f || (f.rift||0) < RIFT_OMEN || f.riftDone || f.omenDay===S.day || Math.random() >= 0.35) return;
   f.omenDay = S.day; const tone = Math.random()<0.5 ? "vermil" : "moon", line = pick(OMEN[tone]);
@@ -7908,11 +7908,12 @@ function riftOmen(f){ if(!S || !f || (f.rift||0) < RIFT_OMEN || f.riftDone || f.
 async function riftBreak(){
   for(const f of S.fixers.slice()){ if(!S || S.over) return; if((f.rift||0) < RIFT_BREAK || f.riftDone || (f.ego && !f.ego.unstable)) continue;
     f.riftDone = true; save();
-    if(f.precious && f.precious.lost){ if(f.isLeader) return twistLeader(f); await twistFixer(f); }
+    // 간직한 것을 잃었으면 뒤틀림과 E.G.O. 개화가 반반, 잃지 않았으면 개화
+    if(f.precious && f.precious.lost && Math.random() < 0.5){ if(f.isLeader) return twistLeader(f); await twistFixer(f); }
     else await bloomEgo(f);
     save(); render(); } }
-/* 도시에서는 누구든 하루아침에 사라질 수 있다 — 대표를 뺀 동료는 하루가 끝날 때마다 0.1% 확률로 목숨을 잃는다 */
-const CITY_DEATH_P = 0.001;
+/* 도시에서는 누구든 하루아침에 사라질 수 있다 — 대표를 뺀 동료는 하루가 끝날 때마다 0.01% 확률로 목숨을 잃는다 */
+const CITY_DEATH_P = 0.0001;
 const CITY_DEATHS = [
   ["조직의 손에", "퇴근길 골목에서 낯선 조직원들에게 둘러싸였다는 목격담만 남았다. 다음 날 아침, 하수로 입구에서 발견됐다."],
   ["환상체의 습격으로", "구역 경보가 울린 밤이었다. 대피소로 향하던 길에서 돌아오지 않았다."],
