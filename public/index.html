@@ -5910,6 +5910,51 @@ const ABNO_SIGN = {
     rage:{t:"굶주린 요정이 이빨을 드러내고 맴돈다", btn:"먹을 것을 던져 준다", d:"대응한 이 체력 -3", cost:3, okT:"요정이 먹이를 쫓아 잠시 물러났다", missT:"굶주린 요정이 모두를 깨물었다", sp:6, hp:5}},
   confession:{t:()=>"이마의 표식이 욱신거린다. 해골의 기도가 빨라진다", btn:"무릎 꿇는다", d:"함께 기도해 주면 정신이 조금 가벼워진다",
     ok:{mood:8, mp:0.03}, okT:"잠시 무릎을 꿇고 함께 기도했다. 기도 소리가 낮아진다", missT:"아무도 무릎 꿇지 않았다. 가시관이 바닥을 긁는다"},
+  // ── TETH ──
+  pbird:{t:()=>"작은 새가 지루한 듯 깃털을 고르다, 고개를 갸웃하며 주변의 '나쁜 사람'을 찾는다", btn:"곁에 머물러 준다", d:"새는 혼자 두면 심심해진다 · 다가가 말을 걸어 준다",
+    ok:{mood:8}, okT:"새가 만족한 듯 짹 하고 운다", missT:"아무도 새를 돌아보지 않았다. 새가 심술 난 듯 부리를 딱딱거린다",
+    rage:{t:"새가 날아올라 누군가를 노려본다 — 나쁜 사람을 찾는다", btn:"몸을 낮춘다", d:"손을 들지 않는다 — 맞으면 붉게 변한다", okT:"아무도 손을 들지 않았다. 새가 고개를 돌렸다", missT:"새가 머리 위를 맴돌며 모두를 쪼았다", sp:5, hp:4}},
+  oldlady:{t:()=>"노파가 무릎을 쓰다듬으며 이야기를 꺼내려 한다. 들어 줄 사람을 찾는 눈치다", btn:"귀 기울인다", d:"노파는 외로움을 가장 견디지 못한다",
+    ok:{mood:10}, okT:"맞장구를 쳐 주자 노파가 이가 빠진 입으로 웃는다", missT:"노파가 꺼내려던 이야기를 삼켰다. 방 안 공기가 무거워진다"},
+  scorched:{t:()=>"소녀의 손끝에서 성냥불이 탁 튄다. 바닥의 재가 들썩인다", btn:"불씨를 비벼 끈다", d:"민첩 판정 · 늦으면 손을 덴다", chk:"agi",
+    ok:{mood:8}, okT:"불씨가 번지기 전에 밟아 껐다. 소녀가 조금 실망한 얼굴이다", bad:{mp:0.04, hurt:0.06}, badT:"불씨를 잡다 손을 데었다", missT:"불씨가 재 위로 번졌다. 소녀의 몸이 조금 더 타오른다",
+    rage:{t:"소녀가 성냥을 그어 들고 누군가를 향해 달려온다", btn:"성냥을 쳐 낸다", okT:"성냥이 바닥에 떨어져 꺼졌다. 소녀가 멈칫했다", missT:"불길이 번졌다 — 모두가 그을렸다", sp:4, hp:6}},
+  wall:{t:()=>"등 뒤에서 흐느끼는 소리가 들린다. 누군가 '나를 봐 줘' 하고 속삭인다", btn:"돌아보지 않는다", d:"재주(자제) 판정 · 돌아보면 그녀와 눈이 마주친다", chk:"tec",
+    ok:{mood:8}, okT:"끝까지 벽만 바라보았다. 흐느낌이 잦아든다", bad:{mp:0.07}, badT:"어깨 너머로 반쯤 돌아보고 말았다 — 서늘한 눈빛이 스친다", missT:"아무도 대답하지 않자 흐느낌이 비명으로 바뀌어 간다"},
+  spiderbud:{t:()=>"새끼 거미들이 발치로 우르르 기어 나온다", btn:"발을 멈추고 비켜선다", d:"민첩 판정 · 새끼를 밟으면 어미가 노려본다", chk:"agi",
+    ok:{mood:8}, okT:"한 마리도 밟지 않고 비켜섰다. 새끼들이 봉오리로 돌아간다", bad:{mp:0.06}, badT:"새끼 하나를 스칠 뻔했다 — 봉오리가 소름 끼치게 떨린다", missT:"새끼들이 일행의 발 사이를 헤매다 흩어졌다. 봉오리가 붉게 부풀어 오른다"},
+  armor:{t:()=>"갑옷이 삐걱이며 투구를 이쪽으로 돌린다 — 용기를 시험한다", btn:"물러서지 않는다", d:"근력(용기) 판정 · 겁을 먹으면 정신이 흔들린다", chk:"str",
+    ok:{mood:10}, okT:"검 끝을 똑바로 마주 보았다. 갑옷이 천천히 고개를 끄덕인다", bad:{mp:0.07}, badT:"한 발 물러서고 말았다 — 투구 속 어둠이 비웃는다", missT:"아무도 앞에 나서지 않았다. 갑옷이 실망한 듯 검을 고쳐 쥔다"},
+  lantern:{t:()=>"꽃 둘레로 흰 털이 바람에 흩날린다. 꽃이 고개를 살짝 숙인다", btn:"발밑을 살피며 피한다", d:"민첩 판정 · 흰 털을 밟으면 땅이 꿈틀한다", chk:"agi",
+    ok:{mood:8}, okT:"흰 털을 하나도 밟지 않았다. 꽃이 다시 고개를 든다", bad:{mp:0.05, hurt:0.05}, badT:"털 한 가닥을 밟았다 — 발밑에서 무언가가 입맛을 다신다", missT:"흩날린 털이 일행의 발밑까지 깔렸다. 땅속에서 무언가가 기지개를 켠다",
+    rage:{t:"꽃이 땅에서 살짝 고개를 내민다 — 흰 털이 발밑에 깔렸다", btn:"발소리를 죽인다", okT:"숨죽여 털을 비켜 섰다. 땅이 잠잠해졌다", missT:"땅속의 턱이 발밑을 훑고 지나갔다", sp:4, hp:6}},
+  echo:{t:()=>"머릿속 깊은 곳에서 울림이 점점 커진다", btn:"귀를 막고 버틴다", d:"의지 판정 · 울림에 휩쓸리면 정신이 깎인다", chk:"wil",
+    ok:{mood:8}, okT:"숨을 고르며 버텼다. 울림이 멀어진다", bad:{mp:0.07}, badT:"울림이 생각을 덮어 버렸다", missT:"울림이 아무 저항 없이 퍼져 나갔다",
+    rage:{t:"울림이 일행 모두의 머릿속을 두드린다", btn:"서로의 이름을 부른다", okT:"이름을 부르자 울림이 갈라졌다", missT:"울림이 모두의 정신을 할퀴었다", sp:8}},
+  lavaingot:{t:()=>"철괴가 붉게 달아오르며 데굴, 한 바퀴 구른다", btn:"물을 끼얹어 식힌다", d:"뜨거운 김을 맞는다(대응한 이 체력 -3%)", cost:{hp:0.03},
+    ok:{mood:10}, okT:"치익 — 철괴가 검게 식어 간다", missT:"아무도 식혀 주지 않았다. 철괴가 하얗게 달아오른다",
+    rage:{t:"철괴가 하얗게 달아올라 가장 가까운 이에게 굴러온다", btn:"길을 비켜 굴린다", okT:"철괴가 벽에 부딪혀 멈췄다", missT:"쇳물이 튀어 모두가 데었다", hp:7, sp:3}},
+  headlessmantis:{t:()=>"사마귀가 알집 쪽으로 천천히 낫을 들어 올린다", btn:"알집에서 물러선다", d:"알집을 위협하지 않는다는 것을 보여 준다",
+    ok:{mood:8}, okT:"두 걸음 물러서자 낫이 내려간다", missT:"아무도 물러서지 않았다. 낫이 허공을 가늠한다"},
+  creed:{t:()=>"검이 바닥에서 조금 들려 시험을 묻는다 — '무엇을 지키는가'", btn:"맹세를 되뇐다", d:"의지 판정 · 망설이면 신념이 흔들린다", chk:"wil",
+    ok:{mood:10}, okT:"흔들림 없는 대답이었다. 검이 다시 바닥에 박힌다", bad:{mp:0.06}, badT:"대답이 한 박자 늦었다 — 검이 비웃듯 울린다", missT:"아무도 대답하지 않았다. 검이 한 뼘 더 뽑혀 나온다",
+    rage:{t:"검이 일행 중 가장 약한 이를 겨눈다", btn:"앞을 막아선다", okT:"앞을 막아서자 검이 방향을 거두었다", missT:"검이 망설이는 이들을 베고 지나갔다", sp:5, hp:5}},
+  shepherd:{t:()=>"소년이 언덕 위에서 '늑대다! 늑대가 왔어!' 하고 외친다", btn:"침착하게 살펴본다", d:"재주 판정 · 거짓말일 수도, 진짜일 수도 있다", chk:"tec",
+    ok:{mood:8}, okT:"언덕 너머를 살폈다 — 이번에도 거짓말이다. 소년이 시무룩해진다", bad:{mp:0.06}, badT:"허둥대다 넘어졌다. 소년이 깔깔 웃는다", missT:"외침을 아무도 확인하지 않았다. 언덕 너머에서 무언가가 어슬렁거린다"},
+  flyingfish:{t:()=>"은빛 비늘이 번쩍이며 시선을 끌어당긴다", btn:"눈을 돌린다", d:"의지 판정 · 홀리면 위를 보지 못한다", chk:"wil",
+    ok:{mood:8}, okT:"비늘을 외면했다. 날치가 물결 아래로 숨는다", bad:{mp:0.06}, badT:"비늘에 잠깐 홀렸다 — 머리 위가 어두워진다", missT:"모두가 넋을 놓고 비늘을 바라보았다",
+    rage:{t:"날치가 하늘 높이 솟아 비늘을 번쩍인다", btn:"위를 올려다본다", okT:"내리꽂기 직전에 몸을 굴렸다", missT:"날치가 위에서 내리꽂혔다", sp:4, hp:7}},
+  apple:{t:()=>"사과가 달콤한 향을 풍기며 한 조각을 떼어 낼 듯 흔들린다", btn:"향을 참는다", d:"의지 판정 · 홀리면 씨앗 생각만 난다", chk:"wil",
+    ok:{mood:8}, okT:"입안에 고이는 침을 삼키고 버텼다. 사과가 머쓱하게 잎을 접는다", bad:{mp:0.05}, badT:"한 입만, 하는 생각이 머리에서 떠나지 않는다", missT:"향이 짙게 퍼졌다. 뿌리가 바닥 아래로 뻗는다",
+    rage:{t:"뿌리가 바닥을 뚫고 발목을 노린다", btn:"뿌리를 쳐 낸다", okT:"뿌리가 잘려 나갔다", missT:"뿌리가 모두의 발목을 감고 즙을 빨았다", sp:4, hp:6}},
+  frozenbible:{t:()=>"책장 위로 성에가 번진다. 얼어붙은 구절이 읽어 주기를 기다린다", btn:"구절을 소리 내어 읽는다", d:"의지 판정 · 성공하면 읽은 이의 서리가 한 겹 녹는다", chk:"wil",
+    ok:{mood:8, frost:-1}, okT:"구절이 김을 내며 녹았다", bad:{mp:0.05}, badT:"입김이 얼어 목소리가 나오지 않는다", missT:"아무도 읽지 않았다. 냉기가 바닥을 타고 번진다"},
+  // 창작 · 레퍼런스: 바리공주 무가의 서천꽃밭 — 뼈살이꽃 · 살살이꽃 · 피살이꽃(뼈를 잇고, 살을 붙이고, 피를 돌린다)
+  bari:{t:G=>{ const i = Math.min(2, G.flowers.length); return `서천꽃밭의 ${["뼈살이꽃","살살이꽃","피살이꽃"][i]}이 시들어 고개를 떨군다 — ${["뼈를","살을","피를"][i]} 살릴 꽃이 마르면 차례가 끊긴다`; },
+    btn:G=>`${["뼈살이꽃","살살이꽃","피살이꽃"][Math.min(2, G.flowers.length)]}에 물을 준다`, d:"꽃밭의 물을 길어다 준다 · 지금 차례인 꽃에 맞는 능력치로 판정(뼈 근력 · 살 민첩 · 피 의지)",
+    chk:G=>["str","agi","wil"][Math.min(2, G.flowers.length)],
+    ok:{mood:8}, okT:"꽃이 다시 고개를 들었다. 다음 차례를 잇는다", bad:{mp:0.05}, badT:"물동이를 엎질렀다 — 꽃밭지기가 혀를 찬다", missT:"차례의 꽃이 말라 바스러졌다. 꽃밭에 붉은 물이 번진다",
+    rage:{t:"피살이꽃이 붉게 피어 상처마다 피를 끌어당긴다", btn:"상처를 동여맨다", okT:"상처를 동여매자 꽃이 고개를 돌렸다", missT:"뼈 잇는 가지와 살 붙이는 꽃가루가 모두를 휘감고 피를 빨았다", sp:5, hp:5}},
 };
 const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
 /* 전투 분류: 사살(죄종) · 전투형 · 조건부 전투 · 기믹형(전투 없음 — 그 자리에 머물고, 실패하면 재앙) · 전투 불가(손대면 즉사·중상 기믹, 맞서 싸울 수 없음) */
@@ -6424,7 +6469,7 @@ function mgAbno(ctx){
     const actP = (lv, ratio) => lv==="최고" ? clamp(0.35 + 0.55*ratio, 0.05, 0.97) : lv==="좋음" ? clamp(0.25 + 0.55*ratio, 0.05, 0.97) : lv==="보통" ? clamp(0.2 + 0.5*ratio, 0.05, 0.9) : 0;
     const tagOf = f => benched(f) ? ` · ${a.fx==="frost" ? "얼어붙음" : a.fx==="tower" ? "탑을 짊어짐" : a.fx==="jade" ? "꿈에 빠짐" : a.fx==="erl" ? "정신을 놓음" : "행동 불가"}` : blessedF(f) ? " · 축복(행동 불가)" : flameOf(f) ? ` · ${["푸른","주황","붉은"][flameOf(f)-1]} 불꽃` : "";
     // 고유 기믹: 징후 → 대응(추가 행동) · 놓치면 카운터 -1
-    const SG = signOf(a); G.signLast = 0;
+    const SG = signOf(a); G.signLast = 0; const sgChk = () => typeof SG.chk==="function" ? SG.chk(G) : SG.chk, sgBtn = () => typeof SG.btn==="function" ? SG.btn(G) : SG.btn;
     function signSpawn(force){ if(!SG || G.sign || G.done || G.state!=="calm") return;
       if(!force && !(G.turn - G.signLast >= 3 || Math.random() < 0.45)) return;
       const T = freeT().length ? freeT() : ctx.team, f = SG.target ? pick(T) : null;
@@ -6433,22 +6478,24 @@ function mgAbno(ctx){
     function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
       say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1`);
       if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
-    function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(SG.chk || "wil"); G.sign = null;
+    function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil"); G.sign = null;
       const out = [];
       if(SG.cost && SG.cost.hp){ const v = Math.max(1, Math.floor(f.hpMax*SG.cost.hp)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
-      const ratio = SG.chk ? power(f,[SG.chk]) / Math.max(1, q.req) : 1, ok = !SG.chk || Math.random() < clamp(0.35 + 0.5*ratio, 0.15, 0.95);
+      const ratio = sgChk() ? power(f,[sgChk()]) / Math.max(1, q.req) : 1, ok = !sgChk() || Math.random() < clamp(0.35 + 0.5*ratio, 0.15, 0.95);
       const E = ok ? SG.ok : (SG.bad || {});
       if(E.mood){ G.mood = Math.min(100, G.mood + E.mood); out.push(`기분 +${E.mood}`); }
       if(E.hp){ const v = Math.floor(f.hpMax*E.hp); f.hp = Math.min(f.hpMax, f.hp + v); out.push(`체력 +${v}`); }
       if(E.mp && ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.min(f.mpMax, f.mp + v); out.push(`정신력 +${v}`); }
       if(E.mp && !ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; out.push(`정신력 -${v}`); }
+      if(E.frost && G.frost && G.frost[f.id]){ G.frost[f.id] = Math.max(0, G.frost[f.id] + E.frost); out.push(`서리 ${G.frost[f.id]}/3`); }
+      if(E.hurt && !ok){ const v = Math.max(1, Math.floor(f.hpMax*E.hurt)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
       if(E.tongue){ G.tongue = Math.max(0, G.tongue + E.tongue); out.push(E.tongue > 0 ? `혀에 맞았다(${G.tongue})` : `혀에 맞은 횟수 -1`); }
-      const chkT = SG.chk ? ` <span class="muted">(${ATTR_NAME[SG.chk]} 판정 ${ok ? "성공" : "실패"})</span>` : "";
-      say(`대응 · ${esc(jo(f.name,"이"))} ${esc(SG.btn)}${chkT} — <span style="color:${ok ? "#8fd6a0" : "#e0c64a"}">${esc(ok ? SG.okT : SG.badT)}</span>${out.length ? ` (${out.join(" · ")})` : ""}${ok ? "" : ` · <span class="muted">카운터는 지켰다</span>`}`);
+      const chkT = sgChk() ? ` <span class="muted">(${ATTR_NAME[sgChk()]} 판정 ${ok ? "성공" : "실패"})</span>` : "";
+      say(`대응 · ${esc(jo(f.name,"이"))} ${esc(sgBtn())}${chkT} — <span style="color:${ok ? "#8fd6a0" : "#e0c64a"}">${esc(ok ? SG.okT : SG.badT)}</span>${out.length ? ` (${out.join(" · ")})` : ""}${ok ? "" : ` · <span class="muted">카운터는 지켰다</span>`}`);
       if(!settle(f)) menu(); }
     function signBtn(){ if(!SG || !G.sign || G.done) return; const mv = m.ctrl.querySelector(".pk-moves"); if(!mv) return;
-      const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(SG.chk || "wil");
-      mv.insertAdjacentHTML("afterbegin", `<button data-sign="1" class="pk-sign"><b>${esc(SG.btn)}</b><small>징후 대응 — 회차를 쓰지 않는다 · ${esc(SG.d)}<br>${esc(f.name)}${SG.chk ? ` · ${ATTR_NAME[SG.chk]} ${power(f,[SG.chk])} / 요구치 ${q.req}` : ""}<br><span style="color:#ff8a7a">대응하지 않고 행동하면 ${ctrName} -1</span></small></button>`); }
+      const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil");
+      mv.insertAdjacentHTML("afterbegin", `<button data-sign="1" class="pk-sign"><b>${esc(sgBtn())}</b><small>징후 대응 — 회차를 쓰지 않는다 · ${esc(SG.d)}<br>${esc(f.name)}${sgChk() ? ` · ${ATTR_NAME[sgChk()]} ${power(f,[sgChk()])} / 요구치 ${q.req}` : ""}<br><span style="color:#ff8a7a">대응하지 않고 행동하면 ${ctrName} -1</span></small></button>`); }
     function menu(){ if(G.signDue || (q.__signNow && !G.signForced)){ const fc = q.__signNow && !G.signForced; G.signDue = false; G.signForced = true; signSpawn(fc); }
       menuBase(); signBtn(); }
     function menuBase(){
@@ -15513,7 +15560,7 @@ function fxTestPanel(){
       codexSave(d); return toast(`기프트 ${n}개를 도감에 추가했다`); }
     if((k==="rage" || k==="signrage") && A.noFight) return toast(`이 환상체는 날뛰지 않는다(${FIGHT_TXT[fightType(A)][0]})`);
     const team = S.fixers.slice(0, Math.max(1, +el.querySelector("#fxn").value)).filter(Boolean);
-    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN만 적용됨)"); q.__signNow = true; }
+    const q = makeRequest(A.g[0], {kind:"환상체", attrs:["wil"]}); q.abno = ab; q.grade = A.g[0]; q.risk = A.risk; q.__state = k==="rage" || k==="signrage" ? "rage" : "calm"; if(k==="sign" || k==="signrage"){ if(!signOf(A)) toast("이 환상체는 아직 고유 기믹이 없다(ZAYIN·TETH만 적용됨)"); q.__signNow = true; }
     S.requests.push(q); const r = await runMinigames(q, team); toast(r.abno && r.abno.how==="ctrl" ? "통제 성공" : r.abno && r.abno.how==="sup" ? "제압 성공" : "실패");
     if(r.abno){ const L = []; const lost = abnoApply(q, team, Object.assign({}, r.abno, {battle: r.combat && r.combat.battle}), L); if(r.abno.how) await abnoReward(q, team, r.abno, L);
       S.requests = S.requests.filter(x=>x.id!==q.id);

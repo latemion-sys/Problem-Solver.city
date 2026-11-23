@@ -5949,9 +5949,12 @@ const ABNO_SIGN = {
     rage:{t:"뿌리가 바닥을 뚫고 발목을 노린다", btn:"뿌리를 쳐 낸다", okT:"뿌리가 잘려 나갔다", missT:"뿌리가 모두의 발목을 감고 즙을 빨았다", sp:4, hp:6}},
   frozenbible:{t:()=>"책장 위로 성에가 번진다. 얼어붙은 구절이 읽어 주기를 기다린다", btn:"구절을 소리 내어 읽는다", d:"의지 판정 · 성공하면 읽은 이의 서리가 한 겹 녹는다", chk:"wil",
     ok:{mood:8, frost:-1}, okT:"구절이 김을 내며 녹았다", bad:{mp:0.05}, badT:"입김이 얼어 목소리가 나오지 않는다", missT:"아무도 읽지 않았다. 냉기가 바닥을 타고 번진다"},
-  bari:{t:()=>"꽃밭의 꽃 한 송이가 시들어 고개를 떨군다", btn:"물을 길어 준다", d:"물을 길어 오느라 지친다(대응한 이 체력 -3%)", cost:{hp:0.03},
-    ok:{mood:8}, okT:"물을 주자 꽃잎이 다시 일어섰다", missT:"꽃이 말라 바스러졌다. 꽃밭에 붉은 물이 번진다",
-    rage:{t:"뼈 잇는 가지가 누군가의 뼈를 노리고 휘어진다", btn:"꽃 이름을 불러 준다", okT:"이름을 부르자 가지가 멈칫했다", missT:"가지와 꽃가루가 모두를 휘감았다", sp:5, hp:5}},
+  // 창작 · 레퍼런스: 바리공주 무가의 서천꽃밭 — 뼈살이꽃 · 살살이꽃 · 피살이꽃(뼈를 잇고, 살을 붙이고, 피를 돌린다)
+  bari:{t:G=>{ const i = Math.min(2, G.flowers.length); return `서천꽃밭의 ${["뼈살이꽃","살살이꽃","피살이꽃"][i]}이 시들어 고개를 떨군다 — ${["뼈를","살을","피를"][i]} 살릴 꽃이 마르면 차례가 끊긴다`; },
+    btn:G=>`${["뼈살이꽃","살살이꽃","피살이꽃"][Math.min(2, G.flowers.length)]}에 물을 준다`, d:"꽃밭의 물을 길어다 준다 · 지금 차례인 꽃에 맞는 능력치로 판정(뼈 근력 · 살 민첩 · 피 의지)",
+    chk:G=>["str","agi","wil"][Math.min(2, G.flowers.length)],
+    ok:{mood:8}, okT:"꽃이 다시 고개를 들었다. 다음 차례를 잇는다", bad:{mp:0.05}, badT:"물동이를 엎질렀다 — 꽃밭지기가 혀를 찬다", missT:"차례의 꽃이 말라 바스러졌다. 꽃밭에 붉은 물이 번진다",
+    rage:{t:"피살이꽃이 붉게 피어 상처마다 피를 끌어당긴다", btn:"상처를 동여맨다", okT:"상처를 동여매자 꽃이 고개를 돌렸다", missT:"뼈 잇는 가지와 살 붙이는 꽃가루가 모두를 휘감고 피를 빨았다", sp:5, hp:5}},
 };
 const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
 /* 전투 분류: 사살(죄종) · 전투형 · 조건부 전투 · 기믹형(전투 없음 — 그 자리에 머물고, 실패하면 재앙) · 전투 불가(손대면 즉사·중상 기믹, 맞서 싸울 수 없음) */
@@ -6466,7 +6469,7 @@ function mgAbno(ctx){
     const actP = (lv, ratio) => lv==="최고" ? clamp(0.35 + 0.55*ratio, 0.05, 0.97) : lv==="좋음" ? clamp(0.25 + 0.55*ratio, 0.05, 0.97) : lv==="보통" ? clamp(0.2 + 0.5*ratio, 0.05, 0.9) : 0;
     const tagOf = f => benched(f) ? ` · ${a.fx==="frost" ? "얼어붙음" : a.fx==="tower" ? "탑을 짊어짐" : a.fx==="jade" ? "꿈에 빠짐" : a.fx==="erl" ? "정신을 놓음" : "행동 불가"}` : blessedF(f) ? " · 축복(행동 불가)" : flameOf(f) ? ` · ${["푸른","주황","붉은"][flameOf(f)-1]} 불꽃` : "";
     // 고유 기믹: 징후 → 대응(추가 행동) · 놓치면 카운터 -1
-    const SG = signOf(a); G.signLast = 0;
+    const SG = signOf(a); G.signLast = 0; const sgChk = () => typeof SG.chk==="function" ? SG.chk(G) : SG.chk, sgBtn = () => typeof SG.btn==="function" ? SG.btn(G) : SG.btn;
     function signSpawn(force){ if(!SG || G.sign || G.done || G.state!=="calm") return;
       if(!force && !(G.turn - G.signLast >= 3 || Math.random() < 0.45)) return;
       const T = freeT().length ? freeT() : ctx.team, f = SG.target ? pick(T) : null;
@@ -6475,10 +6478,10 @@ function mgAbno(ctx){
     function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
       say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1`);
       if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
-    function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(SG.chk || "wil"); G.sign = null;
+    function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil"); G.sign = null;
       const out = [];
       if(SG.cost && SG.cost.hp){ const v = Math.max(1, Math.floor(f.hpMax*SG.cost.hp)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
-      const ratio = SG.chk ? power(f,[SG.chk]) / Math.max(1, q.req) : 1, ok = !SG.chk || Math.random() < clamp(0.35 + 0.5*ratio, 0.15, 0.95);
+      const ratio = sgChk() ? power(f,[sgChk()]) / Math.max(1, q.req) : 1, ok = !sgChk() || Math.random() < clamp(0.35 + 0.5*ratio, 0.15, 0.95);
       const E = ok ? SG.ok : (SG.bad || {});
       if(E.mood){ G.mood = Math.min(100, G.mood + E.mood); out.push(`기분 +${E.mood}`); }
       if(E.hp){ const v = Math.floor(f.hpMax*E.hp); f.hp = Math.min(f.hpMax, f.hp + v); out.push(`체력 +${v}`); }
@@ -6487,12 +6490,12 @@ function mgAbno(ctx){
       if(E.frost && G.frost && G.frost[f.id]){ G.frost[f.id] = Math.max(0, G.frost[f.id] + E.frost); out.push(`서리 ${G.frost[f.id]}/3`); }
       if(E.hurt && !ok){ const v = Math.max(1, Math.floor(f.hpMax*E.hurt)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
       if(E.tongue){ G.tongue = Math.max(0, G.tongue + E.tongue); out.push(E.tongue > 0 ? `혀에 맞았다(${G.tongue})` : `혀에 맞은 횟수 -1`); }
-      const chkT = SG.chk ? ` <span class="muted">(${ATTR_NAME[SG.chk]} 판정 ${ok ? "성공" : "실패"})</span>` : "";
-      say(`대응 · ${esc(jo(f.name,"이"))} ${esc(SG.btn)}${chkT} — <span style="color:${ok ? "#8fd6a0" : "#e0c64a"}">${esc(ok ? SG.okT : SG.badT)}</span>${out.length ? ` (${out.join(" · ")})` : ""}${ok ? "" : ` · <span class="muted">카운터는 지켰다</span>`}`);
+      const chkT = sgChk() ? ` <span class="muted">(${ATTR_NAME[sgChk()]} 판정 ${ok ? "성공" : "실패"})</span>` : "";
+      say(`대응 · ${esc(jo(f.name,"이"))} ${esc(sgBtn())}${chkT} — <span style="color:${ok ? "#8fd6a0" : "#e0c64a"}">${esc(ok ? SG.okT : SG.badT)}</span>${out.length ? ` (${out.join(" · ")})` : ""}${ok ? "" : ` · <span class="muted">카운터는 지켰다</span>`}`);
       if(!settle(f)) menu(); }
     function signBtn(){ if(!SG || !G.sign || G.done) return; const mv = m.ctrl.querySelector(".pk-moves"); if(!mv) return;
-      const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(SG.chk || "wil");
-      mv.insertAdjacentHTML("afterbegin", `<button data-sign="1" class="pk-sign"><b>${esc(SG.btn)}</b><small>징후 대응 — 회차를 쓰지 않는다 · ${esc(SG.d)}<br>${esc(f.name)}${SG.chk ? ` · ${ATTR_NAME[SG.chk]} ${power(f,[SG.chk])} / 요구치 ${q.req}` : ""}<br><span style="color:#ff8a7a">대응하지 않고 행동하면 ${ctrName} -1</span></small></button>`); }
+      const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil");
+      mv.insertAdjacentHTML("afterbegin", `<button data-sign="1" class="pk-sign"><b>${esc(sgBtn())}</b><small>징후 대응 — 회차를 쓰지 않는다 · ${esc(SG.d)}<br>${esc(f.name)}${sgChk() ? ` · ${ATTR_NAME[sgChk()]} ${power(f,[sgChk()])} / 요구치 ${q.req}` : ""}<br><span style="color:#ff8a7a">대응하지 않고 행동하면 ${ctrName} -1</span></small></button>`); }
     function menu(){ if(G.signDue || (q.__signNow && !G.signForced)){ const fc = q.__signNow && !G.signForced; G.signDue = false; G.signForced = true; signSpawn(fc); }
       menuBase(); signBtn(); }
     function menuBase(){
