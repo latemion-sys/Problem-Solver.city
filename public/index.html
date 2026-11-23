@@ -2808,6 +2808,156 @@ function drawDistortFx(c, x, gy, h, lvl, t, hurt){
     const bx = x + Math.cos(a)*r0, by = gy - h*0.62 + Math.sin(a)*r0*1.4, tx = bx + Math.cos(a)*len, ty = by + Math.sin(a)*len;
     c.fillStyle = `rgba(${120+lvl*30},${18},${40},0.95)`; c.shadowColor = "rgba(255,60,90,0.8)"; c.shadowBlur = 6; c.beginPath(); c.moveTo(bx - Math.sin(a)*h*0.018, by + Math.cos(a)*h*0.018); c.quadraticCurveTo(bx + Math.cos(a)*len*0.5 + Math.sin(t*3+i)*h*0.02, by + Math.sin(a)*len*0.5, tx, ty); c.lineTo(bx + Math.sin(a)*h*0.018, by - Math.cos(a)*h*0.018); c.closePath(); c.fill(); }
   c.restore(); }
+/* ================= 뒤틀림 형체 셰이더 =================
+   대호수 시뮬레이터 뒤틀림(heart-gl twist)의 결을 전투 화면의 적 하나에 옮긴 것.
+   적 실루엣을 작은 2D 캔버스에 그려 텍스처로 넘기고, WebGL2 프래그먼트 셰이더에서
+   도메인 워핑(형체 일렁임) · 방사형 살점 돌기 · 핏줄 결 · 심장 박동 테두리 · 발밑 먹물 · 겹친 잔상을 입힌다.
+   WebGL2가 없거나 실패하면 null을 돌려주고, 호출하는 쪽은 이전 2D 그림으로 돌아간다. */
+const DistGL = (()=>{
+  let gl = null, cv = null, prog = null, tex = null, oc = null, ox = null, U = {}, dead = false;
+  const VS = `#version 300 es
+in vec2 a;void main(){gl_Position=vec4(a,0.,1.);}`;
+  const FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;uniform vec2 uRes;uniform vec2 uC;uniform float uFeet,uT,uLvl,uHurt,uHit,uKill,uSeed;
+out vec4 o;
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
+ return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
+float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(1.6,1.2,-1.2,1.6);for(int i=0;i<4;i++){v+=a*noise(p);p=m*p;a*=.5;}return v;}
+float A(vec2 uv){return (uv.x<0.||uv.y<0.||uv.x>1.||uv.y>1.)?0.:texture(uTex,uv).a;}
+float asp;vec2 W;
+// 형체 일렁임: 맞은 직후와 상처가 깊을수록 더 크게 어긋난다
+vec2 warp(vec2 uv){
+ float t=uT+uSeed;
+ vec2 w=vec2(fbm(uv*vec2(7.,5.)+vec2(t*.8,0.)),fbm(uv*vec2(7.,5.)+vec2(3.1,-t*.7)))-.5;
+ float amp=(.012+.006*uLvl)*(1.+uHurt*.9)+uHit*.035;
+ float row=floor(uv.y*48.),tk=floor(t*9.);
+ float tear=step(.9-uHit*.25,hash(vec2(row,tk)))*(.01+.006*uLvl+uHit*.05)*(hash(vec2(tk,row))-.5)*2.;
+ return uv+w*amp*2.+vec2(tear,0.);
+}
+// 몸 + 살점 돌기(몸 중심에서 바깥쪽으로, 어깨와 등 위쪽에만 자란다)
+float bodyAt(vec2 uv,out float spk){
+ spk=0.;
+ vec2 su=warp(uv);float a=A(su);
+ vec2 d=(uv-uC)*vec2(asp,1.);float r=length(d)+1e-4;float ang=atan(d.y,d.x);
+ float n=3.+uLvl*2.;
+ float s=pow(max(0.,sin(ang*n+fbm(vec2(ang*1.3,uT*.2+uSeed))*5.)),2.)*(.55+.6*fbm(vec2(ang*4.,uT*.5)));
+ s=max(s,.35*pow(max(0.,sin(ang*(n*2.3)+2.+uT*.3)),6.));
+ float up=smoothstep(.35,-.55,d.y/r);
+ float len=(.05+.04*uLvl)*s*up*(.7+.3*sin(uT*1.9+ang*3.))*(1.+uHurt*.6+uHit*.8);
+ vec2 dir=(d/r)/vec2(asp,1.);
+ for(int i=1;i<=6;i++){float k=float(i)/6.;float h=A(warp(uv-dir*len*k));
+  if(h>.5){spk=max(spk,1.-k*k);}}
+ return max(a,step(.001,spk)*smoothstep(0.,.25,spk+.08));
+}
+void main(){
+ vec2 uv=vec2(gl_FragCoord.x/uRes.x,1.-gl_FragCoord.y/uRes.y);
+ asp=uRes.x/uRes.y;
+ float t=uT+uSeed,lv=uLvl,kill=uKill;
+ float hb=pow(max(0.,sin(uT*5.4)),12.)+.6*pow(max(0.,sin(uT*5.4-.9)),12.);
+ float spk;float body=bodyAt(uv,spk);
+ vec2 su=warp(uv);vec4 tx=texture(uTex,clamp(su,0.,1.));
+ // 바깥 번짐(테두리 빛): 둘레 여덟 방향의 몸 밀도
+ float halo=0.;float R=.018+.008*lv;
+ for(int i=0;i<8;i++){float an=float(i)*.785398+t*.3;vec2 off=vec2(cos(an)/asp,sin(an))*R;halo+=A(warp(uv+off));}
+ halo/=8.;
+ float far=0.;
+ for(int i=0;i<8;i++){float an=float(i)*.785398;vec2 off=vec2(cos(an)/asp,sin(an))*R*3.2;far+=A(warp(uv+off));}
+ far/=8.;
+ vec3 col=vec3(0.);float al=0.;
+ // 발밑 먹물: 일렁이는 가장자리, 사살되면 차오른다
+ vec2 fp=(uv-vec2(uC.x,uFeet))*vec2(asp,1.);
+ float iw=(.21+.06*lv)*(1.+kill*.6),ih=.035+.012*lv+kill*.05;
+ float edge=fbm(vec2(atan(fp.y,fp.x)*2.,t*.35))*.35+fbm(fp*14.+t*.4)*.18;
+ float ink=smoothstep(1.,.82,length(fp/vec2(iw,ih))-edge);
+ float sheen=pow(max(0.,fbm(fp*vec2(9.,26.)+vec2(t*.5,0.))-.45),2.)*2.2;
+ vec3 inkC=vec3(.05,0.,.012)+vec3(.45,.02,.07)*sheen*(.6+.4*hb);
+ col=mix(col,inkC,ink);al=max(al,ink*.92);
+ // 먹물에서 피어오르는 검붉은 물방울 기둥(별급일수록 많다)
+ for(int i=0;i<5;i++){float fi=float(i);if(fi>lv*1.7+1.)break;
+  float px=uC.x+(hash(vec2(fi,uSeed))-.5)*iw*1.6/asp;float ph=fract(t*.22+hash(vec2(fi,3.))) ;
+  vec2 q=(uv-vec2(px,uFeet-ph*.32))*vec2(asp,1.);float dr=exp(-dot(q,q)*9000.)*(1.-ph);
+  col+=vec3(.5,.02,.08)*dr;al=max(al,dr*.9);}
+ // 겹친 잔상(악몽 이상): 붉은빛 · 푸른빛이 서로 어긋난다
+ if(lv>=1.5){float off=.012+.008*sin(t*2.3)+uHit*.03;
+  float gR=A(warp(uv+vec2(off,0.))),gC=A(warp(uv-vec2(off*.9,-off*.3)));
+  float gm=(1.-body)*.55;
+  col+=vec3(.55,0.,.12)*gR*gm+vec3(.0,.28,.4)*gC*gm*.7;al=max(al,max(gR,gC)*gm*.8);}
+ // 붉은 안개와 테두리 빛
+ float rim=clamp(halo-body,0.,1.);float glow=clamp(far-body,0.,1.);
+ vec3 rimC=mix(vec3(1.,.15,.18),vec3(1.,.55,.45),hb*.5);
+ col+=rimC*rim*(.75+.6*hb)+vec3(.5,0.,.08)*glow*(.35+.25*hb);
+ al=max(al,rim*(.85)+glow*.4);
+ // 몸: 검붉은 살결 + 안쪽에서 흐르는 핏줄
+ if(body>0.){
+  float sh=dot(tx.rgb,vec3(.3,.5,.2));
+  vec3 base=mix(vec3(.05,.0,.012),vec3(.2,.02,.05),sh*1.4);
+  float veins=1.-smoothstep(0.,.07,abs(fbm(uv*vec2(10.,8.)*1.3-vec2(0.,t*.4))-.5));
+  float veins2=1.-smoothstep(0.,.05,abs(fbm(uv*vec2(19.,15.)+vec2(t*.2,0.))-.5));
+  base+=vec3(.75,.03,.1)*(veins*.8+veins2*.35)*(.55+.45*hb);
+  // 살점 돌기: 뿌리는 붉고 끝으로 갈수록 검게 굳는다
+  float fl=fbm(uv*vec2(30.,24.)+uT*.2);
+  vec3 sc=mix(vec3(.06,0.,.015),mix(vec3(.42,.03,.08),vec3(.8,.18,.2),fl*fl),spk)*(.7+.5*fl);
+  base=mix(base,sc,step(.001,spk)*(1.-tx.a));
+  // 몸 안쪽 테두리에 맺힌 붉은 빛
+  float inner=clamp(body-A(warp(uv+vec2(0.,-R*.6)))*.5-.5,0.,1.);
+  base+=vec3(.9,.12,.15)*inner*.35*(1.+hb);
+  // 맞은 순간 흰 살빛으로 번쩍
+  base=mix(base,vec3(1.,.86,.8),uHit*.6);
+  col=mix(col,base,body);al=max(al,body);
+ }
+ // 사살: 위에서부터 먹물 속으로 가라앉듯 사라진다(먹물은 남는다)
+ if(kill>0.){float line=(uFeet-1.)+kill*1.02;
+  float keep=smoothstep(line-.03,line+.03,uv.y+(fbm(uv*11.+t)-.5)*.08);
+  float notInk=1.-ink;col*=mix(1.,keep,notInk);al*=mix(1.,keep,notInk);}
+ al=clamp(al,0.,1.);col=min(col,vec3(al));
+ o=vec4(col,al);
+}`;
+  function init(){
+    if(gl || dead) return !!gl;
+    try{
+      cv = document.createElement("canvas"); cv.width = 8; cv.height = 8;
+      gl = cv.getContext("webgl2", {premultipliedAlpha:true, alpha:true, antialias:false, preserveDrawingBuffer:true});
+      if(!gl) throw 0;
+      const sh = (ty, src)=>{ const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+      prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+      if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+      gl.useProgram(prog);
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      ["uTex","uRes","uC","uFeet","uT","uLvl","uHurt","uHit","uKill","uSeed"].forEach(n=>U[n] = gl.getUniformLocation(prog, n));
+      tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+      [[gl.TEXTURE_MIN_FILTER, gl.LINEAR],[gl.TEXTURE_MAG_FILTER, gl.LINEAR],[gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k,v])=>gl.texParameteri(gl.TEXTURE_2D, k, v));
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      oc = document.createElement("canvas"); ox = oc.getContext("2d");
+      gl.canvas.addEventListener("webglcontextlost", ()=>{ gl = null; dead = true; });
+      return true;
+    }catch(e){ console.warn("DistGL 사용 불가", e); gl = null; dead = true; return false; }
+  }
+  // c: 그릴 2D 맥락 · x, gy, h: 적의 발 위치와 키 · figOpt: drawFixer 옵션 · k: {lvl, hurt, hit, kill, seed}
+  function draw(c, x, gy, h, figOpt, k){
+    if(!init()) return false;
+    const x0 = x - h*1.15, y0 = gy - h*1.5, Wl = h*2.1, Hl = h*1.78;
+    const tr = c.getTransform(), s = Math.hypot(tr.a, tr.b) || 1;
+    const sc = Math.min(1, 440/(Wl*s)) * s, pw = Math.max(16, Math.round(Wl*sc)), ph = Math.max(16, Math.round(Hl*sc));
+    if(oc.width !== pw || oc.height !== ph){ oc.width = pw; oc.height = ph; }
+    if(cv.width !== pw || cv.height !== ph){ cv.width = pw; cv.height = ph; }
+    ox.setTransform(1,0,0,1,0,0); ox.clearRect(0,0,pw,ph);
+    ox.setTransform(sc,0,0,sc,-x0*sc,-y0*sc);
+    drawFixer(ox, x, gy, h, figOpt);
+    gl.viewport(0,0,pw,ph); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(prog); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, oc);
+    gl.uniform1i(U.uTex, 0); gl.uniform2f(U.uRes, pw, ph);
+    gl.uniform2f(U.uC, (x - x0)/Wl, (gy - h*0.58 - y0)/Hl); gl.uniform1f(U.uFeet, (gy - y0)/Hl);
+    gl.uniform1f(U.uT, k.t); gl.uniform1f(U.uLvl, k.lvl||1); gl.uniform1f(U.uHurt, k.hurt||0); gl.uniform1f(U.uHit, k.hit||0); gl.uniform1f(U.uKill, k.kill||0); gl.uniform1f(U.uSeed, k.seed||0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    c.drawImage(cv, x0, y0, Wl, Hl);
+    return true;
+  }
+  return {draw, ok: ()=>init()};
+})();
 /* ================= 뒷골목 조직 의뢰 =================
    손가락 · 검계 · 흑운회는 빼고, 뒷골목 조직들을 상대(또는 의뢰인)로 하는 의뢰. 원작 조직(사육제 · 브레멘 음악대 · 웃는 얼굴들) + 이 게임의 조직.
    gr: 맞서기 알맞은 해결사 급수(그 급수 ±1 등급의 의뢰로 나온다) · rows: [내용, 의뢰인, 종류, 능력, 목표 또는 쫓을 대상, 상대]
@@ -5118,8 +5268,11 @@ function mgCombat(ctx){
         drawAbnoFigure(c, now/1000, POS.foe.x + fp.dx*0.12 - ak*22, POS.foe.gy - POS.foe.h*0.55 + Math.sin(now/600)*4 + fp.dy*0.12 + ak*8, rr, AB.risk, {rage: !egg && (foe.hp < foe.max*0.5 || AB.rage), egg, eggT: egg ? (clock - st.koAt)/1000 : null, ent: 1, flash: fp.flash*3, atk: ak, dim: fdim});
         c.restore();
       } else {
-      if(DF && outcome!=="사살") drawDistortFx(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, DF.lvl, now/1000, 1-fworst);
-      drawFixer(c, POS.foe.x+fp.dx + (DF ? (Math.random()-0.5)*DF.lvl*1.5 : 0), POS.foe.gy+fp.dy, POS.foe.h*0.96*(DF ? 1 + 0.04*DF.lvl : 1), {face:-1, spr: !DF, col: DF ? hexMix(fcol, "#2a0810", 0.45) : fcol, state: "combat", weapon: foe.mangLive && foe.spec ? Object.assign({}, foe.spec, {mang: foe.mangLive}) : foe.spec, shin: foe.shinLive && !outcome ? {murk: 0} : null, mk: 0, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot}); }
+      const foeOpt = {face:-1, spr: !DF, col: DF ? hexMix(fcol, "#2a0810", 0.45) : fcol, state: "combat", weapon: foe.mangLive && foe.spec ? Object.assign({}, foe.spec, {mang: foe.mangLive}) : foe.spec, shin: foe.shinLive && !outcome ? {murk: 0} : null, mk: 0, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot};
+      const dfK = DF ? {t: now/1000, lvl: DF.lvl, hurt: 1-fworst, hit: clamp(fp.flash*3,0,1), kill: outcome==="사살" && st.koAt!=null ? clamp((clock-st.koAt)/1500,0,1) : 0, seed: (DF.lvl*7.3)%10} : null;
+      if(!(DF && DistGL.draw(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96*(1 + 0.04*DF.lvl), Object.assign({}, foeOpt, {rot: fp.rot}), dfK))){
+        if(DF && outcome!=="사살") drawDistortFx(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, DF.lvl, now/1000, 1-fworst);
+        drawFixer(c, POS.foe.x+fp.dx + (DF ? (Math.random()-0.5)*DF.lvl*1.5 : 0), POS.foe.gy+fp.dy, POS.foe.h*0.96*(DF ? 1 + 0.04*DF.lvl : 1), foeOpt); } }
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
       const mcol = hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash);
@@ -16009,7 +16162,7 @@ function fxTestPanel(){
   el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>사건 · 특수 의뢰 전용 미니게임</b><div class="g"><select id="fxstory">${Object.entries(STORY_MG).map(([k,v])=>`<option value="${k}">${k} — ${v.t}</option>`).join("")}</select><button data-story="1">시험</button><button data-story="post">뒷이야기(성공)</button><button data-story="postfail">뒷이야기(실패)</button></div>
-   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
+   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><button data-mg="dist">뒤틀림 전투 시험</button><select id="fxdt"><option>도시 질병</option><option>도시 악몽</option><option>도시의 별</option></select><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
@@ -16193,6 +16346,11 @@ function fxTestPanel(){
     if(sv==="1"){ const r = await mgStory({q, team:S.fixers.slice(0,3), idx:1, total:1}); toast(`전용 미니게임 ${Math.round(r*100)}점 — 싸움이 이어지면 상대 체력 -${Math.round(25*r)}%`); }
     else { const Pp = STORY_POST[storyKey(q)]; if(Pp) await vnPlay(`${STORY_MG[k].t} — ${sv==="post" ? "성공한 뒤" : "실패한 뒤"}`, sv==="post" ? Pp.ok : Pp.fail, null, null); } });
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
+    if(g==="dist"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean), th = el.querySelector("#fxdt").value;
+      const gr = th==="도시의 별" ? 1 : th==="도시 악몽" ? 3 : 5;
+      const q = {kind:"일반", text:"", goal:"사살", grade: gr, threat: th, attrs:["str"], req: Math.max(1, teamPower(team,["str"])/kk), reward: 10000, deadline: 2, client:"테스트 의뢰인"};
+      applyDistort(q, true); q.req = Math.max(1, teamPower(team,["str","wil"])/kk);
+      const r = await mgCombat({q, team, idx:1, total:1}); save(); render(); toast(`뒤틀림 시험(${th}) — ${r.win ? "승리" : "패배"}`); return; }
     if(g==="shinme" || g==="shinfoe"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean), L = team[0];
       if(g==="shinme"){ if(!L.shin || L.shin===true) L.shin = {name: L.name, sin:"", wish:"미리보기", day:S.day}; L.shinOff = false; L.mangOff = false; L.mang = Math.max(L.mang||0, 3); L.mp = L.mpMax; }
       const gr = g==="shinfoe" ? Math.min(2, +el.querySelector("#fxgr").value) : +el.querySelector("#fxgr").value;
