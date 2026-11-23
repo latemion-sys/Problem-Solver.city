@@ -6119,8 +6119,8 @@ const ABNOS = [
    gifts:{a:{n:"음표 모노클", mpRed:0.06, bonus:{tec:5,wil:2}}, b:{n:"다카포", mpRed:0.15, bonus:{wil:4,tec:3}}}},
   {id:"bluestar", n:"푸른 별", risk:"ALEPH", canon:"L", code:"O-03-93", g:[1,0], fx:"pulse", form:"하늘에 떠서 맥박치는 커다란 푸른 심장. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다", look:"하늘 높이 푸른 심장 같은 별이 떠서 맥박치듯 울린다",
    rumor:"도심 하늘에 맥박치는 커다란 푸른 별이 떴다. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다. 그 소리를 들은 사람들이 하나둘 별을 향해 걸어갔다. 처리해 달라", pref:{str:"나쁨", agi:"좋음", tec:"나쁨", wil:"보통"}, ctr:2, low:"wil", lowStrict:true,
-   noFight:true, doom:{t:"별이 울렸다", custom:"bluestar"},
-   escape:"마주치는 순간 맥박이 울려 모두의 정신력이 30% 깎이고, 정신이 무너진 이와 마음(의지)이 약한 이는 별에 흡수된다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘에 떠서 다시 맥박을 울린다",
+   cards:[{n:"푸른 맥박",a:5,b:12},{n:"끌어당기는 빛",a:6,b:13},{n:"별의 찬송",a:4,b:16},{n:"맥박치는 껍질",a:6,b:9,def:true}],
+   escape:"마주치는 순간 맥박이 울려 모두의 정신력이 30% 깎이고, 정신이 무너진 이와 마음(의지)이 약한 이는 별에 흡수된다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘로 떠올라 맥박을 울리며 날뛴다 — 싸워서 떨어뜨려야 한다",
    story:"절망이 가장 깊던 해, 구역 하늘에 푸른 별이 떴다. 스스로 신이라 한 적은 없었다. 사람들이 먼저 무릎을 꿇었다.\n모임이 생겼다. 그들은 서로를 죄인이라 불렀고, 죄인을 받아 주는 곳은 저 별뿐이라 믿었다. 별에 닿는 것은 죽음이 아니라 있어야 할 곳으로 돌아가는 일이라고. 구역은 모임을 금했다. 이 도시에서 신성한 것은 없어야 했다.\n금지는 오래가지 않았다. 별 가까이에선 반기는 노래와 함성이 들렸고, 맥박이 울릴 때마다 마음 약한 이부터 발끝이 땅에서 떨어졌다. 가족들은 그들을 침대에 묶었다. 묶인 이들은 밤새 창문 쪽으로 몸을 틀었다.\n이제 별 아래로 다리들이 매달려 흔들린다. 모임 사람들은 그것을 환영의 손짓이라 부른다. 모두가 돌아가고 나면 이 구역엔 별만 남을 것이다.\n— 뒷면 부록 —\n곧 별이 되어서 만나자.",
    like:"맥박이 느려진다", dislike:"푸른 빛이 맥박친다",
    gifts:{a:{n:"별 안대", mpRed:0.15, bonus:{wil:4}}, b:{n:"별의 소리", bonus:{agi:7,wil:2}}}},
@@ -6266,7 +6266,7 @@ const ABNO_SIGN = {
 };
 const signOf = a => a && ABNO_SIGN[String(a.id||"").split("~")[0]] || null;
 /* 전투 분류: 사살(죄종) · 전투형 · 조건부 전투 · 기믹형(전투 없음 — 그 자리에 머물고, 실패하면 재앙) · 전투 불가(손대면 즉사·중상 기믹, 맞서 싸울 수 없음) */
-const ABNO_UNFIGHTABLE = ["wall","spiderbud","armor","headlessmantis","bluestar"];
+const ABNO_UNFIGHTABLE = ["wall","spiderbud","armor","headlessmantis"];   // ALEPH는 모두 싸울 수 있다
 const fightType = a => a.kill ? "kill" : a.rule2==="ranged" ? "cond" : !a.noFight ? "battle" : ABNO_UNFIGHTABLE.includes(a.id) ? "none" : a.gentle ? "gentle" : "gimmick";
 const FIGHT_TXT = {kill:["사살 전투","#ff8a7a","보는 즉시 사살한다 — 제압해 되돌릴 수 없다"], battle:["전투형","#8fd6a0","폭주하거나 날뛰면 전투로 제압해 알로 되돌린다"],
   cond:["조건부 전투","#e0c64a","멀리서 쏠 수 있는 총잡이가 있어야 맞설 수 있다. 없으면 재앙이 일어난다"],
