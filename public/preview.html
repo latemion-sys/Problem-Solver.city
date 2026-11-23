@@ -9356,7 +9356,7 @@ async function openRecruit(){
 }
 
 /* ================= 관리 ================= */
-const healCost = f => Math.floor(1000 * (f.grade===0?10:(10-f.grade)) * 0.55);   // 회복 비용: 원래의 55%(소수점 버림)
+const healCost = f => 550 + 400*(9 - Math.max(3, f.grade===0 ? 3 : f.grade));   // 10 회복당: 9급 550안부터 등급마다 +400, 3급 이상(특색 포함)은 2,950안 고정
 async function openManage(){
   let sel = S.fixers[0]?.id, mview = null;
   const draw = () => {
