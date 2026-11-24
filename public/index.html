@@ -4689,12 +4689,12 @@ const TECHS = {
   iai:      {n:"발도",      kinds:["blade","long"],   d:"칼을 뽑는 첫 칼에 모든 것을 건다. 전투에서 처음 쓸 때만 기본 위력 +6, 그 뒤로는 +1."},
   riposte:  {n:"되찌르기",  kinds:["rapier","twin"],  def:true, d:"막고 바로 되찌른다. 방어 기술 — 이기면 반격 피해 ×1.5."},
   fleche:   {n:"플레슈",    kinds:["rapier","spear"], d:"몸의 무게를 앞으로 내던지며 뛰어든다. 기본 위력 +4. 합에서 지면 받는 피해 1.3배."},
-  sweep:    {n:"자루 걸기", kinds:["spear","staff"],  d:"자루로 발을 걸어 넘어뜨린다. 기본 위력 +1, 맞히면 상대가 휘청이고 정신력 -8."},
+  sweep:    {n:"자루 걸기", kinds:["spear","staff"],  d:"자루로 발을 걸어 넘어뜨린다. 기본 위력 +1, 맞히면 상대가 휘청이고 다음 합에서 상대 코인 위력 -2."},
   charge:   {n:"돌격",      kinds:["lance"],          d:"자세를 낮추고 그대로 들이받는다. 기본 위력 +5. 합에서 지면 받는 피해 1.3배."},
   smash:    {n:"뼈 부수기", kinds:["blunt","great"],  d:"막은 팔째로 부순다. 맞히면 피해 +2, 상대 기본 위력 -1(이 전투 동안 쌓인다)."},
   fanning:  {n:"패닝",      kinds:["gun"],            d:"해머를 손바닥으로 연달아 쳐 쏟아붓는다. 코인 5개, 코인 위력 -1."},
   flurry:   {n:"연환격",    kinds:["fist","none","twin"], d:"쉬지 않고 이어 친다. 코인 +2, 코인 위력 -1."},
-  throw:    {n:"메치기",    kinds:["fist","none"],    d:"붙잡아 바닥에 메다꽂는다. 맞히면 피해 +3, 상대가 휘청이고 정신력 -10."},
+  throw:    {n:"메치기",    kinds:["fist","none"],    d:"붙잡아 바닥에 메다꽂는다. 맞히면 피해 +3, 상대가 휘청이고 다음 합에서 상대 코인 위력 -2."},
   dismantle:{n:"해체",      kinds:["tool"],           d:"관절과 장비의 이음매를 노린다. 맞히면 상대 기본 위력 -2(이 전투 동안 쌓인다)."},
   spin:     {n:"회전 연격", kinds:["staff"],          d:"봉을 휘돌려 쉬지 않고 친다. 코인 +1."},
   onestrike:{n:"일격",      stat:"str", d:"모든 걸 한 번에. 코인이 하나로 줄고, 그만큼 기본 위력이 오른다(+3)."},
@@ -4719,7 +4719,7 @@ const TECHS = {
   rush:     {n:"몰아치기",  stat:"agi", d:"틈을 주지 않고 몰아친다. 이기면 남은 코인 하나마다 피해 +2."},
   focus:    {n:"집중",      stat:"tec", d:"한 동작 한 동작을 또렷하게. 코인 위력 +1."},
   // 유물 원본의 특수 기술 — 배우는 기술이 아니라, 원본 유물을 쥔 손에서만 나온다(봉인 중에는 쓸 수 없다)
-  r_astrape:{n:"벼락 던지기", relic:"astrape", kinds:["spear"], d:"던진 벼락은 빗나가지 않고 손으로 돌아온다. 기본 위력 +4, 이 합에서 앞면 확률 +10%. 맞히면 상대가 휘청이고 정신력 -12."},
+  r_astrape:{n:"벼락 던지기", relic:"astrape", kinds:["spear"], d:"던진 벼락은 빗나가지 않고 손으로 돌아온다. 기본 위력 +4, 이 합에서 앞면 확률 +10%. 맞히면 상대가 휘청이고 다음 합에서 상대 코인 위력 -3."},
   r_claiomh:{n:"빛의 일섬", relic:"claiomh", kinds:["long"], d:"뽑힌 빛의 칼은 아무도 피하지 못한다. 상대의 방어를 무시하고 기본 위력 +3, 눈부신 빛에 상대가 위축 2(다음 공격 피해 -2)."},
   r_gyeongui:{n:"경의", relic:"gyeongui", kinds:["blade"], d:"안으로 밝히고(경 敬) 밖으로 끊어낸다(의 義). 합 전에 정신력 +15, 이기면 피해 ×1.5."},
   r_ruyi:{n:"여의", relic:"ruyi", kinds:["staff"], d:"뜻대로 늘어나 먼저 닿고, 그 무게로 내리찍는다. 코인 +1, 기본 위력 +2, 맞히면 상대가 휘청인다."},
@@ -4856,7 +4856,7 @@ function mgCombat(ctx){
     const CT = combatTier(q, AB, DF);
     foe.hits = CT.hits; foe.hitK = CT.k;
     foe.max = Math.max(1,Math.round(foeHpValue(q,AB,DF,g0) * (foe.aug ? clamp(0.85+0.15*augMul,0.85,1.2) : 1)));
-    foe.hp = foe.max; foe.shownHp = foe.max; foe.sp = 0; foe.weak = 0;   // 적에게는 정신력이 없다 — 코인 앞면은 언제나 50%. 정신력을 깎던 효과는 '위축'(다음 공격 피해 감소)으로 바뀌었다
+    foe.hp = foe.max; foe.shownHp = foe.max; foe.coinDown = 0; foe.weak = 0;   // 적에게는 정신력이 없다. 코인 앞면은 50% 고정이며 정신력 감소 기술은 다음 합의 코인 위력을 낮춘다.
     // 사건 전용 미니게임을 잘 해냈으면 상대가 지친 채로 싸움이 시작된다(최대 25%)
     const storyEdge = q.__edge ? Math.round(foe.max*0.25*clamp(q.__edge,0,1)) : 0; if(storyEdge){ foe.hp = Math.max(1, foe.hp - storyEdge); foe.shownHp = foe.hp; } delete q.__edge;
     foe.baseDamage = foeDmgValue(q,AB,DF,g0);
@@ -4928,7 +4928,7 @@ function mgCombat(ctx){
       sk.cp += TECH_COIN_PLUS;
       sk.def = !!T.def; return {T, sk, card: Object.assign({}, base, {n:T.n, def:!!T.def})}; }
     const MOVES = ["기본 공격","방어","기술"];
-    const foeSk = () => (foe.daze || foe.down) ? Object.assign({}, foeSkill, {base: Math.max(1, foeSkill.base - (foe.daze ? 2 : 0) - (foe.down||0))}) : foeSkill;
+    const foeSk = () => (foe.daze || foe.down || foe.coinDown) ? Object.assign({}, foeSkill, {base: Math.max(1, foeSkill.base - (foe.daze ? 2 : 0) - (foe.down||0)), cp: Math.max(0, foeSkill.cp - (foe.coinDown||0))}) : foeSkill;
     // 정신력 → 코인 앞면 확률: 0 이하는 50+정신력%, +15에서 65%, 그 위로는 완만하게 올라 +45에서 90%
     const spHead = sp => sp <= 15 ? 50 + sp : 65 + (Math.min(sp,45) - 15)*25/30;
     const headP = (sp,extra=0) => clamp(spHead(sp)+extra,5,95)/100;
@@ -5012,7 +5012,7 @@ function mgCombat(ctx){
       if(foe.clock != null) a.push(`징벌 새의 시간 ${Math.max(0, foe.clock - turn + 1)}턴`); if(AB && AB.movement) a.push(`이번 악장: <b>${["공격","방어","기술"][foe.allow]}</b>만 닿는다`);
       if(me.ember) b.push(`불씨 ${me.ember}`); if(me.gaze) b.push(`시선 ${me.gaze}${me.contempt ? " · 경멸" : ""}`); { const gp = party.find(p=>p.grasp); if(gp) a.push(`${esc(gp.name)}를 움켜쥐고 있다(${gp.grasp})`); }
       if(AB && AB.fuse && foe.fuseMark) a.push(`성냥불 ${Math.max(0, AB.fuse - turn + 1)}턴 남음 → ${esc(foe.fuseMark.name)}`); if(foe.lampMark) a.push(`등불에 홀림: ${esc(foe.lampMark.name)} (${Math.max(0, 3 - turn + 1)}턴 남음)`);
-      if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push("휘청임"); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`);
+      if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push("휘청임"); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`); if(foe.coinDown) a.push(`코인 위력 감소 ${foe.coinDown}(다음 합)`);
       { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
       if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
       if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? ` 충전 ${me.wchg}/10` : ""}`); }
@@ -5031,7 +5031,7 @@ function mgCombat(ctx){
       const baseShown = Math.round(equipDamage(me.f)+Math.min(3,support().length));
       const techniqueShown = Math.round(baseShown*(TECH_DAMAGE_MUL[tk.T.id]||1));
       const ammunition = ammoGun ? `<br><span style="color:#f2d27a">탄창 ${ammoGun.mag}/${ammoCap(ammoGun)} · ${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).name} (+${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus})</span>` : "";
-      const pA = foeSkill.def ? 1 : ak.reduce((s,c)=>s + odds(mySkill(skillOf(c)), mySp(me), foeSk(), foe.sp, chg), 0)/ak.length, [la, ca] = oddLabel(pA);
+      const pA = foeSkill.def ? 1 : ak.reduce((s,c)=>s + odds(mySkill(skillOf(c)), mySp(me), foeSk(), 0, chg), 0)/ak.length, [la, ca] = oddLabel(pA);
       const lo = Math.min(...ak.map(c=>mySkill(skillOf(c)).base)), hi = Math.max(...ak.map(c=>{ const k = mySkill(skillOf(c)); return k.base + k.coins*k.cp; }));
       const dk = mySkill(skillOf(dc));
       const tsk = mySkill(tk.sk), pT = foeSkill.def ? 1 : odds(tsk, mySp(me) + (tk.T.id==="afterimage" ? 15 : tk.T.id==="vault" || tk.T.id==="r_astrape" ? 10 : 0) + (tk.T.id==="kiai" || tk.T.id==="r_gyeongui" ? 15 : 0) + (relicFx(me.f,"sleipnir") && !me.slpUsed ? 15 : 0), foeSk(), 0, chg), [lt, ct] = oddLabel(pT);
@@ -5064,6 +5064,7 @@ function mgCombat(ctx){
       if(T && T.id==="r_gyeongui"){ me.sp = clamp(me.sp + 15, -45, 45); tNote.push(`경(敬) — 안을 밝혔다(정신력 ${me.sp>=0?"+":""}${me.sp})`); }
       if(T && T.id==="iai"){ me.iaiFirst = !me.iaiUsed; me.iaiUsed = true; }
       if(!guarding && !foeGuarding && foe.daze){ foe.daze = 0; wNote.push(`${josa(foe.name,"이","가")} 휘청이며 합에 나선다(기본 위력 -2)`); }
+       if(!guarding && !foeGuarding && foe.coinDown){ wNote.push(`상대 코인 위력 ${foeSkill.cp} → ${fk.cp}(이번 합)`); foe.coinDown = 0; }
       if(!guarding && me.wsp==="screw" && me.wchg>=10){ me.wchg = 0; me.hp = Math.max(1, me.hp - 3); wNote.push("방전 — 코인 위력 +2, 손끝이 저릿하게 감전됐다"); }
       const R = guarding ? {ex:[], win:"foe", left:fk.coins, count:0, a:sk, chg:me.charge||null, fired:false}
         : foeGuarding ? {ex:[], win:"me", left:sk.coins, count:0, a:sk, chg:me.charge||null, fired:false}
@@ -5105,15 +5106,15 @@ function mgCombat(ctx){
         if(foe.crack) dmg += foe.crack;
         if(relicFx(me.f,"karakawa")){ dmg += 2; rNote.push("카라카와 — 범의 힘이 실렸다(+2)"); }
         if(T){ const id = T.id;
-          if(id==="r_astrape"){ foe.daze = 1; foe.weak = (foe.weak||0) + 3; tNote.push(`벼락 던지기 — 꽂힌 벼락이 손으로 돌아왔다, ${josa(foe.name,"이","가")} 휘청인다(위축 ${foe.weak})`); }
+          if(id==="r_astrape"){ foe.daze = 1; foe.coinDown += 3; tNote.push(`벼락 던지기 — 꽂힌 벼락이 손으로 돌아왔다, ${josa(foe.name,"이","가")} 휘청인다(다음 합 상대 코인 위력 -${foe.coinDown})`); }
           if(id==="r_claiomh"){ foe.weak = (foe.weak||0) + 2; tNote.push(`빛의 일섬 — 막는 손째로 베어 냈다, 눈이 부셔 움츠러든다(위축 ${foe.weak})`); }
           if(id==="r_gyeongui"){ dmg = Math.round(dmg*1.5); tNote.push("의(義) — 밖으로 끊어냈다(×1.5)"); }
           if(id==="r_ruyi"){ foe.daze = 1; tNote.push(`여의 — 늘어난 봉이 먼저 닿아 내리찍었다, ${josa(foe.name,"이","가")} 휘청인다`); }
           if(id==="r_drepanon"){ foe.bleed = Math.min(9, foe.bleed + 3); me.drepHeal = true; tNote.push(`추수 — 출혈 ${foe.bleed}`); }
           if(id==="riposte") tNote.push("되찌르기 — 막은 그대로 찔러 들어갔다"); if(id==="zwerch") tNote.push("가로지르기 — 받으며 동시에 벴다");
           if(id==="zorn" || id==="sweep" || id==="throw"){ foe.daze = 1; } if(id==="zorn") tNote.push(`분노베기 — ${josa(foe.name,"이","가")} 휘청인다`);
-          if(id==="sweep"){ foe.weak = (foe.weak||0) + 2; tNote.push(`자루 걸기 — 발을 걸어 넘어뜨렸다(위축 ${foe.weak})`); }
-          if(id==="throw"){ dmg += 3; foe.weak = (foe.weak||0) + 2; tNote.push(`메치기 — 바닥에 내리꽂았다(+3 · 위축 ${foe.weak})`); }
+          if(id==="sweep"){ foe.coinDown += 2; tNote.push(`자루 걸기 — 발을 걸어 넘어뜨렸다(다음 합 상대 코인 위력 -${foe.coinDown})`); }
+          if(id==="throw"){ dmg += 3; foe.coinDown += 2; tNote.push(`메치기 — 바닥에 내리꽂았다(+3 · 다음 합 상대 코인 위력 -${foe.coinDown})`); }
           if(id==="mordhau"){ foe.down = (foe.down||0) + 1; tNote.push(`살격 — 막는 손째로 찍었다(상대 기본 위력 -${foe.down})`); }
           if(id==="smash"){ dmg += 2; foe.down = (foe.down||0) + 1; tNote.push(`뼈 부수기 — +2, 상대 기본 위력 -${foe.down}`); }
           if(id==="dismantle"){ foe.down = (foe.down||0) + 2; tNote.push(`해체 — 이음매가 풀렸다(상대 기본 위력 -${foe.down})`); }
@@ -5148,7 +5149,7 @@ function mgCombat(ctx){
         if(W==="ranga"){ if(me.rend){ dmg += me.rend; wNote.push(`찢어발기기 — 벌려 둔 상처를 다시 할퀴었다(+${me.rend})`); } me.rend = Math.min(8, (me.rend||0) + 2); }
         if(W==="cloud"){ foe.bleed = Math.min(9, foe.bleed + 2); wNote.push(`흑운도 — 출혈 ${foe.bleed}`); }
         if(W==="zelkova"){ const ex = Math.max(1, Math.round(P*0.4)); dmg += ex; wNote.push(`한 쌍 — 다른 손으로 한 번 더(+${ex})`); }
-        if(W==="oldboys"){ foe.daze = 1; foe.weak = (foe.weak||0) + 1; wNote.push(`내려찍기 — ${josa(foe.name,"이","가")} 휘청인다`); }
+        if(W==="oldboys"){ foe.daze = 1; foe.coinDown += 1; wNote.push(`내려찍기 — ${josa(foe.name,"이","가")} 휘청인다(다음 합 상대 코인 위력 -${foe.coinDown})`); }
         if(W==="nester"){ foe.tremor += 3; if(foe.tremor >= 6){ const tr = foe.tremor; dmg += tr; foe.weak = (foe.weak||0) + Math.ceil(tr/2); foe.tremor = 0; wNote.push(`진동 단추 — 진동 ${jo(tr,"을")} 터뜨렸다(+${tr})`); } else wNote.push(`진동 ${foe.tremor}`); }
         if(W==="rose"){ foe.tremor = foe.tremor ? Math.min(20, foe.tremor*2) : 2; if(foe.tremor >= 8){ const tr = foe.tremor; dmg += tr; foe.tremor = 0; wNote.push(`떨림 증폭 — 진동 ${jo(tr,"이")} 터졌다(+${tr})`); } else wNote.push(`진동 ${foe.tremor}`); }
         if(W==="namir" && turn%2===1 && !me.namirT){ dmg = Math.round(dmg*1.5); me.namirT = turn; wNote.push("구체 낙하 — 떠올랐다 내리꽂았다(×1.5)"); } if(W==="namir" && me.namirT && me.namirT!==turn && turn%2===0) me.namirT = 0;
@@ -9866,7 +9867,7 @@ const WORKSHOP_SP = {
   "랑아 공방":       {id:"ranga",  n:"찢어발기기",  d:"맞힐 때마다 갈퀴가 상처를 벌려, 다음에 맞힐 때 피해가 2씩 더 들어간다(최대 +8). 합에서 지면 벌린 상처가 아문다."},
   "구름 공방":       {id:"cloud",  n:"흑운도",      d:"흑운회에 대는 칼. 기본 위력 +1, 맞히면 출혈 2."},
   "느티나무 공방":     {id:"zelkova",n:"한 쌍",       d:"이긴 합 뒤, 다른 손의 무기로 한 번 더 친다(그 위력의 40%)."},
-  "늙은소년 공방":{id:"oldboys",n:"내려찍기",    d:"맞히면 상대가 휘청인다. 다음 합에서 상대 기본 위력 -2, 정신력 -5."},
+  "늙은소년 공방":{id:"oldboys",n:"내려찍기",    d:"맞히면 상대가 휘청인다. 다음 합에서 상대 기본 위력 -2, 코인 위력 -1."},
   "알라스 공방":     {id:"allas",  n:"가속",        d:"손놀림이 빨라져 합을 겨룰 때 앞면 확률 +12%."},
   "네스터 공방":     {id:"nester", n:"진동 단추",   d:"맞히면 진동 3. 진동이 6 이상이 되면 터뜨려 진동만큼 피해를 더하고 상대를 진동의 절반만큼 위축시킨다(다음 공격 피해 감소)."},
   "로즈스패너 공방": {id:"rose",   n:"떨림 증폭",   d:"맞히면 진동 2. 이미 진동이 있으면 두 배로 키운다. 진동이 8 이상이면 터져 진동만큼 피해."},
