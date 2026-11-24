@@ -8368,13 +8368,36 @@ async function twistLeader(f){
   await HeartFx.ending(o, lines, stats);
   clearSave(); S = null; renderStart();
 }
+const EGO_NAME_ASK = {
+  "공격적":"대표님, 이거 이름 하나 붙여 주세요. 휘두를 때 부를 이름이 있어야 손에 붙을 것 같아서요.",
+  "신중함":"이름을 정해 두는 게 좋겠어요. 기록에도 남을 테니까요. 대표님이 정해 주시면 그대로 적을게요.",
+  "헌신":"대표님이 이름을 지어 주셨으면 해요. 그럼 이것도 사무소 거라는 느낌이 들 것 같아서요.",
+  "냉소":"…이름이요? 대표님이 지어 주세요. 제가 지으면 분명 이상한 이름이 붙을 거예요.",
+  "충동적":"대표님! 이거 이름 지어 주세요, 지금 바로요! 멋있는 걸로요!",
+  "침착함":"이름이 있어야 할 것 같습니다. 대표님께서 정해 주시겠습니까.",
+  "집요함":"이름은 대표님이 지어 주세요. 한번 정하면 끝까지 그 이름으로 부를 거예요.",
+  "낙천적":"이것 보세요, 피었어요! 이름은 대표님이 지어 주세요. 예쁜 걸로요.",
+  "비관적":"…이게 언제까지 버틸지는 모르겠지만요. 그래도 이름은 대표님이 지어 주셨으면 해요.",
+  "오만함":"제 안에서 나온 거니 대단한 거겠죠. 이름은… 특별히 대표님께 맡겨 드릴게요.",
+  "소심함":"저, 저기… 혹시 이름 지어 주실 수 있으세요? 제가 지으면 너무 초라할 것 같아서요.",
+  "정의감":"이걸로 지킬 수 있는 사람이 늘었으면 해요. 이름은 대표님이 정해 주세요.",
+  "탐욕":"이런 건 이름값이 붙기 마련이죠. 대표님이 좋은 이름으로 하나 지어 주세요.",
+  "다정함":"대표님, 이름 하나 지어 주실래요? 대표님이 불러 주는 이름이었으면 좋겠어요.",
+  "무심함":"…이름. 대표님이 지어 주세요. 아무거나 괜찮아요. …아니, 아무거나는 말고요.",
+  "광기":"아하하, 이것 봐요, 살아 있어요! 이름 지어 주세요, 대표님. 부르면 대답할지도 몰라요!"};
 async function bloomEgo(f, opt={}){ ac("ego");
   const unstable = opt.unstable!=null ? !!opt.unstable : Math.random() < (window.__forceUnst!=null ? window.__forceUnst : 0.55);     // 목소리의 틈은 판정으로, 그 밖에는 55% 불안정 개화
   const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
   // 동료: 연출 없이 결과만 — 이름은 비워 두고 형태는 성격을 따른다
-  if(opt.quiet){ f.ego = {type: p[1], unstable, name:""}; f.mp = Math.round(f.mpMax*0.5);
-    S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${EGO_FORM_NAME[p[1]]})`}); save(); render();
+  if(opt.quiet){ f.ego = {type: p[1], unstable, name:""}; f.mp = Math.round(f.mpMax*0.5); save(); render();
     await modal(unstable ? "불안정 개화" : "E.G.O. 개화", `${esc(f.name)}에게 목소리가 들어왔다. ${esc(josa(f.name,"은","는"))} 그것을 견뎌 냈다.<br><b>${esc(egoLabel(f.ego))}</b> (${EGO_FORM_NAME[p[1]]})${unstable ? `<br><span class="muted">아직 흔들린다 — 불안정한 개화다.</span>` : ""}`, [{t:"확인", primary:true}]);
+    // 개화한 동료가 대표에게 이름을 지어 달라고 한다 — 성격마다 말투가 다르다
+    const ask = (EGO_NAME_ASK[f.personality] || EGO_NAME_ASK["다정함"]);
+    const nm = await promptBox(`${f.name}의 부탁`, `<b style="color:var(--text)">${esc(f.name)}</b> — “${esc(ask)}”<br><span class="muted">비워 두면 이름 없이 "${unstable ? "불안정 " : ""}개화 E.G.O::"로 남는다. 이름은 지금만 지을 수 있다.</span>`, "");
+    if(nm) f.ego.name = String(nm).trim().replace(/^(불안정\s*)?개화\s*E\.G\.O::\s*/,"").slice(0,20);
+    S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${EGO_FORM_NAME[p[1]]})${f.ego.name ? " · 대표가 이름을 지어 줌" : ""}`});
+    if(f.ego.name) addLog(`${f.name}: 대표가 지어 준 이름 — ${egoLabel(f.ego)}`);
+    save(); render();
     return; }
   await HeartFx.voice(f);
   await HeartFx.bloom(f, unstable);
