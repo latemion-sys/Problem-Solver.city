@@ -9560,7 +9560,9 @@ async function openRecruit(){
 }
 
 /* ================= 관리 ================= */
-const healCost = f => 550 + 400*(9 - Math.max(3, f.grade===0 ? 3 : f.grade));   // 10 회복당: 9급 550안부터 등급마다 +400, 3급 이상(특색 포함)은 2,950안 고정
+// 체력·정신력 10 회복당 비용(등급별). 특색(0급)은 10,000안
+const HEAL_COST = {9:500, 8:1000, 7:1500, 6:2000, 5:2500, 4:3500, 3:4500, 2:6000, 1:7500, 0:10000};
+const healCost = f => HEAL_COST[f && f.grade!=null ? f.grade : 9] || 500;
 async function openManage(){
   let sel = S.fixers[0]?.id, mview = null;
   const draw = () => {
