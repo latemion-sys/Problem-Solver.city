@@ -3752,7 +3752,39 @@ function examRequestTick(){
   const g = clamp(Math.min(S.officeGrade - 1, Math.min(...S.fixers.filter(f=>f.grade>=2).map(f=>f.grade - 1).concat([9]))), 1, 9);
   const q = makeRequest(g); Object.assign(q, {promoExam:true, special:true, client:"하나 협회 승급 심사과", text:`[승급 심사] ${q.text}`, deadline: 3, reward: Math.round(q.reward*1.2/100)*100});
   S.requests.unshift(q); addLog(`하나 협회 승급 심사 의뢰가 올라왔다 — ${q.text}`); }
-function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequestsInner(); examRequestTick();
+// 개인 지명은 기존 사무소 지명과 별개. 하루마다 3급 이상(특색 포함) 각자 5%.
+const PERSONAL_NOM_P = 0.05;
+function personalNomTick(){
+  if(!S || S.personalNomDay===S.day) return;
+  S.personalNomDay=S.day;
+  for(const f of S.fixers){
+    if(!Number.isInteger(f.grade) || f.grade<0 || f.grade>3 || f.hp<=0 || Math.random()>=PERSONAL_NOM_P) continue;
+    const g=clamp(f.grade,1,3), k=pick(["str","agi","tec","escort","search"]);
+    const q=makeRequest(g,k==="escort"?{kind:"호위",attrs:["str","agi"]}:k==="search"?{kind:"수색",attrs:["agi","tec"]}:{kind:"일반",attrs:[k]});
+    const name=f.name;
+    const lines=[
+      `이 일은 ${name} 해결사에게 맡기고 싶소. 직접 와 준다면 사례는 더 하겠소.`,
+      `${name} 해결사가 이 사무소에 있다고 들었습니다. 가능하면 그분을 보내 주세요. 보수는 더 챙겨 드리겠습니다.`,
+      `다른 데 알아보다가 ${name} 해결사 이야기를 들었어요. 그분이 와 주시면 좋겠습니다. 돈은 더 얹어 드릴게요.`,
+      `의뢰서 아래에 이름을 하나 적어 두었습니다. ${name} 해결사에게 부탁드립니다. 직접 와 주신다면 값을 더 치르겠습니다.`
+    ];
+    q.personalNom={id:f.id,name,grade:f.grade,line:pick(lines)};
+    S.requests.push(q); addLog(`${name} 해결사를 지명한 의뢰가 올라왔다 — ${q.client}`);
+  }
+}
+function personalNomMatch(q,team){
+  return !!(q.personalNom && team.some(f=>f.id===q.personalNom.id));
+}
+function personalNomPay(q,matched,payMul=1){
+  if(!q.personalNom) return Math.round(q.reward*payMul/100)*100;
+  const amount=q.reward*Math.round(payMul*100)*(matched?125:85)/10000;
+  return matched?Math.ceil(amount):Math.floor(amount);
+}
+function personalNomStory(q){
+  const lines=reqStory(q);
+  return q.personalNom?lines.concat(q.personalNom.line):lines;
+}
+function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequestsInner(); examRequestTick(); personalNomTick();
   if(S.day <= EARLY_DL_DAYS){ const nF = Math.max(1, S.fixers.filter(f=>f.hp > 0).length), fresh = S.requests.filter(q=>!before.has(q.id) && q.deadline!=null);
     const load = {}; S.requests.forEach(q=>{ if(before.has(q.id) && q.deadline!=null) load[q.deadline] = (load[q.deadline]||0) + 1; });
     fresh.forEach(q=>{ let d = 2; while((load[d]||0) >= nF) d++; q.deadline = d; load[d] = (load[d]||0) + 1; }); } }
@@ -3761,7 +3793,7 @@ function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequ
 function dailyReqN(){ return ((S && S.fixers) ? S.fixers.length : 1) + 1; }
 // 게시판 상한: 수락하지 않은 일반 의뢰가 '사무소 해결사 수 + 1'개면 더 들어오지 않는다(기한이 지나 빠진 자리만큼 다시 채워진다). 특수 의뢰는 세지 않는다
 const reqCap = () => dailyReqN();
-const isSpecialReq = q => !!(q.special || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
+const isSpecialReq = q => !!(q.special || q.personalNom || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
 const reqRoom = () => Math.max(0, reqCap() - S.requests.filter(q=>!q.accepted && !isSpecialReq(q)).length);
 // 사무소 등급별 의뢰 재해 등급 비중(%) — 9급 사무소는 기존 방식 그대로
 const REQ_MIX = {
@@ -7539,6 +7571,7 @@ async function dispatch(qid, fids, modeArg){
   let mode = mustPlay ? "play" : "auto";
   if(hasGame && !mustPlay){ mode = modeArg || await chooseMode(q, team); if(!mode) return; }
   marching.forEach(f=>{ f.marchDay = S.day; ac("march"); }); team.forEach(f=>f.lastDispatch = S.day);
+  const namedSent = personalNomMatch(q,team);
   const base = rate(team,q); let pr = base, payMul = 1, mgLine = "", combat = null;
   let decisive = null, abnoR = null, mgScore = null;
   if(mode==="play"){ const r = await runMinigames(q, team); combat = r.combat; abnoR = r.abno; if(abnoR && abnoR.fought) mental = false;
@@ -7559,7 +7592,7 @@ async function dispatch(qid, fids, modeArg){
         : `직접 수행 <b>간신히 승리</b>(${Math.round(r.score*100)}점) — 의뢰는 성공했지만 상처가 깊다`; }
     else { mgScore = r.score; pr = clamp(Math.round(base - 25 + 40*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
   else { pr = base; if(hasGame) payMul = 0.8; mgLine = `자동 진행 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
-  let pay = Math.round(q.reward*payMul/100)*100;
+  let pay = personalNomPay(q,namedSent,payMul);
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
   const success = decisive!=null ? decisive : Math.random()*100 < pr;
   team.forEach(f=>{ if(f.isLeader)return; const n=success ? Math.min(4,1+(q.grade<=f.grade?1:0)+(mode==="play"?1:0)+(mgScore!=null&&mgScore>=.85?1:0)) : -Math.min(3,1+(q.grade<f.grade?1:0)+(f.hp<=f.hpMax*.35?1:0));changeFixerTrust(f,n,success?"의뢰 완수":"의뢰 실패"); });
@@ -7579,7 +7612,7 @@ async function dispatch(qid, fids, modeArg){
   let lines = [ ...(mgLine?[mgLine]:[]), decisive!=null ? `${team.length}명 출동 → <b>${success?"성공":"실패"}</b>` : `${team.length}명 출동 · 성공률 ${pr}% → <b>${success?"성공":"실패"}</b>`];
   // 현장 사건: 환상체 의뢰를 뺀 의뢰에서 가끔 — 성공했으면 보수에, 실패했으면 위로금 등으로 남는다
   { const fe = await fieldEvent(q, team, success, pay); if(!S || S.over) return;
-    if(fe){ lines.push(fe.line); if(success) pay = Math.max(0, Math.round(pay*fe.payMul/100)*100 + fe.payAdd); else if(fe.payAdd){ S.money += fe.payAdd; S.todayIncome = (S.todayIncome||0) + fe.payAdd; lines.push(`받은 돈 +${won(fe.payAdd)}`); } } }
+    if(fe){ lines.push(fe.line); if(success) pay = Math.max(0, (q.personalNom ? Math.round(pay*fe.payMul) : Math.round(pay*fe.payMul/100)*100) + fe.payAdd); else if(fe.payAdd){ S.money += fe.payAdd; S.todayIncome = (S.todayIncome||0) + fe.payAdd; lines.push(`받은 돈 +${won(fe.payAdd)}`); } } }
   // 의뢰가 끝나면 체력(정신 의뢰는 정신력)이 최대치의 일정 비율만큼 깎인다.
   // 성공: 부상 단계에 따라 10~25% · 실패: 35~60%. 직접 싸운 사람은 전투 끝의 부상 단계, 아니면 무작위
   const W_NAME = ["안정","경상","중상","치명상"], LOSS = LOSS_PCT, gentleQ = q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
@@ -7638,6 +7671,7 @@ async function dispatch(qid, fids, modeArg){
     S.money += pay; S.todayIncome += pay;
     S.incomeHistory = (S.incomeHistory||[]).filter(x=>x.day>=S.day-27);
     S.incomeHistory.push({day:S.day,amount:pay});
+    if(q.personalNom) lines.push(`<span style="color:${namedSent?"#9fe8b0":"#e7a07c"}">${esc(q.personalNom.name)} ${namedSent?"지명 출동 · 보수 +25%":"미출동 · 보수 -15%"}</span>`);
     lines.push(`보수 +${won(pay)}`);
     team.forEach(f=>{ if(accFx(f,"lighter") && S.fixers.includes(f)){ const v = Math.round(f.mpMax*0.04); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: 낡은 라이터로 한 대 붙였다 — 정신력 +${v}`); } });
     if(q.grade===S.officeGrade) S.reviewSuccess++;
@@ -12396,10 +12430,10 @@ async function openAccept(qid){
   const q = S.requests.find(x=>x.id===qid); if(!q) return;
   if(q.arc && !q.arcVN && typeof ARC_VN!=="undefined" && ARC_VN[q.arc.id]){ await arcVN(q); if(!S || !S.requests.includes(q)) return; }
   if(!q.accepted && specialKind(q) && !q.spVN){ if(await specialVN(q)) return; if(!S || !S.requests.includes(q)) return; }
-  const story = reqStory(q).map(t=>`<p>${esc(t)}</p>`).join(""); save();
+  const story = personalNomStory(q).map(t=>`<p>${esc(t)}</p>`).join(""); save();
   const v = await modal(`의뢰 — ${q.client}`, `<div class="acc-story${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${story}</div>
     <div class="kv"><span>의뢰</span><b>${esc(q.text)}</b><span>종류</span><b>${esc(requestDisplayKind(q))}${q.goal ? ` · ${q.goal}` : ""}</b><span>예상 재해 등급(게임 기준)</span><b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)} <span class="muted" style="font-weight:400">(${gName(q.grade)} 수준)</span></b>
-    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b><span>마감</span><b>${q.deadline}일</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품 소문</span><b>${esc(lootName(q))}</b>` : ""}</div>`,
+    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b>${q.personalNom?`<span>지명 해결사</span><b>${esc(q.personalNom.name)} · ${gName(q.personalNom.grade)}</b><span>지명 출동</span><b>${won(personalNomPay(q,true))} (+25%)</b><span>다른 해결사 출동</span><b>${won(personalNomPay(q,false))} (-15%)</b>`:""}<span>마감</span><b>${q.deadline}일</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품 소문</span><b>${esc(lootName(q))}</b>` : ""}</div>`,
     [{t:"닫기", v:"close", x:true}, {t:"거절한다", v:"no"}, {t:"사람을 보낸다", v:"yes", primary:true}]);
   if(!S || !S.requests.includes(q) || v==="close") return;
   if(v==="yes"){ acceptRequest(q); save(); render(); return; }
@@ -12430,7 +12464,7 @@ function render(){
     ${S.moved ? `<span class="stat">월세 ${RENT_DAYS}일마다 <b>${won(rentForecast().total)}</b>${S.rentArrears?` · 미납 ${won(S.rentArrears)}`:""}</span>`:""}`;
   // 모든 분류는 기존 의뢰 목록을 그대로 가리키므로 보수·마감·이야기는 변경되지 않는다.
   const tabs=["전체","일반","지명","위험·특수","사건·이야기"], filterIds=["all","normal","regular","risk","story"];
-  const reqCategory=q=>q.arc||q.prescript||q.hanaStar?"story":q.ruins?"risk":q.nom?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
+  const reqCategory=q=>q.arc||q.prescript||q.hanaStar?"story":q.ruins?"risk":q.nom||q.personalNom?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
   const avail = S.fixers.filter(canSend);
   app.querySelector("#reqfilters").innerHTML = filterIds.map((k,i)=>`<button data-reqfilter="${k}" class="${reqFilter===k?"on":""}">${tabs[i]} <small>${S.requests.filter(q=>k==="all"||reqCategory(q)===k).length}</small></button>`).join("");
   const shownRequests=S.requests.filter(q=>reqFilter==="all"||reqCategory(q)===reqFilter);
@@ -12441,12 +12475,12 @@ function render(){
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
-      <div class="head">${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.ruins?`<span class="badge" style="color:#9fe8b0;border-color:currentColor">폐허 L사 지하 ${q.ruins.floor}층 · 갈림길 탐험</span>`:""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
+      <div class="head">${q.personalNom?`<span class="badge" style="color:#e8d27a;border-color:currentColor">개인 지명 · ${esc(q.personalNom.name)}</span>`:""}${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.ruins?`<span class="badge" style="color:#9fe8b0;border-color:currentColor">폐허 L사 지하 ${q.ruins.floor}층 · 갈림길 탐험</span>`:""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.deadline!=null&&q.deadline<=1?`<span class="badge deadline-urgent">오늘 마감</span>`:""}${q.risk && q.kind!=="환상체" && !q.abno ? `<span class="badge">${q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
-      <div class="txt">${esc(q.text)}</div>
-      <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b></span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
+      <div class="txt">${esc(q.text)}${q.personalNom?`<div style="color:#e8d27a;margin-top:5px">${esc(q.personalNom.line)}</div>`:""}</div>
+      <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b>${q.personalNom?` <small>· 지명 ${won(personalNomPay(q,true))} / 미출동 ${won(personalNomPay(q,false))}</small>`:""}</span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
       ${q.loot?`<div class="loot">특수 전리품 소문: ${esc(lootName(q))}</div>`:""}
       ${openQ!==q.id ? `<div class="assign"><button class="primary" data-open="${q.id}">상세 보기${q.accepted?" · 수락됨":""}</button></div></div>` : reqPanel(q, opts)}`;
   }).join("") : `<p class="muted">${S.requests.length?"이 분류에 해당하는 의뢰가 없다.":"게시판이 비었다."}</p>`;
@@ -12480,7 +12514,7 @@ const modePref = () => (S && S.modePref) || "play";
 function autoPick(q){
   const used = new Set(Object.entries(teamSel).filter(([k])=>+k!==q.id).flatMap(([,v])=>v));
   const pool = S.fixers.filter(f=>canGo(f) && !used.has(f.id) && (q.kind!=="특색 심사" || f.id===q.target) && level(f.hp,f.hpMax)[1]!=="d");
-  pool.sort((a,b)=>(a.tired - b.tired) || (power(b,q.attrs) - power(a,q.attrs)));
+  pool.sort((a,b)=>(q.personalNom ? Number(b.id===q.personalNom.id)-Number(a.id===q.personalNom.id) : 0) || (a.tired - b.tired) || (power(b,q.attrs) - power(a,q.attrs)));
   teamSel[q.id] = pool.slice(0, Math.max(1, Math.min(partyRec(q), partyMax(q)))).map(f=>f.id); }
 function openCard(qid, scroll){ const q = S.requests.find(x=>x.id===qid); openQ = q ? qid : null; if(q && !(teamSel[qid]||[]).length) autoPick(q); render();
   if(q && scroll){ const el = document.querySelector(`.req[data-q="${qid}"]`); if(el && el.scrollIntoView) el.scrollIntoView({block:"nearest", behavior:"smooth"}); } }
@@ -12488,9 +12522,9 @@ function nextOpenable(){ if(!S || !S.fixers.some(canGo)) return null; const q = 
 function reqPanel(q, opts){
   const games = gamesFor(q), hasGame = games.length > 0, md = modePref();
   return `<div class="req-open">
-      <div class="acc-story mini${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${reqStory(q).map(t=>`<p>${esc(t)}</p>`).join("")}</div>
+      <div class="acc-story mini${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${personalNomStory(q).map(t=>`<p>${esc(t)}</p>`).join("")}</div>
       <div class="party">출동 인원 <b id="pc-${q.id}">0</b> / 최대 ${partyMax(q)}명 <span class="muted">· 권장 ${partyRec(q)}명</span></div>
-      <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 · 강행군"}">${esc(f.name)} <small>${canGo(f) ? gName(f.grade) : "강행군"}${f.tired ? " · 피로" : ""}</small></button>`).join(""):`<span class="muted" style="font-size:12px">${S.fixers.some(f=>f.body&&f.body.full&&(f.body.upkeepDue||0)>0) ? "전신 의체 정비비 미납 시 출동 불가 · 공방 → 의체에서 정비비를 납부하세요." : "보낼 수 있는 해결사가 없다"}</span>`}</div>
+      <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 · 강행군"}">${esc(f.name)} <small>${q.personalNom&&f.id===q.personalNom.id?"지명 · ":""}${canGo(f) ? gName(f.grade) : "강행군"}${f.tired ? " · 피로" : ""}</small></button>`).join(""):`<span class="muted" style="font-size:12px">${S.fixers.some(f=>f.body&&f.body.full&&(f.body.upkeepDue||0)>0) ? "전신 의체 정비비 미납 시 출동 불가 · 공방 → 의체에서 정비비를 납부하세요." : "보낼 수 있는 해결사가 없다"}</span>`}</div>
       ${directOnly(q) ? `<div class="modes"><div class="muted" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px">직접 수행 전용 · ${games.map(a=>MG_NAME[a]).join(" → ")}</div></div>` : hasGame ? `<div class="modes"><button class="${md==="play"?"on":""}" data-mode="play" data-q="${q.id}"><b>직접 수행</b><small>${games.map(a=>MG_NAME[a]).join(" → ")} · 목표를 달성하면 확정 성공</small></button><button class="${md==="auto"?"on":""}" data-mode="auto" data-q="${q.id}"><b>자동 진행</b><small>성공률로 판정 · 보수 80% · 성공해도 출동 피로 피해</small></button></div>` : ""}
       <div class="est" id="est-${q.id}"></div>
       <div class="assign">${q.kind!=="특색 심사" ? `<button data-refuse="${q.id}">${q.accepted?'계약 포기':'거절'}</button>` : ""}<button data-fold="${q.id}">접기</button>${q.accepted ? `<span style="font-size:12px;color:#9fe8b0;align-self:center">계약 수락됨</span>` : `<button class="primary" data-accept="${q.id}">계약 수락</button>`}<button class="primary" data-go="${q.id}" disabled>출동</button></div></div></div>`; }
@@ -12515,7 +12549,8 @@ function updateCard(qid){
   const m = estimate(team,q);
   const only = directOnly(q), auto = !only && (modePref()==="auto" || !gamesFor(q).length);
   const spec=team.map(f=>{const p=specialty(f,q);return p.bonus?`${esc(f.name)}: ${p.name} ${p.bonus>0?"+":""}${p.bonus}%p`:"";}).filter(Boolean);
-  est.innerHTML = `${only ? `<b>직접 수행 전용</b> <span class="muted">(현장 행동과 전투 결과로 성패 결정)</span>` : `${auto?"자동 성공률":"기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto?(gamesFor(q).length?` · 보수 ${won(Math.round(q.reward*0.8/100)*100)}`:""):` <span class="muted">(전투·추격·호위 목표 달성 시 확정 성공)</span>`}`}
+  est.innerHTML = `${only ? `<b>직접 수행 전용</b> <span class="muted">(현장 행동과 전투 결과로 성패 결정)</span>` : `${auto?"자동 성공률":"기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto?(gamesFor(q).length?` · 보수 ${won(personalNomPay(q,personalNomMatch(q,team),0.8))}`:""):` <span class="muted">(전투·추격·호위 목표 달성 시 확정 성공)</span>`}`}
+    ${q.personalNom?`<div style="color:${personalNomMatch(q,team)?"#9fe8b0":"#e7a07c"}">${esc(q.personalNom.name)} ${personalNomMatch(q,team)?"지명 출동 +25%":"미출동 -15%"} · 예상 보수 ${won(personalNomPay(q,personalNomMatch(q,team),auto&&gamesFor(q).length?0.8:1))}</div>`:""}
     <div style="margin-top:5px">${m.profiles.map(p=>`<div>${esc(p.name)}${p.status?` (${p.status})`:""}: 예상 ${m.stat} 손실 <b>성공 ${p.success}</b> / 실패 ${p.fail[0]}~${p.fail[1]}</div>`).join("")}</div>
     ${spec.length?`<div class="muted">전문 분야: ${spec.join(" · ")} (팀 합산 최대 +9%p)</div>`:""}
     <div class="muted">실제 부상 단계·현장에서 겪는 일·전투 중 정신력 손실에 따라 추가 손실이 발생할 수 있다.</div>`;
