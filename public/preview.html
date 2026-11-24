@@ -4914,7 +4914,7 @@ function mgCombat(ctx){
     const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } }
       if(me.wsp==="cloud") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
     const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
-    const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base + livePow(me)), cp: sk.cp + supCp() + w.cp}); };
+    const mySkill = sk => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + supBase() + w.base + livePow(me)), cp: Math.max(0, sk.cp + supCp() + w.cp - (me.cpDown||0))}); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
     const techOf = me => { const rt = relicTechOf(me.f); if(rt) return Object.assign({id:rt}, TECHS[rt]); const id = me.f.tech && techFits(me.f.tech, me.wt) ? me.f.tech : "allout"; return Object.assign({id}, TECHS[id]); };
@@ -4943,7 +4943,7 @@ function mgCombat(ctx){
     // chg: E.G.O. 충전 — 합을 한 번 겨룰 때마다 2씩 쌓이고, 10이 되면 전부 소모해 그 턴 동안 코인 위력 +1
     function simClash(a, spA, b, spB, chg, headBonus=0){
       let ca = a.coins, cb = b.coins, n = 0, c = chg, fired = false; const ex = [];
-      while(ca>0 && cb>0 && n<24){ const ha = flip(ca, spA, headBonus), hb = flip(cb, spB), pa = powOf(a, ha), pb = powOf(b, hb);
+      while(ca>0 && cb>0 && n<24){ const ha = flip(ca, spA, headBonus), hb = flip(cb, spB, b.headAdj||0), pa = powOf(a, ha), pb = powOf(b, hb);
         const e = {ha, hb, pa, pb, loser: pa>pb ? "foe" : pb>pa ? "me" : null}; ex.push(e); if(pa>pb) cb--; else if(pb>pa) ca--; n++;
         if(c!=null){ c += 2; if(c>=10 && !fired){ c = 0; fired = true; a = Object.assign({}, a, {cp: a.cp + 1}); e.charged = true; } } }
       return {ex, win: ca>0 ? "me" : "foe", left: ca>0 ? ca : cb, count: ex.filter(e=>e.loser).length, a, chg: c, fired};
@@ -4955,8 +4955,10 @@ function mgCombat(ctx){
     const longK = () => turn > 12 ? 1 + 0.1*(turn - 12) : 1;   // 합이 아주 길어지면 양쪽 모두 지쳐 한 대가 무거워진다(끝없이 이어지지 않게)
     const S2 = {log:[]};
     function rollFoeSkill(t){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def);
-      /* 강공: 기존 3턴 주기 유지. 환상체·뒤틀림의 특수 규칙은 변경하지 않는다. */
-      if(t % 3 === 0 && at.length){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a); return Object.assign({}, hv, {n:`${hv.n}(강공)`, base: hv.base + 3, heavy:true}); }
+      /* 인간 적: 강한 기술은 3~6턴 사이 무작위로 온다. 환상체·뒤틀림은 기존 3턴 주기 강공 그대로. */
+      if(!AB && !DF && at.length){ if(foe.nextHv==null) foe.nextHv = rnd(3,6);
+        if(t >= foe.nextHv){ foe.nextHv = t + rnd(3,6); return foeHeavy(at); } }
+      else if(t % 3 === 0 && at.length){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a); return Object.assign({}, hv, {n:`${hv.n}(강공)`, base: hv.base + 3, heavy:true}); }
       if(!at.length) return pick(df);
       // 인간 적: 턴 시작에 한 번만 상황을 판단한다. 새 기술·상태는 만들지 않는다.
       if(!AB && !DF){
@@ -4971,6 +4973,22 @@ function mgCombat(ctx){
         return Math.random()<0.12 && df.length ? pick(df) : pick(at);
       }
       return Math.random()<0.22 && df.length ? pick(df) : pick(at); }
+    /* 강한 기술 세 갈래
+       rush 몰아치기: 코인 3개, 앞면 40%, 쓰고 나면 다음 공격 코인 위력 -1
+       cripple 무력화: 앞면 40%, 맞히면 이쪽 다음 합 코인 위력 -1
+       status 특수 기술(3급 이상 해결사 수준만): 맞히면 출혈·파열·침잠·화상 1~2 */
+    const HV_STATUS = {bleed:{n:"출혈", tag:"베어 가르기", tell:"의 날 끝이 번뜩인다", hint:"맞으면 피가 멎지 않는다"},
+      rupture:{n:"파열", tag:"급소 찌르기", tell:"의 눈이 급소만 좇는다", hint:"맞으면 상처가 안에서부터 터진다"},
+      sink:{n:"침잠", tag:"짓누르기", tell:"의 눈빛이 가라앉았다. 주위 공기가 눅눅해진다", hint:"맞으면 마음이 가라앉는다"},
+      burn:{n:"화상", tag:"달군 일격", tell:"의 무기에서 열기가 피어오른다", hint:"맞으면 살이 탄다"}};
+    function foeHeavy(at){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a), N = foe.name;
+      const kind = pick(g0 <= 3 ? ["rush","cripple","status"] : ["rush","cripple"]);
+      if(kind==="rush") return Object.assign({}, hv, {n:`${hv.n}(몰아치기)`, coins:3, headAdj:-10, heavy:"rush",
+        tell: pick([`${N}의 호흡이 짧아졌다. 쉬지 않고 몰아칠 기세다`, `${jo(N,"이")} 무기를 고쳐 쥐고 발을 구른다`, `${jo(N,"이")} 몸을 낮추고 거리를 좁혀 온다`]), hint:"연달아 몰아치는 공격이 온다. 대신 손이 거칠다."});
+      if(kind==="cripple") return Object.assign({}, hv, {n:`${hv.n}(무력화)`, headAdj:-10, heavy:"cripple",
+        tell: pick([`${N}의 눈이 손목과 관절을 훑는다`, `${jo(N,"이")} 무기 끝을 낮게 겨눈다. 쥔 손을 노린다`]), hint:"맞으면 손이 무뎌진다."});
+      const k = pick(Object.keys(HV_STATUS)), H = HV_STATUS[k];
+      return Object.assign({}, hv, {n:`${hv.n}(${H.tag})`, heavy:"status", stk:k, stn:rnd(1,2), tell:`${N}${H.tell}`, hint:H.hint}); }
     // 뒤틀림은 다음 두 수까지 미리 정해 둔다 — '뒤틀림을 보는 눈'을 가진 이가 있으면 그것이 보인다
     function pickFoeSkill(){ if(AB && AB.movement) foe.allow = rnd(0,2);
       if(DF){ foe.q = foe.q || []; while(foe.q.length < 3) foe.q.push(rollFoeSkill(turn + foe.q.length)); foeSkill = foe.q.shift(); }
@@ -5015,6 +5033,7 @@ function mgCombat(ctx){
     const coinStr = sk => "●".repeat(sk.coins);
     function statusLine(){ const me = party[act], a = [], b = [];
       if(foe.clock != null) a.push(`징벌 새의 시간 ${Math.max(0, foe.clock - turn + 1)}턴`); if(AB && AB.movement) a.push(`이번 악장: <b>${["공격","방어","기술"][foe.allow]}</b>만 닿는다`);
+      if(me.bleed) b.push(`<span style="color:#ff8a7a">출혈 ${me.bleed}</span>`); if(me.rupture) b.push(`<span style="color:#ff8a7a">파열 ${me.rupture}</span>`); if(me.sink) b.push(`<span style="color:#8ab0ff">침잠 ${me.sink}</span>`); if(me.burn) b.push(`<span style="color:#ffb35a">화상 ${me.burn}</span>`); if(me.cpDown) b.push(`<span style="color:#ffb35a">손이 무뎌짐(다음 합 코인 위력 -${me.cpDown})</span>`);
       if(me.ember) b.push(`불씨 ${me.ember}`); if(me.gaze) b.push(`시선 ${me.gaze}${me.contempt ? " · 경멸" : ""}`); { const gp = party.find(p=>p.grasp); if(gp) a.push(`${esc(gp.name)}를 움켜쥐고 있다(${gp.grasp})`); }
       if(AB && AB.fuse && foe.fuseMark) a.push(`성냥불 ${Math.max(0, AB.fuse - turn + 1)}턴 남음 → ${esc(foe.fuseMark.name)}`); if(foe.lampMark) a.push(`등불에 홀림: ${esc(foe.lampMark.name)} (${Math.max(0, 3 - turn + 1)}턴 남음)`);
       if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push("휘청임"); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`); if(foe.coinDown) a.push(`코인 위력 감소 ${foe.coinDown}(다음 합)`);
@@ -5026,7 +5045,7 @@ function mgCombat(ctx){
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
       m.info.innerHTML = `<div class="pk-text"><b>${turn}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp,me.max)]}">${WOUND[woundOf(me.hp,me.max)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
-        <span class="muted">· 적이 무엇을 할지는 맞붙어 보기 전까지 알 수 없다.</span>${foeSkill.heavy ? `<br><b style="color:#ff8a7a">${esc(foeSkill.tell || (foeSkill.tell = pick([`${foe.name}의 자세가 달라졌다`, `${jo(foe.name,"이")} 쥔 무기에 담긴 힘이 느껴진다`, `${jo(foe.name,"이")} 숨을 깊게 들이마신다`, `${foe.name}의 발끝에 무게가 실린다`, `공기가 무거워졌다 — ${jo(foe.name,"이")} 무언가를 노린다`])))} — 크게 한 방이 온다. 맞받아칠지, 막아 낼지 골라라.</b>` : ""}
+        <span class="muted">· 적이 무엇을 할지는 맞붙어 보기 전까지 알 수 없다.</span>${foeSkill.heavy ? `<br><b style="color:#ff8a7a">${esc(foeSkill.tell || (foeSkill.tell = pick([`${foe.name}의 자세가 달라졌다`, `${jo(foe.name,"이")} 쥔 무기에 담긴 힘이 느껴진다`, `${jo(foe.name,"이")} 숨을 깊게 들이마신다`, `${foe.name}의 발끝에 무게가 실린다`, `공기가 무거워졌다 — ${jo(foe.name,"이")} 무언가를 노린다`])))} — ${foeSkill.hint || "크게 한 방이 온다."} 맞받아칠지, 막아 낼지 골라라.</b>` : ""}
         ${sup.length ? `<br><span class="muted">뒤에서 거드는 동료: ${sup.map(p=>esc(p.name)).join(", ")} → 기본 위력 +${supBase()}${supCp()?` · 코인 위력 +${supCp()}`:""}</span>` : ""}
         ${statusLine()}<br><span class="muted">능력치 효과: 근력 최대 체력 +${statHpPlus(me.f)} · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 재주 합 코인 앞면 +${statClashHeadPlus(me.f).toFixed(2)}%p · 의지 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
       const chg = me.sp2==="charge" ? (me.charge||0) : null, ak = atkCards(me.wt), dc = defCard(me.wt), tk = techSkill(me);
@@ -5089,6 +5108,10 @@ function mgCombat(ctx){
       }
       if(!guarding && !foeGuarding && foe.bleed > 0){ const bd = foe.bleed; foe.hp = Math.max(0, foe.hp - bd); foe.bleed = Math.floor(foe.bleed*2/3); lines.push(`<span style="color:#ff8a7a">출혈</span> — 합을 겨루느라 ${jo(foe.name,"이")} ${bd}의 피해를 입었다.`);
         if(foe.hp<=0){ clash = null; m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`; await wait(1100); S2.log = lines.concat(S2.log).slice(0,4); return next(); } }
+      if(!guarding && !foeGuarding && me.bleed > 0){ const bd = me.bleed; me.hp = Math.max(0, me.hp - bd); me.bleed = Math.floor(me.bleed*2/3); lines.push(`<span style="color:#ff8a7a">출혈</span> — 합을 겨루느라 ${jo(esc(me.name),"이")} ${bd}의 피해를 입었다.`);
+        if(me.hp<=0){ clash = null; m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`; await wait(1100); S2.log = lines.concat(S2.log).slice(0,4); return next(); } }
+      const hvNote = [];
+      if(!guarding && !foeGuarding && me.cpDown){ hvNote.push(`손이 무뎌진 채 합에 나섰다(코인 위력 -${me.cpDown})`); me.cpDown = 0; }
       const won = R.win==="me", wSk = won ? R.a : fk, bonusK = 1 + 0.04*Math.max(0, R.count-1); me.spBefore = me.sp; me.lastWonPrev = me.lastWon;
       // 합이 진행된 경우에만 승패로 정신력이 변한다.
       if(guarding || foeGuarding){ /* 기본 방어는 합 승패로 취급하지 않는다. */ }
@@ -5097,7 +5120,7 @@ function mgCombat(ctx){
       lines.push(reloading && fk.def ? `합을 진행하지 않았다. ${foe.name}도 방어 중이라 공격하지 않는다.` : guarding ? `합을 진행하지 않았다. ${foe.name}의 공격을 방어해 받는 피해를 절반으로 줄인다.` : foeGuarding ? `${jo(foe.name,"이")} 합 없이 방어한다. 공격 피해가 절반으로 줄어든다.` : won ? `합을 이겼다(${R.count}합). 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}` : `합에서 밀렸다(${R.count}합). ${jo(foe.name,"이")} 남은 코인 ${R.left}개로 친다. 정신력 ${me.sp>=0?"+":""}${me.sp}`);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       // 피해: 이긴 쪽이 남은 코인을 한 번 더 던져 나온 최종 위력만큼 한 번에 준다
-      const heads = flip(R.left, won ? me.sp : 0); const clashPower=Math.round(powOf(wSk, heads)*bonusK);
+      const heads = flip(R.left, won ? me.sp : 0, won ? 0 : (wSk.headAdj||0)); const clashPower=Math.round(powOf(wSk, heads)*bonusK);
       let P = won ? coinDamage(equipDamage(me.f)+Math.min(3,support().length),R.left,wSk.coins,heads,1) : coinDamage(foe.baseDamage,R.left,wSk.coins,heads,1);
       const ammoPlus=won&&firedRound?Math.min(6,firedRound.bonus):0; let ammoEffective=ammoPlus, crit = 0;
       if(won && me.sp2==="poise"){ crit = heads.filter(h=>h && Math.random()<0.35).length; P += crit*wSk.cp; }
@@ -5209,12 +5232,18 @@ function mgCombat(ctx){
         if(me.sp2==="thorns" && dmg>0){ const th = Math.max(1, Math.round(dmg*0.2)); foe.hp = Math.max(0, foe.hp - th); egoNote.push(`가시 — ${foe.name}에게 ${th} 되돌려 줌`); }
         if(dmg > 0 && me.hp <= 20 && accFx(me.f,"bandage")){ dmg = 0; me.f.gear.acc = null; egoNote.push("간이 보존 붕대 — 상처를 그대로 붙잡았다(붕대는 삭아 없어졌다)"); }
         if(dmg > 0 && fullBody(me.f)) dmg += 1;
+        if(dmg > 0 && me.rupture > 0){ dmg += me.rupture; hvNote.push(`파열 — 상처가 터졌다(+${me.rupture})`); me.rupture--; }
+        if(dmg > 0 && me.sink > 0){ const sl = me.sink*3; me.sp = clamp(me.sp - sl, -45, 45); hvNote.push(`침잠 — 마음이 가라앉는다(정신력 -${sl})`); me.sink--; }
+        if(dmg > 0 && fk.heavy==="cripple"){ me.cpDown = 1; hvNote.push(`손목을 맞았다 — 다음 합 코인 위력 -1`); }
+        if(dmg > 0 && fk.heavy==="status" && fk.stk){ me[fk.stk] = Math.min(9, (me[fk.stk]||0) + fk.stn); hvNote.push(`${HV_STATUS[fk.stk].n} ${me[fk.stk]}`); }
         const w0 = woundOf(me.hp,me.max); me.hp = Math.max(0, me.hp - dmg); total = dmg;
         if(me.scarabNow){ me.scarabNow = false; me.hp = Math.max(me.hp, Math.round(me.max*0.74)); rNote.push("태양 스카라베 — 쓰러질 상처를 1로 버티고, 가슴의 원반이 동틀 녘처럼 데워 경상까지 되돌렸다"); } me.woundUp = woundOf(me.hp,me.max) > w0 || me.hp<=0; st.crit = false; if(dmg>0) attack("foe", dmg, fk);
         if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       await wait(900);
       clash = null;
       lines.push(reloading && fk.def ? "재장전 완료 — 피해 0, 체력 변화 없음." : won ? `기본 피해 ${P}${ammoPlus?` · 탄환 추가 피해 최대 +${ammoPlus}`:""} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : guarding ? `${jo(esc(me.name),"이")} 막아 피해를 절반으로 줄였다(${total}) — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}`);
+      if(fk.heavy==="rush" && !reloading){ foe.coinDown = Math.max(foe.coinDown||0, 1); hvNote.push(`${jo(foe.name,"이")} 숨을 몰아쉰다 — 다음 공격 코인 위력 -1`); }
+      if(hvNote.length) lines.push(`<span style="color:#ff9a6a">적 기술</span> ${hvNote.join(" · ")}`);
       if(R.fired) egoNote.unshift("충전 10 소모 — 이번 턴 코인 위력 +1");
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       if(abNote.length) lines.push(`<span style="color:#ff9a8a">환상체</span> ${abNote.join(" · ")}`);
@@ -5251,6 +5280,7 @@ function mgCombat(ctx){
       // 턴이 끝날 때: 화상이 타오르고, 재생이 상처를 메우고, 보호막이 다시 선다
       const tk = []; { const sm = foeSignMiss(); if(sm) tk.push(sm); }
       if(foe.burn > 0){ foe.hp = Math.max(0, foe.hp - foe.burn); tk.push(`${foe.brand ? "낙인 " : ""}화상 — ${jo(foe.name,"이")} ${foe.burn}의 피해`); if(!foe.brand) foe.burn--; }
+      party.forEach(p=>{ if(p.hp<=0 || !(p.burn > 0)) return; p.hp = Math.max(0, p.hp - p.burn); tk.push(`화상 — ${esc(p.name)}이(가) ${p.burn}의 피해`.replace(`${esc(p.name)}이(가)`, jo(esc(p.name),"이"))); p.burn--; });
       party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } if(p.sp2==="shield") p.shield = 10; });
       if(AB && AB.aoe && turn % AB.aoe === 0 && foe.hp > 0){ const hung = [];
         party.forEach(p=>{ if(p.hp<=0) return; let d = Math.max(4, Math.round(26*(1-redHP(p.f)))); if(isBlessed(p)) d = Math.round(d*0.5); p.hp = Math.max(0, p.hp - d); if(p.hp<=0){ p.death = "hanged"; hung.push(p.name); } });
