@@ -1649,7 +1649,7 @@ const RISK = g => g>=8?"ZAYIN":g>=6?"TETH":g>=4?"HE":g>=2?"WAW":"ALEPH";
 const PROMO = {9:48,8:70,7:95,6:120,5:145,4:170,3:200,2:230};
 const COLOR_REQ_TOTAL = 250;
 const WAGE_K = 0.2;   // 인하 전 기준 금액을 주급과 고용비로 나눈다.
-const TECH_COIN_PLUS = 1, TECH_SP_COST = 8;
+const TECH_BASE_PLUS = 1, TECH_COIN_PLUS = 2, TECH_SP_COST = 10;
 function migrateEmploymentCost(f){
   if(!f || f.employmentCostV === 1) return f;
   if(Number.isFinite(f.wage)) f.wage = Math.floor(f.wage*7/10);
@@ -4922,6 +4922,7 @@ function mgCombat(ctx){
       else if(id==="drawcut"){ sk.base += 1; } else if(id==="momentum"){ sk.base += me.lastWon ? 4 : 1; } else if(id==="deadeye"){ sk.coins = Math.max(1, sk.coins-1); sk.cp += 3; sk.base += 1; } else if(id==="bind"){ sk.base += 1; }
       else if(id==="r_astrape"){ sk.base += 4; } else if(id==="r_claiomh"){ sk.base += 3; } else if(id==="r_ruyi"){ sk.coins += 1; sk.base += 2; } else if(id==="r_drepanon"){ sk.base += 1; }
       else if(id==="impale" || id==="vault"){ sk.base += 2; } else if(id==="whirl"){ sk.coins += 1; } else if(id==="crush"){ sk.base += 2; } else if(id==="focus"){ sk.cp += 1; }
+      sk.base += TECH_BASE_PLUS;
       sk.cp += TECH_COIN_PLUS;
       sk.def = !!T.def; return {T, sk, card: Object.assign({}, base, {n:T.n, def:!!T.def})}; }
     const MOVES = ["기본 공격","방어","기술"];
@@ -5035,7 +5036,7 @@ function mgCombat(ctx){
       m.ctrl.innerHTML = `<div class="pk-moves">
         <button data-sk="0" ${!hasBullet?"disabled":""}><b>기본 공격</b><small>${ak.map(c=>c.n).join(" · ")} 가운데 하나가 나간다 · 합 위력 ${lo}~${hi} · 기본 피해 약 ${baseShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}<br><span class="muted">상대의 수를 알 수 없다</span></small></button>
         <button data-sk="1"><b>방어</b><small>${dc.n} · 합 없음 · 받는 피해 50% 감소 · 민첩 고정 감소 ${statGuardMinus(me.f)} · 반격 없음 · 상대도 방어하면 합이 일어나지 않는다</small></button>
-        <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def) || !techReady(me)?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${!techReady(me) ? `<span style="color:#ffb35a">다시 쓰기까지 ${techWait(me)}턴 — 기술은 2턴에 한 번</span><br>` : ""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · ${tsk.def?"방어 기술":`피해 계수 ${(TECH_DAMAGE_MUL[tk.T.id]||1).toFixed(2)}배 · 기본 피해 약 ${techniqueShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}`}<br><span class="muted">상대의 수를 알 수 없다</span> · ${tk.T.d} · 기술 공통 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
+        <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def) || !techReady(me)?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${!techReady(me) ? `<span style="color:#ffb35a">다시 쓰기까지 ${techWait(me)}턴 — 기술은 2턴에 한 번</span><br>` : ""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · ${tsk.def?"방어 기술":`피해 계수 ${(TECH_DAMAGE_MUL[tk.T.id]||1).toFixed(2)}배 · 기본 피해 약 ${techniqueShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}`}<br><span class="muted">상대의 수를 알 수 없다</span> · ${tk.T.d} · 기술 공통 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
       { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", sb); } }
       { const gb = foeSignBtn(); if(gb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", gb); } }
     }
@@ -9555,7 +9556,7 @@ async function openManage(){
       ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
       <span>기술 (${(f.techs||[]).length}/${MAX_BASIC_TECHS})</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
         return `<select data-tech="1">${list.map(id=>`<option value="${id}" ${(f.tech||"allout")===id?"selected":""} ${techFits(id, wt)?"":"disabled"}>${TECHS[id].n}${techFits(id, wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
-          <br><span class="muted" style="font-weight:400">${esc(TECHS[f.tech && techFits(f.tech, wt) ? f.tech : "allout"].d)} · 기술 공통 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}${(f.techs||[]).length ? "" : " · 무기를 오래 쓰거나 능력치가 높아지면 기술을 깨우친다."}</span>`; })()}</b>
+          <br><span class="muted" style="font-weight:400">${esc(TECHS[f.tech && techFits(f.tech, wt) ? f.tech : "allout"].d)} · 기술 공통 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}${(f.techs||[]).length ? "" : " · 무기를 오래 쓰거나 능력치가 높아지면 기술을 깨우친다."}</span>`; })()}</b>
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
     ${reviewProgressHtml()}
