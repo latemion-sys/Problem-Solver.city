@@ -4235,9 +4235,9 @@ function storyPost(q, success){ const k = storyKey(q), P = STORY_POST[k]; if(!P 
 /* ================= 배경 음악 =================
    normal은 게임 전체의 기본 곡이다(시작 화면 · 사무소 · 일반 의뢰 등). 전투 의뢰와 환상체 조우 때만 그 곡으로 바뀌었다가, 창이 닫히면 기본 곡으로 돌아온다.
    창이 겹치면(호위 중 매복 전투 등) 맨 위 창의 곡이 흐른다. 브라우저는 첫 클릭 전에는 소리를 막으므로, 첫 입력 때 기본 곡을 튼다.
-   battle: 전투 의뢰 · warn1: 죄종~TETH · warn2: HE~WAW · warn3: ALEPH */
+   battle: 전투 의뢰(battle · 예소드 · 말쿠트 · 네짜흐 · 호드 가운데 하나) · warn1: 죄종~TETH · warn2: HE~WAW · warn3: ALEPH */
 const BGM = (function(){
-  const SRC = {normal:"bgm/normal.mp3", battle:"bgm/battle.mp3", warn1:"bgm/warn1.mp3", warn2:"bgm/warn2.mp3", warn3:"bgm/warn3.mp3"};
+  const SRC = {normal:"bgm/normal.mp3", battle:"bgm/battle.mp3", battle_yesod:"bgm/battle_yesod.mp3", battle_malkuth:"bgm/battle_malkuth.mp3", battle_netzach:"bgm/battle_netzach.mp3", battle_hod:"bgm/battle_hod.mp3", warn1:"bgm/warn1.mp3", warn2:"bgm/warn2.mp3", warn3:"bgm/warn3.mp3"};
   const KEY = "problem-solver-bgm-v1";
   let opt = {on:true, vol:0.45}; try{ Object.assign(opt, JSON.parse(localStorage.getItem(KEY))||{}); }catch(_){}
   const stack = [{k:"normal", base:true}], els = {}; let cur = null, fadeT = null, relT = null;
@@ -4268,8 +4268,10 @@ function bgmFor(title, q){
   if(q && (q.kind==="환상체" || q.abnoFoe)){
     const a = q && typeof abnoOf==="function" ? abnoOf(q) : null, r = a ? a.risk : "TETH";
     return r==="ALEPH" ? "warn3" : (r==="HE" || r==="WAW") ? "warn2" : "warn1"; }
-  if(/^정면 돌파/.test(title)) return "battle";
+  // 전투 의뢰(환상체·죄종 제외)는 다섯 곡 가운데 하나를 고른다
+  if(/^정면 돌파/.test(title)) return pick(BATTLE_BGM);
   return "normal"; }
+const BATTLE_BGM = ["battle","battle_yesod","battle_malkuth","battle_netzach","battle_hod"];
 /* ================= 미니게임 공통 창 ================= */
 function mgOpen(title, desc, ctx, H=300){
   const bg = document.createElement("div"); bg.className = "mg-bg";
