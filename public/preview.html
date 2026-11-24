@@ -2023,13 +2023,32 @@ function migrateGunAmmoState(data){ if(!data)return data; data.ammo=data.ammo||{
 
 /* 내구도: 무기(E.G.O. 제외)는 실제로 전투를 치른 출동마다 1씩 닳는다. 절반 이하가 되면 고쳐야 쓸 수 있고, 고칠 때마다 최대 내구도가 1 준다.
    최대 내구도가 다 닳으면 부서진다. 고유 무기는 공방이 맡아 손보므로 닳지 않는다 */
-const DUR_RANGE = [[2,5],[6,11],[12,19]];   // 실제로 싸웠을 때만 닳게 바꾸면서 최대 내구도를 1씩 줄였다(새로 얻는 무기부터)
+const DUR_RANGE = [[4,7],[8,13],[14,21]];   // 모든 공방제 무기의 최소·최대 내구도 +2
 const isWornable = g => !!(g && g.slot==="weapon" && !g.unique && !g.relic);
 function rollDur(g){ const [a,b] = DUR_RANGE[g.tier||0] || DUR_RANGE[0];
   const pw = SHOP.filter(i=>i.slot==="weapon" && i.tier===(g.tier||0)).map(i=>i.power), lo = Math.min(...pw), hi = Math.max(...pw);
   const r = hi>lo ? clamp(((g.power||lo)-lo)/(hi-lo), 0, 1) : 0.5;            // 같은 공방 등급 안에서는 비쌀수록 튼튼하다(조금은 운)
-  return clamp(Math.round(a + (b-a)*(0.55*r + 0.45*Math.random())), a, b); }
-function initDur(g){ if(!isWornable(g) || g.durMax) return g; const m = rollDur(g); g.durMax = m; g.dur = m; g.dur0 = m; g.uses = g.uses||0; return g; }
+  // 기존 위력에 따른 평균 편차는 유지하면서 각 무기도 전체 내구도 범위가 나오게 한다.
+  const t = Math.random() < 0.55 ? r : Math.random();
+  return clamp(Math.round(a + (b-a)*t), a, b); }
+function initDur(g){
+  if(!isWornable(g)) return g;
+  if(g.durMax){
+    if(!g.workshopDurPlus2 && SHOP.some(it=>it.slot==="weapon" && it.id===g.id)){
+      const oldMax=g.durMax, oldBase=Number.isFinite(g.dur0)?g.dur0:oldMax, oldDur=Number.isFinite(g.dur)?g.dur:oldMax;
+      g.durMax=oldMax+2; g.dur=clamp(oldDur+2,0,g.durMax); g.dur0=oldBase+2; g.workshopDurPlus2=true;
+    }
+    return g;
+  }
+  const m=rollDur(g); g.durMax=m; g.dur=m; g.dur0=m; g.uses=g.uses||0; g.workshopDurPlus2=true; return g;
+}
+// 장착품·보관함·영입 후보·이전 저장 파일에 같은 상향을 한 번만 적용한다.
+function migrateWorkshopDur(data){
+  if(!data) return data;
+  (data.fixers||[]).concat(data.recruitPool||[]).forEach(f=>{if(f.gear) initDur(f.gear.weapon);});
+  (data.inventory||[]).forEach(initDur);
+  return data;
+}
 const needsRepair = g => !!(isWornable(g) && g.durMax && g.dur <= Math.floor(g.durMax/2));
 const repairCost = g => Math.max(500, Math.round((g.price||5000)*0.12/100)*100);
 const durText = g => isWornable(g) && g.durMax ? `내구도 ${g.dur}/${g.durMax}${needsRepair(g) ? " · 수리 필요" : ""}` : "";
@@ -10164,7 +10183,7 @@ async function openRecords(){
         const obj=JSON.parse(await file.text()),saved=obj&&obj.format==="problem-solver-backup"?obj.game:obj;
         if(!saved||!Array.isArray(saved.fixers)||!Array.isArray(saved.requests)||!Number.isFinite(saved.day)||!saved.officeName)throw Error("사무소 저장 파일이 아닙니다.");
         if(!await confirmBox("저장 파일 불러오기",`<b>${esc(saved.officeName)}</b> · ${saved.day}일차로 현재 사무소를 교체하시겠습니까?`))return;
-        S=syncAllStatVitals(migrate1247(migrateGunAmmoState(saved)));
+        S=syncAllStatVitals(migrateWorkshopDur(migrate1247(migrateGunAmmoState(saved))));
         if(obj.format==="problem-solver-backup"){
           if(obj.achievements&&typeof obj.achievements==="object"){ACH_LT=obj.achievements;ltSave();}
           if(obj.unlocked&&typeof obj.unlocked==="object")achSave(obj.unlocked);
@@ -10192,7 +10211,7 @@ async function openRecords(){
       }
       if(x==="file"){root.querySelector("#save-file").click();return;}
       if(x==="export"){ ac("export"); const code=btoa(unescape(encodeURIComponent(JSON.stringify(S)))); try{ await navigator.clipboard.writeText(code); e.target.textContent="복사됨"; }catch(_){ await promptBox("저장 코드","아래 코드를 복사해 두자.",code,true);} }
-      if(x==="import"){ const code=await promptBox("불러오기","저장 코드를 붙여 넣는다.","",true); if(!code) return; try{ const d=JSON.parse(decodeURIComponent(escape(atob(code.trim())))); if(!Array.isArray(d.fixers)||!Array.isArray(d.requests)) throw 0; S=syncAllStatVitals(migrate1247(migrateGunAmmoState(d))); save(); closeAll(); render(); }catch(_){ alertBox("불러오기 실패","코드가 올바르지 않다."); } }
+      if(x==="import"){ const code=await promptBox("불러오기","저장 코드를 붙여 넣는다.","",true); if(!code) return; try{ const d=JSON.parse(decodeURIComponent(escape(atob(code.trim())))); if(!Array.isArray(d.fixers)||!Array.isArray(d.requests)) throw 0; S=syncAllStatVitals(migrateWorkshopDur(migrate1247(migrateGunAmmoState(d)))); save(); closeAll(); render(); }catch(_){ alertBox("불러오기 실패","코드가 올바르지 않다."); } }
       if(x==="trio"){ closeAll(); await ledgerOffer(false); return; }
       if(x==="reset"){ if(await confirmBox("처음부터","지금 진행 상황이 사라진다.")){ clearSave(); S=null; closeAll(); renderStart(); } }
     });
@@ -10209,7 +10228,7 @@ function clearSave(){
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 let saveWarningShown=false;
 function save(){
-  if(S){ S.money = Math.max(0, Number(S.money)||0); migrate1247(S); syncAllStatVitals(S); }
+  if(S){ S.money = Math.max(0, Number(S.money)||0); migrate1247(S); migrateWorkshopDur(S); syncAllStatVitals(S); }
   if(S&&!FXTEST){
     try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({}, S, {ending: undefined})));/* 하루 정산 중 잠금(ending)은 저장하지 않는다 */saveWarningShown=false; }
     catch(e){if(!saveWarningShown){saveWarningShown=true;const w=document.getElementById("save-warning");
@@ -10229,7 +10248,7 @@ function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d
   }
   delete d.clients;
   (d.requests||[]).forEach(q=>{ delete q.reg; if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; }
-    if(typeof q.text==="string") q.text = q.text.replace(/(달라)\. 확인하고 처리해 달라$/, "$1"); }); return syncAllStatVitals(migrate1247(migrateGunAmmoState(d))); }
+    if(typeof q.text==="string") q.text = q.text.replace(/(달라)\. 확인하고 처리해 달라$/, "$1"); }); return syncAllStatVitals(migrateWorkshopDur(migrate1247(migrateGunAmmoState(d)))); }
 }catch(e){ if(!saveWarningShown){saveWarningShown=true;try{console.warn("저장 불러오기 실패",e);}catch(_){}} } return null; }
 /* 전당포: 보관함의 물건을 산 값(값이 없는 전리품·기프트는 같은 칸에서 가장 비슷한 가치의 공방 물건 값)의 40%에 판다. 소수점 버림. */
 const PAWN_K = 0.4;
@@ -12447,7 +12466,7 @@ function render(){
   if(!S) return;
   if(((S.vnQ && S.vnQ.length) || S.vnNameless) && typeof vnFlush==="function") setTimeout(vnFlush, 700);
   officeStoryModule.schedule();
-  migrate1247(S); syncAllStatVitals(S);
+  migrate1247(S); migrateWorkshopDur(S); syncAllStatVitals(S);
   const app = document.getElementById("app");
   if(!app.querySelector(".topbar")) buildShell();
   const nextVisit = 7 - ((S.day-1)%7);
