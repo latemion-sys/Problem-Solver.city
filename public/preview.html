@@ -158,6 +158,12 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .fx{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px}
 .fx .n{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
 .fx .n b{font-size:14px} .fx .n span{font-size:12px;color:var(--muted)}
+.fx-companion>summary.n{cursor:pointer;list-style:none;align-items:center;flex-wrap:wrap}
+.fx-companion>summary.n::-webkit-details-marker{display:none}
+.fx-companion>summary.n::after{content:"펼치기 ▾";font-size:12px;color:var(--accent);white-space:nowrap}
+.fx-companion[open]>summary.n::after{content:"접기 ▴"}
+.fx-companion[open]>summary.n{margin-bottom:6px}
+.fx-companion>summary.n:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
 .fx .title{color:var(--accent);font-size:12px}
 .bar{height:7px;background:#0b0b0e;border-radius:4px;overflow:hidden;margin:3px 0}
 .bar i{display:block;height:100%}
@@ -12464,6 +12470,7 @@ async function openAccept(qid){
     save(); render(); } }
 /* ================= 렌더 ================= */
 function bar(cur,max,color){ return `<div class="bar"><i style="width:${clamp(cur/max*100,0,100)}%;background:${color}"></i></div>`; }
+let fixerFoldOwner = null;
 function render(){
   if(!S) return;
   if(((S.vnQ && S.vnQ.length) || S.vnNameless) && typeof vnFlush==="function") setTimeout(vnFlush, 700);
@@ -12506,18 +12513,23 @@ function render(){
       ${openQ!==q.id ? `<div class="assign"><button class="primary" data-open="${q.id}">상세 보기${q.accepted?" · 수락됨":""}</button></div></div>` : reqPanel(q, opts)}`;
   }).join("") : `<p class="muted">${S.requests.length?"이 분류에 해당하는 의뢰가 없다.":"게시판이 비었다."}</p>`;
   // 해결사
-  app.querySelector("#fxs").innerHTML = S.fixers.map(f=>{
+  const fxList = app.querySelector("#fxs");
+  const openedFixers = fixerFoldOwner===S ? new Set(Array.from(fxList.querySelectorAll("details.fx-companion[open]"), el=>el.dataset.fixer)) : new Set();
+  fixerFoldOwner = S;
+  fxList.innerHTML = S.fixers.map(f=>{
     const lh=level(f.hp,f.hpMax), lm=level(f.mp,f.mpMax);
     const st = !bodyServiceReady(f) ? "전신 의체 정비비 미납 · 출동 불가" : f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? (f.marchDay===S.day ? "강행군까지 마침" : "오늘 출동함 · 강행군 가능") : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     const nc = nameCol(f);
-    return `<div class="fx"><div class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></div>
+    const headerTag = f.isLeader ? "div" : "summary";
+    const cardStart = f.isLeader ? '<div class="fx">' : `<details class="fx fx-companion" data-fixer="${esc(String(f.id))}"${openedFixers.has(String(f.id)) ? " open" : ""}>`;
+    return `${cardStart}<${headerTag} class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></${headerTag}>${f.isLeader ? "" : '<div class="fx-companion-body">'}
       ${colorBtn(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${f.distEye?`<div class="title" style="color:#c9b0ff" title="${esc(distEyeText)}">뒤틀림을 보는 눈</div>`:""}${distExp(f)?`<div class="title muted">뒤틀림 경험 — ${distExp(f).n}(처치 ${f.dk})</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}${f.addict?`<div class="title" style="color:#ff8a7a">엔케팔린 중독 — 회복량 절반</div>`:""}${accFx(f,"rewind")?`<button class="hana-btn" data-rewind="${f.id}" ${f.rw && f.rw.length ? "" : "disabled"}>시간 되돌림 장치 사용</button>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       ${!f.isLeader?`<div style="font-size:12px">신뢰 ${fixerTrust(f)}/100</div>${bar(fixerTrust(f),100,fixerTrust(f)>=70?"#7fb069":fixerTrust(f)>=35?"#d8b24a":"#c94a4a")}`:""}
       <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
-      <div class="state">${st} · 총합 ${total(f)}${f.tired ? ` · <b style="color:#e7a07c">피로</b>` : (f.streak||0) >= 1 ? ` · <span class="muted">연속 출동 ${f.streak}일</span>` : ""}</div></div>`;
+      <div class="state">${st} · 총합 ${total(f)}${f.tired ? ` · <b style="color:#e7a07c">피로</b>` : (f.streak||0) >= 1 ? ` · <span class="muted">연속 출동 ${f.streak}일</span>` : ""}</div>${f.isLeader ? "</div>" : "</div></details>"}`;
   }).join("");
   app.querySelector("#log").innerHTML = S.log.map(l=>`<div class="${l.cls||""}">${l.d}일 · ${esc(l.t)}</div>`).join("");
   app.querySelector("#endday").disabled = S.over;
