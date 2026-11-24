@@ -568,6 +568,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .omen.moon .ol{color:#eceadb;text-shadow:0 0 10px rgba(205,220,255,.5),0 0 28px rgba(160,185,240,.3)}
 .omen.moon .og{color:#d9e2ff}
 #log .omenlog{color:#e7a07c}
+.omen-tag{color:#ff8a5a!important;text-shadow:0 0 8px rgba(255,96,40,.55)}
 /* 녹아드는 문장 */
 .hv-meltlines{display:flex;flex-direction:column;align-items:center;gap:6px}
 .hv-ov .hv-center.hv-drop-top{position:absolute;top:7vh;left:50%;transform:translateX(-50%)}
@@ -8256,6 +8257,9 @@ async function checkShin(f){
   f.shinTry = S.day; if(Math.random() >= 0.15) return false;
   await awakenShin(f); return true;
 }
+// 징조를 한 번이라도 본 해결사 — 카드에 '징조'를 징조 문구와 같은 주홍빛으로 표시(뒤틀리거나 개화하면 사라진다)
+const omenSeen = f => !!f && (f.omenFirst!=null || f.omenDay!=null) && !f.riftDone && !(f.ego && !f.ego.unstable);
+const omenTag = f => omenSeen(f) ? `<div class="title omen-tag" title="목소리가 들리기 시작했다">징조</div>` : "";
 let omenQ = Promise.resolve();
 function showOmen(name, line, tone){ ac("omen");
   omenQ = omenQ.then(()=>new Promise(res=>{
@@ -8278,7 +8282,7 @@ function showOmen(name, line, tone){ ac("omen");
    50이 되면 징조가 들리기 시작하고, 80이 되면 목소리가 들어온다(잃은 것이 있으면 뒤틀림 또는 E.G.O. 개화가 반반, 없으면 E.G.O. 개화). 한 사람에게 한 번뿐이다. */
 const RIFT_OMEN = 50, RIFT_BREAK = 80;
 function riftOmen(f){ if(!S || !f || (f.rift||0) < RIFT_OMEN || f.riftDone || f.omenDay===S.day || Math.random() >= 0.35) return;
-  f.omenDay = S.day; const tone = Math.random()<0.5 ? "vermil" : "moon", line = pick(OMEN[tone]);
+  f.omenDay = S.day; if(f.omenFirst==null) f.omenFirst = S.day; const tone = Math.random()<0.5 ? "vermil" : "moon", line = pick(OMEN[tone]);
   addLog(`${f.name}: “${line}”`, "omenlog"); showOmen(f.name, line, tone); }
 async function riftBreak(){
   for(const f of S.fixers.slice()){ if(!S || S.over) return; if((f.rift||0) < RIFT_BREAK || f.riftDone || (f.ego && !f.ego.unstable)) continue;
@@ -8306,7 +8310,7 @@ async function cityDeathTick(){
     save(); render(); } }
 function checkOmen(f){
   if(!S || !f || f.isLeader || (f.ego && !f.ego.unstable) || !f.precious || !f.precious.lost || f.mp<=0 || f.mp/Math.max(1,f.mpMax) > 0.3 || f.omenDay===S.day) return;
-  f.omenDay = S.day;
+  f.omenDay = S.day; if(f.omenFirst==null) f.omenFirst = S.day;
   const tone = Math.random()<0.5 ? "vermil" : "moon", line = pick(OMEN[tone]);
   addLog(`${f.name}: “${line}”`, "omenlog");
   showOmen(f.name, line, tone);
@@ -15144,7 +15148,7 @@ function render(){
     const headerTag = f.isLeader ? "div" : "summary";
     const cardStart = f.isLeader ? '<div class="fx">' : `<details class="fx fx-companion" data-fixer="${esc(String(f.id))}"${openedFixers.has(String(f.id)) ? " open" : ""}>`;
     return `${cardStart}<${headerTag} class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></${headerTag}>${f.isLeader ? "" : '<div class="fx-companion-body">'}
-      ${colorBtn(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${f.distEye?`<div class="title" style="color:#c9b0ff" title="${esc(distEyeText)}">뒤틀림을 보는 눈</div>`:""}${distExp(f)?`<div class="title muted">뒤틀림 경험 — ${distExp(f).n}(처치 ${f.dk})</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}${f.addict?`<div class="title" style="color:#ff8a7a">엔케팔린 중독 — 회복량 절반</div>`:""}${accFx(f,"rewind")?`<button class="hana-btn" data-rewind="${f.id}" ${f.rw && f.rw.length ? "" : "disabled"}>시간 되돌림 장치 사용</button>`:""}
+      ${colorBtn(f)}${omenTag(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${f.distEye?`<div class="title" style="color:#c9b0ff" title="${esc(distEyeText)}">뒤틀림을 보는 눈</div>`:""}${distExp(f)?`<div class="title muted">뒤틀림 경험 — ${distExp(f).n}(처치 ${f.dk})</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}${f.addict?`<div class="title" style="color:#ff8a7a">엔케팔린 중독 — 회복량 절반</div>`:""}${accFx(f,"rewind")?`<button class="hana-btn" data-rewind="${f.id}" ${f.rw && f.rw.length ? "" : "disabled"}>시간 되돌림 장치 사용</button>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       ${!f.isLeader?`<div style="font-size:12px">신뢰 ${fixerTrust(f)}/100</div>${bar(fixerTrust(f),100,fixerTrust(f)>=70?"#7fb069":fixerTrust(f)>=35?"#d8b24a":"#c94a4a")}`:""}
