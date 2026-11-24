@@ -16168,8 +16168,8 @@ let floats = [];
 let rumorNext = 0, rumorUsed = [], majorQueue = null, rumorOfficeState = null;
 const RUMOR_GAP = [2200/1.3, 3600/1.3], RUMOR_MAX = 7;   // 예전(2.2~3.6초 · 한 번에 3~5개)보다 30% 잦고 많게
 const rumorText = t => t.replace(/\{d\}/g, districtOf().name);
-/* 일반 소문의 5%와 1%를 실제 사무소 정보로 채운다. */
-const CITY_OFFICE_RUMOR_END=0.05, CITY_FIXER_RUMOR_END=0.06;
+/* 일반 소문의 2%와 0.3%를 실제 사무소 정보로 채운다. */
+const CITY_OFFICE_RUMOR_END=0.02, CITY_FIXER_RUMOR_END=0.023;
 function cityRumorKind(r){ return r<CITY_OFFICE_RUMOR_END?"office":r<CITY_FIXER_RUMOR_END?"fixer":"other"; }
 function cityRumorLabel(v,max=75){return String(v==null?"":v).replace(/\s+/g," ").trim().slice(0,max);}
 function cityRumorJobs(){
