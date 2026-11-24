@@ -6728,7 +6728,18 @@ const abnoOf = q => { const a = ABNO_BY[q.abno && q.abno.id]; if(!a) return null
 const CODEX_KEY = "problem-solver-codex-v1";
 // 저장 파일에서 지금 목록에 없는 예전 기프트를 지운다(보관함 · 착용 중인 장신구 모두)
 function giftOk(g){ if(!g || !g.gift) return true; const A = ABNO_BY[String(g.gift.abno).split("~")[0]]; return !!(A && A.gifts && [A.gifts.a, A.gifts.b].some(x=>x && x.n===g.name)); }
-function pruneOldGifts(d){ d.inventory = (d.inventory||[]).filter(giftOk); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(f.gear && f.gear.acc && !giftOk(f.gear.acc)) f.gear.acc = null; }); }
+/* 기프트 상향 — 원래 수치에 위험 등급별 배율을 곱한다(ZAYIN ×2, TETH ×1.75, HE 이상 ×1.5). 능력치는 올림.
+   이로운 수치만 키우고, 대가로 붙은 마이너스 수치는 그대로 둔다. 가장 낮은 ZAYIN 기프트도 일반 의뢰 특수 전리품보다 낫게. */
+const GIFT_BOOST = {ZAYIN:2, TETH:1.75, HE:1.5, WAW:1.5, ALEPH:1.5};
+function giftStats(a, G){ const k = GIFT_BOOST[a && a.risk] || 1.5, up = v => v > 0 ? Math.ceil(v*k) : v, upR = v => v > 0 ? Math.round(v*k*100)/100 : v, o = {};
+  if(G.bonus){ o.bonus = {}; for(const s in G.bonus) o.bonus[s] = up(G.bonus[s]); }
+  if(G.mpRed) o.mpRed = upR(G.mpRed); if(G.hpRed) o.hpRed = upR(G.hpRed); if(G.selfUp) o.selfUp = Math.min(0.3, upR(G.selfUp)); return o; }
+// 이미 가진 기프트도 한 번만 새 수치로 맞춘다(원래 정의에서 다시 계산하므로 여러 번 불려도 겹치지 않는다)
+function boostOldGift(g){ if(!g || !g.gift || g.giftV2) return; const A = ABNO_BY[String(g.gift.abno).split("~")[0]]; if(!A || !A.gifts) return;
+  const G = [A.gifts.a, A.gifts.b].find(x=>x && x.n===g.name); if(!G) return;
+  delete g.bonus; delete g.mpRed; delete g.hpRed; delete g.selfUp; Object.assign(g, giftStats(A, G)); g.giftV2 = 1; }
+function pruneOldGifts(d){ d.inventory = (d.inventory||[]).filter(giftOk); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(f.gear && f.gear.acc && !giftOk(f.gear.acc)) f.gear.acc = null; });
+  d.inventory.forEach(boostOldGift); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(f.gear) boostOldGift(f.gear.acc); }); }
 // 도감의 기프트 칸에는 지금 그 환상체가 주는 두 기프트만 남긴다(예전 이름은 지운다)
 let CODEX_TEST=null;
 function codexLoad(){ if(FXTEST) return CODEX_TEST||(CODEX_TEST={}); let d; try{ d = JSON.parse(localStorage.getItem(CODEX_KEY))||{}; }catch(_){ return {}; }
@@ -6757,7 +6768,7 @@ const AB_GIFT_RATE = Object.freeze({action:0.04, control:0.10, fighter:0.10, sup
 function makeGift(a, how, grade){ if(!a.gifts) return null; const id = String(a.vid||a.id).split("~")[0];
   const RC = abRec(); let k = RC.giftPick[id]; if(!k){ k = Math.random() < 0.5 ? "a" : "b"; if(!window.__peekGift){ RC.giftPick[id] = k; abRecSave(RC); } }
   const G = a.gifts[k]; if(!G) return null;
-  return Object.assign({slot:"acc", name:G.n, gift:{abno:a.vid, from:a.n, kind: how==="ctrl" ? "통제" : "제압", grade}}, G.bonus ? {bonus:Object.assign({}, G.bonus)} : {}, G.mpRed ? {mpRed:G.mpRed} : {}, G.hpRed ? {hpRed:G.hpRed} : {}, G.selfUp ? {selfUp:G.selfUp} : {});  }
+  return Object.assign({slot:"acc", name:G.n, gift:{abno:a.vid, from:a.n, kind: how==="ctrl" ? "통제" : "제압", grade}, giftV2:1}, giftStats(a, G));  }
 // 도감 개방과 무관하게 실제 수행자에게 각각 독립 판정한다.
 function grantAbnoGift(a, how, q, f, chance, emit){
   if(!a || a.risk==="죄종" || a.kill || !a.gifts || !f || !S || !S.fixers.includes(f)) return false;
