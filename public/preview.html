@@ -127,6 +127,10 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .req-filters{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
 .req-filters button{padding:5px 10px;font-size:12px}
 .req-filters button.on{border-color:var(--accent);color:var(--accent);background:#332a20}
+.req-sorts{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin:-3px 0 10px}
+.req-sorts>span{font-size:12px;color:var(--muted)}
+.req-sorts button{padding:5px 10px;font-size:12px}
+.req-sorts button.on{border-color:var(--accent);color:var(--accent);background:#332a20}
 .req .deadline-urgent{color:#ff9a79;border-color:#ff9a79}
 .req{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px}
 .req.special{border-color:var(--accent)} .req.distort{border-color:var(--red)}
@@ -12495,11 +12499,9 @@ function render(){
   const reqCategory=q=>q.arc||q.prescript||q.hanaStar?"story":q.ruins?"risk":q.nom||q.personalNom?"regular":q.relic||q.loot||q.hazard||q.kind==="환상체"||q.kind.includes("뒤틀림")?"risk":"normal";
   const avail = S.fixers.filter(canSend);
   app.querySelector("#reqfilters").innerHTML = filterIds.map((k,i)=>`<button data-reqfilter="${k}" class="${reqFilter===k?"on":""}">${tabs[i]} <small>${S.requests.filter(q=>k==="all"||reqCategory(q)===k).length}</small></button>`).join("");
+  app.querySelector("#reqsorts").innerHTML = `<span>정렬</span>${requestSortButtons()}`;
   const shownRequests=S.requests.filter(q=>reqFilter==="all"||reqCategory(q)===reqFilter);
-  app.querySelector("#reqs").innerHTML = shownRequests.length ? shownRequests.slice().sort((a,b)=>{
-    const dl=q=>q.deadline==null?1e6:q.deadline;
-    return dl(a)-dl(b);
-  }).map(q=>{
+  app.querySelector("#reqs").innerHTML = shownRequests.length ? shownRequests.slice().sort(compareRequests).map(q=>{
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
@@ -12536,6 +12538,28 @@ function render(){
   S.requests.forEach(q=>updateCard(q.id));
 }
 let reqFilter = "all";
+let reqSort = null, reqSortHigh = true;
+const REQ_THREAT_ORDER = ["뜬소문","도시 괴담","도시 전설","도시 질병","도시 악몽","도시의 별"];
+function toggleRequestSort(key){
+  if(key!=="difficulty" && key!=="reward") return;
+  reqSortHigh = reqSort===key ? !reqSortHigh : true;
+  reqSort = key;
+}
+function requestSortButtons(){
+  return [["difficulty","난이도별"],["reward","보수별"]].map(([key,label])=>{
+    const active = reqSort===key;
+    return `<button type="button" data-reqsort="${key}" class="${active?"on":""}" aria-pressed="${active}" title="${key==="difficulty"?"재해 등급 · 해결사 급수 · 요구치 기준":"게시판에 표시된 보수 기준"}">${label} ${active ? (reqSortHigh?"높은 순 ↓":"낮은 순 ↑") : "높은 순"}</button>`;
+  }).join("");
+}
+function compareRequests(a,b){
+  const dl=q=>q.deadline==null?1e6:q.deadline;
+  let delta=0;
+  if(reqSort==="difficulty"){
+    const rank=q=>REQ_THREAT_ORDER.indexOf(threatOf(q));
+    delta=rank(b)-rank(a) || (Number(a.grade)||9)-(Number(b.grade)||9) || (Number(b.req)||0)-(Number(a.req)||0);
+  }else if(reqSort==="reward") delta=(Number(b.reward)||0)-(Number(a.reward)||0);
+  return (reqSortHigh?delta:-delta) || dl(a)-dl(b);
+}
 const teamSel = {};
 /* ================= 의뢰 카드 펼치기(접기식 파견) =================
    [의뢰를 받는다]를 누르면 창을 띄우지 않고 그 카드가 아래로 펼쳐진다 — 의뢰 이야기 · 보낼 사람 · 수행 방식 · 출동이 한자리에.
@@ -12597,7 +12621,7 @@ function buildShell(){
   app.innerHTML = `<div class="topbar"></div>
    <div class="stage"><canvas id="cv"></canvas><div class="cap"><div class="t" id="capt"></div><div class="s" id="caps"></div></div></div>
    <div class="main">
-     <div class="panel"><h2>의뢰 게시판 <small>해결사 1명은 하루 1건 · 강행군으로 1건 더</small></h2><div class="req-filters" id="reqfilters"></div><div class="reqs" id="reqs"></div></div>
+     <div class="panel"><h2>의뢰 게시판 <small>해결사 1명은 하루 1건 · 강행군으로 1건 더</small></h2><div class="req-filters" id="reqfilters"></div><div class="req-sorts" id="reqsorts"></div><div class="reqs" id="reqs"></div></div>
      <div class="panel"><h2>해결사 <small>★ 대표</small></h2><div class="fixers" id="fxs"></div></div>
    </div>
    <div class="nav"><button data-nav="recruit">영입</button><button data-nav="manage">관리</button><button data-nav="shop">공방</button><button data-nav="records">기록</button><button data-nav="ach">업적</button><button data-nav="repay">상환</button><button id="endday" class="primary">하루 끝내기</button></div>
@@ -12607,6 +12631,7 @@ function buildShell(){
   app.addEventListener("click", e=>{
     const d = e.target.dataset;
     if(d.reqfilter){ reqFilter=d.reqfilter; render(); return; }
+    if(d.reqsort){ toggleRequestSort(d.reqsort); render(); return; }
     if(d.accept){ const q=S.requests.find(x=>x.id===+d.accept); if(!q) return; if(acceptRequest(q)){ save(); render(); } return; }
     if(d.open){ openCard(+d.open, true); return; }
     if(d.fold){ openQ = null; render(); return; }
