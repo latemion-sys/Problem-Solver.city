@@ -8298,7 +8298,9 @@ function showOmen(name, line, tone){ ac("omen");
 }
 
 /* 목소리의 틈 — 화면에는 보이지 않는다. 대표를 포함한 모두에게 있고 0에서 시작해 의뢰를 다녀올 때마다 1씩 벌어진다.
-   50이 되면 징조가 들리기 시작하고, 80이 되면 목소리가 들어온다(잃은 것이 있으면 뒤틀림 또는 E.G.O. 개화가 반반, 없으면 E.G.O. 개화). 한 사람에게 한 번뿐이다. */
+   50이 되면 징조가 들리기 시작하고, 80이 되면 목소리가 들어온다. 한 사람에게 한 번뿐이다.
+   목소리가 들어올 때 그 사람의 의지와 지금 정신력으로 갈린다 — 버틸 힘이 충분하면 개화, 어중간하면 불안정 개화, 모자라면 뒤틀림.
+   대표는 연출과 함께, 동료는 연출 없이 결과만 알린다. */
 const RIFT_OMEN = 50, RIFT_BREAK = 80;
 function riftOmen(f){ if(!S || !f || (f.rift||0) < RIFT_OMEN || f.riftDone || f.omenDay===S.day || Math.random() >= 0.35) return;
   f.omenDay = S.day; if(f.omenFirst==null) f.omenFirst = S.day; const tone = Math.random()<0.5 ? "vermil" : "moon", line = pick(OMEN[tone]);
@@ -8306,10 +8308,16 @@ function riftOmen(f){ if(!S || !f || (f.rift||0) < RIFT_OMEN || f.riftDone || f.
 async function riftBreak(){
   for(const f of S.fixers.slice()){ if(!S || S.over) return; if((f.rift||0) < RIFT_BREAK || f.riftDone || (f.ego && !f.ego.unstable)) continue;
     f.riftDone = true; save();
-    // 간직한 것을 잃었으면 뒤틀림과 E.G.O. 개화가 반반, 잃지 않았으면 개화
-    if(f.precious && f.precious.lost && Math.random() < 0.5){ if(f.isLeader) return twistLeader(f); await twistFixer(f); }
-    else await bloomEgo(f);
+    const v = voiceVerdict(f), quiet = !f.isLeader;
+    addLog(`${f.name}: 목소리가 들어왔다 — ${v.kind==="twist" ? "뒤틀림" : v.kind==="unstable" ? "불안정 개화" : "개화"} (의지 ${v.wil}/${v.need} · 정신력 ${Math.round(v.mpR*100)}%)`, "omenlog");
+    if(v.kind==="twist"){ if(f.isLeader) return twistLeader(f); await twistFixer(f, {quiet}); }
+    else await bloomEgo(f, {unstable: v.kind==="unstable", quiet});
     save(); render(); } }
+// 의지(그 사람 급수 의뢰의 요구치 대비)와 지금 정신력 비율을 반반 섞은 값으로 판정한다
+const VOICE_BLOOM = 0.65, VOICE_UNSTABLE = 0.4;
+function voiceVerdict(f){ const need = (REQ_BASE[clamp(f.grade||1, 1, 9)]||[0,30])[1], wil = power(f,["wil"]), mpR = clamp((f.mp||0)/Math.max(1,f.mpMax), 0, 1);
+  const score = 0.5*clamp(wil/Math.max(1,need), 0, 1) + 0.5*mpR;
+  return {kind: score >= VOICE_BLOOM ? "bloom" : score >= VOICE_UNSTABLE ? "unstable" : "twist", score, wil, need, mpR}; }
 /* 도시에서는 누구든 하루아침에 사라질 수 있다 — 대표를 뺀 동료는 하루가 끝날 때마다 0.01% 확률로 목숨을 잃는다 */
 const CITY_DEATH_P = 0.0001;
 const CITY_DEATHS = [
@@ -8335,11 +8343,11 @@ function checkOmen(f){
   showOmen(f.name, line, tone);
 }
 // 해결사가 뒤틀린다: 목소리 → 뒤틀림 연출 → 토벌 의뢰 강제 배정
-async function twistFixer(f){ ac("twist");
-  playFx("뒤틀림", "뒤틀림", f.name, false);
-  await HeartFx.voice(f);
-  await HeartFx.twist(f, "해결사", "돌이킬 수 없다");
-  HeartFx.clear();
+async function twistFixer(f, opt={}){ ac("twist");
+  if(!opt.quiet){ playFx("뒤틀림", "뒤틀림", f.name, false);
+    await HeartFx.voice(f);
+    await HeartFx.twist(f, "해결사", "돌이킬 수 없다");
+    HeartFx.clear(); }
   const g = f.grade, threatGrade = g>=8?6:g>=6?4:g>=3?2:1;
   const [base, req, threat] = REQ_BASE[threatGrade];
   removeFixer(f,"뒤틀림","목소리를 듣고 뒤틀림이 됨");
@@ -8360,11 +8368,16 @@ async function twistLeader(f){
   await HeartFx.ending(o, lines, stats);
   clearSave(); S = null; renderStart();
 }
-async function bloomEgo(f){ ac("ego");
-  const unstable = Math.random() < (window.__forceUnst!=null ? window.__forceUnst : 0.55);     // 55% 불안정 개화 · 45% 개화
+async function bloomEgo(f, opt={}){ ac("ego");
+  const unstable = opt.unstable!=null ? !!opt.unstable : Math.random() < (window.__forceUnst!=null ? window.__forceUnst : 0.55);     // 목소리의 틈은 판정으로, 그 밖에는 55% 불안정 개화
+  const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
+  // 동료: 연출 없이 결과만 — 이름은 비워 두고 형태는 성격을 따른다
+  if(opt.quiet){ f.ego = {type: p[1], unstable, name:""}; f.mp = Math.round(f.mpMax*0.5);
+    S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${EGO_FORM_NAME[p[1]]})`}); save(); render();
+    await modal(unstable ? "불안정 개화" : "E.G.O. 개화", `${esc(f.name)}에게 목소리가 들어왔다. ${esc(josa(f.name,"은","는"))} 그것을 견뎌 냈다.<br><b>${esc(egoLabel(f.ego))}</b> (${EGO_FORM_NAME[p[1]]})${unstable ? `<br><span class="muted">아직 흔들린다 — 불안정한 개화다.</span>` : ""}`, [{t:"확인", primary:true}]);
+    return; }
   await HeartFx.voice(f);
   await HeartFx.bloom(f, unstable);
-  const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
   const nm = await promptBox("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 이 E.G.O.에 이름을 지어 준다.<br><span class="muted">이름은 지금만 지을 수 있다. 비워 두면 "${unstable ? "불안정 " : ""}개화 E.G.O::"로만 남고, 나중에 지을 수 없다.</span>`, "");
   const ty = await modal("E.G.O. 형태", `${esc(f.name)}의 E.G.O.는 어떤 형태로 드러나는가?`, [{t:"무기",v:"weapon",primary:p[1]==="weapon"},{t:"의복",v:"armor",primary:p[1]==="armor"},{t:"일체형",v:"both"},{t:"도구형",v:"tool"}], true) || p[1];
   f.ego = {type: ty, unstable, name: (nm && nm!=="__c" ? String(nm).trim().replace(/^(불안정\s*)?개화\s*E\.G\.O::\s*/,"") : "").slice(0,20)};
