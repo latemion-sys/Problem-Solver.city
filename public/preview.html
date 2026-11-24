@@ -9607,7 +9607,7 @@ async function openManage(){
       <button data-heal="mp" ${f.mp>=f.mpMax||S.money<hc?"disabled":""}>정신력 상담 +10</button>
       <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
     </div>
-    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}${pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:""}
+    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}${pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>${needsRepair(g) && g.durMax <= 1 ? "" : `<button class="danger" data-discard="${i}">버리기</button>`}` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:""}
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
   };
   await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
@@ -9645,6 +9645,9 @@ async function openManage(){
         const n = (f.mang||0) + 1;
         if(!await confirmBox("망(望)", `${esc(jo(f.name,"은"))} 소망을 실처럼 꼬아 ${esc(w.name||"무기")}에 한 겹 더 감는다.<br><b style="color:#ffd27a">망 ${n}</b> — 전투 위력 +${n}(신과 따로), 대신 쓸 때 정신력 -${MANG_MP[n-1]}${n>1 ? ` (지금 -${MANG_MP[n-2]})` : ""}.`)) return;
         f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
+      else if(d.discard!==undefined){ const i = +d.discard, g = S.inventory[i]; if(!g || !pawnWorn(g)) return;
+        if(!await confirmBox("버리기", `<b>${esc(jo(g.name,"을"))}</b> 버린다. 받는 돈은 없고, 되찾을 수 없다.`)) return;
+        S.inventory.splice(i, 1); addLog(`${g.name}을(를) 버렸다 — 너무 닳아 전당포도 받지 않았다`.replace(`${g.name}을(를)`, jo(g.name,"을"))); }
       else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; if(pawnWorn(g)){ toast("전당포 주인이 고개를 저었다. 이만큼 닳은 무기는 받지 않는다고."); return; } const v = pawnPrice(g);
         if(!await confirmBox("전당포", `<b>${esc(jo(g.name,"을"))}</b> 전당포에 맡긴다. 받는 돈 <b>${won(v)}</b> — 되찾을 수 없다.`)) return;
         S.inventory.splice(i, 1); S.money += v; ac("pawn"); if(g.ruinsItem)ac("ruinsSold"); addLog(`전당포: ${g.name} → +${won(v)}`); }
