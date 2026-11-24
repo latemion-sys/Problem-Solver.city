@@ -2709,9 +2709,14 @@ function acceptRequest(q){
   q.accepted=true; ac('accept'); addLog(`의뢰 수락 — ${q.client}: ${q.text}`);
   return true;
 }
+function officeTrustSpecial(q){
+  return !!(q && (["뒤틀림","죄종","환상체"].some(k=>String(q.kind||"").includes(k)) || q.abno || q.abnoFoe || q.distFoe || q.risk==="죄종"));
+}
 function contractResult(q,success){
   if(!q || q.kind==='특색 심사') return null;
-  return changeOfficeTrust(success?1:-4, success?`계약 이행 · ${q.client}`:`의뢰 실패 · ${q.client}`);
+  if(!success) return changeOfficeTrust(-4,`의뢰 실패 · ${q.client}`);
+  const base = Math.random()<0.5 ? 1 : 2, extra = officeTrustSpecial(q) ? 2 : 0;
+  return changeOfficeTrust(base+extra,`계약 이행 · ${q.client}${extra?" · 뒤틀림/죄종/환상체 관련 보너스 +2":""}`);
 }
 function pickRow(rows){
   if(!rows || !rows.length) return null;
@@ -12415,7 +12420,7 @@ function render(){
   app.querySelector(".topbar").innerHTML = `
     <span class="office">${esc(S.officeName)} <span class="badge">${gName(S.officeGrade)} 사무소</span> <span class="badge" title="${esc(districtOf().note||"")}">${esc(districtOf().name)}</span></span>
     <span class="stat">${S.day}일차${S.weather ? ` · ${weatherText(S.weather)}` : ""}</span>
-    <span class="stat" title="의뢰 완료 +1 · 실패 -4 · 수락한 의뢰 기한 초과 -7 · 계약 포기 -6 · 매일 밤 -2">사무소 신뢰도 <b>${officeTrust()}/100</b> · 수락 ${S.requests.filter(q=>q.accepted).length}건</span>
+    <span class="stat" title="의뢰 성공 +1 또는 +2 (각 50%) · 뒤틀림/죄종/환상체 의뢰 성공 추가 +2 · 실패 -4 · 수락한 의뢰 기한 초과 -7 · 계약 포기 -6 · 매일 밤 -2">사무소 신뢰도 <b>${officeTrust()}/100</b> · 수락 ${S.requests.filter(q=>q.accepted).length}건</span>
     <span class="stat">자금 <b>${won(S.money)}</b></span>
     <span class="stat">남은 빚 <b>${won(S.debt)}</b></span>
     <span class="stat">${S.debt>0?`흉터 방문 <b>${nextVisit-1===0?"오늘 밤":(nextVisit-1)+"일 뒤"}</b>`:"<b style='color:var(--accent)'>빚 청산</b>"}</span>
