@@ -6032,7 +6032,7 @@ const ABNOS = [
    noFight:true, doom:{t:"누군가 결국 버튼을 눌렀다", custom:"button"},
    escape:"자리를 떠나지 않는다. 할 수 있는 일은 손대지 않고 지켜보는 것뿐이다. 지켜볼수록 누르고 싶은 충동이 커지고, 의지가 약한 이는 버티지 못한다. 버튼이 눌리면 일어나선 안 될 일이 일어난다", story:"[빈 사무실 벽 낙서, 위에서 아래로]\n누르지 마\n누르지 말라니까\n왜 안 되는데\n누가 눌러 봤어?\n아무도 안 눌러 봤으면 아무 일도 없는 거 아님?\n3일째. 꿈에 나옴\n누르고 싶다\n누르고 싶다\n누르고싶다누르고싶다누르고\n나 말고 누가 이 낙서 쓴 거야\n(맨 아래, 손가락 높이에 아주 작게) 눌렀어. 아무 일도 없었어. 근데 다들 어디 갔어?",
    like:"상자가 조용하다", dislike:"손가락이 버튼 쪽으로 움찔한다",
-   gifts:null},
+   gifts:{a:{n:"붉은 단추", mpRed:0.03, bonus:{wil:1}}, b:{n:"누르지 마시오", bonus:{tec:2}}}},
   {id:"fairy", gentle:true, n:"요정의 축제", risk:"ZAYIN", canon:"L", code:"F-04-83", g:[6,5], fx:"fairyFeast", form:"청록빛 피부에 팔 두 쌍, 긴 꼬리, 곤충 같은 날개 두 쌍을 단 작은 요정들. 무리 지어 은은하게 빛난다", look:"네 팔과 두 쌍의 날개를 단 작은 요정들이 무리 지어 반짝인다",
    rumor:"정원에 청록빛 작은 요정들이 무리 지어 산다. 팔이 두 쌍, 날개가 두 쌍이고 은은하게 빛난다. 다친 사람을 낫게 해 준다는데, 정원사 하나가 사라졌다. 확인해 달라", pref:PF("str>tec>agi>wil"), ctr:2, noCounter:true,
    noFight:true, doom:{t:"요정들이 흥미를 잃고 흩어졌다. 보살핌도, 축제도 끝났다", mind:0.02},
@@ -6107,7 +6107,7 @@ const ABNOS = [
    escape:"자리를 떠나지 않는다. 재주 행동이 가장 잘 먹히지만, 할 때마다 카운터가 준다. 재주(자제)가 아주 낮은 이는 행동을 마치고 돌아서다 그녀와 눈이 마주쳐 정신을 놓는다. 카운터가 다하면 비명이 주변 모두의 정신을 할퀸다",
    story:"[○○ 폐교 야간 경비 일지]\n11일 — 3층 복도 끝에 여자가 있음. 벽 보고 앉아 있음. 불러도 대답 없음. 날 밝으면 나가겠지.\n12일 — 아직 있음. 우는 소리. 머리카락이 어제보다 긴 것 같음.\n14일 — 뭐라고 중얼거림. 알아들을 수 없음. 순찰 돌고 돌아서는데 소리가 커짐. 꼭 내가 돌아보길 바라는 것처럼.\n15일 — 내 이름을 불렀음. 이름 말해 준 적 없음.\n16일 — 돌아보지 않았음. 돌아보지 않았음. 돌아보지 않았음.\n17일 —\n(일지는 여기서 끝난다. 후임 경비원은 전임자가 3층 복도 끝에서 벽을 바라보며 중얼거리는 채로 발견되었다고 적었다.)",
    like:"흐느낌이 조금 잦아들었다", dislike:"머리카락이 바닥을 긁는다",
-   gifts:null},
+   gifts:{a:{n:"검은 머리끈", mpRed:0.03, bonus:{tec:2}}, b:{n:"흐느낌", mpRed:0.06, bonus:{wil:1}}}},
   {id:"spiderbud", n:"거미봉오리", risk:"TETH", canon:"L", code:"T-02-43", g:[5,4], form:"천장에 매달린 검은 주머니 같은 어미 거미. 크기가 제각각인 붉은 눈이 여럿 박혀 있고, 발밑에는 새끼 거미들이 기어 다닌다", look:"천장에 매달린 검은 주머니에서 붉은 눈들이 깜빡이고, 바닥에는 새끼 거미들이 기어 다닌다",
    rumor:"버려진 온실 천장에 검은 주머니 같은 거대한 거미가 매달렸다. 크기가 제각각인 붉은 눈이 여럿 박혀 있고, 바닥엔 새끼 거미들이 기어 다닌다. 청소하러 들어간 인부가 고치가 되어 매달렸다. 처리해 달라", pref:PF("str>tec>wil>agi"), ctr:2, noCounter:true, rule:"killWork", killK:"agi",
    noFight:true, doom:{t:"새끼를 건드렸다고 여긴 거미가 순식간에 고치를 지었다. 동료들이 고치를 찢어 겨우 끌어냈다", maim:true, worker:true},
@@ -6625,11 +6625,39 @@ function codexNote(vid, how, gift){ const d = codexLoad(), e = d[vid] = d[vid] |
 const CODEX_STEPS = ["이름","위험 등급","선호 행동","폭주 · 전투 조건","이야기"];
 /* 기프트: 드물게 환상체에서 나온 물건. 통제(알로 재움)로 얻은 것은 마음을 다스리는 쪽, 제압(전투)으로 얻은 것은 몸을 단련하는 쪽.
    기프트의 급수(만난 의뢰 등급)가 지닌 해결사보다 높으면 정신이 무너질 때 통제 기프트는 개화 쪽으로, 제압 기프트는 뒤틀림 쪽으로 기운다. */
-const GIFT_P = 0.08;
+const AB_GIFT_RATE = Object.freeze({action:0.02, control:0.08, fighter:0.08, suppression:0.02});
 function makeGift(a, how, grade){ if(!a.gifts) return null; const id = String(a.vid||a.id).split("~")[0];
   const RC = abRec(); let k = RC.giftPick[id]; if(!k){ k = Math.random() < 0.5 ? "a" : "b"; if(!window.__peekGift){ RC.giftPick[id] = k; abRecSave(RC); } }
   const G = a.gifts[k]; if(!G) return null;
   return Object.assign({slot:"acc", name:G.n, gift:{abno:a.vid, from:a.n, kind: how==="ctrl" ? "통제" : "제압", grade}}, G.bonus ? {bonus:Object.assign({}, G.bonus)} : {}, G.mpRed ? {mpRed:G.mpRed} : {}, G.hpRed ? {hpRed:G.hpRed} : {}, G.selfUp ? {selfUp:G.selfUp} : {});  }
+// 도감 개방과 무관하게 실제 수행자에게 각각 독립 판정한다.
+function grantAbnoGift(a, how, q, f, chance, emit){
+  if(!a || a.risk==="죄종" || a.kill || !a.gifts || !f || !S || !S.fixers.includes(f)) return false;
+  if(!(Math.random() < chance || window.__forceGift)) return false;
+  const g = makeGift(a, how, q.grade); if(!g) return false;
+  g.gift.recipientId = f.id; g.gift.recipientName = f.name;
+  // 빈 장신구 칸에는 바로 장착. 기존 장비나 귀속 장비는 건드리지 않는다.
+  const equipped = !!f.gear && !f.gear.acc && !relicLocked(f,"acc");
+  if(equipped) f.gear.acc = g;
+  else { S.inventory = S.inventory||[]; S.inventory.push(g); }
+  ac("gift"); codexNote(a.vid, null, g.name);
+  const msg = `<span style="color:#e8d27a">기프트</span>: ${esc(f.name)} — <b>${esc(g.name)}</b>(${g.gift.kind} · ${threatOf(q)}) 획득${equipped ? " · 장착" : " · 보관함"}`;
+  if(emit) emit(msg); addLog(`${f.name}: ${g.name}(${g.gift.kind}) 기프트 획득`);
+  return true;
+}
+function awardAbnoCompletion(a, q, team, r, emit){
+  if(!r || !r.win || !a || a.risk==="죄종" || a.kill) return;
+  if(r.how==="ctrl"){
+    team.forEach(f=>grantAbnoGift(a,"ctrl",q,f,AB_GIFT_RATE.control,emit));
+  } else if(r.how==="sup"){
+    // 날뜀으로 시작한 전투에서 직접 싸운 대표자만 8%. 전원 2%는 별개다.
+    if(r.rage) {
+      const fighters = new Set((r.battle||[]).filter(b=>b.fought && b.f).map(b=>b.f.id));
+      team.filter(f=>fighters.has(f.id)).forEach(f=>grantAbnoGift(a,"sup",q,f,AB_GIFT_RATE.fighter,emit));
+    }
+    team.forEach(f=>grantAbnoGift(a,"sup",q,f,AB_GIFT_RATE.suppression,emit));
+  }
+}
 const overGift = f => { const g = f.gear && f.gear.acc; return g && g.gift && g.gift.grade < f.grade ? g.gift : null; };
 
 /* 환상체 기믹 — 해결사가 현장에서 겪는 일로 옮긴 것. 오래 남는 효과는 해결사(f.ab)에 붙여 하루 끝에 정산한다 */
@@ -6760,7 +6788,7 @@ async function skinVisit(ended){ const V = S.skinVisit; if(!V || ended + 1 < V.d
     const q = {kind:"환상체", goal:"제압", grade:1, attrs:["str"], req:(REQ_BASE[1]||[0,40])[1], client:"사무소", foe:nm, text:"사무소 습격", abnoFoe:Object.assign({}, A, {n:nm})};
     const r = await mgCombat({q, team, idx:1, total:1}); const L = [];
     (r.battle||[]).forEach(b=>{ const v = Math.floor(b.f.hpMax*(100-b.hp)/100*0.6); b.f.hp = Math.max(0, b.f.hp - v); if(v) L.push(`${esc(b.f.name)}: 체력 -${v}`); });
-    if(r.win){ L.unshift(`<span style="color:#8fd6a0">그것을 알로 되돌려 사무소 밖으로 내던졌다.</span>`); codexNote(A.vid, "sup"); }
+    if(r.win){ L.unshift(`<span style="color:#8fd6a0">그것을 알로 되돌려 사무소 밖으로 내던졌다.</span>`); codexNote(A.vid, "sup"); awardAbnoCompletion(A,q,team,Object.assign({},r,{how:"sup",rage:false}),msg=>L.push(msg)); }
     else { const v = pick(team.filter(f=>S.fixers.includes(f))); L.unshift(`<b style="color:#ff8a7a">그것은 ${v ? esc(jo(v.name,"을")) : "누군가를"} 끌고 어둠 속으로 사라졌다.</b>`);
       await modal("습격의 끝", L.join("<br>"), [{t:"확인"}]); if(v) await abnoLose(v, "사망", `${V.name}의 얼굴을 한 것에게 끌려가 가죽을 빼앗겼다`); for(const f of S.fixers.slice()){ if(!S || S.over) return; await checkCollapse(f); } addLog(`${V.name}의 얼굴을 한 것이 사무소를 덮쳤다`, "omenlog"); return; }
     await modal("습격의 끝", L.join("<br>"), [{t:"확인"}]); for(const f of S.fixers.slice()){ if(!S || S.over) return; await checkCollapse(f); }
@@ -7155,6 +7183,7 @@ function mgAbno(ctx){
     // 만지지 마: 지켜볼수록 충동이 커진다
     function watch(){ if(G.done) return; if(signMiss()) return; G.signDue = true; G.turn++; const f = workerFor("wil"), ratio = power(f,["wil"]) / Math.max(1, q.req), p = clamp(0.12 - 0.25*(ratio - 1), 0.03, 0.35);
       let line = `${G.turn}회차 · ${esc(jo(f.name,"이"))} 버튼을 지켜본다 — `; G.last = f.id;
+      grantAbnoGift(a,"ctrl",q,f,AB_GIFT_RATE.action,say);
       if(Math.random() < p){ say(line + `<span style="color:#ff8a7a">손가락이 저도 모르게 버튼을 눌렀다</span>`); return doom(f); }
       const gain = Math.round(24 * clamp(0.6 + 0.4*ratio, 0.6, 1.2)); G.mood = Math.min(100, G.mood + gain); line += `<span style="color:#8fd6a0">${esc(a.like)}</span> (기분 +${gain})`;
       if(Math.random() < p*1.5){ G.ctr--; line += ` · <span style="color:#ff8a7a">누르고 싶은 충동을 겨우 참았다 — ${ctrName} -1</span>`; }
@@ -7183,6 +7212,7 @@ function mgAbno(ctx){
       if(signMiss()) return; G.signDue = true; G.turn++; const w = WORKS.find(x=>x.k===k), f = workerFor(k), lv = a.pref[k], st = power(f,[k]), ratio = st / Math.max(1, q.req);
       if(blessedF(f)){ G.turn--; say(`${esc(jo(f.name,"은"))} 기사의 축복을 받았다 — 축복받은 이는 행동할 수 없다.`); return menu(); }
       const prev = G.last; G.last = f.id;
+      grantAbnoGift(a,"ctrl",q,f,AB_GIFT_RATE.action,say);
       let line = `${G.turn}회차 · ${esc(f.name)}의 ${w.n} 행동 — `;
       const nailNow = a.fx==="nails" ? G.nail : null, orderNow = G.order, wasBabel = G.babel!=null; G.babel = null;
       if(wasBabel) line = `<span style="color:#b9c4d8">말이 갈라져 ${esc(jo(f.name,"이"))} 대신 나섰다.</span> ` + line;
@@ -7369,7 +7399,7 @@ function mgAbno(ctx){
       const fq = Object.assign({}, q, {goal: a.kill ? "사살" : "제압", attrs:["str"], foe: shown, abnoFoe:AF});
       const r = await mgCombat({q:fq, team:ctx.team, idx:ctx.idx, total:ctx.total});
       m.close(); if(r.win) codexNote(a.vid, "sup");
-      resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}));
+      resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, rage:G.state==="rage", mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}));
     }
     m.ctrl.addEventListener("click", e=>{ const dr = e.target.closest("button[data-dr]"); if(dr && G.drink){ drink(dr.dataset.dr==="1"); return; }
       const of = e.target.closest("button[data-of]"); if(of && G.offerFn){ const fn = G.offerFn; G.offerFn = null; fn(of.dataset.of); return; }
@@ -7624,8 +7654,7 @@ async function dispatch(qid, fids, modeArg){
       await abnoReward(q, team, abnoR, lines); }
     if(q.kind==="환상체" && abnoOf(q)){ const A = abnoOf(q), how = abnoR && abnoR.how ? abnoR.how : (A.kill ? "sup" : "ctrl");
       ac(how); ac(how+"_"+A.risk); acSet(how, A.id); if(A.kill) ac("sinKill");
-      if(Math.random() < GIFT_P*(q.hazard?1.5:1)*(abnoR && abnoR.flame ? 6 : 1)*(mgScore>=CLEAN_WIN?1.2:1) || window.__forceGift){ const g = makeGift(A, how, q.grade);
-        if(g){ ac("gift"); S.inventory = S.inventory||[]; S.inventory.push(g); codexNote(A.vid, null, g.name); lines.push(`<span style="color:#e8d27a">기프트</span>: <b>${esc(g.name)}</b>(${g.gift.kind} · ${threatOf(q)}) 획득 — 관리에서 장신구로 장착`); } } }
+      awardAbnoCompletion(A,q,team,abnoR,msg=>lines.push(msg)); }
     if(q.kind==="특색 심사") await passColor(team[0]);
   } else {
     lines.push(q.kind==="뒤틀림 토벌" ? "토벌에 실패했다. 뒤틀림은 아직 남아 있다." : "의뢰는 다른 곳으로 넘어갔다.");
@@ -9518,6 +9547,7 @@ function gearDesc(g){
   const pc = (lab, v) => p.push(v<0 ? `<span style="color:#ff8a7a">${lab} 피해 +${Math.abs(Math.round(v*100))}%</span>` : `${lab} 피해 -${Math.abs(Math.round(v*100))}%`);
   if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed);
   if(g.effect) p.push(`<span style="color:#cfe2ff">${esc(g.effect)}</span>${g.fx==="enk" ? ` <span class="muted">(사용 ${g.uses||0}회)</span>` : ""}`, g.desc && !g.relic ? `<span class="muted">${esc(g.desc)}</span>` : "");
+  if(g.gift && g.gift.recipientName) p.push(`획득자: ${esc(g.gift.recipientName)}`);
   if(g.selfUp && g.gift) p.push(`${g.gift.from.replace(/ \(아종:.*\)$/,"")} 관측 시 행동 성공률 +${Math.round(g.selfUp*100)}%p`);
   if(g.relic) p.push(`<span style="color:#d8b45a">유적 출토 · ${esc(g.origin)} · ${esc(g.boundName||"")}에게 귀속</span>`, g.trait ? `<span style="color:#9fe8c8">성질: ${esc(g.trait)}</span>` : "", g.special ? `<span style="color:${(g.seal||0)===0 ? "#f2d27a" : "#8f8676"}">원본 특수: ${esc(g.special)}${(g.seal||0)===0 ? "" : " (봉인 중 — 쓸 수 없다)"}</span>` : "", `<span class="muted">${esc(g.desc||"")}</span>`);
   if(gunKind(g)){ const a=AMMO_BY[g.ammoType]||AMMO_TYPES[0];p.push(`<span style="color:#9ad0ff">탄창 ${g.mag||0}/${ammoCap(g)} · ${a.name} (공격 피해 +${a.bonus}, 공격마다 1발)</span>`); }
