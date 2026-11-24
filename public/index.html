@@ -2793,12 +2793,13 @@ function makeRequest(grade, opts={}){
     else if(r < P.pW + P.pE + P.pS){ kind="수색"; attrs=["agi","tec"]; }
     else { attrs=[pick(["str","agi","tec"])]; }
   }
+  const ab = kind==="환상체" ? pickAbno(grade) : null;
+  if(ab) grade = abnoCanon(ABNO_BY[ab.id]);   // 환상체·죄종은 늘 같은 등급
   const [base0, req0, threat0] = REQ_BASE[grade];
-  // 9급 가운데 일부는 뜬소문이 아니라 도시 괴담 — 조금 더 까다롭고 보수도 낫다
-  const kw = grade===9 && !opts.noKw && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
+  // 9급 가운데 일부는 뜬소문이 아니라 도시 괴담 — 조금 더 까다롭고 보수도 낫다(환상체·죄종은 제외: 등급 고정)
+  const kw = grade===9 && !ab && !opts.noKw && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
   const key = attrs[0];
   let text, client, foe = null, chase = null, row, scene = null;
-  const ab = kind==="환상체" ? pickAbno(grade) : null;
   if(kind==="호위"){ row = pickRow(P.esc); }
   else if(kind==="수색"){ row = pickRow(P.srch); }
   else if(kind==="환상체"){ row = pickRow(P.wil); }
@@ -2873,13 +2874,19 @@ const DIST_EMO = [
   {e:"권태", p:"멈춰 선", look:"온몸에 시곗바늘 같은 가시가 돋아 있었다"}];
 const copula = w => { const c = w.charCodeAt(w.length-1) - 0xAC00; return w + (c >= 0 && c < 11172 && c % 28 ? "이었다" : "였다"); };
 const DIST_PUBLIC = ["인근 상인 연합","익명의 제보자","날개 경비 하청 업체","구역 관리청"];
+// 뒤틀림 감정은 등급마다 따로 쓴다 — '○○한 ○○'이 등급을 바꿔 다시 나타나지 않게
+const DIST_EMO_TIER = {"도시 질병":["상실","수치","외로움","권태"], "도시 악몽":["굶주림","질투","분노","미련"], "도시의 별":["공허","절망"]};
+DIST_EMO.push({e:"공허", p:"모든 것을 삼키는", look:"윤곽만 남은 몸 안쪽이 밤하늘처럼 텅 비어 있었다"},
+  {e:"절망", p:"끝을 부르는", look:"서 있는 자리마다 땅이 검게 꺼져 들어갔다"});
 function applyDistort(q, force){
   let th = threatOf(q);
   if(th==="도시의 별" && !force && Math.random() >= 0.1) return q;          // 별급 뒤틀림은 아주 드물다
   const T = DIST_TIER[th]; if(!T) return q;
   if(!force && (q.kind!=="일반" || Math.random() >= DIST_P)) return q;
   q.kind = "뒤틀림 처리"; q.cat = "이상"; q.attrs = ["str","wil"]; q.goal = "사살"; q.foe = "이름없는 뒤틀림"; q.chase = null; q.synd = null; q.loot = null;
-  const E = pick(DIST_EMO), job = pick(DIST_JOBS);
+  const onBoard = new Set(((S && S.requests) || []).filter(x=>x.distFoe && x.distFoe.who).map(x=>x.distFoe.who.name));
+  const EP = DIST_EMO.filter(x=>(DIST_EMO_TIER[th]||[]).includes(x.e)); let E = pick(EP.length ? EP : DIST_EMO), job = pick(DIST_JOBS);
+  for(let i=0; i<12 && onBoard.has(`${E.p} ${job}`); i++){ E = pick(EP.length ? EP : DIST_EMO); job = pick(DIST_JOBS); }
   const place = pick(DIST_PLACES);
   q.distFoe = {lvl:T.lvl, hp:T.hp, cards:T.cards, mp:T.mp, th, place, who:{job, e:E.e, name:`${E.p} ${job}`, look:E.look}};
   q.client = pick(DIST_CLIENT);
@@ -3865,7 +3872,7 @@ function genRequestsInner(){
     let r = Math.random()*100, th = T[T.length-1][0]; for(const [k,p] of T){ if(r < p){ th = k; break; } r -= p; }
     const cand = THREAT_GRADES[th], best = Math.min(...cand.map(x=>Math.abs(x - S.officeGrade))), gs = cand.filter(x=>Math.abs(x - S.officeGrade)===best), g = pick(gs);
     const q = makeRequest(g, th==="뜬소문" ? {noKw:true} : {});
-    if(th==="도시 괴담" && g===9 && q.threat!=="도시 괴담") q.threat = "도시 괴담";
+    if(th==="도시 괴담" && g===9 && q.threat!=="도시 괴담" && !q.abno) q.threat = "도시 괴담";
     S.requests.push(maybeRuinsRequest(q));
   }
   if(S.officeGrade > 1 && Math.random() < NOM_P && !S.requests.some(q=>q.nom) && reqRoom() > 0) S.requests.push(nominate(makeRequest(S.officeGrade - 1)));
@@ -6699,8 +6706,18 @@ const FIGHT_TXT = {kill:["사살 전투","#ff8a7a","보는 즉시 사살한다 �
   gimmick:["기믹형 · 전투 없음","#9ad0ff","날뛰지 않고 그 자리에 머문다. 통제에 실패하면 싸움 대신 재앙이 일어난다"],
   none:["전투 불가","#ff8a7a","맞서 싸울 수 없다. 손을 잘못 대는 순간 즉사·중상 기믹이 걸린다. 통제에 실패하면 재앙이 일어난다"]};
 const abnoRiskFor = g => g >= 7 ? "죄종" : g === 6 ? "ZAYIN" : g === 5 ? pick(["ZAYIN","TETH"]) : g === 4 ? pick(["TETH","HE"]) : g === 3 ? "HE" : g === 2 ? "WAW" : "ALEPH";
-function pickAbno(g){ const risk = abnoRiskFor(g); let pool = ABNOS.filter(a=>a.risk===risk && g <= a.g[0] && g >= a.g[1]);
-  if(!pool.length) pool = ABNOS.filter(a=>a.risk===risk); const a = pick(pool), vr = a.variant && Math.random() < 0.3;
+/* 환상체·죄종마다 의뢰 등급을 하나로 고정한다 — 같은 것이 어떤 날은 도시 질병, 어떤 날은 도시 악몽으로 오지 않게.
+   등급 폭(g) 안에서 이름(id)으로 정해지므로 늘 같은 값이 나온다. */
+const abnoHash = id => [...String(id)].reduce((h,c)=>(h*31 + c.charCodeAt(0))>>>0, 7);
+const abnoCanon = a => { const span = Math.max(0, a.g[0]-a.g[1]); return clamp(a.g[0] - (span ? abnoHash(a.id) % (span+1) : 0), 1, 9); };
+function pickAbno(g){
+  // 게시판에 이미 올라 있는 환상체는 겹치지 않게 고른다
+  const onBoard = new Set(((S && S.requests) || []).filter(q=>q.abno).map(q=>q.abno.id));
+  const at = (gg, free) => ABNOS.filter(a=>abnoCanon(a)===gg && (!free || !onBoard.has(a.id)));
+  let pool = at(g, true);
+  for(let d=1; !pool.length && d<9; d++) pool = at(g+d, true).length ? at(g+d, true) : at(g-d, true);
+  if(!pool.length) pool = at(g, false).length ? at(g, false) : ABNOS.slice();
+  const a = pick(pool), vr = a.variant && Math.random() < 0.3;
   return {id:a.id, variant: vr || false}; }
 // 실제로 만나는 모습(아종이면 이름과 선호가 바뀐다)
 /* 의뢰지에는 환상체인지 죄종인지 적지 않는다 — 의뢰인은 생김새와 피해만 안다 */
