@@ -135,7 +135,7 @@ input,select{font:inherit;color:var(--text);background:#101014;border:1px solid 
 .req-sorts button.on{border-color:var(--accent);color:var(--accent);background:#332a20}
 .req .deadline-urgent{color:#ff9a79;border-color:#ff9a79}
 .req{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px}
-.req.special{border-color:var(--accent)} .req.distort{border-color:var(--red)}
+.req.special{border-color:var(--accent)} .req.distort{border-color:#d0506a}
 .req .head{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .badge{font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);color:var(--muted)}
 .badge.k{color:#111;border:none;font-weight:700}
@@ -1643,7 +1643,7 @@ const START_DEBT = 3000000;   // 사무소를 세우느라 진 빚(건물 · 간
 // [기준 보수, 요구치(권장 인원 팀이 75%가 되는 값), 재해 등급]
 // 재해 등급: 뜬소문(9급) · 도시 괴담(9~8급) · 도시 전설(7~6급) · 도시 질병(5~4급) · 도시 악몽(3~2급) · 도시의 별(1급 이상)
 const REQ_BASE = {9:[3375,9,"뜬소문"],8:[6750,15,"도시 괴담"],7:[10125,21,"도시 전설"],6:[20250,26,"도시 전설"],5:[40500,32,"도시 질병"],4:[81000,38,"도시 질병"],3:[97200,44,"도시 악몽"],2:[121500,51,"도시 악몽"],1:[243000,58,"도시의 별"]}; // 전체 등급 의뢰 기본 보수 10% 감소, 특색급 의뢰 없음
-const THREAT_COL = {"뜬소문":"#b4ada3","도시 괴담":"#9cc487","도시 전설":"#7fb0e6","도시 질병":"#e2bf5c","도시 악몽":"#c47ae0","도시의 별":"#ff6a5e"};
+const THREAT_COL = {"뜬소문":"#9a9a9a","도시 괴담":"#f2e38c","도시 전설":"#6cc070","도시 질병":"#4f8ff0","도시 악몽":"#a066e8","도시의 별":"#e8b830"};
 const LIGHT_THREATS = ["뜬소문", "도시 괴담"];
 const threatOf = q => q.threat || (REQ_BASE[q.grade]||[])[2] || "뜬소문";
 const RISK = g => g>=8?"ZAYIN":g>=6?"TETH":g>=4?"HE":g>=2?"WAW":"ALEPH";
@@ -2740,6 +2740,11 @@ function acceptRequest(q){
   q.accepted=true; ac('accept'); addLog(`의뢰 수락 — ${q.client}: [${requestTitle(q)}]`);
   return true;
 }
+const DISTORT_COL = "#d0506a", ABNO_COL = "#ff2a40";
+function reqBorderCol(q){ if(q.relic) return null;
+  if(q.distFoe || q.distorted || /뒤틀림/.test(q.kind||"")) return DISTORT_COL;
+  if(q.kind==="환상체" || q.abno || q.abnoFoe || q.risk==="죄종" || /죄종/.test(q.kind||"")) return ABNO_COL;
+  return THREAT_COL[threatOf(q)] || null; }
 function officeTrustSpecial(q){
   return !!(q && (["뒤틀림","죄종","환상체"].some(k=>String(q.kind||"").includes(k)) || q.abno || q.abnoFoe || q.distFoe || q.risk==="죄종"));
 }
@@ -9570,7 +9575,7 @@ async function openManage(){
       <button data-heal="mp" ${f.mp>=f.mpMax||S.money<hc?"disabled":""}>정신력 상담 +10</button>
       <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
     </div>
-    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button></div></div>`).join("")}</div>`:""}
+    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}${pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:""}
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
   };
   await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
@@ -9608,7 +9613,7 @@ async function openManage(){
         const n = (f.mang||0) + 1;
         if(!await confirmBox("망(望)", `${esc(jo(f.name,"은"))} 소망을 실처럼 꼬아 ${esc(w.name||"무기")}에 한 겹 더 감는다.<br><b style="color:#ffd27a">망 ${n}</b> — 전투 위력 +${n}(신과 따로), 대신 쓸 때 정신력 -${MANG_MP[n-1]}${n>1 ? ` (지금 -${MANG_MP[n-2]})` : ""}.`)) return;
         f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
-      else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; const v = pawnPrice(g);
+      else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; if(pawnWorn(g)){ toast("전당포 주인이 고개를 저었다. 이만큼 닳은 무기는 받지 않는다고."); return; } const v = pawnPrice(g);
         if(!await confirmBox("전당포", `<b>${esc(jo(g.name,"을"))}</b> 전당포에 맡긴다. 받는 돈 <b>${won(v)}</b> — 되찾을 수 없다.`)) return;
         S.inventory.splice(i, 1); S.money += v; ac("pawn"); if(g.ruinsItem)ac("ruinsSold"); addLog(`전당포: ${g.name} → +${won(v)}`); }
       else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; if(!g||!["weapon","armor","acc"].includes(g.slot))return; if(g && relicLocked(f, g.slot)){ toast("귀속된 유물은 다른 장비로 바꿀 수 없다"); return; } const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
@@ -10273,6 +10278,7 @@ const PAWN_K = 0.4;
 function gearScore(g){ const b = g.bonus ? Object.values(g.bonus).reduce((a,v)=>a+v, 0) : 0; return (g.power||0) + b*2 + ((g.hpRed||0) + (g.mpRed||0))*100; }
 function pawnValue(g){ if(g.price) return g.price; const sc = gearScore(g), peers = SHOP.filter(it=>it.slot===g.slot && it.price);
   if(!peers.length) return 0; return peers.slice().sort((a,b)=>Math.abs(gearScore(a)-sc) - Math.abs(gearScore(b)-sc))[0].price; }
+const pawnWorn = g => !!(g && isWornable(g) && g.durMax && Number.isFinite(g.dur0) && g.durMax <= Math.floor(g.dur0/2));
 const pawnPrice = g => g && g.ruinsItem ? Math.max(0,Number(g.pawnFixed)||0) : Math.floor(pawnValue(g)*PAWN_K);
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
@@ -12607,7 +12613,7 @@ function render(){
   app.querySelector("#reqs").innerHTML = shownRequests.length ? shownRequests.slice().sort(compareRequests).map(q=>{
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
-    return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}">
+    return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}"${(c=>c ? ` style="border-color:${c}"` : "")(reqBorderCol(q))}>
       <div class="head">${q.personalNom?`<span class="badge" style="color:#e8d27a;border-color:currentColor">개인 지명 · ${esc(q.personalNom.name)}</span>`:""}${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} ${q.arc.ch+1}장</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.ruins?`<span class="badge" style="color:#9fe8b0;border-color:currentColor">폐허 L사 지하 ${q.ruins.floor}층 · 갈림길 탐험</span>`:""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.deadline!=null&&q.deadline<=1?`<span class="badge deadline-urgent">오늘 마감</span>`:""}${q.risk && q.kind!=="환상체" && !q.abno ? `<span class="badge">${q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
