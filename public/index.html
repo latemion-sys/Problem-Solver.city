@@ -6734,7 +6734,8 @@ function codexNote(vid, how, gift){ const d = codexLoad(), e = d[vid] = d[vid] |
 const CODEX_STEPS = ["이름","위험 등급","선호 행동","폭주 · 전투 조건","이야기"];
 /* 기프트: 드물게 환상체에서 나온 물건. 통제(알로 재움)로 얻은 것은 마음을 다스리는 쪽, 제압(전투)으로 얻은 것은 몸을 단련하는 쪽.
    기프트의 급수(만난 의뢰 등급)가 지닌 해결사보다 높으면 정신이 무너질 때 통제 기프트는 개화 쪽으로, 제압 기프트는 뒤틀림 쪽으로 기운다. */
-const AB_GIFT_RATE = Object.freeze({action:0.02, control:0.08, fighter:0.08, suppression:0.02});
+// 환상체 기프트: 통제(작업 한 번 · 통제 완료) / 제압(직접 싸운 대표 · 참가 전원). 각각 +2%p 상향
+const AB_GIFT_RATE = Object.freeze({action:0.04, control:0.10, fighter:0.10, suppression:0.04});
 function makeGift(a, how, grade){ if(!a.gifts) return null; const id = String(a.vid||a.id).split("~")[0];
   const RC = abRec(); let k = RC.giftPick[id]; if(!k){ k = Math.random() < 0.5 ? "a" : "b"; if(!window.__peekGift){ RC.giftPick[id] = k; abRecSave(RC); } }
   const G = a.gifts[k]; if(!G) return null;
@@ -6759,7 +6760,7 @@ function awardAbnoCompletion(a, q, team, r, emit){
   if(r.how==="ctrl"){
     team.forEach(f=>grantAbnoGift(a,"ctrl",q,f,AB_GIFT_RATE.control,emit));
   } else if(r.how==="sup"){
-    // 날뜀으로 시작한 전투에서 직접 싸운 대표자만 8%. 전원 2%는 별개다.
+    // 날뜀으로 시작한 전투에서 직접 싸운 대표자만 10%. 전원 4%는 별개다.
     if(r.rage) {
       const fighters = new Set((r.battle||[]).filter(b=>b.fought && b.f).map(b=>b.f.id));
       team.filter(f=>fighters.has(f.id)).forEach(f=>grantAbnoGift(a,"sup",q,f,AB_GIFT_RATE.fighter,emit));
