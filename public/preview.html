@@ -4964,8 +4964,15 @@ function mgCombat(ctx){
     const S2 = {log:[]};
     function rollFoeSkill(t){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def);
       /* 인간 적: 강한 기술은 3~6턴 사이 무작위로 온다. 환상체·뒤틀림은 기존 3턴 주기 강공 그대로. */
-      if(!AB && !DF && at.length){ if(foe.nextHv==null) foe.nextHv = rnd(3,6);
-        if(t >= foe.nextHv){ foe.nextHv = t + rnd(3,6); return foeHeavy(at); } }
+      /* 인간 적의 강한 기술: 8~9급은 쓰지 않는다. 7~4급은 세 갈래 중 하나만 정해 3~6턴마다,
+         3급 이상은 둘을 정해 하나는 3턴마다 꼭, 나머지 하나는 4턴 이후 무작위 턴(그 뒤 3~6턴 간격)에 쓴다. */
+      if(!AB && !DF && at.length){
+        if(g0 <= 7){ if(!foe.hvKinds) foe.hvKinds = ["rush","cripple","status"].sort(()=>Math.random()-0.5).slice(0, g0 <= 3 ? 2 : 1);
+          if(foe.hvKinds.length === 1){ if(foe.nextHv==null) foe.nextHv = rnd(3,6);
+            if(t >= foe.nextHv){ foe.nextHv = t + rnd(3,6); return foeHeavy(at, foe.hvKinds[0]); } }
+          else { if(t % 3 === 0) return foeHeavy(at, foe.hvKinds[0]);
+            if(foe.nextHv2==null) foe.nextHv2 = rnd(4,7);
+            if(t >= foe.nextHv2){ foe.nextHv2 = t + rnd(3,6); return foeHeavy(at, foe.hvKinds[1]); } } } }
       else if(t % 3 === 0 && at.length){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a); return Object.assign({}, hv, {n:`${hv.n}(강공)`, base: hv.base + 3, heavy:true}); }
       if(!at.length) return pick(df);
       // 인간 적: 턴 시작에 한 번만 상황을 판단한다. 새 기술·상태는 만들지 않는다.
@@ -4989,8 +4996,16 @@ function mgCombat(ctx){
       rupture:{n:"파열", tag:"급소 찌르기", tell:"의 눈이 급소만 좇는다", hint:"맞으면 상처가 안에서부터 터진다"},
       sink:{n:"침잠", tag:"짓누르기", tell:"의 눈빛이 가라앉았다. 주위 공기가 눅눅해진다", hint:"맞으면 마음이 가라앉는다"},
       burn:{n:"화상", tag:"달군 일격", tell:"의 무기에서 열기가 피어오른다", hint:"맞으면 살이 탄다"}};
-    function foeHeavy(at){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a), N = foe.name;
-      const kind = pick(g0 <= 3 ? ["rush","cripple","status"] : ["rush","cripple"]);
+    /* 1급 이상 인간 적의 패시브 — 셋 중 하나. 특색급이면 '특색의 위압감'까지 넷 중 하나 */
+    const FOE_PASSIVE = {edge:{n:"날붙이 내성", d:"날이 달린 무기의 피해 -3", cut:3, kinds:["blade","long","twin","great","spear","lance","rapier","saw"]},
+      blunt:{n:"둔기 내성", d:"둔기·건틀릿 같은 무기의 피해 -3", cut:3, kinds:["blunt","fist","staff","tool","none"]},
+      gun:{n:"방탄 내성", d:"총기 피해 -3", cut:3, kinds:["gun","rifle"]},
+      awe:{n:"특색의 위압감", d:"받는 모든 피해 -5", cut:5, all:true}};
+    if(!AB && !DF && g0 <= 1 && !foe.passive){ const colorFoe = g0 === 0 || q.kind==="특색 심사" || /특색/.test(foe.name||"");
+      foe.passive = pick(colorFoe ? ["edge","blunt","gun","awe"] : ["edge","blunt","gun"]); }
+    const passiveCut = me => { const P = foe.passive && FOE_PASSIVE[foe.passive]; if(!P) return 0; return P.all || P.kinds.includes(me.wt) ? P.cut : 0; };
+    function foeHeavy(at, kind0){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a), N = foe.name;
+      const kind = kind0 || pick(["rush","cripple","status"]);
       if(kind==="rush") return Object.assign({}, hv, {n:`${hv.n}(몰아치기)`, coins:3, headAdj:-10, heavy:"rush",
         tell: pick([`${N}의 호흡이 짧아졌다. 쉬지 않고 몰아칠 기세다`, `${jo(N,"이")} 무기를 고쳐 쥐고 발을 구른다`, `${jo(N,"이")} 몸을 낮추고 거리를 좁혀 온다`]), hint:"연달아 몰아치는 공격이 온다. 대신 손이 거칠다."});
       if(kind==="cripple") return Object.assign({}, hv, {n:`${hv.n}(무력화)`, headAdj:-10, heavy:"cripple",
@@ -5207,6 +5222,7 @@ function mgCombat(ctx){
         const ammoNet=dmg>0?Math.min(6,Math.round(ammoEffective*(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))?0.5:1))):0;
         if(ammoNet) dmg+=ammoNet;
         if(me.drepHeal){ me.drepHeal = false; const h = Math.max(1, Math.round(dmg*0.3)); me.hp = Math.min(me.max, me.hp + h); tNote.push(`거둔 만큼 되찾았다(체력 +${h})`); }
+        { const pc = passiveCut(me); if(pc && dmg > 0){ const d0 = dmg; dmg = Math.max(1, dmg - pc); rNote.push(`${FOE_PASSIVE[foe.passive].n} — 피해 ${d0}→${dmg}`); } }
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
         if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = Math.round(foe.max*0.25); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
@@ -5538,7 +5554,7 @@ function mgCombat(ctx){
       if(party.length < 2){ foe.lampMark = mk; tick = (tick ? tick+"<br>" : "") + `<b style="color:#ff8a7a">일대가 어둠에 잠겼다. 등불이 ${esc(jo(mk.name,"을"))} 부른다 — 3턴 안에 쓰러뜨리지 못하면 끌려간다</b>`; }
       else { foe.lampPick = mk; setTimeout(()=>{ phase = "lamp"; m.info.innerHTML = `<div class="pk-text">${tick ? tick+"<br>" : ""}<b style="color:#ff8a7a">일대가 어둠에 잠겼다. 등불이 ${esc(jo(mk.name,"을"))} 홀린다.</b> 3턴이 끝날 때까지 큰 새를 쓰러뜨리지 못하면 그는 끌려가 머리가 떨어진다.</div>`;
         m.ctrl.innerHTML = `<div class="pk-moves"><button data-lamp="out"><b>${esc(jo(mk.name,"을"))} 빼낸다</b><small>어둠 밖으로 데리고 나간다 — 남은 이들만 싸운다</small></button><button data-lamp="keep"><b>그대로 싸운다</b><small>함께 거들지만, 3턴 안에 끝내야 한다</small></button></div>`; }, 1400); } }
-    m.info.innerHTML = `<div class="pk-text">${AB ? `${jo(foe.name,"이")} 덮쳐 온다. ${AB.kill ? "죄종은 숨통을 끊어야만 멈춘다." : AB.enrage ? "시간이 다할 때까지 버티면 제풀에 알로 돌아간다." : "쓰러뜨려 알로 되돌려야 한다."}` : `${jo(foe.name,"이")} 앞을 막아섰다. ${esc(foeArmsText(foe))}. `}${AB ? "" : foe.aug ? (augCount(foe.aug) > 1 ? `<b style="color:#ffb35a">강화·시술 상태 ${augCount(foe.aug)}개</b> — ${foe.aug.n.split(" + ").join(", ")}. ${foe.aug.desc}.` : `<b style="color:#ffb35a">${foe.aug.n}</b> — ${foe.aug.desc}.`) : "개조하지 않은 몸이다."}</div>`;
+    m.info.innerHTML = `<div class="pk-text">${AB ? `${jo(foe.name,"이")} 덮쳐 온다. ${AB.kill ? "죄종은 숨통을 끊어야만 멈춘다." : AB.enrage ? "시간이 다할 때까지 버티면 제풀에 알로 돌아간다." : "쓰러뜨려 알로 되돌려야 한다."}` : `${jo(foe.name,"이")} 앞을 막아섰다. ${esc(foeArmsText(foe))}. `}${AB ? "" : foe.aug ? (augCount(foe.aug) > 1 ? `<b style="color:#ffb35a">강화·시술 상태 ${augCount(foe.aug)}개</b> — ${foe.aug.n.split(" + ").join(", ")}. ${foe.aug.desc}.` : `<b style="color:#ffb35a">${foe.aug.n}</b> — ${foe.aug.desc}.`) : "개조하지 않은 몸이다."}${foe.passive ? ` <b style="color:#c9b0ff">${FOE_PASSIVE[foe.passive].n}</b> — ${FOE_PASSIVE[foe.passive].d}.` : ""}</div>`;
     if(!(AB && AB.fx==="lamp" && party.length >= 2)) setTimeout(skillMenu, 1400);
   });
 }
