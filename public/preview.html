@@ -4014,7 +4014,8 @@ function autoWound(f){
   for(let i=0;i<4;i++){ r -= P[i]; if(r<=0) return i; } return 3;
 }
 const CLEAN_WIN = 0.8;
-const DIRECT_PR = 97;   // 목표 게임이 없는 직접 수행의 성공률(실패는 3%뿐)   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
+const DIRECT_PR = 97;
+const scorePayMul = sc => { const p = clamp(Math.round(sc*100), 0, 100); return p <= 50 ? 0.75 : p <= 75 ? 0.75 + (p-50)/25*0.25 : 1 + (p-75)/25*0.25; };   // 목표 게임이 없는 직접 수행의 성공률(실패는 3%뿐)   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
 const directOnly = q => !!(q && (q.ruins || q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
 const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
@@ -7735,6 +7736,8 @@ async function dispatch(qid, fids, modeArg){
     else { mgScore = r.score; pr = DIRECT_PR; mgLine = `직접 수행 ${Math.round(r.score*100)}점 · 성공률 <b>${pr}%</b>`; } }
   else { pr = base; if(hasGame) payMul = 0.8; mgLine = `자동 진행 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
   let pay = personalNomPay(q,namedSent,payMul);
+  // 직접 수행 점수는 보수로 이어진다: 100점 ×1.25 · 75점 ×1 · 50점 이하 ×0.75 (사이는 고르게, 소수점 올림)
+  if(mode==="play" && mgScore!=null){ const pm = scorePayMul(mgScore); if(pm!==1){ pay = Math.ceil(pay*pm); mgLine = (mgLine ? mgLine + " · " : "") + `보수 ×${pm.toFixed(2).replace(/0$/,"")} (${Math.round(mgScore*100)}점)`; } }
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
   const success = decisive!=null ? decisive : Math.random()*100 < pr;
   team.forEach(f=>{ if(f.isLeader)return; const n=success ? Math.min(4,1+(q.grade<=f.grade?1:0)+(mode==="play"?1:0)+(mgScore!=null&&mgScore>=.85?1:0)) : -Math.min(3,1+(q.grade<f.grade?1:0)+(f.hp<=f.hpMax*.35?1:0));changeFixerTrust(f,n,success?"의뢰 완수":"의뢰 실패"); });
