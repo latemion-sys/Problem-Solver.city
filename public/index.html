@@ -1735,8 +1735,10 @@ const egoHasWeapon=e=>!!e&&(e.type==="weapon"||e.type==="both");
 const egoHasArmor=e=>!!e&&(e.type==="armor"||e.type==="both");
 const egoNameClean=v=>typeof v==="string"?v.trim().slice(0,30):"";
 const egoBudget=e=>e&&e.type==="both"?7:10;
+const egoFormLocked=e=>!!(e&&(e.formLocked||e.look));
 function syncEgoForm(f){
   const e=f&&f.ego;if(!e)return;
+  if(egoFormLocked(e))e.formLocked=true;
   if(e.type==="tool")e.type=EGO_SPECIAL.armor.some(x=>x.id===e.special)?"both":"weapon";
   if(!EGO_FORM_NAME[e.type])e.type="weapon";
   e.attackNames=Array.from({length:3},(_,i)=>egoNameClean(e.attackNames&&e.attackNames[i]));e.guardName=egoNameClean(e.guardName);
@@ -8559,7 +8561,7 @@ async function bloomEgo(f, opt={}){ ac("ego");
   f.mp = Math.round(f.mpMax*0.5);
   playFx("에고", "E.G.O. 개화", `${f.name} — ${egoLabel(f.ego)}`, true); save(); render();
   S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${EGO_FORM_NAME[type]})`});
-  const go = await modal("E.G.O. 개화", `${esc(f.name)}의 E.G.O.가 피어났다 — <b>${esc(egoLabel(f.ego))}</b> (${EGO_FORM_NAME[type]})<br>${f.ego.desc ? `<span class="muted">${esc(f.ego.desc)}</span><br>` : ""}${f.ego.origin ? `<span class="muted">살아온 날: ${esc(f.ego.origin)}</span><br>` : ""}전투력이 크게 오른다. ${unstable ? `<b style="color:#e7a07c">다만 금이 간 채로 피어났다</b> — 정신력이 다시 바닥나면 20% 확률로 뒤틀릴 수 있다.` : "정신력이 다시 바닥나면 뒤틀림 확률은 1%다."}<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${egoSpecLabel(type)})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
+  const go = await modal("E.G.O. 개화", `${esc(f.name)}의 E.G.O.가 피어났다 — <b>${esc(egoLabel(f.ego))}</b> (${EGO_FORM_NAME[type]})<br>${f.ego.desc ? `<span class="muted">${esc(f.ego.desc)}</span><br>` : ""}${f.ego.origin ? `<span class="muted">살아온 날: ${esc(f.ego.origin)}</span><br>` : ""}전투력이 크게 오른다. ${unstable ? `<b style="color:#e7a07c">다만 금이 간 채로 피어났다</b> — 정신력이 다시 바닥나면 20% 확률로 뒤틀릴 수 있다.` : "정신력이 다시 바닥나면 뒤틀림 확률은 1%다."}<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${egoSpecLabel(type)})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다. 최초 확정 이후에는 형상과 능력 배분을 변경할 수 없다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
   if(go) await openForge(f, null, "ego");
 }
 function removeFixer(f, what, note){ markFormerLeaving(f,what); if(what!=="해고" && what!=="이탈"){ S.st = S.st || {}; S.st.lost = (S.st.lost||0) + 1; }
@@ -9827,7 +9829,7 @@ async function openManage(){
       <span>능력치 효과</span><b>근력: 최대 체력 +${statHpPlus(f)} · 민첩: 방어 고정 피해 -${statGuardMinus(f)} · 재주: 합 코인 앞면 +${statClashHeadPlus(f).toFixed(2)}%p · 의지: 최대 정신력 +${statMpPlus(f)}</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
-      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button> <button data-egonames="1" style="padding:2px 8px">기술 이름 설정</button><br><span class="muted" style="font-weight:400">${egoHasWeapon(f.ego)?"기본 공격 위력 +1 · "+egoAttackCards(f.ego,(CARDS[weaponTypeOf(wGear(f))||"none"]||CARDS.none).filter(c=>!c.def)).map(c=>esc(c.n)).join(" / "):""}${egoHasArmor(f.ego)?` · ${esc(f.ego.guardName||"방어[개화]")} · 방어 고정 피해 감소 2`:""}</span>
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) ${egoFormLocked(f.ego)?`<span class="muted" style="font-size:12px">형상 확정 · 변경 불가</span>`:`<button data-egoforge="1" style="padding:2px 8px">형상 정하기</button>`} <button data-egonames="1" style="padding:2px 8px">기술 이름 설정</button><br><span class="muted" style="font-weight:400">${egoHasWeapon(f.ego)?"기본 공격 위력 +1 · "+egoAttackCards(f.ego,(CARDS[weaponTypeOf(wGear(f))||"none"]||CARDS.none).filter(c=>!c.def)).map(c=>esc(c.n)).join(" / "):""}${egoHasArmor(f.ego)?` · ${esc(f.ego.guardName||"방어[개화]")} · 방어 고정 피해 감소 2`:""}</span>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">미정 상태 · 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       <div class="gear-title">장비 관리${needsRepair(f.gear.weapon) ? ` <span class="need-fix-tag">${f.gear.weapon.durMax<=1 ? "무기가 부서졌다" : "무기 수리 필요"}</span>` : ""}</div>${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
       <span>기술 (${(f.techs||[]).length}/${MAX_BASIC_TECHS})</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
@@ -9859,7 +9861,7 @@ async function openManage(){
       else if(d.repinv!==undefined){ if(!repairWeapon((S.inventory||[])[+d.repinv], null)) return; }
       else if(d.retouch && f){ await openForge(f, "weapon", "retouch"); }
       else if(d.seal!==undefined && f && f.gear[d.sslot||"weapon"] && f.gear[d.sslot||"weapon"].relic && f.gear[d.sslot||"weapon"].sealFree){ const sl = d.sslot||"weapon", g = f.gear[sl], R = RELICS.find(r=>"relic-"+r.id===g.id); if(R){ const it = relicItem(R, {id:g.bound, name:g.boundName}, +d.seal); it.sealFree = true; f.gear[sl] = it; } save(); }
-      else if(d.egoforge && f){ await openForge(f, null, "ego"); }
+      else if(d.egoforge && f){ if(egoFormLocked(f.ego)){toast("이미 확정한 E.G.O. 형상은 변경할 수 없습니다.");return;} await openForge(f, null, "ego"); }
       else if(d.egonames && f){ await nameEgoSkills(f); }
       else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.heal && f){
@@ -10324,7 +10326,7 @@ function forgeDefault(mode, slot, kind, pw){
 }
 /* mode: "ego" E.G.O. 형상 · "upgrade" 공방이 벼려 준 고유 무기(이름은 이때만) · "retouch" 고유 무기 손질 · 없음 = 특색의 고유 방어구 */
 async function openForge(f, slot0, mode){
-  if(mode==="ego"){if(!f.ego)return;syncEgoForm(f);}
+  if(mode==="ego"){if(!f.ego)return;syncEgoForm(f);if(egoFormLocked(f.ego)){toast("이미 확정한 E.G.O. 형상은 변경할 수 없습니다.");return;}}
   const ego = mode==="ego", wpn = (mode==="upgrade" || mode==="retouch") && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null, up = !!wpn;
   if((mode==="upgrade" || mode==="retouch") && !wpn) return;
   const prevW = up ? wpn : null;
@@ -10402,7 +10404,7 @@ async function openForge(f, slot0, mode){
     return head + `<div class="fg-body">${prev}<div class="fg-ctl">
       <h4 style="margin:0 0 6px">${esc(st.name || defName())}</h4>
       <div class="kv"><span>주인</span><b>${esc(f.name)}${f.title?` [${esc(f.title)}]`:""}</b><span>종류</span><b>${ego?"E.G.O. ":up?"고유 무기 · ":""}${st.slot==="weapon" ? kindName()+" · "+WEAPON_KINDS[st.w.kind].vars[st.w.v||0] : "방어구 · "+kindName()}${st.slot==="weapon" && (st.w.add||[]).length ? " · "+st.w.add.map(id=>(WEAPON_ADDS.find(a=>a.id===id)||{}).n).join("·") : ""}</b><span>능력</span><b>${statLine()}</b>${up && wpn.maker ? `<span>벼린 곳</span><b>${esc(wpn.maker)}</b>` : ""}</div>
-      <p class="muted" style="font-size:12px">${ego ? "확정하면 E.G.O.가 이 모습과 능력으로 드러난다. 관리에서 언제든 다시 정할 수 있다." : up ? (mode==="upgrade" ? "확정하면 이 이름과 모습으로 손에 쥔다. 이름은 이후 바꿀 수 없다." : "확정하면 이 모습과 능력으로 손질된다.") : "확정하면 바로 장착한다. " + (prevA?"기존 고유 방어구는 대체된다.":"지금 입고 있는 방어구는 보관함으로 옮겨진다.")}</p>
+      <p class="muted" style="font-size:12px">${ego ? "확정하면 E.G.O.의 형상, 능력치 배분과 특수 능력이 영구적으로 결정된다. 확정하기 전에 신중히 확인하자." : up ? (mode==="upgrade" ? "확정하면 이 이름과 모습으로 손에 쥔다. 이름은 이후 바꿀 수 없다." : "확정하면 이 모습과 능력으로 손질된다.") : "확정하면 바로 장착한다. " + (prevA?"기존 고유 방어구는 대체된다.":"지금 입고 있는 방어구는 보관함으로 옮겨진다.")}</p>
       <div class="fg-nav"><button data-fgo="${up ? 3 : 4}">이전</button><button class="primary" data-confirm="1">확정</button></div></div></div>`;
   };
   await modal(ego ? "E.G.O. 형상" : up ? (mode==="upgrade" ? "고유 무기" : "고유 무기 손질") : "고유 방어구 제작", `<div id="fg"></div>`, [{t:"닫기"}], false, root=>{
@@ -10434,7 +10436,8 @@ async function openForge(f, slot0, mode){
       else if(d.confirm){
         const name = st.name || defName(), bonus = {}; ATTRS.forEach(a=>{ if(st.alloc && st.alloc[a]>0) bonus[a] = st.alloc[a]; });
         if(ego){
-          Object.assign(f.ego, {name, look: Object.assign({}, st.slot==="weapon" ? st.w : st.a), bonus, special: st.special});
+          if(!f.ego||egoFormLocked(f.ego)){toast("이미 확정한 E.G.O. 형상은 변경할 수 없습니다.");return;}
+          Object.assign(f.ego, {name, look: Object.assign({}, st.slot==="weapon" ? st.w : st.a), bonus, special: st.special, formLocked:true});
           if(f.ego.type==="both")f.ego.look2={...st.a};
           S.records.push({day:S.day, name:f.name, what:"E.G.O. 형상", note:`${name} — ${statLine()}`});
           addLog(`${f.name}: E.G.O. [${name}]의 형상을 정했다`); save(); render(); doneRes = {name, ego:true};
