@@ -223,6 +223,14 @@ footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);lin
 @media (max-width:640px){ .fg-body{grid-template-columns:1fr} .fg-kinds{grid-template-columns:repeat(2,1fr)} }
 .kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:13px}
 .kv span{color:var(--muted)}
+@keyframes needfix{0%,100%{box-shadow:0 0 0 0 rgba(231,160,124,0);border-color:#7a4a38}50%{box-shadow:0 0 0 3px rgba(231,160,124,.55);border-color:#e7a07c}}
+.nav button.need-fix,.tabs button.need-fix{color:#ffd0b8;border:1px solid #e7a07c;animation:needfix 1.1s ease-in-out infinite}
+.need-fix-tag{color:#ffb08a!important;font-weight:700;animation:needtag 1.1s ease-in-out infinite}
+@keyframes needtag{0%,100%{opacity:1}50%{opacity:.45}}
+.kv .gear-title{grid-column:1/-1;margin-top:8px;padding:5px 8px;border-radius:6px;background:linear-gradient(90deg,rgba(216,192,138,.16),rgba(216,192,138,.02));border-left:3px solid #d8c08a;color:#e8d6a8;font-weight:700;font-size:13px}
+.kv .gear-k,.kv .gear-v{background:rgba(216,192,138,.06);padding:4px 8px;border-radius:4px}
+.kv .gear-k{color:#d8c08a;font-weight:600}
+.kv .gear-k.need-fix,.kv .gear-v.need-fix{background:rgba(231,120,80,.12);border:1px solid #7a4a38;animation:needfix 1.1s ease-in-out infinite}
 .field{display:flex;gap:6px;margin-bottom:8px;align-items:center}
 .field label{width:90px;color:var(--muted)}
 .field input{flex:1}
@@ -4005,7 +4013,8 @@ function autoWound(f){
   const P = P9.map((v,i)=>v + (P1[i]-v)*Math.pow(k, 0.6)); let r = Math.random()*P.reduce((a,b)=>a+b,0);
   for(let i=0;i<4;i++){ r -= P[i]; if(r<=0) return i; } return 3;
 }
-const CLEAN_WIN = 0.8;   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
+const CLEAN_WIN = 0.8;
+const DIRECT_PR = 97;   // 목표 게임이 없는 직접 수행의 성공률(실패는 3%뿐)   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
 const directOnly = q => !!(q && (q.ruins || q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
 const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
@@ -4036,7 +4045,7 @@ async function runMinigames(q, team){
     else sum += a==="shield" ? await mgShield(ctx) : await mgClues(ctx);
   }
   // 승패가 나는 게임(합 전투·추적)만으로 이뤄진 의뢰는 그 승패가 곧 의뢰 성패
-  return {score: games.length ? sum/games.length : 0, combat, decisive: dec.length===games.length ? dec.every(d=>d.win) : null, lostDecisive: dec.some(d=>!d.win), abno};
+  return {score: games.length ? sum/games.length : 0, combat, decisive: dec.length===games.length ? dec.every(d=>d.win) : null, lostDecisive: dec.some(d=>!d.win), anyDecisive: dec.length > 0, abno};
 }
 
 /* ================= 사건 · 특수 의뢰 전용 미니게임 =================
@@ -7712,17 +7721,18 @@ async function dispatch(qid, fids, modeArg){
     if(abnoR && !team.length){ const L = []; const lost = abnoApply(q, team, Object.assign({}, abnoR, {battle: combat && combat.battle}), L); S.requests = S.requests.filter(x=>x.id!==qid);
       stageLog(`[${q.kind} 의뢰 실패]`, q.client, false); await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${L.join("<br>")}<br>아무도 돌아오지 못했다.</p>`, [{t:"확인",primary:true}]);
       for(const x of lost){ await abnoLose(x.f, x.kind, x.why); if(!S || S.over) return; } save(); render(); return; }
-    /* 직접 수행: 목표가 있는 게임(합 전투 · 추격 · 호위)은 달성하면 성공, 미달성이면 실패.
+    /* 직접 수행: 목표가 있는 게임(합 전투 · 추격 · 호위 · 수색 · 유적)은 달성하면 성공, 하나라도 놓치면 실패.
+       · 목표 게임을 모두 해냈으면 앞뒤에 붙은 점수 게임(전용 미니게임 · 단서 · 방벽)과 상관없이 성공.
+       · 점수 게임만 있는 의뢰는 점수와 상관없이 97% — 직접 해낸 일이 운으로 무너지는 건 3%뿐이다(점수는 보상·평가에 쓰인다).
        · 압승(80점 이상)은 특수 전리품 확률이 늘어난다.
-       · 점수 게임(단서 · 방벽 · 장부): 기본 성공률 − 25 + 점수×40 (만점이면 기본 +15%p).
        · 환상체는 통제·제압 결과가 곧 성패(기믹이 많아 그대로 둔다) */
     if(q.kind==="환상체" && r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
     else if(r.decisive===false || r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
-    else if(r.decisive===true){ mgScore = r.score; decisive = true;
+    else if(r.decisive===true || (r.decisive==null && r.lostDecisive===false && r.anyDecisive)){ mgScore = r.score; decisive = true;
       mgLine = r.score >= CLEAN_WIN ? `직접 수행 <b>압승</b>(${Math.round(r.score*100)}점) — 의뢰 확정 성공 · 추가 전리품 기회`
         : r.score >= 0.45 ? `직접 수행 승리(${Math.round(r.score*100)}점) — 의뢰 확정 성공`
         : `직접 수행 <b>간신히 승리</b>(${Math.round(r.score*100)}점) — 의뢰는 성공했지만 상처가 깊다`; }
-    else { mgScore = r.score; pr = clamp(Math.round(base - 25 + 40*r.score), 3, 97); mgLine = `미니게임 ${Math.round(r.score*100)}점 · 성공률 ${base}% → <b>${pr}%</b>`; } }
+    else { mgScore = r.score; pr = DIRECT_PR; mgLine = `직접 수행 ${Math.round(r.score*100)}점 · 성공률 <b>${pr}%</b>`; } }
   else { pr = base; if(hasGame) payMul = 0.8; mgLine = `자동 진행 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
   let pay = personalNomPay(q,namedSent,payMul);
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
@@ -9668,9 +9678,9 @@ async function openManage(){
     const f = S.fixers.find(x=>x.id===sel) || S.fixers[0]; if(!f) return "";
     sel = f.id; if(!mview) mview = "idle";
     const inv = (S.inventory||[]);
-    const gearRow = (slot,label) => { const g=f.gear[slot]; return `<span>${label}</span><b>${g?(g.relic ? `<span class="relic-name">${esc(g.name)}</span> <span class="badge" style="color:#d8b45a;border-color:currentColor">유물 · 귀속</span>${g.seal!=null ? (g.sealFree ? ` <span class="fg-seg" style="display:inline-flex;margin-left:4px">${[0,1,2].map(k=>`<button data-seal="${k}" data-sslot="${slot}" class="${(g.seal||0)===k?"on":""}" style="padding:2px 8px">${SEAL_NAME[k]}</button>`).join("")}</span>` : ` <span class="badge">${SEAL_NAME[g.seal]}</span>`) : ""}` : esc(g.name))+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
+    const gearRow = (slot,label) => { const g=f.gear[slot], nf = slot==="weapon" && needsRepair(g); return `<span class="gear-k${nf?" need-fix":""}">${label}</span><b class="gear-v${nf?" need-fix":""}">${g?(g.relic ? `<span class="relic-name">${esc(g.name)}</span> <span class="badge" style="color:#d8b45a;border-color:currentColor">유물 · 귀속</span>${g.seal!=null ? (g.sealFree ? ` <span class="fg-seg" style="display:inline-flex;margin-left:4px">${[0,1,2].map(k=>`<button data-seal="${k}" data-sslot="${slot}" class="${(g.seal||0)===k?"on":""}" style="padding:2px 8px">${SEAL_NAME[k]}</button>`).join("")}</span>` : ` <span class="badge">${SEAL_NAME[g.seal]}</span>`) : ""}` : esc(g.name))+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
     const hc = healCost(f);
-    return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}">${esc(x.name)}</button>`).join("")}</div>
+    return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}${x.gear && needsRepair(x.gear.weapon) ? " need-fix" : ""}">${esc(x.name)}${x.gear && needsRepair(x.gear.weapon) ? " ⚠" : ""}</button>`).join("")}</div>
     <div class="mg-prev"><canvas class="mgp"></canvas><div><div class="fg-seg">${STATE_TABS.map(([k,n])=>`<button class="${mview===k?"on":""}" data-mview="${k}">${n}</button>`).join("")}</div>
       ${f.grade===0?`<button style="margin-top:8px" data-forgego="1">고유 방어구 제작</button>`:""}</div></div>
     <div class="kv">
@@ -9692,7 +9702,7 @@ async function openManage(){
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
       ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
-      ${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
+      <div class="gear-title">장비 관리${needsRepair(f.gear.weapon) ? ` <span class="need-fix-tag">${f.gear.weapon.durMax<=1 ? "무기가 부서졌다" : "무기 수리 필요"}</span>` : ""}</div>${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
       <span>기술 (${(f.techs||[]).length}/${MAX_BASIC_TECHS})</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
         return `<select data-tech="1">${list.map(id=>`<option value="${id}" ${(f.tech||"allout")===id?"selected":""} ${techFits(id, wt)?"":"disabled"}>${TECHS[id].n}${techFits(id, wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
           <br><span class="muted" style="font-weight:400">${esc(TECHS[f.tech && techFits(f.tech, wt) ? f.tech : "allout"].d)} · 기술 공통 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}${(f.techs||[]).length ? "" : " · 무기를 오래 쓰거나 능력치가 높아지면 기술을 깨우친다."}</span>`; })()}</b>
@@ -15225,7 +15235,7 @@ function render(){
     const headerTag = f.isLeader ? "div" : "summary";
     const cardStart = f.isLeader ? '<div class="fx">' : `<details class="fx fx-companion" data-fixer="${esc(String(f.id))}"${openedFixers.has(String(f.id)) ? " open" : ""}>`;
     return `${cardStart}<${headerTag} class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></${headerTag}>${f.isLeader ? "" : '<div class="fx-companion-body">'}
-      ${colorBtn(f)}${omenTag(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${f.distEye?`<div class="title" style="color:#c9b0ff" title="${esc(distEyeText)}">뒤틀림을 보는 눈</div>`:""}${distExp(f)?`<div class="title muted">뒤틀림 경험 — ${distExp(f).n}(처치 ${f.dk})</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}${f.addict?`<div class="title" style="color:#ff8a7a">엔케팔린 중독 — 회복량 절반</div>`:""}${accFx(f,"rewind")?`<button class="hana-btn" data-rewind="${f.id}" ${f.rw && f.rw.length ? "" : "disabled"}>시간 되돌림 장치 사용</button>`:""}
+      ${f.gear && needsRepair(f.gear.weapon) ? `<div class="title need-fix-tag" title="${esc(f.gear.weapon.name)} — 내구도 ${f.gear.weapon.dur}/${f.gear.weapon.durMax}. [관리]에서 고칠 수 있다">${f.gear.weapon.durMax<=1 ? "무기 부서짐" : "무기 수리 필요"}</div>` : ""}${colorBtn(f)}${omenTag(f)}${f.ego?`<div class="title">${esc(egoLabel(f.ego))}</div>`:""}${abnoTags(f)}${f.shin?`<div class="title">${esc(shinLabel(f.shin.name ? f.shin : {name:givenName(f.name)}))}</div>`:""}${f.distEye?`<div class="title" style="color:#c9b0ff" title="${esc(distEyeText)}">뒤틀림을 보는 눈</div>`:""}${distExp(f)?`<div class="title muted">뒤틀림 경험 — ${distExp(f).n}(처치 ${f.dk})</div>`:""}${needsRepair(f.gear.weapon)?`<div class="title" style="color:#e7a07c">무기 수리 필요 — 맨손으로 나선다</div>`:""}${f.addict?`<div class="title" style="color:#ff8a7a">엔케팔린 중독 — 회복량 절반</div>`:""}${accFx(f,"rewind")?`<button class="hana-btn" data-rewind="${f.id}" ${f.rw && f.rw.length ? "" : "disabled"}>시간 되돌림 장치 사용</button>`:""}
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       ${!f.isLeader?`<div style="font-size:12px">신뢰 ${fixerTrust(f)}/100</div>${bar(fixerTrust(f),100,fixerTrust(f)>=70?"#7fb069":fixerTrust(f)>=35?"#d8b24a":"#c94a4a")}`:""}
@@ -15234,6 +15244,8 @@ function render(){
   }).join("");
   app.querySelector("#log").innerHTML = S.log.map(l=>`<div class="${l.cls||""}">${l.d}일 · ${esc(l.t)}</div>`).join("");
   app.querySelector("#endday").disabled = S.over;
+  { const nb = app.querySelector('[data-nav="manage"]'), who = S.fixers.filter(f=>f.gear && needsRepair(f.gear.weapon));
+    if(nb){ nb.classList.toggle("need-fix", who.length > 0); nb.title = who.length ? `무기 수리가 필요하다: ${who.map(f=>f.name).join(", ")}` : ""; } }
   S.requests.forEach(q=>updateCard(q.id));
 }
 let reqFilter = "all";
@@ -15305,7 +15317,9 @@ function updateCard(qid){
   const m = estimate(team,q);
   const only = directOnly(q), auto = !only && (modePref()==="auto" || !gamesFor(q).length);
   const spec=team.map(f=>{const p=specialty(f,q);return p.bonus?`${esc(f.name)}: ${p.name} ${p.bonus>0?"+":""}${p.bonus}%p`:"";}).filter(Boolean);
-  est.innerHTML = `${only ? `<b>직접 수행 전용</b> <span class="muted">(현장 행동과 전투 결과로 성패 결정)</span>` : `${auto?"자동 성공률":"기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto?(gamesFor(q).length?` · 보수 ${won(personalNomPay(q,personalNomMatch(q,team),0.8))}`:""):` <span class="muted">(전투·추격·호위 목표 달성 시 확정 성공)</span>`}`}
+  est.innerHTML = `${only ? `<b>직접 수행 전용</b> <span class="muted">(현장 행동과 전투 결과로 성패 결정)</span>` : (auto || !gamesFor(q).length ? `${auto?"자동 성공률":"기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto&&gamesFor(q).length?` · 보수 ${won(personalNomPay(q,personalNomMatch(q,team),0.8))}`:""}`
+      : gamesFor(q).some(g=>["str","agi","escort","search","ruins","abno"].includes(g)) ? `직접 수행 <b style="color:var(--green)">목표 달성 시 성공</b> <span class="muted">(전투·추격·호위 등 목표를 놓치면 실패)</span>`
+      : `직접 수행 성공률 <b style="color:var(--green)">${DIRECT_PR}%</b> <span class="muted">(점수는 보상·평가에 반영)</span>`)}
     ${q.personalNom?`<div style="color:${personalNomMatch(q,team)?"#9fe8b0":"#e7a07c"}">${esc(q.personalNom.name)} ${personalNomMatch(q,team)?"지명 출동 +25%":"미출동 -15%"} · 예상 보수 ${won(personalNomPay(q,personalNomMatch(q,team),auto&&gamesFor(q).length?0.8:1))}</div>`:""}
     <div style="margin-top:5px">${m.profiles.map(p=>`<div>${esc(p.name)}${p.status?` (${p.status})`:""}: 예상 ${m.stat} 손실 <b>성공 ${p.success}</b> / 실패 ${p.fail[0]}~${p.fail[1]}</div>`).join("")}</div>
     ${spec.length?`<div class="muted">전문 분야: ${spec.join(" · ")} (팀 합산 최대 +9%p)</div>`:""}
