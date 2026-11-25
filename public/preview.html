@@ -9533,7 +9533,7 @@ function reviewProgressHtml(){
   ${S.officeGrade>1 && S.officeGrade-1<=3 ? `<span>승급 심사 의뢰</span><b>${S.examOk||0}/${EXAM_NEED_OFFICE}건</b>` : ""}
   <span>사무소 판정</span><b style="color:${r.ok?'#9fe8b0':'#e7a07c'}">${r.ok ? (r.way==='count'?'의뢰 해결 수 충족':'인원 급수·보조 실적 충족') : r.why}</b></div>
   <div style="font-size:12px;line-height:1.8;margin:8px 0">${fx.map(f=>{const w=f.wk||{n:0,ok:0,hi:0,sc:0}, t=reviewOf({...w},f.grade);
-    return `<div>${esc(f.name)} (${gName(f.grade)}): ${f.grade<=1?`의뢰 성공 ${w.ok||0}건 · ${f.grade===0?'특색':'1급'} (일반 승급 심사 대상 아님)`:`성공 ${w.ok||0}/${REVIEW_NEED(f.grade)}건 · 상위 실적 ${w.hi||0}/${Math.ceil(REVIEW_NEED(f.grade)/2)}건 · 점수 ${w.n?((w.sc||0)/w.n).toFixed(2):'—'} · ${t.ok?'승급 준비 완료':esc(t.why[0]||'이번 주 기록 없음')}`}</div>`;}).join("")}</div>`;
+    return `<div>${esc(f.name)} (${gName(f.grade)}): ${f.grade<=1?`의뢰 성공 ${w.ok||0}건 · ${f.grade===0?'특색':'1급'} (일반 승급 심사 대상 아님)`:`성공 ${w.ok||0}/${REVIEW_NEED(f.grade)}건 · 상위 실적 ${w.hi||0}/${Math.ceil(REVIEW_NEED(f.grade)/2)}건 · 점수 ${w.n?((w.sc||0)/w.n).toFixed(2):'—'} · ${t.ok?'승급 준비 완료':esc(t.why[0]||'누적 승급 실적 없음')}`}</div>`;}).join("")}</div>`;
 }
 /* 사무소가 5급이 되면 더 큰 건물로 옮겨야 한다(100만 안). 빚이 남아 있으면 흉터 수금이 먼저라, 빚을 다 갚은 뒤 첫 심사 때 옮긴다. 모자라면 있는 만큼 내고 나머지는 정산 때마다 떼 간다.
    옮긴 뒤로는 14일마다 월세와 뒷골목의 밤 처리 비용으로 그때 가진 돈의 20%가 빠져나간다(소수점 버림). */
@@ -9585,11 +9585,11 @@ async function review(){
     if(f.grade>=2){ const R = reviewOf(f.wk, f.grade), tg = f.grade - 1, gapLeft = FIXER_GAP(tg) - (S.day - (f.promoDay||0)), examLack = tg <= 3 && (f.examOk||0) < EXAM_NEED_FIXER;
       if(R.ok && gapLeft > 0) R.why.unshift(`지난 승급 뒤 ${FIXER_GAP(tg)/7}주가 지나야 한다(${Math.ceil(gapLeft/7)}주 남음)`);
       if(examLack) R.why.unshift(`승급 심사 의뢰 ${f.examOk||0}/${EXAM_NEED_FIXER}건`);
-      if(R.ok && gapLeft <= 0 && !examLack){ ac("promo"); f.promoDay = S.day; f.examOk = 0; f.grade--; f.hpMax+=10; f.mpMax+=10; f.hp+=10; f.mp+=10; const up = promoStats(f);
+      if(R.ok && gapLeft <= 0 && !examLack){ ac("promo"); f.promoDay = S.day; f.examOk = 0; f.wk = {n:0, ok:0, hi:0, sc:0}; f.grade--; f.hpMax+=10; f.mpMax+=10; f.hp+=10; f.mp+=10; const up = promoStats(f);
         lines.push(`${esc(f.name)}: ${gName(f.grade+1)} → <b>${gName(f.grade)}</b> <span class="muted">· ${up.join(" · ")}</span>`);
         S.records.push({day:S.day,name:f.name,what:"승급",note:gName(f.grade)}); }
       else if((f.wk && f.wk.n) || examLack) wait.push(`${esc(f.name)}: 보류 — ${R.why[0]}`); }
-    f.wk = {n:0, ok:0, hi:0, sc:0};
+    // 보류 또는 일반 승급 대상이 아닌 해결사의 개인 실적은 다음 심사로 이월한다.
   });
   // 사무소: 대표 급수가 목표 급수에 먼저 도달해야 심사가 가능하다. 이후 의뢰 5건 또는 직원·주간 성과로 판정.
   let off = "";
