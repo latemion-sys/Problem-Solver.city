@@ -9899,17 +9899,15 @@ async function openRecruit(){
 // 체력·정신력 10 회복당 비용(등급별). 특색(0급)은 10,000안
 const HEAL_COST = {9:500, 8:1000, 7:1500, 6:2000, 5:2500, 4:3500, 3:4500, 2:6000, 1:7500, 0:10000};
 const healCost = f => HEAL_COST[f && f.grade!=null ? f.grade : 9] || 500;
-// 사무소 공용 상담 휴식: 게임 날짜 기준 3일에 한 번, 대표 제외.
+// 사무소 공용 상담 휴식: 게임 날짜 기준 3일에 한 번, 선택한 동료 한 명만 회복.
 function counselRestRemaining(state){return Number.isInteger(state.counselRestDay)?Math.max(0,state.counselRestDay+3-state.day):0;}
 function counselRestTargets(state){return state.fixers.filter(f=>!f.isLeader&&f.hp>0&&(f.hp<f.hpMax||f.mp<f.mpMax));}
-function counselRest(state){
+function counselRest(state,fixerId){
   if(counselRestRemaining(state)>0)return false;
-  const targets=counselRestTargets(state);
-  if(!targets.length)return false;
-  for(const f of targets){
-    f.hp=Math.min(f.hpMax,f.hp+Math.round(f.hpMax*0.1*recK(f)));
-    f.mp=Math.min(f.mpMax,f.mp+Math.round(f.mpMax*0.1*recK(f)));
-  }
+  const f=counselRestTargets(state).find(x=>x.id===fixerId);
+  if(!f)return false;
+  f.hp=Math.min(f.hpMax,f.hp+Math.round(f.hpMax*0.1));
+  f.mp=Math.min(f.mpMax,f.mp+Math.round(f.mpMax*0.1));
   state.counselRestDay=state.day;
   return true;
 }
@@ -9959,8 +9957,8 @@ async function openManage(){
     </div>
     ${reviewProgressHtml()}
     <h4 style="margin:14px 0 6px">상담 휴식 <span class="muted" style="font-weight:400">(무료 · 3일에 1회)</span></h4>
-    <p class="muted" style="font-size:12px;margin:4px 0 8px">대표를 제외한 모든 생존 해결사의 체력과 정신력을 각각 최대치의 10%만큼 회복합니다. 기존 회복량 감소 효과는 적용됩니다.</p>
-    <button data-counselrest="1" ${counselRestRemaining(S)>0||!counselRestTargets(S).length?"disabled":""}>상담 휴식${counselRestRemaining(S)>0?" · "+counselRestRemaining(S)+"일 후 가능":!counselRestTargets(S).length?" · 회복 대상 없음":" · 무료"}</button>
+    <p class="muted" style="font-size:12px;margin:4px 0 8px">관리 화면에서 선택한 해결사 1명의 체력과 정신력을 각각 최대치의 10%만큼 회복합니다. 대표는 이용할 수 없으며, 사무소 전체에서 3일에 한 번만 사용할 수 있습니다.</p>
+    <button data-counselrest="1" ${counselRestRemaining(S)>0||!counselRestTargets(S).includes(f)?"disabled":""}>상담 휴식${f.isLeader?" · 대표 이용 불가":counselRestRemaining(S)>0?" · "+counselRestRemaining(S)+"일 후 가능":!counselRestTargets(S).includes(f)?" · 회복 대상 아님":" · "+esc(f.name)+" · 무료"}</button>
     <h4 style="margin:14px 0 6px">유료 회복 <span class="muted" style="font-weight:400">(10당 ${won(hc)})</span></h4>
     <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button data-heal="hpall" ${f.hp>=f.hpMax?"disabled":""}>체력 전부 (${won(Math.ceil((f.hpMax-f.hp)/10)*hc)})</button>
@@ -9986,9 +9984,9 @@ async function openManage(){
       else if(d.egonames && f){ await nameEgoSkills(f); }
       else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.counselrest){
-        if(!counselRest(S)){toast(counselRestRemaining(S)>0?"상담 휴식은 "+counselRestRemaining(S)+"일 후 다시 사용할 수 있습니다.":"회복할 해결사가 없습니다.");return;}
-        addLog("상담 휴식 — 대표를 제외한 해결사들의 체력과 정신력을 회복했다.");
-        toast("상담 휴식 완료");
+        if(!f||!counselRest(S,f.id)){toast(counselRestRemaining(S)>0?"상담 휴식은 "+counselRestRemaining(S)+"일 후 다시 사용할 수 있습니다.":f&&f.isLeader?"대표는 상담 휴식을 이용할 수 없습니다.":"선택한 해결사는 회복 대상이 아닙니다.");return;}
+        addLog("상담 휴식 — "+f.name+"의 체력과 정신력을 회복했다.");
+        toast(f.name+" · 상담 휴식 완료");
       }
       else if((d.heal==="hpall"||d.heal==="mpall") && f){
         const hc = healCost(f), isH = d.heal.startsWith("hp"), all = d.heal.endsWith("all");
