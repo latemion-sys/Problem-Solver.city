@@ -2840,6 +2840,8 @@ function makeRequest(grade, opts={}){
   if(!opts.noRelic) markRelic(q);
   // 신뢰도 보수는 그대로 유지한다. 65 이상 10%, 85 이상 20% 가산.
   { const t = officeTrustTier(); if(t && !q.prescript){ q.trustBonus=t; q.reward=Math.round(q.reward*(1+0.1*t)/100)*100; } }
+  // 뒷골목의 밤을 버틴 사무소: 의뢰인들이 조금 더 쳐준다(고정 +5%)
+  if(S && S.nightBonus && !q.prescript){ q.nightBonus=true; q.reward=Math.round(q.reward*1.05/100)*100; }
   return rememberReqText(fixGrade1Threat(Object.assign(q, opts.over||{})));
 }
 /* ================= 이상 의뢰 · 뒤틀림 처리 =================
@@ -3077,6 +3079,581 @@ void main(){
   }
   return {draw, ok: ()=>init()};
 })();
+/* ================= 뒷골목의 밤 — 「81분」 =================
+   5급 이상 사무소에서, 출동했던 해결사들이 늦게까지 골목에 남은 날 드물게 찾아온다.
+   새벽 3시 13분부터 80분. 청소부는 20분 쓸고 10분 쉬기를 세 번 되풀이한다(파도 셋).
+   등록되지 않은 건물을 거점으로 삼아 벽(내구)과 숨(버팀)을 지키며 다가오는 무리를 '한 번에' 끊어 낸다.
+   덜 끊어 내면 남은 청소부가 쓰러진 동료를 흡수해 더 커진다. 전원이 버티지 못하면 한 명이 남아 모두를 돌려보낸다.
+   판정 수치는 내부에서만 쓰고 화면에는 드러내지 않는다. */
+const NIGHT_P = 0.06, NIGHT_COOL = 7;
+const NIGHT_BASE_P = og => og >= 5 ? 0.30 : og === 4 ? 0.60 : og === 3 ? 0.90 : og === 2 ? 0.99 : 0.999;
+const NIGHT_INDIGO = "#4a5fd0";            // 청소부의 몸빛(쪽빛)
+const NIGHT_RED = "#d2262f";
+const NIGHT_BASES = [
+  {id:"rent",  n:"등록이 갓 끊긴 셋집 2층", tag:"높은 안전 · 내구 낮음", d:"계단이 하나뿐이라 몸을 지키기는 쉽다. 다만 벽이 얇아 금방 녹아내린다.", harm:0.6,  wall:55},
+  {id:"laund", n:"문 닫은 세탁소",          tag:"보통 안전 · 내구 보통", d:"앞유리는 셔터로 막혀 있고, 뒷문 하나가 마음에 걸린다.",                harm:0.85, wall:85},
+  {id:"ware",  n:"철거가 멈춘 공장 창고",    tag:"낮은 안전 · 내구 높음", d:"콘크리트 벽은 두껍지만, 뚫린 데가 많아 몸이 드러난다.",                harm:1.15, wall:125},
+];
+// 맞춤 대사: 남겠다고 나서는 사람의 성격
+const NIGHT_SAC = {
+  "공격적":"제가 남을게요. 저것들 한 번 더 베어 보고 싶었거든요. 대표님은 사람들 데리고 가세요.",
+  "신중함":"계산해 봤어요. 한 사람이 막으면 나머지는 빠져나갈 수 있어요. 그 한 사람은 저로 하죠.",
+  "헌신":"괜찮아요. 등 뒤는 늘 제가 맡았잖아요. 오늘도 그럴게요.",
+  "냉소":"…뭐, 언젠가는 이럴 줄 알았어요. 가요. 뒤돌아보지 말고.",
+  "충동적":"생각할 시간 없어요! 제가 갈게요, 지금 바로요! …다들 뛰어요!",
+  "침착함":"제가 남겠습니다. 문을 닫으면, 열지 마십시오.",
+  "집요함":"끝까지 버티는 건 제가 제일 잘하잖아요. 아침까지 붙들고 있을게요.",
+  "낙천적":"아침은 와요, 대표님. 저는 조금 늦을 뿐이에요. 먼저 가서 기다려요.",
+  "비관적":"…어차피 누군가는 남아야 했잖아요. 그게 저라서 다행이에요. 정말로요.",
+  "오만함":"이런 일은 아무나 못 해요. 그러니까 제가 하는 거죠. 영광인 줄 아세요.",
+  "소심함":"저, 저 무서운데요… 그래도 제가 할게요. 이번엔 제가 하고 싶어요.",
+  "정의감":"지켜야 할 사람이 여기 있어요. 그럼 제가 설 자리도 여기예요.",
+  "탐욕":"계산은 나중에 해요. 이번 건은… 외상으로 달아 둘게요, 대표님.",
+  "다정함":"대표님, 다들 데리고 가요. 아침에 밥 꼭 챙겨 먹이고요. 약속해요.",
+  "무심함":"…제가 갈게요. 별일 아니에요. 정말로.",
+  "광기":"하하, 파도다! 저 안에 뭐가 있는지 늘 궁금했어요. 다녀올게요, 대표님!"};
+function nightSacLine(f){
+  const base = NIGHT_SAC[f.personality] || NIGHT_SAC["다정함"], add = [];
+  if(f.done >= 30) add.push(`의뢰를 ${Math.floor(f.done)}건이나 같이 했잖아요. 이 정도면 남는 장사예요.`);
+  else if(f.done >= 8) add.push(`우리 같이 해낸 의뢰가 ${Math.floor(f.done)}건이에요. 그거면 충분해요.`);
+  else if(f.done > 0) add.push(`같이 한 의뢰가 아직 ${Math.floor(f.done)}건밖에 안 되는 게 좀 아쉽네요.`);
+  const days = S ? Math.max(0, S.day - (f.hiredDay||S.day)) : 0;
+  if(days >= 60) add.push(`이 사무소 문을 연 지 벌써 ${days}일이 지났네요.`);
+  else if(f.founder) add.push("처음 간판 달던 날이 생각나요.");
+  if(f.title) add.push(`[${f.title}]이라고 불리던 것도, 이걸로 마지막이겠네요.`);
+  if(f.ego) add.push("안에서 피어난 그것도, 같이 데려갈게요.");
+  if(f.shin) add.push("금빛은 다 쓰고 갈게요. 남겨 둘 데도 없으니까.");
+  if(fixerTrust(f) >= 85) add.push("대표님 밑에서 일해서 좋았어요.");
+  else if(fixerTrust(f) <= 25) add.push("…솔직히 대표님이 썩 좋진 않았어요. 그래도 이건 제가 할게요.");
+  return [base].concat(add.slice(0, 2));
+}
+/* ---------- 청소부 실루엣: 굽은 등, 등의 연료 탱크, 앞으로 내민 갈고리 ---------- */
+function drawSweeper(c, x, gy, h, t, seed, glow){
+  const bob = Math.sin(t*3.1 + seed)*h*0.012, lean = 0.22 + Math.sin(t*1.3+seed)*0.03, sw = Math.sin(t*2.2 + seed*2)*h*0.02;
+  c.save(); c.translate(x, gy);
+  // 발치 그림자
+  const sh = c.createRadialGradient(0, 0, 0, 0, 0, h*0.32); sh.addColorStop(0, "rgba(0,0,10,.55)"); sh.addColorStop(1, "rgba(0,0,10,0)");
+  c.fillStyle = sh; c.beginPath(); c.ellipse(0, 0, h*0.34, h*0.07, 0, 0, Math.PI*2); c.fill();
+  c.translate(0, bob);
+  const body = c.createLinearGradient(-h*0.2, -h, h*0.25, 0);
+  body.addColorStop(0, "#26306a"); body.addColorStop(0.45, "#1a2150"); body.addColorStop(1, "#0b0f2a");
+  // 연료 탱크(등 뒤)
+  const tx = h*0.16, ty = -h*0.78;
+  c.save(); c.translate(tx, ty); c.rotate(lean*0.6);
+  const tk = c.createLinearGradient(-h*0.09, 0, h*0.09, 0);
+  tk.addColorStop(0, "#1c2138"); tk.addColorStop(0.35, "#5a6390"); tk.addColorStop(0.55, "#2a3050"); tk.addColorStop(1, "#0e1122");
+  c.fillStyle = tk; c.beginPath(); c.roundRect ? c.roundRect(-h*0.085, -h*0.2, h*0.17, h*0.42, h*0.07) : c.rect(-h*0.085, -h*0.2, h*0.17, h*0.42); c.fill();
+  // 탱크 창: 출렁이는 연료 빛
+  const lv = 0.55 + 0.2*Math.sin(t*1.7 + seed);
+  const fl = c.createLinearGradient(0, h*0.16, 0, -h*0.12);
+  fl.addColorStop(0, `rgba(120,140,255,${0.85*glow})`); fl.addColorStop(lv, `rgba(80,100,230,${0.65*glow})`); fl.addColorStop(Math.min(1, lv+0.02), "rgba(10,12,30,.6)"); fl.addColorStop(1, "rgba(10,12,30,.6)");
+  c.fillStyle = fl; c.fillRect(-h*0.028, -h*0.12, h*0.056, h*0.28);
+  c.restore();
+  // 몸통: 굽은 등과 바닥까지 끌리는 외투
+  c.save(); c.rotate(-lean*0.35);
+  c.fillStyle = body; c.beginPath();
+  c.moveTo(-h*0.05, -h*0.98);
+  c.bezierCurveTo(h*0.2, -h*1.0, h*0.26, -h*0.7, h*0.2, -h*0.45);
+  c.bezierCurveTo(h*0.17, -h*0.2, h*0.22 + sw, -h*0.06, h*0.24 + sw, 0);
+  c.lineTo(-h*0.2 - sw, 0);
+  c.bezierCurveTo(-h*0.17 - sw*0.5, -h*0.25, -h*0.2, -h*0.55, -h*0.16, -h*0.78);
+  c.closePath(); c.fill();
+  // 외투 주름(어두운 결)
+  c.strokeStyle = "rgba(4,6,20,.55)"; c.lineWidth = h*0.012;
+  for(let i=0;i<3;i++){ const k = -h*0.1 + i*h*0.1; c.beginPath(); c.moveTo(k, -h*0.5); c.quadraticCurveTo(k + sw*0.6, -h*0.25, k + sw, 0); c.stroke(); }
+  // 머리: 앞으로 숙인 두건과 가면, 가늘게 갈라진 눈빛
+  c.translate(-h*0.08, -h*0.98);
+  const hd = c.createRadialGradient(-h*0.02, -h*0.02, h*0.01, 0, 0, h*0.12); hd.addColorStop(0, "#3a4380"); hd.addColorStop(1, "#11152e");
+  c.fillStyle = hd; c.beginPath(); c.ellipse(0, 0, h*0.1, h*0.115, -0.3, 0, Math.PI*2); c.fill();
+  c.fillStyle = `rgba(170,190,255,${0.9*glow})`; c.shadowColor = "rgba(120,150,255,.9)"; c.shadowBlur = h*0.06;
+  c.fillRect(-h*0.07, -h*0.01, h*0.045, h*0.012); c.fillRect(-h*0.01, -h*0.005, h*0.04, h*0.012);
+  c.restore();
+  // 갈고리 자루와 탱크로 이어진 호스
+  c.shadowBlur = 0;
+  const hx = -h*0.32, hy = -h*0.5 + Math.sin(t*2.6+seed)*h*0.03;
+  c.strokeStyle = "#1a1f3c"; c.lineWidth = h*0.03; c.lineCap = "round";
+  c.beginPath(); c.moveTo(-h*0.1, -h*0.62); c.lineTo(hx, hy); c.stroke();
+  c.strokeStyle = "rgba(60,70,120,.9)"; c.lineWidth = h*0.014;
+  c.beginPath(); c.moveTo(tx, ty + h*0.15); c.bezierCurveTo(h*0.1, -h*0.3, -h*0.2, -h*0.35, hx*0.8, hy + h*0.02); c.stroke();
+  // 갈고리 날: 금속 광택
+  const hk = c.createLinearGradient(hx - h*0.1, hy - h*0.08, hx, hy + h*0.05); hk.addColorStop(0, "#c9cfe6"); hk.addColorStop(0.5, "#5b6386"); hk.addColorStop(1, "#22263f");
+  c.fillStyle = hk; c.beginPath(); c.moveTo(hx, hy); c.quadraticCurveTo(hx - h*0.16, hy - h*0.12, hx - h*0.14, hy + h*0.06);
+  c.quadraticCurveTo(hx - h*0.1, hy - h*0.04, hx + h*0.01, hy + h*0.02); c.closePath(); c.fill();
+  c.restore();
+  // 붉은 테두리 빛(적)
+}
+/* ---------- 장면 셰이더: 거점 안쪽에서 내다본 T자 골목 · 젖은 바닥 · 안개 · 쪽빛 파도 · 녹아내리는 문틀 ---------- */
+const NightGL = (()=>{
+  const VS = `#version 300 es
+in vec2 a;void main(){gl_Position=vec4(a,0.,1.);}`;
+  const FS = `#version 300 es
+precision highp float;
+uniform vec2 uRes;uniform float uT,uTide,uDawn,uShake,uHurt,uIntro;uniform vec3 uMelt;
+uniform vec4 uL[16];uniform int uN;
+uniform sampler2D uLay,uMask,uFx;
+out vec4 o;
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
+ return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
+float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(1.6,1.2,-1.2,1.6);for(int i=0;i<5;i++){v+=a*noise(p);p=m*p;a*=.5;}return v;}
+vec3 lights(vec2 s,float asp){vec3 c=vec3(0.);for(int i=0;i<16;i++){if(i>=uN)break;vec4 L=uL[i];vec2 d=(s-L.xy)*vec2(asp,1.);
+  float r=L.z;c+=vec3(.35,.45,1.)*L.w*exp(-dot(d,d)/(r*r))*.9;}return c;}
+vec3 refl(vec2 s,float asp){vec3 c=vec3(0.);for(int i=0;i<16;i++){if(i>=uN)break;vec4 L=uL[i];if(s.y<L.y)continue;
+  float dx=(s.x-L.x)*asp;float dy=s.y-L.y;float w=L.z*(.6+dy*2.);
+  float rip=.65+.35*noise(vec2(s.x*90.,s.y*260.-uT*2.));
+  c+=vec3(.3,.4,1.)*L.w*exp(-dx*dx/(w*w*.15))*exp(-dy*5.5)*rip*.7;}return c;}
+void main(){
+ vec2 s=gl_FragCoord.xy/uRes;s.y=1.-s.y;
+ s+=vec2(sin(uT*61.),cos(uT*47.))*uShake*.006;
+ float asp=uRes.x/uRes.y;
+ vec2 vp=vec2(.5,.44);float dx=(s.x-vp.x)*asp,dy=s.y-vp.y;
+ float t=uT;vec3 col=vec3(0.);
+ float camH=.32,hw=1.25;
+ // 바닥
+ bool ground=false,wall=false;float zg=0.,X=0.,zw=0.,Yw=0.;
+ if(dy>0.){zg=camH/dy;X=dx*zg;
+  bool mouth=(zg>3.6&&zg<5.0);
+  if(abs(X)<hw||(mouth&&abs(X)<hw+5.))ground=true;}
+ if(abs(dx)>1e-4){zw=hw/abs(dx);Yw=camH-dy*zw;
+  bool mouthW=(zw>3.6&&zw<5.0);
+  if(!mouthW&&Yw>0.&&Yw<7.&&zw<60.&&(!ground||zw<zg))wall=true;
+  if(mouthW&&Yw>0.&&Yw<7.){ // 골목 어귀: 깊숙한 어둠
+   if(!ground){col=vec3(.012,.014,.03)+vec3(.05,.06,.16)*uTide*smoothstep(7.,0.,Yw)*.6;}
+  }}
+ vec3 sky=mix(vec3(.02,.022,.045),vec3(.07,.08,.17),smoothstep(.1,.44,s.y));
+ sky+=vec3(.15,.2,.55)*uTide*smoothstep(.3,.45,s.y)*(.55+.45*sin(t*1.3));
+ sky=mix(sky,vec3(.32,.33,.38),uDawn*.85);
+ if(!ground&&!wall&&col==vec3(0.))col=sky;
+ if(wall){
+  vec2 uv=vec2(zw*1.3,Yw*1.25);
+  float brick=fbm(uv*vec2(3.,5.))*.5+.5*noise(uv*40.);
+  vec3 wc=mix(vec3(.03,.032,.05),vec3(.075,.07,.085),brick);
+  vec2 cell=fract(uv*vec2(1.,1.2));vec2 id=floor(uv*vec2(1.,1.2));
+  float win=step(.25,cell.x)*step(cell.x,.75)*step(.3,cell.y)*step(cell.y,.8)*step(1.,Yw)*step(4.,zw);
+  float lit=step(.93,hash(id))*(.6+.4*step(.5,noise(vec2(t*3.,id.x))));
+  wc=mix(wc,vec3(.01,.012,.02),win*.8);wc+=vec3(.9,.6,.3)*win*lit*.35*(1.-uTide*.6);
+  float fog=1.-exp(-zw*.07);
+  wc=mix(wc,vec3(.04,.05,.11)+vec3(.12,.15,.4)*uTide*.5,fog);
+  wc=mix(wc,wc*1.6+vec3(.18,.18,.2),uDawn*.6);
+  col=wc;
+ }
+ if(ground){
+  float wet=fbm(vec2(X*1.5,zg*1.2))*.8;
+  vec3 gc=mix(vec3(.018,.02,.03),vec3(.05,.05,.065),fbm(vec2(X*4.,zg*3.)));
+  float puddle=smoothstep(.45,.6,fbm(vec2(X*.8,zg*.6)+3.));
+  gc+=refl(s,asp)*(.35+.9*puddle)*(1.-uDawn*.6);
+  gc+=sky*puddle*.5;
+  float fog=1.-exp(-zg*.06);
+  gc=mix(gc,vec3(.035,.045,.1)+vec3(.15,.2,.5)*uTide*.45,fog);
+  // 녹아 흐르는 연료 자국
+  float slick=smoothstep(.62,.7,fbm(vec2(X*2.,zg*1.5-t*.05)))*smoothstep(12.,2.,zg);
+  gc=mix(gc,vec3(.06,.07,.18)+vec3(.25,.3,.8)*pow(noise(vec2(X*30.,zg*20.-t)),3.),slick*.55*uTide);
+  col=gc;
+ }
+ col+=lights(s,asp);
+ // 안개 띠와 쪽빛 파도(멀리서 밀려오는 빛)
+ float mist=fbm(vec2(s.x*3.+t*.03,s.y*6.-t*.02));
+ col+=vec3(.06,.07,.15)*mist*smoothstep(.25,.6,s.y)*(.6+uTide*.8);
+ float wave=sin((s.y-vp.y)*-40.+t*2.2+fbm(vec2(s.x*4.,t*.2))*6.);
+ col+=vec3(.12,.16,.5)*uTide*smoothstep(.62,.44,s.y)*smoothstep(.3,.44,s.y)*max(0.,wave)*.35;
+ // 레이어(청소부·입자·고리): 사살 연출처럼 노이즈 문턱으로 재가 되어 흩어진다
+ vec4 ly=texture(uLay,vec2(s.x,s.y));vec4 mk=texture(uMask,vec2(s.x,s.y));
+ if(ly.a>0.){
+  float nz=fbm(gl_FragCoord.xy*.035)*.75+noise(gl_FragCoord.xy*.21)*.25;
+  float dv=mk.r*1.05;
+  if(nz<dv){ly=vec4(0.);}
+  else{vec3 edge=vec3(1.,.55,.25)*smoothstep(dv+.08,dv,nz)*1.7*step(.01,mk.r);ly.rgb+=edge*ly.a;}
+ }
+ col=col*(1.-ly.a)+ly.rgb;
+ vec4 fx=texture(uFx,s);col=col*(1.-fx.a)+fx.rgb;
+ // 문틀: 우리가 숨은 건물의 뚫린 벽 — 녹아내리면 쪽빛 연료가 흘러내린다
+ float edgeN=fbm(s*vec2(9.,6.))*.04;
+ float inL=.07+edgeN+uMelt.x*.05*fbm(vec2(s.y*8.,t*.3));
+ float inR=.93-edgeN-uMelt.z*.05*fbm(vec2(s.y*8.+4.,t*.3));
+ float inT=.08+edgeN+uMelt.y*.04*fbm(vec2(s.x*9.,t*.3));
+ float inB=.91-edgeN*.5;
+ float fr=1.-step(inL,s.x)*step(s.x,inR)*step(inT,s.y)*step(s.y,inB);
+ if(fr>0.){
+  float g=fbm(s*vec2(40.,30.));vec3 cc=mix(vec3(.025,.024,.03),vec3(.07,.065,.07),g);
+  cc*=.6+.4*smoothstep(0.,.08,min(min(s.x,1.-s.x),min(s.y,1.-s.y))+.04);
+  // 녹는 자리: 위에서 아래로 흐르는 자국
+  float mside=s.x<.5?uMelt.x:uMelt.z;mside=max(mside,uMelt.y*smoothstep(.2,0.,s.y));
+  float drip=smoothstep(.55,.75,fbm(vec2(s.x*26.,s.y*3.-t*.25)))*mside;
+  cc=mix(cc,vec3(.05,.06,.16)+vec3(.35,.42,1.)*pow(noise(vec2(s.x*60.,s.y*30.-t*.8)),4.)*.8,drip);
+  cc=mix(cc,cc*1.5+vec3(.1),uDawn*.5);
+  col=cc;
+ }
+ // 다친 만큼 가장자리가 붉게 좁아진다
+ vec2 q=s-.5;float vig=smoothstep(.85,.25,length(q*vec2(1.1,1.)));
+ col*=mix(.35,1.,vig);
+ col+=vec3(.5,0.,.05)*uHurt*(1.-vig)*(.6+.4*sin(t*4.));
+ col=mix(col,vec3(.0),uIntro*.55);
+ col+=(hash(gl_FragCoord.xy+fract(t)*91.)-.5)*.035;
+ o=vec4(col,1.);
+}`;
+  let gl=null, cv=null, prog=null, U={}, tLay=null, tMask=null, tFx=null;
+  function init(canvas){
+    cv = canvas; gl = cv.getContext("webgl2", {antialias:false, alpha:false, preserveDrawingBuffer:false});
+    if(!gl) return false;
+    const sh=(ty,src)=>{const s=gl.createShader(ty);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
+    try{ prog=gl.createProgram(); gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS)); gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(prog);
+      if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog)); }catch(e){ console.warn("NightGL", e); gl=null; return false; }
+    gl.useProgram(prog);
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(prog,"a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    ["uRes","uT","uTide","uDawn","uShake","uHurt","uIntro","uMelt","uL","uN","uLay","uMask","uFx"].forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+    const mk=()=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
+      [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]].forEach(([k,v])=>gl.texParameteri(gl.TEXTURE_2D,k,v)); return t;};
+    tLay=mk(); tMask=mk(); tFx=mk(); gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+    return true;
+  }
+  function draw(p, lay, mask, fxl){
+    if(!gl) return;
+    gl.viewport(0,0,cv.width,cv.height); gl.useProgram(prog);
+    gl.uniform2f(U.uRes,cv.width,cv.height); gl.uniform1f(U.uT,p.t); gl.uniform1f(U.uTide,p.tide); gl.uniform1f(U.uDawn,p.dawn);
+    gl.uniform1f(U.uShake,p.shake); gl.uniform1f(U.uHurt,p.hurt); gl.uniform1f(U.uIntro,p.intro); gl.uniform3f(U.uMelt,p.melt[0],p.melt[1],p.melt[2]);
+    const arr=new Float32Array(64); const n=Math.min(16,p.lights.length); p.lights.slice(0,16).forEach((L,i)=>arr.set(L,i*4));
+    gl.uniform4fv(U.uL,arr); gl.uniform1i(U.uN,n);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,tLay); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,lay); gl.uniform1i(U.uLay,0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,tMask); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,mask); gl.uniform1i(U.uMask,1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D,tFx); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,fxl); gl.uniform1i(U.uFx,2);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+  }
+  return {init, draw, ok:()=>!!gl};
+})();
+/* ---------- 「81분」 본체 ---------- */
+const NightMG = (()=>{
+  const LANES = [ // 화면 좌표(0~1): 멀리서(far) → 문 앞(near)
+    {far:[0.30,0.505], near:[0.30,0.86], s0:0.30, s1:1.0},
+    {far:[0.50,0.465], near:[0.50,0.88], s0:0.16, s1:1.05},
+    {far:[0.70,0.505], near:[0.70,0.86], s0:0.30, s1:1.0}];
+  let ov, cv, lay, lx, mask, mx, fxl, fx, W, H, raf = 0, P = null;
+  const css = `
+.nt-ov{position:fixed;inset:0;z-index:48;background:#000;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:none}
+.nt-ov canvas.nt-gl{position:absolute;inset:0;width:100%;height:100%}
+.nt-hud{position:absolute;inset:0;pointer-events:none;font-family:inherit}
+.nt-clock{position:absolute;top:14px;left:50%;transform:translateX(-50%);text-align:center;color:#e8dfe0;text-shadow:0 0 12px rgba(0,0,0,.9)}
+.nt-clock b{display:block;font-size:clamp(26px,5vw,44px);letter-spacing:.06em;font-weight:700;color:#f2e9ea;font-family:"Noto Serif KR",serif}
+.nt-clock span{font-size:13px;color:#c9c3d9;letter-spacing:.2em}
+.nt-bars{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);width:min(560px,86vw);display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:12px;color:#cfc8d8;text-shadow:0 1px 4px #000}
+.nt-bar{height:8px;border-radius:5px;background:rgba(255,255,255,.08);overflow:hidden;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.nt-bar i{display:block;height:100%;width:100%;transition:width .25s}
+.nt-bar.w i{background:linear-gradient(90deg,#5a5f70,#a8adbf)}
+.nt-bar.b i{background:linear-gradient(90deg,#2f8452,#7fe0a5)}
+.nt-bar.s i{background:linear-gradient(90deg,#3c4fae,#8fa2ff)}
+.nt-say{position:absolute;left:50%;top:22%;transform:translateX(-50%);width:min(720px,90vw);text-align:center;color:#e9e2e6;font-size:clamp(14px,2.4vw,18px);text-shadow:0 0 10px #000,0 0 3px #000;opacity:0;transition:opacity .5s}
+.nt-say.on{opacity:1}
+.nt-team{position:absolute;right:14px;top:14px;display:flex;flex-direction:column;gap:4px;align-items:flex-end;font-size:12px}
+.nt-team span{background:rgba(10,14,24,.6);border:1px solid rgba(127,224,165,.35);color:#bff0d0;padding:2px 8px;border-radius:10px}
+.nt-title{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(8px,2vh,18px);pointer-events:none}
+.nt-line{font-family:"Noto Serif KR",serif;font-weight:700;font-size:clamp(20px,4.4vw,40px);color:${NIGHT_RED};letter-spacing:.04em;filter:url(#ntWave);opacity:0;transform:translateY(8px);transition:opacity 1.1s ease,transform 1.4s ease;text-shadow:0 0 18px rgba(210,38,47,.45)}
+.nt-line.on{opacity:1;transform:none}
+.nt-line em{font-style:normal;color:${NIGHT_INDIGO};text-shadow:0 0 16px rgba(90,110,255,.85),0 0 2px #8fa2ff}
+.nt-skip{position:absolute;bottom:18px;right:18px;color:#8d879c;font-size:12px;pointer-events:none}
+.nt-pick{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;background:radial-gradient(ellipse at 50% 60%,rgba(5,6,14,.35),rgba(0,0,0,.75))}
+.nt-pick h3{margin:0 0 4px;color:#efe6e8;font-family:"Noto Serif KR",serif;font-size:clamp(18px,3vw,24px)}
+.nt-pick p.m{margin:0 0 6px;color:#b9b2c6;font-size:13px;text-align:center}
+.nt-cards{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.nt-card{width:min(230px,84vw);text-align:left;background:linear-gradient(180deg,rgba(24,26,44,.92),rgba(10,11,20,.94));border:1px solid rgba(120,135,220,.35);border-radius:10px;padding:12px 14px;color:#e6e0ea;cursor:pointer;transition:transform .2s,border-color .2s}
+.nt-card:hover{transform:translateY(-3px);border-color:${NIGHT_INDIGO}}
+.nt-card b{display:block;font-size:15px;margin-bottom:4px}.nt-card i{display:block;font-style:normal;font-size:12px;color:#9fb0ff;margin-bottom:6px}.nt-card small{color:#b5aec2;font-size:12px;line-height:1.5}
+.nt-sac{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.nt-sac button{background:rgba(20,40,30,.85);border:1px solid rgba(127,224,165,.5);color:#d7f5e2;padding:10px 16px;border-radius:8px;font-size:14px;cursor:pointer}
+.nt-sac button:hover{background:rgba(40,80,55,.9)}
+.vn-night .vn-bg{background:radial-gradient(ellipse at 50% 40%,rgba(6,8,20,.25),rgba(0,0,4,.78) 75%)}`;
+  function ensureCss(){ if(document.getElementById("ntCss")) return; const st = document.createElement("style"); st.id = "ntCss"; st.textContent = css; document.head.appendChild(st);
+    const sv = document.createElementNS("http://www.w3.org/2000/svg","svg"); sv.setAttribute("width","0"); sv.setAttribute("height","0"); sv.style.position="absolute";
+    sv.innerHTML = `<filter id="ntWave" x="-10%" y="-40%" width="120%" height="180%"><feTurbulence id="ntTurb" type="fractalNoise" baseFrequency="0.012 0.06" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G"/></filter>`;
+    document.body.appendChild(sv); }
+  const now = () => performance.now()/1000;
+  function open(team){
+    ensureCss();
+    ov = document.createElement("div"); ov.className = "nt-ov";
+    ov.innerHTML = `<canvas class="nt-gl"></canvas><div class="nt-hud"></div>`;
+    document.body.appendChild(ov);
+    cv = ov.querySelector("canvas.nt-gl");
+    const dpr = Math.min(window.devicePixelRatio||1, 1.5), sc = Math.min(1, 1400/(innerWidth*dpr));
+    W = Math.max(320, Math.round(innerWidth*dpr*sc)); H = Math.max(240, Math.round(innerHeight*dpr*sc));
+    cv.width = W; cv.height = H;
+    lay = document.createElement("canvas"); lay.width = W; lay.height = H; lx = lay.getContext("2d");
+    fxl = document.createElement("canvas"); fxl.width = W; fxl.height = H; fx = fxl.getContext("2d");
+    mask = document.createElement("canvas"); mask.width = Math.ceil(W/4); mask.height = Math.ceil(H/4); mx = mask.getContext("2d");
+    let ok = false; try{ ok = NightGL.init(cv); }catch(_){ ok = false; }
+    if(!ok){ const c2 = document.createElement("canvas"); c2.className = "nt-gl"; c2.width = W; c2.height = H; cv.replaceWith(c2); cv = c2; }
+    P = {t0: now(), t:0, tide:0.2, dawn:0, shake:0, hurt:0, intro:1, melt:[0,0,0], team, groups:[], parts:[], ring:null, msg:null, gl:ok,
+         lights:[], extraDraw:null};
+    loop();
+    return ok;
+  }
+  function close(){ cancelAnimationFrame(raf); raf = 0; if(ov){ ov.remove(); ov = null; } P = null; }
+  function hud(){ return ov.querySelector(".nt-hud"); }
+  // 화면 좌표 → 무리 위치
+  function lanePos(g){ const L = LANES[g.lane], k = Math.pow(1 - g.z, 1.35);
+    return {x: L.far[0] + (L.near[0]-L.far[0])*k, y: L.far[1] + (L.near[1]-L.far[1])*k, s: L.s0 + (L.s1-L.s0)*k}; }
+  function members(g){ // 무리 안의 자리
+    if(!g.slots){ g.slots = []; for(let i=0;i<8;i++) g.slots.push({dx:(Math.random()-0.5)*1.1, dz:Math.random()*0.5, seed:Math.random()*6}); }
+    return g.slots; }
+  function drawLayer(){
+    const t = P.t; lx.clearRect(0,0,W,H); fx.clearRect(0,0,W,H); mx.clearRect(0,0,mask.width,mask.height);
+    P.lights = [];
+    const list = P.groups.slice().sort((a,b)=>b.z-a.z);
+    for(const g of list){ const p = lanePos(g), base = H*0.2*p.s*(g.big||1);
+      const sl = members(g);
+      // 쓰러지는 자리(재가 되는 중)
+      g.fall.forEach(fx=>{ const s = sl[fx.i], x = (p.x + s.dx*0.06*p.s)*W, y = (p.y - s.dz*0.02*p.s)*H;
+        drawSweeper(lx, x, y, base, t, s.seed, 1);
+        const r = base*0.75; mx.fillStyle = `rgb(${Math.round(255*clamp(fx.k,0,1))},0,0)`; mx.beginPath(); mx.ellipse(x/4, (y-base*0.5)/4, r/4*0.7, r/4, 0, 0, Math.PI*2); mx.fill(); });
+      for(let i=0;i<g.n;i++){ const s = sl[i], x = (p.x + s.dx*0.06*p.s)*W, y = (p.y - s.dz*0.02*p.s)*H;
+        lx.save(); lx.shadowColor = "rgba(230,40,50,.55)"; lx.shadowBlur = base*0.08; drawSweeper(lx, x, y, base, t, s.seed, 1); lx.restore();
+        P.lights.push([x/W + 0.012*p.s, (y - base*0.78)/H, 0.02 + 0.03*p.s, 0.45 + 0.2*Math.sin(t*1.7 + s.seed)]); }
+      if(g.dying){ const r = base*0.9; mx.fillStyle = `rgb(${Math.round(255*clamp(g.dk,0,1))},0,0)`; mx.beginPath(); mx.ellipse(p.x*W/4, (p.y*H - base*0.5)/4, r/4*1.4, r/4*1.1, 0, 0, Math.PI*2); mx.fill(); }
+    }
+    // 고리: 겹칠 때 다시 누르면 한 번에 끊어 낸다
+    if(P.ring){ const g = P.ring.g, p = lanePos(g), base = H*0.2*p.s*(g.big||1), cx = p.x*W, cy = p.y*H - base*0.5;
+      const k = (P.t - P.ring.t0)/P.ring.dur, R = base*(1.9 - 1.5*k), tgt = base*0.62, win = P.ring.win*base;
+      fx.save(); fx.globalCompositeOperation = "lighter";
+      const zone = fx.createRadialGradient(cx, cy, Math.max(1, tgt - win), cx, cy, tgt + win);
+      zone.addColorStop(0, "rgba(255,200,120,0)"); zone.addColorStop(0.5, "rgba(255,190,110,.35)"); zone.addColorStop(1, "rgba(255,200,120,0)");
+      fx.fillStyle = zone; fx.beginPath(); fx.arc(cx, cy, tgt + win, 0, Math.PI*2); fx.fill();
+      const hit = Math.abs(R - tgt) <= win;
+      for(let i=0;i<3;i++){ fx.strokeStyle = hit ? `rgba(255,214,150,${0.75 - i*0.22})` : `rgba(150,170,255,${0.7 - i*0.2})`; fx.lineWidth = Math.max(1.5, base*0.035)*(1 + i*1.6);
+        fx.shadowColor = hit ? "rgba(255,190,110,.9)" : "rgba(110,130,255,.9)"; fx.shadowBlur = base*0.15;
+        fx.beginPath(); for(let a=0;a<=64;a++){ const th = a/64*Math.PI*2, rr = R*(1 + 0.03*Math.sin(th*6 + P.t*9 + i)); fx.lineTo(cx + Math.cos(th)*rr, cy + Math.sin(th)*rr); } fx.stroke(); }
+      fx.restore(); }
+    // 입자: 불씨(재)와 흡수되는 연료
+    fx.save(); fx.globalCompositeOperation = "lighter";
+    for(const q of P.parts){ const a = clamp(q.life/q.max, 0, 1);
+      const gr = fx.createRadialGradient(q.x, q.y, 0, q.x, q.y, q.r);
+      gr.addColorStop(0, `rgba(${q.c[0]},${q.c[1]},${q.c[2]},${0.9*a})`); gr.addColorStop(1, `rgba(${q.c[0]},${q.c[1]},${q.c[2]},0)`);
+      fx.fillStyle = gr; fx.beginPath(); fx.arc(q.x, q.y, q.r, 0, Math.PI*2); fx.fill(); }
+    fx.restore();
+    if(P.extraDraw) P.extraDraw(lx, W, H, P.t);
+  }
+  function burst(x, y, n, col, up, spread, tx){ for(let i=0;i<n;i++){ const a = Math.random()*Math.PI*2, v = spread*(0.3 + Math.random());
+    P.parts.push({x, y, vx: Math.cos(a)*v, vy: Math.sin(a)*v*0.5 - up*(0.5 + Math.random()), r: 2 + Math.random()*4*(H/700), life: 0.8 + Math.random()*1.2, max: 2, c: col, tx}); } }
+  function step(dt){
+    P.parts.forEach(q=>{ if(q.tx){ q.vx += (q.tx[0] - q.x)*dt*3; q.vy += (q.tx[1] - q.y)*dt*3; q.vx *= 0.92; q.vy *= 0.92; } else q.vy -= 18*dt;
+      q.x += q.vx*dt; q.y += q.vy*dt; q.life -= dt; });
+    P.parts = P.parts.filter(q=>q.life > 0);
+    P.groups.forEach(g=>{ g.fall.forEach(f=>f.k += dt/1.1); g.fall = g.fall.filter(f=>f.k < 1.1); if(g.dying) g.dk += dt/1.2; });
+    P.groups = P.groups.filter(g=>!(g.dying && g.dk > 1.15));
+    P.shake = Math.max(0, P.shake - dt*2.5);
+  }
+  function loop(){ raf = requestAnimationFrame(loop); if(!P) return;
+    const t = now() - P.t0, dt = Math.min(0.05, t - P.t); P.t = t;
+    if(P.tick) P.tick(dt); step(dt); drawLayer();
+    if(P.gl) NightGL.draw(P, lay, mask, fxl);
+    else { const c = cv.getContext("2d"); c.fillStyle = "#05060d"; c.fillRect(0,0,W,H); c.drawImage(lay,0,0); c.drawImage(fxl,0,0); } }
+  const sleep = ms => new Promise(r=>setTimeout(r, ms));
+  function say(text, ms=2600){ const h = hud(); let el = h.querySelector(".nt-say"); if(!el){ el = document.createElement("div"); el.className = "nt-say"; h.appendChild(el); }
+    el.innerHTML = text; el.classList.add("on"); clearTimeout(el._t); el._t = setTimeout(()=>el.classList.remove("on"), ms); }
+  /* ① 진입: 파도처럼 일렁이는 붉은 글씨, '뒷골목의 밤'만 청소부의 몸빛으로 */
+  async function intro(){
+    const h = hud(); const box = document.createElement("div"); box.className = "nt-title";
+    const L = ["밤이 늦었다.", "곧 <em>뒷골목의 밤</em>이 찾아온다.", "사무소로 돌아가기엔 늦었다.", "준비해야 한다.", "그 파도를."];
+    box.innerHTML = L.map(x=>`<div class="nt-line">${x}</div>`).join("") + `<div class="nt-skip">화면을 누르면 넘어간다</div>`;
+    h.appendChild(box);
+    const turb = document.getElementById("ntTurb");
+    let skip = false; const onSkip = ()=>{ skip = true; }; ov.addEventListener("pointerdown", onSkip);
+    P.tick = dt=>{ P.tide = Math.min(1, P.tide + dt*0.08); if(turb){ const k = P.t; turb.setAttribute("baseFrequency", `${(0.010 + 0.004*Math.sin(k*0.9)).toFixed(4)} ${(0.05 + 0.02*Math.sin(k*1.3)).toFixed(4)}`); } };
+    const lines = box.querySelectorAll(".nt-line");
+    for(let i=0;i<lines.length;i++){ if(skip) break; lines[i].classList.add("on"); await sleep(i===1 ? 1700 : 1250); }
+    lines.forEach(l=>l.classList.add("on"));
+    if(!skip) await new Promise(r=>{ const f = ()=>{ ov.removeEventListener("pointerdown", f); r(); }; ov.addEventListener("pointerdown", f); setTimeout(f, 5200); });
+    ov.removeEventListener("pointerdown", onSkip);
+    box.style.transition = "opacity .9s"; box.style.opacity = "0"; await sleep(900); box.remove();
+  }
+  /* ② 거점 고르기 */
+  function pickBase(){ P.intro = 0.6; return new Promise(res=>{ const h = hud(); const el = document.createElement("div"); el.className = "nt-pick"; el.style.pointerEvents = "auto";
+    el.innerHTML = `<h3>어디에서 버틸 것인가</h3><p class="m">주거 등록이 된 집은 문을 열어 주지 않는다. 남은 건 등록이 없는 건물뿐이다.</p>
+      <div class="nt-cards">${NIGHT_BASES.map((b,i)=>`<button class="nt-card" data-i="${i}"><b>${esc(b.n)}</b><i>${esc(b.tag)}</i><small>${esc(b.d)}</small></button>`).join("")}</div>`;
+    h.appendChild(el);
+    el.querySelectorAll(".nt-card").forEach(b=>b.onclick = ()=>{ el.remove(); res(NIGHT_BASES[+b.dataset.i]); }); }); }
+  /* ③ 한 파: 20분(실제 약 40초) */
+  const WAVES = [{gap:3.1, n:[1,2], spd:1/9.5}, {gap:2.35, n:[1,3], spd:1/8}, {gap:1.75, n:[2,4], spd:1/6.6, surge:true}];
+  function wave(wi, st){ return new Promise(res=>{
+    const h = hud(); const W0 = WAVES[wi];
+    h.innerHTML = `<div class="nt-clock"><b>3:13</b><span>${["첫 번째 파도","두 번째 파도","세 번째 파도"][wi]}</span></div>
+      <div class="nt-team">${P.team.map(f=>`<span>${esc(f.name)}</span>`).join("")}</div>
+      <div class="nt-bars"><span>벽</span><div class="nt-bar w"><i></i></div><span>버팀</span><div class="nt-bar b"><i></i></div><span>숨</span><div class="nt-bar s"><i></i></div></div>`;
+    const clk = h.querySelector(".nt-clock b"), bw = h.querySelector(".nt-bar.w i"), bb = h.querySelector(".nt-bar.b i"), bs = h.querySelector(".nt-bar.s i");
+    const startMin = 13 + wi*30, DUR = window.__nightDur || 40;
+    let el = 0, spawnT = 1.2, surged = false, ended = false;
+    if(wi === 0) setTimeout(()=>say("다가오는 무리를 눌러 겨눈다. 빛 고리가 금빛으로 겹칠 때 한 번 더 누르면 <b>한 번에</b> 끊어 낸다.", 5200), 600);
+    else say(wi === 1 ? "땅이 다시 울린다." : "골목 끝까지 불빛이 이어진다. 마지막 파도다.", 2800);
+    const spawn = (lane)=>{ const n = rnd(W0.n[0], W0.n[1]); P.groups.push({lane: lane!=null ? lane : rnd(0,2), z: 1, n, spd: W0.spd*(0.85 + Math.random()*0.3), fall: [], big: 1, dying: false, dk: 0, atDoor: 0}); };
+    const finish = (why)=>{ if(ended) return; ended = true; ov.removeEventListener("pointerdown", onDown); P.ring = null; P.tick = null; res(why); };
+    // 겨누기 → 끊기
+    const onDown = e=>{ const r = cv.getBoundingClientRect(), x = (e.clientX - r.left)/r.width, y = (e.clientY - r.top)/r.height;
+      if(P.ring){ resolve(); return; }
+      let best = null, bd = 1e9;
+      P.groups.forEach(g=>{ if(g.dying || g.n <= 0) return; const p = lanePos(g), base = 0.2*p.s*(g.big||1), cy = p.y - base*0.5, d = Math.hypot((x - p.x)*W/H, y - cy);
+        if(d < Math.max(0.09, base*0.9) && d < bd){ bd = d; best = g; } });
+      if(!best) return;
+      if(st.breath < 14){ say("숨이 차다. 잠깐만 버틴다.", 1500); return; }
+      st.breath -= 14;
+      const grBonus = clamp((9 - st.bestG)*0.012, 0, 0.1);
+      P.ring = {g: best, t0: P.t, dur: 1.15 - Math.min(0.25, best.big*0.05) + 0.03*P.team.length, win: 0.11 + 0.02*Math.min(4, P.team.length - 1) + grBonus}; };
+    const resolve = ()=>{ const R = P.ring; if(!R) return; P.ring = null; const g = R.g; if(g.dying) return;
+      const k = (P.t - R.t0)/R.dur, Rr = 1.9 - 1.5*k, diff = Math.abs(Rr - 0.62), p = lanePos(g), base = H*0.2*p.s*(g.big||1), cx = p.x*W, cy = p.y*H - base*0.5;
+      if(diff <= R.win){ // 한 번에: 재가 되어 흩어진다
+        g.dying = true; g.dk = 0; st.clean++; st.cuts++;
+        burst(cx, cy, 26 + g.n*10, [255,150,70], 60*(H/700), 50*(H/700)); P.shake = 0.5;
+      } else { // 덜 끊었다: 쓰러진 자리를 남은 것들이 흡수한다
+        st.cuts++; const kill = Math.max(1, Math.floor(g.n/2));
+        if(g.n - kill <= 0){ g.dying = true; g.dk = 0; burst(cx, cy, 20, [255,150,70], 50*(H/700), 40*(H/700)); }
+        else { for(let i=0;i<kill;i++) g.fall.push({i: g.n - 1 - i, k: 0}); g.n -= kill; g.big = Math.min(1.9, (g.big||1)*1.18); g.spd *= 1.12;
+          burst(cx, cy + base*0.3, 30, [110,130,255], 10, 60*(H/700), [cx, cy]);
+          st.bear -= 6*st.harm; P.hurt = Math.min(1, P.hurt + 0.25); say("덜 끊었다 — 쓰러진 것을 나머지가 삼킨다.", 1600); } } };
+    ov.addEventListener("pointerdown", onDown);
+    P.tick = dt=>{ el += dt; P.tide = 0.55 + 0.25*Math.sin(P.t*0.7) + wi*0.12;
+      const m = Math.floor(startMin + Math.min(20, el/DUR*20)); clk.textContent = m >= 60 ? `4:${String(m - 60).padStart(2,"0")}` : `3:${String(m).padStart(2,"0")}`;
+      P.intro = Math.max(0, P.intro - dt*0.6);
+      spawnT -= dt; if(el < DUR - 4 && spawnT <= 0){ spawn(); spawnT = W0.gap*(0.75 + Math.random()*0.5); }
+      if(W0.surge && !surged && el > DUR*0.55){ surged = true; [0,1,2].forEach(l=>spawn(l)); say("파도가 한꺼번에 밀려온다!", 1800); P.shake = 1; }
+      st.breath = Math.min(100, st.breath + dt*(7 + 1.2*P.team.length));
+      if(P.ring && (P.t - P.ring.t0) > P.ring.dur) resolve();
+      P.groups.forEach(g=>{ if(g.dying) return; g.z = Math.max(0, g.z - g.spd*dt);
+        if(g.z <= 0){ g.atDoor += dt; const lane = g.lane, dmg = dt*g.n*(g.big||1)*3.2;
+          if(st.wall > 0){ st.wall = Math.max(0, st.wall - dmg); P.melt[lane===1?1:lane] = Math.min(1, P.melt[lane===1?1:lane] + dt*0.12); if(Math.random() < dt*2) P.shake = Math.min(1, P.shake + 0.3); }
+          else { st.bear -= dmg*0.9*st.harm; P.hurt = Math.min(1, P.hurt + dt*0.4); }
+          if(st.wall <= 0 && !st.wallMsg){ st.wallMsg = true; st.wallBroke = true; say("벽이 녹아내렸다. 갈고리가 안으로 들어온다.", 2200); } } });
+      P.hurt = Math.max(0, P.hurt - dt*0.15);
+      bw.style.width = `${clamp(st.wall/st.wallMax,0,1)*100}%`; bb.style.width = `${clamp(st.bear/100,0,1)*100}%`; bs.style.width = `${clamp(st.breath/100,0,1)*100}%`;
+      if(st.bear <= 0) finish("down");
+      else if(el >= DUR){ // 청소부가 쓸고 지나간다: 남은 무리는 물러간다
+        P.groups.forEach(g=>{ if(!g.dying){ g.dying = true; g.dk = 0.2; } }); finish("ok"); } };
+  }); }
+  /* ④ 쉬는 틈: 비주얼노벨 */
+  async function rest(wi, st){
+    P.tick = dt=>{ P.tide = Math.max(0.15, P.tide - dt*0.2); };
+    const T = P.team, a = pick(T), b = T.find(f=>f!==a) || a, L = leader();
+    const sayer = f => f.isLeader ? "{L}" : f.name;
+    if(wi === 0){
+      const o = await nightVN(`3시 33분 — 쉬는 틈`, [["", "땅울림이 멎었다. 연료 냄새가 골목에 낮게 깔려 있다."],
+        [sayer(a), pick(["…다들 살아 있죠?", "숨 좀 고르죠. 금방 또 올 거예요.", "벽이 생각보다 빨리 녹아요."])],
+        [sayer(b), pick(["십 분이에요. 딱 십 분.", "다음은 더 많이 올 거예요.", "손이 아직도 떨려요."])]], "십 분이 남았다. 무엇을 할까?",
+        [{t:"녹은 벽을 막는다", al:null}, {t:"다 같이 숨을 고른다", al:null}]);
+      if(o && o.t.startsWith("녹은")){ st.wall = Math.min(st.wallMax, st.wall + st.wallMax*0.4); P.melt = P.melt.map(m=>m*0.5); }
+      else { st.bear = Math.min(100, st.bear + 22); st.breath = 100; }
+    } else {
+      const o = await nightVN(`3시 53분 — 쉬는 틈`, [["", "셔터를 두드리는 소리가 들린다. 세 번, 그리고 한 번 더."],
+        ["낯선 목소리", "열어 주세요… 제발요. 등록증이 만료된 걸 몰랐어요. 집이, 집이 녹았어요."],
+        [sayer(a), "…다음 파도까지 얼마 안 남았어요."]], "문밖의 사람을 어떻게 할까?",
+        [{t:"들인다", al:{정의:1}}, {t:"값을 받고 들인다", al:{현실:1}}, {t:"셔터를 열지 않는다", al:{질서:1}}]);
+      if(o){ vnApplyAlign(o, `뒷골목의 밤 — 문밖의 사람: ${o.t}`);
+        if(o.t === "들인다"){ st.guest = true; st.bear = Math.max(10, st.bear - 8); }
+        else if(o.t.startsWith("값을")){ st.guest = true; st.paid = true; S.money += 3000; st.bear = Math.max(10, st.bear - 8); }
+        else { st.shut = true; } }
+    }
+  }
+  /* ⑤ 희생: 한 명이 파도 속으로 걸어간다(아군 초록 실루엣이 사살 연출처럼 재가 되어 흩어진다) */
+  async function sacrifice(f){
+    const h = hud(); h.innerHTML = "";
+    const g = {z: 0, k: 0, fall: 0};
+    P.tide = 1;
+    P.extraDraw = (c, W, H, t)=>{ const z = g.z, x = W*0.5, y = H*(0.88 - 0.4*Math.pow(z, 0.7)), hh = H*0.42*(1 - 0.8*Math.pow(z, 0.6));
+      c.save(); c.globalAlpha = 1 - clamp(g.fall, 0, 1);
+      try{ drawFixer(c, x, y, hh, {face:1, view:"back", col: SIDE_COL.ally.fill, state:"idle", t}); }catch(_){}
+      c.restore();
+      if(g.fall > 0){ mx.fillStyle = `rgb(${Math.round(255*clamp(g.fall,0,1))},0,0)`; mx.beginPath(); mx.ellipse(x/4, (y - hh*0.5)/4, hh/4*0.5, hh/4*0.7, 0, 0, Math.PI*2); mx.fill(); } };
+    let el = 0; await new Promise(r=>{ P.tick = dt=>{ el += dt; g.z = Math.min(1, el/5.5);
+      if(el > 4.2 && !g.ash){ g.ash = 1; const y = H*(0.88 - 0.4*Math.pow(g.z,0.7)); burst(W*0.5, y - H*0.12, 120, [255,150,70], 70*(H/700), 40*(H/700)); }
+      if(el > 4.2) g.fall = (el - 4.2)/1.6;
+      if(el > 6.6) r(); }; });
+    P.extraDraw = null;
+  }
+  /* ⑥ 새벽 */
+  async function dawn(text){ let el = 0; await new Promise(r=>{ P.tick = dt=>{ el += dt; P.dawn = clamp(el/3.5, 0, 1); P.tide = Math.max(0, 1 - el/2.5); if(el > 4) r(); };
+    P.groups.forEach(g=>{ if(!g.dying){ g.dying = true; g.dk = 0; } }); say(text, 3800); }); }
+  return {open, close, intro, pickBase, wave, rest, sacrifice, dawn, say, sleep, get P(){ return P; }};
+})();
+// 밤 장면이 비쳐 보이는 비주얼노벨 창
+function nightVN(title, lines, ask, opts){ const pr = vnPlay(title, lines, ask, opts); document.querySelectorAll(".vn").forEach(v=>v.classList.add("vn-night")); return pr; }
+/* 하루 마감 때: 5급 이상 사무소에서 출동했던 해결사들이 늦게 남은 날 드물게 */
+async function nightCheck(ended){
+  if(!S || S.over || S.officeGrade > 5) return false;
+  if(S.nightLast && ended - S.nightLast < NIGHT_COOL) return false;
+  const team = S.fixers.filter(f=>f.lastDispatch === ended && f.hp > 0);
+  if(!team.length || Math.random() >= NIGHT_P) return false;
+  await nightRun(team);
+  return true;
+}
+async function nightRun(team, opt={}){
+  if(!S || !team || !team.length) return;
+  S.nightLast = S.day;
+  const og = opt.og != null ? opt.og : S.officeGrade;
+  const okGL = NightMG.open(team);
+  try{
+    await NightMG.intro();
+    const base = await NightMG.pickBase();
+    const st = {wall: base.wall, wallMax: base.wall, bear: 100, breath: 100, harm: base.harm, clean: 0, cuts: 0, bestG: Math.min(...team.map(f=>f.grade)), wallBroke: false};
+    addLog(`뒷골목의 밤 — ${base.n}에서 버티기로 했다 (${team.map(f=>f.name).join(", ")})`);
+    let down = false;
+    for(let w=0; w<3; w++){
+      const r = await NightMG.wave(w, st);
+      if(r === "down"){ down = true; break; }
+      if(w < 2){ await NightMG.sleep(900); await NightMG.rest(w, st); }
+    }
+    // 판정(내부): 사무소 등급의 기본 확률에, 버틴 모양새로 최대 25%까지 깎인다
+    const perf = down ? 0 : clamp(0.45*(st.cuts ? st.clean/st.cuts : 0.6) + 0.35*clamp(st.bear/100,0,1) + 0.2*clamp(st.wall/st.wallMax,0,1), 0, 1);
+    const chance = NIGHT_BASE_P(og)*(0.75 + 0.25*perf);
+    const forced = opt.force;
+    const survived = forced === "ok" ? true : forced === "fail" ? false : (!down && Math.random() < chance);
+    if(survived){
+      await NightMG.dawn("4시 33분. 파도가 물러갔다.");
+      NightMG.close();
+      await nightAfter(team, true, st, base);
+    } else {
+      NightMG.say(down ? "더는 버틸 수 없다." : "파도가 물러가지 않는다. 누군가는 남아야 한다.", 3000); await NightMG.sleep(1800);
+      const cands = team.filter(f=>!f.isLeader);
+      let who = null;
+      if(cands.length){
+        who = await new Promise(res=>{ const h = document.querySelector(".nt-hud"); h.innerHTML = "";
+          const el = document.createElement("div"); el.className = "nt-pick"; el.style.pointerEvents = "auto";
+          el.innerHTML = `<h3>누가 남을 것인가</h3><p class="m">한 사람이 파도를 붙드는 동안, 나머지는 살아서 돌아갈 수 있다.</p><div class="nt-sac">${cands.map((f,i)=>`<button data-i="${i}">${esc(f.name)}<br><small style="color:#9fcfb2">${esc(gName(f.grade))} · ${esc(f.personality)}</small></button>`).join("")}</div>`;
+          h.appendChild(el); el.querySelectorAll("button").forEach(b=>b.onclick = ()=>{ el.remove(); res(cands[+b.dataset.i]); }); });
+        const lines = nightSacLine(who).map(t=>[who.name, t]);
+        await nightVN("뒷골목의 밤", lines.concat([["", `${jo(who.name,"은")} 셔터를 들어 올리고 골목으로 걸어 나갔다.`]]), null, null);
+        await NightMG.sacrifice(who);
+      }
+      await NightMG.dawn(who ? "4시 33분. 파도가 물러갔다. 한 사람이 돌아오지 않았다." : "4시 33분. 겨우, 살아남았다.");
+      NightMG.close();
+      await nightAfter(team, false, st, base, who);
+    }
+  } catch(e){ console.error(e); NightMG.close(); }
+}
+async function nightAfter(team, ok, st, base, who){
+  const n = S.officeName;
+  const alive = team.filter(f=>f !== who);
+  alive.forEach(f=>{ const hp = ok ? rnd(10,25) : rnd(35,60), mp = ok ? rnd(8,18) : rnd(20,35);
+    f.hp = Math.max(1, f.hp - Math.floor(f.hpMax*hp/100)); f.mp = Math.max(1, f.mp - Math.floor(f.mpMax*mp/100));
+    f.diary = (f.diary||[]).concat([`${S.day}일차 뒷골목의 밤을 ${ok ? "버텼다" : who ? `넘겼다. ${who.name}${josa(who.name,"이","가").slice(who.name.length)} 남았다` : "겨우 넘겼다"}`]).slice(-40); });
+  if(!ok && !who) alive.forEach(f=>{ f.hp = 1; });
+  if(who){ removeFixer(who, "사망", "뒷골목의 밤, 모두를 돌려보내고 파도 속에 남았다"); ac("nightSac");
+    try{ rememberCityRumor("office", `${n}의 사람 하나가 뒷골목의 밤에 파도 쪽으로 걸어갔대. 나머지는 아침에 다 살아서 나왔고.`); }catch(_){} }
+  let html = "";
+  if(ok){
+    ac("nightOk"); if(!st.wallBroke) ac("nightWall"); if(st.cuts && st.clean === st.cuts && st.cuts >= 6) ac("nightClean"); if(st.guest) ac("nightGuest");
+    const first = !S.nightBonus; S.nightBonus = true; S.nightN = (S.nightN||0) + 1;
+    const RUM = [`뒷골목의 밤에 ${n} 사람들이 골목에 남아 있었대. 그런데 아침에 다들 걸어서 나왔다더라.`,
+      `${n} 말이야, 청소부가 지나간 골목에서 그 사람들만 그대로 서 있었대.`,
+      `세 번 밀려오는 파도를 다 넘긴 사무소가 있대. ${n}, 그 이름 기억해 둬.`,
+      `아침에 그 골목만 깨끗하지 않았대. ${n} 사람들이 버틴 자리라서.`];
+    const line = RUM[(S.nightN - 1) % RUM.length];
+    try{ rememberCityRumor("office", line); majorQueue = {text: line, at: performance.now() + 4000}; }catch(_){}
+    S.records.push({day:S.day, name:S.officeName, what:"뒷골목의 밤", note:`${base.n}에서 세 번의 파도를 넘겼다`});
+    html = `<p>${team.map(f=>esc(f.name)).join(", ")} — ${esc(base.n)}에서 세 번의 파도를 넘겼다.</p>
+      <p class="muted">아침 햇빛 아래, 연료가 흘러간 자국만 골목에 남았다.</p>
+      <div class="kv"><span>업적</span><b>뒷골목의 밤을 버텼다</b><span>소문</span><b>「${esc(line)}」</b>${first ? `<span>보수</span><b style="color:#9fe8b0">앞으로 들어오는 의뢰 보수 +5%</b>` : ""}</div>`;
+  } else {
+    S.records.push({day:S.day, name:S.officeName, what:"뒷골목의 밤", note: who ? `${jo(who.name,"이")} 남아 모두를 돌려보냈다` : "가까스로 살아남았다"});
+    html = who ? `<p>${esc(who.name)}${esc(josa(who.name,"은","는").slice(who.name.length))} 돌아오지 않았다.</p><p>${alive.map(f=>esc(f.name)).join(", ")}${alive.length ? " — 모두 살아서 돌아왔다." : ""}</p><p class="muted">아침의 골목은 지나치게 깨끗했다.</p>`
+      : `<p>${team.map(f=>esc(f.name)).join(", ")} — 벽이 다 녹아내린 뒤에야 날이 밝았다. 겨우 살아남았다.</p>`;
+  }
+  save(); render(); try{ achCheck(); }catch(_){}
+  await modal("뒷골목의 밤", html, [{t:"아침으로", primary:true}]);
+}
 /* ================= 뒷골목 조직 의뢰 =================
    손가락 · 검계 · 흑운회는 빼고, 뒷골목 조직들을 상대(또는 의뢰인)로 하는 의뢰. 원작 조직(사육제 · 브레멘 음악대 · 웃는 얼굴들) + 이 게임의 조직.
    gr: 맞서기 알맞은 해결사 급수(그 급수 ±1 등급의 의뢰로 나온다) · rows: [내용, 의뢰인, 종류, 능력, 목표 또는 쫓을 대상, 상대]
@@ -9433,7 +10010,8 @@ async function endDayInner(reason){
   await modal(`${ended}일차 정산`, html, [{t:"다음으로",primary:true}]);
   await confessLure(ended);
   await skinVisit(ended);
-  await closeShop();
+  if(!(await nightCheck(ended))) await closeShop();
+  if(!S || S.over) return;
   if(ended%7===0) await review();
   if(ended%7===0 && S.debt>0) { await scarVisit(); if(!S||S.over) return; }
   if(ended%7===0){ await weekly(); if(!S||S.over) return; }
@@ -16246,6 +16824,13 @@ ACH_RAW.push(
 [3,"드묾","다른 간판의 승리","주변 사무소가 넘겨받은 의뢰를 세 번 처리한다.",X=>X.L.neighborDone>=3],
 [3,"희귀","불 꺼진 간판","주변 사무소가 처음으로 폐업한다.",X=>X.L.neighborClosed>=1],
 [3,"영웅","남은 사무소 하나","개업 때 있었던 이웃 사무소 세 곳이 모두 폐업한다.",X=>X.S&&X.S.surroundings&&X.S.surroundings.offices.every(o=>o.closed)],
+// ── 뒷골목의 밤(맨 끝에 덧붙여 기존 업적 번호를 지킨다)
+[0,"희귀","파도를 넘다","뒷골목의 밤을 처음으로 버틴다.",X=>X.L.nightOk>=1],
+[0,"영웅","녹지 않은 벽","벽이 한 번도 녹아내리지 않은 채 뒷골목의 밤을 버틴다.",X=>X.L.nightWall>=1],
+[0,"영웅","깨끗한 골목","다가온 무리를 모두 한 번에 끊어 내고 뒷골목의 밤을 버틴다.",X=>X.L.nightClean>=1],
+[0,"희귀","열어 준 셔터","문밖의 사람을 들이고도 뒷골목의 밤을 버틴다.",X=>X.L.nightGuest>=1],
+[0,"전설","다섯 번의 아침","뒷골목의 밤을 다섯 번 버틴다.",X=>X.L.nightOk>=5],
+[0,"희귀","파도 속에 남은 사람","뒷골목의 밤에 동료 한 명이 모두를 돌려보내고 남는다.",X=>X.L.nightSac>=1],
 );
 const ACHIEVEMENTS = ACH_RAW.map((r,i)=>({id:"a"+r[0]+"_"+i, cat:r[0], tier:r[1], name:r[2], desc:r[3], test:r[4], hidden: r[1]==="유일"}));
 const ACH_KEY = "problem-solver-achievements-v1";
@@ -19865,7 +20450,7 @@ function fxTestPanel(){
   el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>사건 · 특수 의뢰 전용 미니게임</b><div class="g"><select id="fxstory">${Object.entries(STORY_MG).map(([k,v])=>`<option value="${k}">${k} — ${v.t}</option>`).join("")}</select><button data-story="1">시험</button><button data-story="post">뒷이야기(성공)</button><button data-story="postfail">뒷이야기(실패)</button></div>
-   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><button data-mg="dist">뒤틀림 전투 시험</button><select id="fxdt"><option>도시 질병</option><option>도시 악몽</option><option>도시의 별</option></select><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
+   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><button data-mg="dist">뒤틀림 전투 시험</button><button data-mg="night">뒷골목의 밤 시험</button><select id="fxng"><option value="5">사무소 5급</option><option value="4">4급</option><option value="3">3급</option><option value="2">2급</option><option value="1">1급</option></select><select id="fxnf"><option value="">판정대로</option><option value="ok">무조건 버팀</option><option value="fail">무조건 실패(희생)</option></select><select id="fxdt"><option>도시 질병</option><option>도시 악몽</option><option>도시의 별</option></select><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
@@ -20050,6 +20635,8 @@ function fxTestPanel(){
     if(sv==="1"){ const r = await mgStory({q, team:S.fixers.slice(0,3), idx:1, total:1}); toast(`전용 미니게임 ${Math.round(r*100)}점 — 싸움이 이어지면 상대 체력 -${Math.round(25*r)}%`); }
     else { const Pp = STORY_POST[storyKey(q)]; if(Pp) await vnPlay(`${STORY_MG[k].t} — ${sv==="post" ? "성공한 뒤" : "실패한 뒤"}`, sv==="post" ? Pp.ok : Pp.fail, null, null); } });
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
+    if(g==="night"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean);
+      await nightRun(team, {og: +el.querySelector("#fxng").value, force: el.querySelector("#fxnf").value || null}); render(); return; }
     if(g==="dist"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean), th = el.querySelector("#fxdt").value;
       const gr = th==="도시의 별" ? 1 : th==="도시 악몽" ? 3 : 5;
       const q = {kind:"일반", text:"", goal:"사살", grade: gr, threat: th, attrs:["str"], req: Math.max(1, teamPower(team,["str"])/kk), reward: 10000, deadline: 2, client:"테스트 의뢰인"};
