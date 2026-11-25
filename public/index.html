@@ -193,6 +193,8 @@ footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);lin
 .modal .mh .mx:hover{color:#fff;border-color:#888;background:rgba(255,255,255,.06)}
 .modal .mb{padding:14px 16px;overflow:auto}
 .modal .mb .rec-save{position:sticky;top:-14px;z-index:3;background:var(--panel);margin:-14px -16px 12px;padding:12px 16px 10px;border-bottom:1px solid var(--line)}
+.rec-save .rec-save-actions{display:flex;gap:4.5px;flex-wrap:wrap}
+.rec-save .rec-save-actions button{font-size:75%;padding:4.5px 9px;border-radius:4.5px}
 .modal .mf{padding:10px 16px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .list{display:flex;flex-direction:column;gap:8px}
 .item{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px;display:flex;justify-content:space-between;gap:10px;align-items:center}
@@ -10531,7 +10533,7 @@ async function openRecords(){
   const rec = S.records.slice().reverse();
   await modal("기록", `<div class="rec-save"><h4 style="margin:0 0 4px">저장 관리</h4>
    <p class="muted" style="font-size:12px;margin:0 0 6px">진행 상황은 이 브라우저에 자동 저장된다. 기기 변경·브라우저 데이터 삭제에 대비해 저장 파일을 별도로 보관할 수 있다.</p>
-   <div style="display:flex;gap:6px;flex-wrap:wrap"><button data-x="download">저장 파일 내려받기</button><button data-x="file">저장 파일 불러오기</button><button data-x="export">기존 저장 코드 복사</button><button data-x="import">기존 저장 코드 불러오기</button><button class="danger" data-x="reset">처음부터 다시</button></div>
+   <div class="rec-save-actions"><button data-x="download">저장 파일 내려받기</button><button data-x="file">저장 파일 불러오기</button><button data-x="export">기존 저장 코드 복사</button><button data-x="import">기존 저장 코드 불러오기</button></div>
    <input type="file" accept=".json,application/json" id="save-file" hidden></div><div class="tabs"><button class="on" data-rec-tab="people">사무소 인사 기록</button><button data-rec-tab="surroundings">주변 상황</button>${recordReferenceTabs("people")}</div><div id="record-tab-view">
    ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}</div>
    ${(S.choiceLog||[]).length ? `<h4 style="margin:16px 0 6px">지나온 선택</h4><div class="list">${S.choiceLog.slice().reverse().slice(0,30).map(c=>`<div class="item"><div class="d">${c.day}일차 · ${esc(c.t)}</div></div>`).join("")}</div>${alignLean() ? `<p class="muted" style="font-size:12px;margin-top:6px">${esc({정의:"사람들은 이 사무소를 '사람부터 챙기는 곳'이라고 부른다.",현실:"사람들은 이 사무소를 '값은 비싸도 확실한 곳'이라고 부른다.",질서:"사람들은 이 사무소를 '규약대로 일하는 곳'이라고 부른다."}[alignLean()])}</p>` : ""}` : ""}
@@ -10569,7 +10571,6 @@ async function openRecords(){
       if(x==="export"){ ac("export"); const code=btoa(unescape(encodeURIComponent(JSON.stringify(S)))); try{ await navigator.clipboard.writeText(code); e.target.textContent="복사됨"; }catch(_){ await promptBox("저장 코드","아래 코드를 복사해 두자.",code,true);} }
       if(x==="import"){ const code=await promptBox("불러오기","저장 코드를 붙여 넣는다.","",true); if(!code) return; try{ const d=JSON.parse(decodeURIComponent(escape(atob(code.trim())))); if(!Array.isArray(d.fixers)||!Array.isArray(d.requests)) throw 0; S=syncAllStatVitals(migrateWorkshopDur(migrate1247(migrateGunAmmoState(d)))); save(); closeAll(); render(); }catch(_){ alertBox("불러오기 실패","코드가 올바르지 않다."); } }
       if(x==="trio"){ closeAll(); await ledgerOffer(false); return; }
-      if(x==="reset"){ if(await confirmBox("처음부터","지금 진행 상황이 사라진다.")){ clearSave(); S=null; closeAll(); renderStart(); } }
     });
   });
 }
