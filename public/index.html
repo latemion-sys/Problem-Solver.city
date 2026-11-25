@@ -3892,6 +3892,81 @@ function personalNomStory(q){
   const lines=reqStory(q);
   return q.personalNom?lines.concat(q.personalNom.line):lines;
 }
+
+// 의뢰 원문·기존 저장을 수정하지 않고 접수 장면 → 의뢰인의 말 → 소문·조건으로 표시한다.
+function requestSpeech(text){
+  const parts=String(text||"").trim().replace(/^의뢰 내용:\s*/,"").replace(/^["“]|["”]$/g,"").split(/(?<=[.!?。])\s+/).filter(Boolean);
+  const isRequest=t=>/(?:달라|주세요|주십시오|부탁드립니다)[.!。]?$/.test(t);
+  // 사건의 사정·목격담을 먼저, 의뢰인의 부탁을 마지막에 놓는다.
+  const ordered=parts.filter(t=>!isRequest(t)).concat(parts.filter(isRequest));
+  return ordered.map(part=>{
+    const p=part.trim(), end=(p.match(/[.!?。]$/)||["."])[0];
+    let t=p.replace(/[.!?。]$/,"");
+    if(end==="?") return t+end;
+    if(/(?:습니다|입니다|세요|해요|돼요|예요|이에요|대요|래요|네요|죠|군요|나요|까요|십시오|드립니다|어요|아요)$/.test(t)) return t+end;
+    t=t.replace(/해\s*달라$/,"해 주세요").replace(/아\s*달라$/,"아 주세요").replace(/어\s*달라$/,"어 주세요").replace(/여\s*달라$/,"여 주세요").replace(/줘$/,"주세요").replace(/ 달라$/," 주세요").replace(/해 줄 사무소를 구함$/,"해 줄 사무소를 찾고 있습니다").replace(/ 말 것$/," 말아 주세요");
+    if(/(?:주세요|습니다|입니다)$/.test(t)) return t+end;
+    if(/다고 한다$/.test(t)) return t.replace(/다고 한다$/,"다고 합니다")+end;
+    if(/다고 했다$/.test(t)) return t.replace(/다고 했다$/,"다고 했습니다")+end;
+    if(/는다$/.test(t)) return t.replace(/는다$/,"습니다")+end;
+    if(/다$/.test(t)&&t.length>1){
+      const n=t.charCodeAt(t.length-2)-0xac00;
+      if(n>=0&&n<11172){
+        const j=n%28;
+        // 현재형 동사의 ㄴ다 및 모음·ㄹ 어간.
+        if(j===0||j===4||j===8){
+          const last=String.fromCharCode(0xac00+n-j+17);
+          return t.slice(0,-2)+last+"니다"+end;
+        }
+        return t.slice(0,-1)+"습니다"+end;
+      }
+    }
+    return t+end;
+  }).join(" ");
+}
+function requestNarrative(q, story){
+  const lines=(story||[]).filter(v=>typeof v==="string"&&v.trim()).map(v=>v.trim());
+  const raw=String(q.text||"").trim().replace(/^의뢰 내용:\s*/,"");
+  if(!raw) return lines;
+  const normalized=t=>String(t||"").replace(/[\s"'“”‘’「」.。!?]/g,"");
+  const core=raw.replace(/^(?:\[승급 심사\]\s*|하나 협회의 지명\s*—\s*|남겨진 흉터의 의뢰\s*—\s*|편지 속 사연:\s*|지령:\s*)/,"");
+  const key=normalized(core);
+  const scripted=!!(q.arc||q.officeStoryId!=null||q.prescript||q.hanaStar||q.trio||q.scarJob||q.kind==="특색 심사");
+  // 작가가 작성한 사건/지령의 고유 장면과 대사는 그대로 보존한다.
+  if(scripted&&lines.some(l=>normalized(l).includes(key))) return lines;
+  const ck=clientKind(q.client);
+  const opening=lines.shift()|| (ck==="anon"?"발신인이 적혀 있지 않은 의뢰서가 도착했다.":"의뢰가 사무소에 접수됐다.");
+  const doc=scripted||ck==="anon"||/봉투가 (?:왔|도착|끼워|놓여|들어)|의뢰서가 (?:배달|왔|도착)|서류.*배달|발신인|우편함|공고/.test(opening)||(ck==="org"&&!/찾아왔|내밀|들어왔|건넸|펼쳤|보여|말했|접수대/.test(opening));
+  const plain=core.replace(/^["“]|["”]$/g,"");
+  const speech=doc?`의뢰서에는 다음과 같은 내용이 적혀 있었다. 「${plain}${/[.!?。]$/.test(plain)?"":"."}」`:`"${requestSpeech(plain)}"`;
+  // 예전 자동 생성 사연에서 의뢰 원문을 다시 풀어 쓴 줄만 걷어낸다.
+  const repeated=new Set();
+  for(const t of [raw,core,raw.replace(/[.。]$/,""),core.replace(/[.。]$/,"")]){
+    for(const d of [true,false]) for(const line of retellReq(t,d)) repeated.add(normalized(line));
+  }
+  if(q.kind==="환상체"){
+    const m=core.replace(/[.。]$/,"").match(/^(.*[.。])\s*([^.。]*달라)$/);
+    if(m){
+      for(const d of [true,false]) for(const line of retellReq(m[2],d)) repeated.add(normalized(line));
+      repeated.add(normalized(m[1]));
+    }
+    repeated.add(normalized("의뢰인이 전해 들은 이야기는 이랬다."));
+  }
+  const remaining=lines.filter(l=>{
+    if(scripted) return true;
+    const n=normalized(l);
+    return n!==key&&n!==normalized(speech)&&!repeated.has(n)&&!/^의뢰 내용:\s*/.test(l);
+  }).map(l=>l.replace(/^골목에서는 이런 소문이 돈다[.:：]?\s*/,"관련 소문으로는 이런 이야기가 들려왔다. "));
+  // 원문이 첫 줄인 오래된 사연도 접수 장면을 먼저 보여 준다.
+  const start=normalized(opening)===key||repeated.has(normalized(opening))||normalized(opening)===normalized(speech)
+    ? (doc?"사무소에 의뢰서가 도착했다.":"의뢰인이 찾아와 사정을 설명했다.") : opening;
+  const out=[start,speech,...remaining];
+  if(!scripted&&!out.some(l=>/의뢰 기한|기한은|마감은|마감 기한|기한이|기한 없이/.test(l))){
+    out.push(q.deadline==null?"의뢰에는 따로 마감 기한이 정해져 있지 않았다.":`계약상 남은 기한은 ${q.deadline}일이었다.`);
+  }
+  return out;
+}
+function requestNarrativeHtml(q){ return requestNarrative(q, personalNomStory(q)).map(t=>`<p>${esc(t)}</p>`).join(""); }
 function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequestsInner(); examRequestTick(); personalNomTick();
   if(S.day <= EARLY_DL_DAYS){ const nF = Math.max(1, S.fixers.filter(f=>f.hp > 0).length), fresh = S.requests.filter(q=>!before.has(q.id) && q.deadline!=null);
     const load = {}; S.requests.forEach(q=>{ if(before.has(q.id) && q.deadline!=null) load[q.deadline] = (load[q.deadline]||0) + 1; });
@@ -15990,10 +16065,10 @@ async function openAccept(qid){
   const q = S.requests.find(x=>x.id===qid); if(!q) return;
   if(q.arc && !q.arcVN && typeof ARC_VN!=="undefined" && ARC_VN[q.arc.id]){ await arcVN(q); if(!S || !S.requests.includes(q)) return; }
   if(!q.accepted && specialKind(q) && !q.spVN){ if(await specialVN(q)) return; if(!S || !S.requests.includes(q)) return; }
-  const story = personalNomStory(q).map(t=>`<p>${esc(t)}</p>`).join(""); save();
+  const story = requestNarrativeHtml(q); save();
   const v = await modal(`[${requestTitle(q)}] — ${q.client}`, `<div class="acc-story${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${story}</div>
-    <div class="kv"><span>의뢰</span><b>[${esc(requestTitle(q))}]</b><span>의뢰 내용</span><b>${esc(q.text)}</b><span>종류</span><b>${esc(requestDisplayKind(q))}${q.goal ? ` · ${q.goal}` : ""}</b><span>하나 협회 추정 등급</span><b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)} <span class="muted" style="font-weight:400">(${gName(q.grade)} 수준)</span></b>
-    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b>${q.personalNom?`<span>지명 해결사</span><b>${esc(q.personalNom.name)} · ${gName(q.personalNom.grade)}</b><span>지명 출동</span><b>${won(personalNomPay(q,true))} (+25%)</b><span>다른 해결사 출동</span><b>${won(personalNomPay(q,false))} (-15%)</b>`:""}<span>마감</span><b>${q.deadline}일</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품 소문</span><b>${esc(lootName(q))}</b>` : ""}</div>`,
+    <div class="kv"><span>의뢰</span><b>[${esc(requestTitle(q))}]</b><span>종류</span><b>${esc(requestDisplayKind(q))}${q.goal ? ` · ${q.goal}` : ""}</b><span>하나 협회 추정 등급</span><b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)} <span class="muted" style="font-weight:400">(${gName(q.grade)} 수준)</span></b>
+    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b>${q.personalNom?`<span>지명 해결사</span><b>${esc(q.personalNom.name)} · ${gName(q.personalNom.grade)}</b><span>지명 출동</span><b>${won(personalNomPay(q,true))} (+25%)</b><span>다른 해결사 출동</span><b>${won(personalNomPay(q,false))} (-15%)</b>`:""}<span>마감</span><b>${q.deadline==null?"없음":q.deadline+"일"}</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품 소문</span><b>${esc(lootName(q))}</b>` : ""}</div>`,
     [{t:"닫기", v:"close", x:true}, {t:"거절한다", v:"no"}, {t:"사람을 보낸다", v:"yes", primary:true}]);
   if(!S || !S.requests.includes(q) || v==="close") return;
   if(v==="yes"){ acceptRequest(q); save(); render(); return; }
@@ -16039,7 +16114,7 @@ function render(){
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
       <div class="txt req-title">[${esc(requestTitle(q))}]${q.personalNom?`<div style="color:#e8d27a;margin-top:5px">${esc(q.personalNom.line)}</div>`:""}</div>
-      ${showSpecialRequestText(q)&&q.text?`<div class="req-special-description">${esc(q.text)}</div>`:""}
+      ${openQ!==q.id&&showSpecialRequestText(q)&&q.text?`<div class="req-special-description">${esc(q.text)}</div>`:""}
       <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b>${q.personalNom?` <small>· 지명 ${won(personalNomPay(q,true))} / 미출동 ${won(personalNomPay(q,false))}</small>`:""}</span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
       ${q.loot?`<div class="loot">특수 전리품 소문: ${esc(lootName(q))}</div>`:""}
       ${openQ!==q.id ? `<div class="assign"><button class="primary" data-open="${q.id}">상세 보기${q.accepted?" · 수락됨":""}</button></div></div>` : reqPanel(q, opts)}`;
@@ -16111,7 +16186,7 @@ function nextOpenable(){ if(!S || !S.fixers.some(canGo)) return null; const q = 
 function reqPanel(q, opts){
   const games = gamesFor(q), hasGame = games.length > 0, md = modePref();
   return `<div class="req-open">
-      <div class="acc-story mini${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${!showSpecialRequestText(q)&&q.text?`<p class="muted">의뢰 내용: ${esc(q.text)}</p>`:""}${personalNomStory(q).map(t=>`<p>${esc(t)}</p>`).join("")}</div>
+      <div class="acc-story mini${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${requestNarrativeHtml(q)}</div>
       <div class="party">출동 인원 <b id="pc-${q.id}">0</b> / 최대 ${partyMax(q)}명 <span class="muted">· 권장 ${partyRec(q)}명</span></div>
       <div class="chips">${opts.length?opts.map(f=>`<button class="chip${canGo(f) ? "" : " march"}" data-chip="${f.id}" data-q="${q.id}" title="${canGo(f) ? "" : "오늘 이미 출동했다 · 강행군"}">${esc(f.name)} <small>${q.personalNom&&f.id===q.personalNom.id?"지명 · ":""}${canGo(f) ? gName(f.grade) : "강행군"}${f.tired ? " · 피로" : ""}</small></button>`).join(""):`<span class="muted" style="font-size:12px">${S.fixers.some(f=>f.body&&f.body.full&&(f.body.upkeepDue||0)>0) ? "전신 의체 정비비 미납 시 출동 불가 · 공방 → 의체에서 정비비를 납부하세요." : "보낼 수 있는 해결사가 없다"}</span>`}</div>
       ${directOnly(q) ? `<div class="modes"><div class="muted" style="padding:8px 10px;border:1px solid var(--line);border-radius:6px">직접 수행 전용 · ${games.map(a=>MG_NAME[a]).join(" → ")}</div></div>` : hasGame ? `<div class="modes"><button class="${md==="play"?"on":""}" data-mode="play" data-q="${q.id}"><b>직접 수행</b><small>${games.map(a=>MG_NAME[a]).join(" → ")} · 목표를 달성하면 확정 성공</small></button><button class="${md==="auto"?"on":""}" data-mode="auto" data-q="${q.id}"><b>자동 진행</b><small>성공률로 판정 · 보수 80% · 성공해도 출동 피로 피해</small></button></div>` : ""}
