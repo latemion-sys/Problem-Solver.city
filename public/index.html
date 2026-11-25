@@ -258,6 +258,13 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .report-btn{position:fixed;top:12px;right:14px;z-index:140;padding:6px 14px;border:1px solid #e8b24a;border-radius:3px;background:rgba(24,16,6,.88);color:#f2c25e;font-size:13px;font-weight:700;letter-spacing:.1em;text-decoration:none;box-shadow:0 0 14px rgba(232,178,74,.25);transition:background .2s,color .2s}
 .bgm-btn{position:fixed;top:12px;right:92px;z-index:140;padding:6px 12px;border:1px solid #6d6556;border-radius:3px;background:rgba(18,15,12,.88);color:#d9cdb6;font-size:13px;cursor:pointer}
 .bgm-btn.off{color:#6d675e;text-decoration:line-through}
+.ver-box{position:fixed;top:46px;right:14px;z-index:140;display:flex;align-items:center;gap:6px;font-size:11px;color:#8f8676;text-shadow:0 1px 3px #000;pointer-events:auto}
+.ver-box b{font-weight:600;color:#b9ad97;letter-spacing:.04em}
+.ver-box button{background:none;border:none;padding:0;color:#c9a86a;font-size:11px;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.ver-box button:hover{color:#f2c25e}
+.cl-list{max-height:62vh;overflow:auto;font-size:13px;line-height:1.6}
+.cl-list h4{margin:10px 0 4px;color:#e8c98a;font-size:13px}
+.cl-list ul{margin:0 0 6px;padding-left:18px}
 .bgm-pop{position:fixed;top:48px;right:14px;z-index:141;width:230px;padding:10px 12px;border:1px solid #6d6556;border-radius:4px;background:rgba(18,15,12,.96);color:#d9cdb6;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .bgm-row{display:flex;align-items:center;gap:8px;margin:4px 0}.bgm-row span{width:34px;color:#a69e90}.bgm-row input{flex:1;accent-color:#e8b24a}.bgm-row b{width:34px;text-align:right;font-weight:600}.bgm-row button{padding:2px 10px}
 .report-btn:hover{background:#e8b24a;color:#1a1208}
@@ -901,6 +908,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 </style>
 </head>
 <body>
+<div class="ver-box"><b id="verTag"></b><button id="clBtn" type="button">[업데이트 적용 사항]</button></div>
 <button class="bgm-btn" id="bgmbtn" title="배경 음악 · 소리 크기">♪ 음악</button>
 <div class="bgm-pop" id="bgmpop" hidden><div class="bgm-row"><span>음악</span><button id="bgmmute">켜짐</button></div><div class="bgm-row"><span>크기</span><input type="range" id="bgmvol" min="0" max="100" step="1"><b id="bgmvv"></b></div></div>
 <a class="report-btn" href="https://docs.google.com/forms/d/e/1FAIpQLSfIf5geuiauFB4ArTdeMoJAZbp2oOnyZvX_Bm5K1Aj5K1ETUg/viewform?usp=publish-editor" target="_blank" rel="noopener" title="버그 · 오류 · 의견 제보">[제보]</a>
@@ -1645,6 +1653,31 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 "use strict";
 /* ================= 데이터 ================= */
 const VERSION = "v.a1.6.9"; // 개화 E.G.O. 형태·전투·문장 개선
+const CHANGELOG = [
+  ["11월 26일", ["재해 등급별 보스 의뢰 6종 추가 — 랫키어 · 바르크 · 테이어파이어 · 99번째 거래처 · 여섯 번째 손가락 · 12 과업의 대행자(기한 없음 · 2명 이상 · 직접 수행)",
+    "보스 전용 연출: 등장 컷인, 기믹 표시줄, 필살기 예고 띠, 격파 연출, 게시판 보스 도장",
+    "사흘마다 사무소에서 무료 상담 휴식(대표가 아닌 동료 한 명을 골라 회복)",
+    "화면 오른쪽 위에 현재 버전과 업데이트 적용 사항 표시"]],
+  ["11월 25일", ["도감을 기록 창으로 옮기고 무기 기술 안내 · 업적 등급 필터 추가",
+    "의뢰 상세를 현장 장면과 의뢰인의 말로 보여 주도록 정리(같은 내용 반복 제거)",
+    "유물 기술은 해당 유물을 얻은 뒤에만 드러나게 변경",
+    "하나 협회 승급 심사에서 환상체 · 뒤틀림 · 죄종 의뢰 제외",
+    "개화 E.G.O. 이름 짓기 · 형태 확정 · 전투 보너스 정리, 시나리오 문장 다듬기",
+    "급수별 고정 주급, 무기 종류에 따른 동료 보조, 제압 판정 세분화",
+    "동료 성별 표기 정리, 성격에 맞춘 비주얼노벨 대화",
+    "환상체 작업 선호 재분배, 능력치에 따른 반응 성공률",
+    "직접 수행 점수에 따른 보수 배율(100점 ×1.25 · 75점 ×1 · 50점 이하 ×0.75)",
+    "모든 창 Esc로 닫기, 무기 수리가 필요하면 [관리] 버튼 깜빡임",
+    "인간형 적 강한 기술을 등급별로 정리, 1급 이상 인간 적 내성 · 특색급 위압감",
+    "목소리의 틈: 의지와 정신력에 따라 개화 · 불안정 개화 · 뒤틀림이 갈림"]],
+  ["11월 24일", ["뒤틀림 처리 전투의 형체 연출을 새로 그림",
+    "사건 12개(발단 > 전개 > 절정 > 결말), 협회별 의뢰서 도착 장면과 협회 문장",
+    "전투 배경 음악 4곡 추가(기존 곡 포함 5곡 중 무작위)",
+    "의뢰 게시판 정렬, 의뢰 테두리를 재해 등급 색으로, 의뢰 명칭 정리",
+    "3급 이상 해결사 개인 지명 의뢰, 동료 해결사 카드 접기 · 펼치기",
+    "체력 · 정신력 회복 비용을 등급별 표로, 환상체 기프트 확률 · 배율 조정"]]];
+function showChangelog(){ modal(`업데이트 적용 사항 · ${VERSION}`, `<div class="cl-list">${CHANGELOG.map(([d,xs])=>`<h4>${esc(d)}</h4><ul>${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`).join("")}</div>`, [{t:"닫기", primary:true}]); }
+try{ const vt = document.getElementById("verTag"); if(vt) vt.textContent = VERSION; const cb = document.getElementById("clBtn"); if(cb) cb.onclick = showChangelog; }catch(_){}
 const COUNSEL_REST_REV = "상담 휴식 개선 2";
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
@@ -3112,6 +3145,231 @@ void main(){
   }
   return {draw, ok: ()=>init()};
 })();
+/* ================= 재해 등급별 보스 의뢰 =================
+   같은 재해 등급보다 한 단계 센 상대. 기한 없음 · 2명 이상 · 직접 수행만.
+   사무소가 그 등급에 닿으면 하루 25% 확률로 게시판에 한 번 뜬다(한 번에 하나). 실패하면 7일 뒤 다시 올라온다.
+   전투 쪽 기믹은 mgCombat 안에서 bossFight(...)가 돌려주는 훅으로 처리한다. */
+const BOSS_DEF = {
+  rat:{open:"뒷골목 상인회 사람 셋이 함께 찾아왔다. 대표로 나선 사람이 모자를 손에 쥔 채 입을 열었다.", name:"랫키어", title:"뒷골목 쥐들의 대장", tier:"뜬소문", pow:8, rec:8, officeMax:8, wt:"blade", goal:"제압", pay:1.8, hpK:1.35, kindLabel:"일반", bgm:"warn1",
+    client:"뒷골목 상인회", reqTitle:"대장 쥐 제압",
+    text:"요즘 이 골목 쥐들이 '랫키어'라는 놈 밑으로 죄다 모여들고 있어요. 공방에서 내다 버린 부품을 주워다 제 입에 맞는 쇠 앞니까지 깎아 달았다는데, 그걸로 물린 사람이 벌써 넷입니다. 놈 하나만 잡으면 나머지는 알아서 흩어질 거예요. 제압해 주세요",
+    rumor:"그 쥐 대장, 이빨이 쇠로 돼 있다던데.", atk:["앞니로 물어뜯기","발목 찢기"], sig:"쥐의 발악",
+    gim:"궁지에 몰리면 문다"},
+  bark:{open:"거리 상인 연합에서 온 사람이 붕대 감은 손으로 서류를 내밀었다.", name:"바르크", title:"철쇄 조직의 행동대장", tier:"도시 괴담", pow:6, rec:6, officeMax:6, wt:"blunt", goal:"제압", pay:1.8, hpK:1.35, kindLabel:"일반", bgm:"warn1",
+    client:"두 블록 너머 거리 상인 연합", reqTitle:"철쇄 행동대장 제압",
+    text:"철쇄 조직이 결국 우리 블록까지 넘어왔습니다. 앞장서는 건 행동대장 바르크예요. 시술로 몸을 불렸고, 쇠사슬 달린 철제 곤봉을 씁니다. 먼저 맡았던 사무소 사람들도 솜씨가 나쁘지 않았는데, 전부 갈비뼈가 나간 채로 돌아왔어요. 바르크만 꺾으면 조직도 한동안은 조용해질 겁니다",
+    rumor:"쇠사슬 끌리는 소리가 들리면 가게 문부터 닫는대.", atk:["철쇄 휘두르기","쇄감기"], sig:"철쇄 난타",
+    gim:"행동대장 · 철쇄"},
+  theyer:{open:"발신인이 적히지 않은 봉투가 왔다. 안에는 타자기로 친 쪽지 한 장과 선금이 들어 있었다.", name:"테이어파이어", title:"어느 공방의 폐기작", tier:"도시 전설", pow:4, rec:5, officeMax:5, wt:"fist", goal:"사살", pay:1.8, hpK:1.35, kindLabel:"일반", bgm:"warn2",
+    client:"익명(출처 비공개 조건)", reqTitle:"폐기 병기 파괴",
+    text:"어느 공방에서 시험용으로 만든 전투 병기가 폐기 도중 빠져나갔습니다. 이름은 '테이어파이어'. 아직 멀쩡히 돌아다니고, 싸우면 싸울수록 상대 버릇을 익힙니다. 길게 끌지 마세요. 출처는 묻지 않는 조건으로 사례하겠습니다",
+    rumor:"그 기계, 같은 수에는 두 번 안 당한대.", atk:["묵직한 타격","의체 과부하"], sig:"테이어 파이어",
+    gim:"학습"},
+  deal99:{open:"젊은 사람이 문을 열고 들어오자마자 의자에 털썩 주저앉았다. 며칠은 못 잔 얼굴이었다.", name:"99번째 거래처", title:"영수증을 매단 거래처", tier:"도시 질병", pow:2, rec:3, officeMax:3, wt:"none", goal:"사살", pay:1.8, hpK:1.3, kindLabel:"뒤틀림 처리", bgm:"warn2",
+    client:"실종자 가족", reqTitle:"모니터 머리의 거래처",
+    text:"형이 사라졌습니다. 전날까지도 '거래처'에 다녀온다는 말만 했어요. 골목 끝에 정장 차림의 무언가가 서 있는데, 머리 대신 커다란 모니터가 달렸고 그 둘레에 영수증이 주렁주렁 매달려 있답니다. 거기서 거래한 사람들은 뭘 내줬는지도 기억을 못 한대요. 더 사라지기 전에 끝내 주세요",
+    rumor:"영수증이 아흔아홉 장 차면, 마지막 장에 이름을 쓰게 한대.", atk:["계약서 작성","클라이언트 클레임"], sig:"사인 감사합니다",
+    gim:"이번이… 96번째 거래군요"},
+  six:{open:"날개 담당 협회의 연락관이 서류철을 들고 왔다. 표지에는 '외부 위탁' 도장이 찍혀 있었다.", name:"여섯 번째 손가락", title:"다섯을 넘어선 하나", tier:"도시 악몽", pow:1, rec:1, officeMax:2, wt:"fist", goal:"사살", pay:1.8, hpK:1.3, kindLabel:"정체불명", bgm:"warn3",
+    client:"날개 담당 협회", reqTitle:"여섯 손가락의 무언가",
+    text:"스스로를 '여섯 번째 손가락'이라 부르는 개체가 확인됐습니다. 손가락이 여섯 달린 손을 펼쳐 보이며 다섯 손가락의 싸움법을 하나씩 흉내 내고, 고개를 숙이지 않는 사람은 가리지 않고 덮칩니다. 다섯 손가락 어느 쪽과도 관련이 없다는 회신을 받았습니다. 본 협회 인력만으로는 손이 모자라 외부 사무소에 맡깁니다",
+    rumor:"손가락이 하나 펴질 때마다 싸우는 법이 바뀐대.", atk:["손가락 누르기","여섯 번째 덕목"], sig:"여섯 번째 손가락",
+    gim:"다섯을 넘어선 하나"},
+  twelve:{open:"하나 협회 4과 과장이 직접 찾아왔다. 자리에 앉기 전에 사무소 안을 한 번 천천히 훑어보았다.", name:"12 과업의 대행자", title:"열두 가지 일을 되풀이하는 거구", tier:"도시의 별", pow:1, rec:0, officeMax:1, wt:"blunt", goal:"사살", pay:2.4, hpK:2.0, dmgK:1.15, kindLabel:"정체불명", bgm:"warn3",
+    client:"하나 협회 4과 과장", reqTitle:"열두 가지 일을 되풀이하는 거구",
+    text:"사자 가죽을 뒤집어쓰고 곤봉을 든 거구가 구역을 돌며 '일'을 해치우고 있습니다. 하나를 끝낼 때마다 몸이 더 뒤틀리고 더 세지는데, 열두 번째를 끝내고 만신창이가 된 뒤에도 처음부터 다시 시작합니다. 돌 때마다 피해가 커져서, 4과에서는 특색 투입까지 검토하고 있습니다. 그 전에 끝낼 수 있다면 귀 사무소에 맡기겠습니다",
+    rumor:"그게 열두 번째 일을 끝낸 날, 골목 하나가 통째로 비었대.", atk:["곤봉 찍기","뱀머리 던지기"], sig:"과업 증명",
+    gim:"12가지 과업 대행"}};
+const BOSS_ORDER = ["rat","bark","theyer","deal99","six","twelve"];
+const BOSS_SPAWN_P = 0.25, BOSS_RETRY = 7;
+const BOSS_LABOR = [["사자의 가죽","합에서 이긴다"],["불사의 머리","3턴 동안 버틴다"],["황금 뿔","해결사의 기술을 합에서 이긴다"],["멧돼지의 돌진","한 번에 피해 15 이상을 준다"],
+  ["오물의 정화","방어 중인 해결사에게 피해를 준다"],["청동의 깃털","동료 견제 공격을 맞힌다"],["광란의 황소","합에서 연달아 두 번 이긴다"],["식인마","해결사 한 명의 체력을 절반 이하로 떨어뜨린다"],
+  ["여왕의 허리띠","해결사의 기술을 막아 낸다"],["붉은 소 떼","한 턴에 서로 다른 해결사 둘에게 피해를 준다"],["황금 사과","4턴 동안 버틴다"],["지옥의 문지기","해결사 한 명을 쓰러뜨린다"]];
+const ROMAN = ["Ⅰ","Ⅱ","Ⅲ","Ⅳ","Ⅴ","Ⅵ","Ⅶ","Ⅷ","Ⅸ","Ⅹ","Ⅺ","Ⅻ"];
+const SIX_FING = ["엄지","검지","중지","약지","소지","육지"];
+const SIX_FING_D = ["급수가 낮은 해결사 1명당 코인 위력 +1(최대 2)","한 명을 견제 — 방어 무시 고정 피해 3","합에서 지면 다음 공격 코인 위력 +2","맞히면 출혈 3","받는 피해 -5","기본 위력 +1 · 기술"];
+const DEAL_TERMS = [{k:"hp", t:"고정 체력 피해 5"},{k:"sp", t:"고정 정신력 피해 10"},{k:"cp", t:"다음 공격 코인 위력 -1"},{k:"base", t:"다음 공격 기본 위력 -1"}];
+function bossReq(id){ const B = BOSS_DEF[id], q = makeRequest(B.pow, {kind:"일반", attrs:["str"], goal:B.goal, noRelic:true});
+  return Object.assign(q, {boss:id, foe:B.name, client:B.client, text:B.text, bossLine:B.rumor, threat:B.tier, reward:Math.round(q.reward*B.pay/100)*100,
+    deadline:null, synd:null, assoc:null, loot:null, relic:false, nom:false, personalNom:null, trustBonus:q.trustBonus}); }
+function bossSpawn(){ if(!S || S.over) return; S.boss = S.boss || {}; if(S.requests.some(q=>q.boss)) return;
+  for(const id of BOSS_ORDER){ const B = BOSS_DEF[id], st = S.boss[id] || {};
+    if(st.clear || S.officeGrade > B.officeMax || (st.retry && S.day < st.retry)) continue;
+    if(Math.random() >= BOSS_SPAWN_P) return;
+    S.requests.unshift(bossReq(id)); S.boss[id] = Object.assign(st, {posted:S.day});
+    addLog(`게시판에 굵은 테두리의 의뢰가 붙었다 · ${B.tier} — ${B.reqTitle}`); return; } }
+function bossAfter(q, success, lines){ if(!q || !q.boss) return; const B = BOSS_DEF[q.boss]; S.boss = S.boss || {}; const st = S.boss[q.boss] || (S.boss[q.boss] = {});
+  if(success){ st.clear = S.day; S.records.push({day:S.day, name:S.officeName, what:"보스 의뢰", note:`${B.tier} — ${B.name} 처리`});
+    lines.push(`<b style="color:${THREAT_COL[B.tier]||"#e8c98a"}">보스 의뢰 — 「${esc(B.name)}」${josa(B.name,"을","를").slice(B.name.length)} 꺾었다</b>`);
+    try{ rememberCityRumor("office", `${S.officeName} 사람들이 ${jo(`「${B.name}」`,"을")} 꺾었다는 얘기가 돈다.`); }catch(_){} }
+  else { st.retry = S.day + BOSS_RETRY; S.records.push({day:S.day, name:S.officeName, what:"보스 의뢰", note:`${B.name} — 실패`}); } }
+/* ---- 전투 훅 ---- E: {foe, party, act(), turn(), skillOf} */
+function bossFight(id, E){
+  const B = BOSS_DEF[id], foe = E.foe, P = E.party, s = {id, learn:0, ready:false, n:96, offer:null, open:0, mid:0, sigCd:0, bite:0,
+    labor:0, lStart:1, done:0, final:false, streak:0, hitSet:new Set(), fell:new Set(), lastProof:0};
+  const at = foe.skills.filter(k=>!k.def); at.forEach((k,i)=>{ k.n = B.atk[i % B.atk.length]; });
+  if(id==="bark") foe.skills.forEach(k=>{ k.base += 1; });
+  const hpPct = () => foe.hp/foe.max, alive = () => P.filter(p=>p.hp>0), me = () => P[E.act()];
+  const supporters = () => P.filter((p,i)=>i!==E.act() && p.hp>0);
+  const lowerG = () => Math.min(2, alive().filter(p=>(p.f.grade==null ? 9 : p.f.grade) > 1).length);
+  const peak = () => at.reduce((a,b)=>b.base + b.coins*b.cp > a.base + a.coins*a.cp ? b : a);
+  const mark = p => { if(p) s.hitSet.add(p); };
+  function laborDone(why){ if(id!=="twelve" || s.final) return [];
+    const out = [`<b style="color:#e8c25a">과업 ${ROMAN[s.labor]} 「${BOSS_LABOR[s.labor][0]}」 달성</b>`];
+    s.labor++; s.done++; s.lStart = E.turn() + 1;
+    if(s.done % 3 === 0){ foe.skills.forEach(k=>{ k.base += 1; }); out.push(`몸이 한 번 더 뒤틀렸다 — 기본 위력 +1`); }
+    if(s.labor >= 12){ s.final = true; out.push(`<b style="color:#ff8a7a">열두 번째 일을 끝냈다 — [최종 과업]</b>`); }
+    return out; }
+  const L = () => s.labor;
+  return {
+    B, s,
+    intro(){ const a = [`<b style="color:${THREAT_COL[B.tier]}">보스 — 「${esc(B.name)}」 · 〈${esc(B.gim)}〉</b>`];
+      if(id==="bark") a.push("행동대장의 기세 — 기본 위력 +1");
+      if(id==="twelve") a.push(`과업 ${ROMAN[0]} 「${BOSS_LABOR[0][0]}」 — 조건: ${BOSS_LABOR[0][1]}`);
+      return a; },
+    // 적의 이번 수
+    roll(t, at0, df){
+      const ka = at0.length ? at0 : at, base = () => Object.assign({}, pick(ka));
+      let k;
+      if(id==="rat"){ if(hpPct() <= 0.3 && t % 2 === 0){ const p = peak(); k = Object.assign({}, p, {n:B.sig, coins:3, bossSig:"rat"}); } else k = base(); }
+      else if(id==="bark"){ k = t % 3 === 0 ? Object.assign({}, peak(), {n:B.sig, bossSig:"bark", base:peak().base + 1}) : base(); if(hpPct() <= 0.3) k.base += 1; }
+      else if(id==="theyer"){ if(s.ready){ s.ready = false; k = Object.assign({}, peak(), {n:B.sig, bossSig:"theyer"}); } else { k = base(); if(k.n==="의체 과부하") k.base += 2; } }
+      else if(id==="deal99"){ if(s.n >= 99){ k = Object.assign({}, peak(), {n:B.sig, bossSig:"deal99"}); } else k = base(); }
+      else if(id==="six"){ k = base(); if(s.open >= 6 && s.sigCd <= 0){ k = Object.assign({}, peak(), {n:B.sig, bossSig:"six"}); s.sigCd = 2; } else s.sigCd--;
+        if(s.open >= 1) k.cp += lowerG(); if(s.open >= 6) k.base += 1; if(s.mid){ k.cp += s.mid; s.mid = 0; } }
+      else if(id==="twelve"){ k = base(); }
+      else k = base();
+      if(id==="rat" && hpPct() <= 0.2) k.cp += 1;
+      if(df.length && !k.bossSig && Math.random() < 0.14) k = Object.assign({}, pick(df));
+      return k; },
+    // 우리가 이겨 칠 때: 받는 피해 조정
+    taken(dmg, c, note){
+      if(id==="six" && s.open >= 5 && dmg > 0){ const d0 = dmg; dmg = Math.max(1, dmg - 5); note.push(`소지 — 받는 피해 ${d0}→${dmg}`); }
+      if(id==="twelve" && s.final && dmg > 0){ dmg = Math.max(1, Math.round(dmg*0.8)); note.push("최종 과업 — 받는 피해 20% 감소"); }
+      return dmg; },
+    // 적이 맞힐 때: 줄일 수 있는 추가 피해
+    extra(c, note){ const k = c.fk; let add = 0;
+      if(id==="rat"){ if(k.n==="발목 찢기") add += 1; if(s.bite){ add += 1; s.bite = 0; note.push("궁지에 몰린 이빨 — 피해 +1"); } }
+      if(id==="bark" && k.n==="쇄감기") add += 2;
+      if(id==="theyer" && k.bossSig==="theyer") add += 10;
+      if(id==="six" && k.bossSig==="six") add += 18;
+      return add; },
+    // 적이 맞힐 때: 줄인 뒤의 최종 피해 · 상태이상 · 고정 피해
+    dealt(dmg, c, note){ const k = c.fk, m = c.me;
+      if(dmg > 0){
+        if(id==="rat" && k.bossSig==="rat"){ m.bleed = Math.min(9, (m.bleed||0) + 2); note.push(`쥐의 발악 — 출혈 ${m.bleed}`); }
+        if(id==="bark"){ m.rupture = Math.min(9, (m.rupture||0) + 1 + (k.bossSig==="bark" ? 3 : 0)); note.push(`철쇄 — 파열 ${m.rupture}`); if(k.bossSig==="bark"){ dmg += 5; note.push("철쇄 난타 — 고정 피해 5"); } }
+        if(id==="deal99" && k.n==="클라이언트 클레임"){ m.sp = clamp(m.sp - 10, -45, 45); note.push("클라이언트 클레임 — 고정 정신력 피해 10"); }
+        if(id==="six"){ if(s.open >= 4){ m.bleed = Math.min(9, (m.bleed||0) + 3); note.push(`약지 — 출혈 ${m.bleed}`); }
+          if(k.n==="여섯 번째 덕목"){ const st = pick([["bleed","출혈"],["rupture","파열"],["sink","침잠"],["burn","화상"]]); m[st[0]] = Math.min(9, (m[st[0]]||0) + 3); note.push(`여섯 번째 덕목 — ${st[1]} ${m[st[0]]}`); } }
+        if(id==="twelve" && k.n==="뱀머리 던지기"){ m.bleed = Math.min(9,(m.bleed||0)+3); m.rupture = Math.min(9,(m.rupture||0)+3); m.burn = Math.min(9,(m.burn||0)+3); note.push("뱀머리 — 출혈·파열·화상 3"); } }
+      if(id==="deal99" && k.bossSig==="deal99"){ const cap = Math.floor(m.max*0.44); if(m.hp - dmg > cap){ dmg = m.hp - cap; } note.push(`<b style="color:#ff8a7a">사인 감사합니다 — ${esc(m.name)}의 상처가 중상까지 벌어졌다</b>`); }
+      if(dmg > 0){ mark(m);
+        if(id==="twelve" && !s.final){ if(L()===3 && dmg >= 15) note.push(...laborDone()); else if(L()===4 && c.guarding) note.push(...laborDone()); } }
+      return dmg; },
+    // 합 하나가 끝난 뒤
+    after(c){ const out = [], clashed = !c.guarding && !c.foeGuarding && !c.reloading;
+      if(id==="rat" && clashed && c.won){ s.bite = 1; }
+      if(id==="theyer"){ if(clashed && !c.won) s.learn++; if(clashed && c.won && c.T) { s.learn = 1; out.push("기술에 꺾였다 — 학습 수치가 1로 돌아갔다"); }
+        if(c.fk.bossSig==="theyer"){ s.learn = 0; foe.coinDown = 0; out.push("테이어 파이어를 쏟아 낸 뒤 쌓아 둔 학습이 비었다"); }
+        if(c.fk.n==="의체 과부하"){ foe.coinDown = Math.max(foe.coinDown||0, 1); out.push("의체 과부하 — 다음 공격 코인 위력 -1"); } }
+      if(id==="deal99"){ if(clashed && !c.won){ s.n++; out.push(`거래 횟수 ${s.n}`); } if(c.fk.bossSig==="deal99"){ s.n = 96; out.push("거래 횟수가 96으로 돌아갔다"); }
+        if(s.offer){ s.offer = null; s.n++; out.push(`거래 조건을 흘려보냈다 — 거래 횟수 ${s.n}`); } }
+      if(id==="six"){ if(clashed && c.won && c.T && s.open > 1){ s.open--; out.push(`기술에 밀려 ${SIX_FING[s.open]}를 접었다`); } if(clashed && c.won) s.mid = s.open >= 3 ? 2 : 0; }
+      if(id==="twelve" && !s.final){
+        if(clashed){ if(!c.won) s.streak++; else s.streak = 0; }
+        if(L()===0 && clashed && !c.won) out.push(...laborDone());
+        else if(L()===2 && clashed && !c.won && c.T) out.push(...laborDone());
+        else if(L()===6 && s.streak >= 2){ s.streak = 0; out.push(...laborDone()); }
+        else if(L()===7 && P.some(p=>p.hp>0 && p.hp <= p.max*0.5)) out.push(...laborDone());
+        else if(L()===8 && c.T && (c.foeGuarding || (!c.won && c.fk.def))) out.push(...laborDone()); }
+      if(c.me) c.me.bDown = 0;
+      return out; },
+    // 턴 끝
+    turnEnd(){ const out = [], t = E.turn();
+      if(foe.hp <= 0) return out;
+      if(id==="theyer"){ s.learn++; if(s.learn >= 5 && !s.ready){ s.ready = true; out.push(`<b style="color:#ff8a7a">학습 수치 5 — 다음 턴, 테이어 파이어</b>`); } }
+      if(id==="deal99" && t % 3 === 0){ s.offer = pick(DEAL_TERMS); out.push(`<b style="color:#e8c25a">"이번 거래 조건입니다." — ${s.offer.t}</b>`); }
+      if(id==="six"){ if(t % 2 === 0 && s.open < 6){ s.open++; out.push(`<b style="color:#e8c25a">${SIX_FING[s.open-1]}를 펼쳤다 — ${SIX_FING_D[s.open-1]}</b>`); }
+        if(s.open >= 2){ const pool = supporters(), tg = pool.length ? pick(pool) : me(); if(tg && tg.hp > 0){ tg.hp = Math.max(0, tg.hp - 3); mark(tg); out.push(`검지 — ${esc(tg.name)} 견제(고정 피해 3)`); } } }
+      if(id==="twelve"){
+        if(!s.final){ if(t % 2 === 0){ const pool = supporters(); if(pool.length){ const tg = pick(pool), d = Math.max(1, Math.round(4*(1-redHP(tg.f)))); tg.hp = Math.max(0, tg.hp - d); mark(tg); out.push(`견제 — ${esc(tg.name)}에게 ${d}`); if(L()===5) out.push(...laborDone()); } } }
+        else { supporters().forEach(tg=>{ const d = Math.max(1, Math.round(3*(1-redHP(tg.f)))); tg.hp = Math.max(0, tg.hp - d); mark(tg); }); if(supporters().length) out.push("최종 과업 — 동료 전원 견제");
+          if(t - s.lastProof >= 3){ s.lastProof = t; alive().forEach(p=>{ p.hp = Math.max(0, p.hp - 12); }); out.push(`<b style="color:#ff8a7a">과업 증명 — 모두에게 절대 고정 피해 12</b>`); bossFx.sig(B.sig); } }
+        if(!s.final){
+          if(L()===1 && t - s.lStart + 1 >= 3) out.push(...laborDone());
+          else if(L()===9 && s.hitSet.size >= 2) out.push(...laborDone());
+          else if(L()===10 && t - s.lStart + 1 >= 4) out.push(...laborDone());
+          else if(L()===11 && P.some(p=>p.hp<=0 && !s.fell.has(p))) out.push(...laborDone());
+          else if(L()===7 && P.some(p=>p.hp>0 && p.hp <= p.max*0.5)) out.push(...laborDone()); }
+        P.forEach(p=>{ if(p.hp<=0) s.fell.add(p); }); }
+      s.hitSet = new Set();
+      return out; },
+    // 거래 조건: 응한다
+    accept(){ const o = s.offer, m = me(); if(!o || !m) return ""; s.offer = null; s.n = Math.max(0, s.n - 10);
+      if(o.k==="hp") m.hp = Math.max(1, m.hp - 5); else if(o.k==="sp") m.sp = clamp(m.sp - 10, -45, 45); else if(o.k==="cp") m.cpDown = (m.cpDown||0) + 1; else m.bDown = (m.bDown||0) + 1;
+      return `<span style="color:#e8c25a">거래에 응했다 — ${o.t} · 거래 횟수 ${s.n}</span>`; },
+    refuse(){ if(!s.offer) return ""; s.offer = null; s.n++; return `<span style="color:#ff9a8a">거래를 거절했다 — 거래 횟수 ${s.n}</span>`; },
+    offerBtn(){ if(id!=="deal99" || !s.offer) return "";
+      return `<button data-boss="yes" class="pk-sign"><b>거래에 응한다</b><small>${esc(s.offer.t)} · 거래 횟수 -10 · 턴을 쓰지 않는다</small></button><button data-boss="no" class="pk-sign"><b>거래를 거절한다</b><small>거래 횟수 +1</small></button>`; },
+    hud(){ const col = THREAT_COL[B.tier] || "#ccc";
+      let g = "";
+      if(id==="rat") g = `궁지 ${s.bite ? "<b style='color:#ff8a7a'>이빨을 세웠다(다음 공격 +1)</b>" : "—"}${hpPct() <= 0.2 ? " · <b style='color:#ff8a7a'>궁지에 몰렸다(코인 위력 +1)</b>" : ""}`;
+      else if(id==="bark") g = `철쇄 — 기본 위력 +${1 + (hpPct() <= 0.3 ? 1 : 0)} · 맞힐 때마다 파열 1 · 3턴마다 철쇄 난타`;
+      else if(id==="theyer") g = `학습 ${"■".repeat(Math.min(5,s.learn))}${"□".repeat(Math.max(0,5-s.learn))} ${s.learn}/5${s.ready ? " · <b style='color:#ff8a7a'>테이어 파이어 준비</b>" : ""}`;
+      else if(id==="deal99") g = `거래 횟수 <b style="color:${s.n>=98?"#ff8a7a":"#e8c25a"}">${s.n}</b>/99${s.offer ? ` · 제시된 조건: ${esc(s.offer.t)}` : ""}`;
+      else if(id==="six") g = SIX_FING.map((n,i)=>`<span title="${esc(SIX_FING_D[i])}" style="color:${i < s.open ? "#ffd27a" : "#5c5866"}">${n}</span>`).join(" · ");
+      else if(id==="twelve") g = s.final ? `<b style="color:#ff8a7a">[최종 과업]</b> · 받는 피해 -20% · 매 턴 동료 견제 · 3턴마다 과업 증명`
+        : `${ROMAN.map((r,i)=>`<span style="color:${i < s.labor ? "#e8c25a" : i===s.labor ? "#fff" : "#5c5866"}">${r}</span>`).join("")} · 지금: ${ROMAN[s.labor]} 「${BOSS_LABOR[s.labor][0]}」 — ${BOSS_LABOR[s.labor][1]}`;
+      return `<span style="color:${col}">〈${esc(B.gim)}〉</span> ${g}`; }
+  };
+}
+/* ---- 보스 연출: 등장 컷인 · 기믹 줄 · 필살기 띠 · 격파 ---- */
+const bossFx = (()=>{
+  let stage = null;
+  const css = `.mg-stage{position:relative}
+.boss-cut{position:absolute;inset:0;z-index:6;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;cursor:pointer;background:rgba(0,0,0,.35);animation:bcFade 1.7s ease forwards}
+.boss-cut::before,.boss-cut::after{content:"";position:absolute;left:0;right:0;height:0;background:#000;animation:bcBar 1.7s ease forwards}
+.boss-cut::before{top:0}.boss-cut::after{bottom:0}
+.boss-cut b{position:relative;z-index:1;font-family:"Noto Serif KR",serif;font-size:clamp(26px,5.4vw,46px);letter-spacing:.06em;text-shadow:0 0 18px currentColor,0 2px 0 #000;animation:bcName 1.7s cubic-bezier(.2,.9,.2,1) forwards}
+.boss-cut small{position:relative;z-index:1;color:#e8e0d8;font-size:clamp(12px,2.2vw,15px);letter-spacing:.3em;margin-top:6px;opacity:0;animation:bcSub 1.7s ease forwards}
+.boss-cut i{position:relative;z-index:1;font-style:normal;font-size:11px;letter-spacing:.4em;color:#bbb;margin-bottom:6px}
+@keyframes bcBar{0%{height:0}18%{height:18%}80%{height:18%}100%{height:0}}
+@keyframes bcName{0%{opacity:0;transform:scale(1.6);filter:blur(6px)}22%{opacity:1;transform:scale(1);filter:none}80%{opacity:1}100%{opacity:0}}
+@keyframes bcSub{0%,20%{opacity:0}35%{opacity:1}80%{opacity:1}100%{opacity:0}}
+@keyframes bcFade{0%{opacity:1}85%{opacity:1}100%{opacity:0;visibility:hidden}}
+.boss-shake{animation:bShake .45s ease}
+@keyframes bShake{0%,100%{transform:none}20%{transform:translate(-6px,3px)}40%{transform:translate(5px,-4px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-2px)}}
+.boss-hud{margin:6px 14px 0;font-size:12px;color:#ddd;background:linear-gradient(90deg,rgba(10,8,14,.78),rgba(10,8,14,.35));border-left:3px solid var(--bc,#e8c25a);padding:4px 8px;border-radius:4px;pointer-events:none;text-shadow:0 1px 2px #000;line-height:1.5}
+.boss-sig{position:absolute;left:-10%;right:-10%;top:42%;z-index:5;text-align:center;padding:8px 0;background:linear-gradient(90deg,transparent,rgba(120,10,18,.85) 20%,rgba(120,10,18,.85) 80%,transparent);color:#fff;font-family:"Noto Serif KR",serif;font-size:clamp(18px,3.6vw,28px);letter-spacing:.2em;pointer-events:none;animation:bSig 1.3s ease forwards}
+@keyframes bSig{0%{transform:translateX(30%) skewX(-12deg);opacity:0}20%{transform:none;opacity:1}75%{transform:none;opacity:1}100%{transform:translateX(-30%) skewX(-12deg);opacity:0}}
+.boss-pulse::after{content:"";position:absolute;inset:0;z-index:4;pointer-events:none;box-shadow:inset 0 0 0 0 rgba(255,30,40,0);animation:bPulse 1.2s ease}
+@keyframes bPulse{0%{box-shadow:inset 0 0 0 0 rgba(255,30,40,0)}25%{box-shadow:inset 0 0 70px 18px rgba(255,30,40,.75)}50%{box-shadow:inset 0 0 30px 6px rgba(255,30,40,.3)}75%{box-shadow:inset 0 0 70px 18px rgba(255,30,40,.7)}100%{box-shadow:inset 0 0 0 0 rgba(255,30,40,0)}}
+.boss-kill{position:absolute;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;pointer-events:none;animation:bcFade 2.4s ease forwards}
+.boss-kill b{position:relative;font-family:"Noto Serif KR",serif;font-size:clamp(24px,5vw,42px);letter-spacing:.06em;text-shadow:0 0 14px currentColor,0 2px 0 #000}
+.boss-kill b::after{content:"";position:absolute;left:-4%;top:52%;height:4px;width:0;background:#f2ece4;box-shadow:0 0 10px #fff;animation:bStrike .6s .5s ease forwards}
+@keyframes bStrike{to{width:108%}}
+.req.boss{border-width:2px!important;box-shadow:0 0 0 2px rgba(0,0,0,.6),0 0 0 4px var(--bc,#e8c25a),0 0 14px -2px var(--bc,#e8c25a)!important}
+.req.boss .boss-stamp{display:inline-block;border:2px solid #d2262f;color:#ff6b6b;font-weight:700;font-size:11px;padding:0 6px;border-radius:3px;transform:rotate(-6deg);letter-spacing:.2em;margin-right:4px}
+.req.boss .boss-rumor{font-size:11px;color:#a9a3b5;font-style:italic;margin-top:4px}`;
+  function ensure(){ if(document.getElementById("bossCss")) return; const st = document.createElement("style"); st.id = "bossCss"; st.textContent = css; document.head.appendChild(st); }
+  return {
+    bind(el){ ensure(); stage = el; },
+    cut(B){ if(!stage) return; const d = document.createElement("div"); d.className = "boss-cut";
+      d.innerHTML = `<i>${esc(B.tier)} · 보스</i><b style="color:${THREAT_COL[B.tier]||"#e8c25a"}">${esc(B.name)}</b><small>「${esc(B.title)}」</small>`;
+      stage.appendChild(d); stage.classList.add("boss-shake"); setTimeout(()=>stage && stage.classList.remove("boss-shake"), 500);
+      const rm = ()=>d.remove(); d.onclick = rm; setTimeout(rm, 1750); },
+    hud(html, B){ if(!stage) return; let h = stage.parentElement.querySelector(".boss-hud"); if(!h){ h = document.createElement("div"); h.className = "boss-hud"; stage.insertAdjacentElement("afterend", h); }
+      h.style.setProperty("--bc", THREAT_COL[B.tier]||"#e8c25a"); h.innerHTML = html; },
+    sig(name){ if(!stage) return; const d = document.createElement("div"); d.className = "boss-sig"; d.textContent = name; stage.appendChild(d);
+      stage.classList.remove("boss-pulse"); void stage.offsetWidth; stage.classList.add("boss-pulse"); setTimeout(()=>{ d.remove(); stage && stage.classList.remove("boss-pulse"); }, 1300); },
+    kill(B){ if(!stage) return; const h = stage.parentElement.querySelector(".boss-hud"); if(h) h.remove();
+      const d = document.createElement("div"); d.className = "boss-kill"; d.innerHTML = `<b style="color:${THREAT_COL[B.tier]||"#e8c25a"}">${esc(B.name)}</b>`; stage.appendChild(d); setTimeout(()=>d.remove(), 2450); },
+    unbind(){ stage = null; },
+    ensure
+  };
+})();
+try{ bossFx.ensure(); }catch(_){}
 /* ================= 뒷골목 조직 의뢰 =================
    손가락 · 검계 · 흑운회는 빼고, 뒷골목 조직들을 상대(또는 의뢰인)로 하는 의뢰. 원작 조직(사육제 · 브레멘 음악대 · 웃는 얼굴들) + 이 게임의 조직.
    gr: 맞서기 알맞은 해결사 급수(그 급수 ±1 등급의 의뢰로 나온다) · rows: [내용, 의뢰인, 종류, 능력, 목표 또는 쫓을 대상, 상대]
@@ -3987,7 +4245,7 @@ function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequ
 function dailyReqN(){ return ((S && S.fixers) ? S.fixers.length : 1) + 1; }
 // 게시판 상한: 수락하지 않은 일반 의뢰가 '사무소 해결사 수 + 1'개면 더 들어오지 않는다(기한이 지나 빠진 자리만큼 다시 채워진다). 특수 의뢰는 세지 않는다
 const reqCap = () => dailyReqN();
-const isSpecialReq = q => !!(q.special || q.personalNom || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
+const isSpecialReq = q => !!(q.boss || q.special || q.personalNom || q.arc || q.prescript || q.hanaStar || q.starNom || q.distorted);
 const reqRoom = () => Math.max(0, reqCap() - S.requests.filter(q=>!q.accepted && !isSpecialReq(q)).length);
 // 사무소 등급별 의뢰 재해 등급 비중(%) — 9급 사무소는 기존 방식 그대로
 const REQ_MIX = {
@@ -4039,7 +4297,7 @@ function genRequestsInner(){
 // 의뢰 등급별 [권장 인원, 최대 인원]
 const PARTY = {9:[1,3],8:[1,3],7:[2,3],6:[2,3],5:[2,3],4:[3,3],3:[3,4],2:[3,4],1:[4,4]};
 const partyMax = q => q.kind==="특색 심사" ? 1 : (["도시 악몽","도시의 별"].includes(threatOf(q)) ? 4 : 3);
-const partyRec = q => q.kind==="특색 심사" ? 1 : Math.min(partyMax(q), (PARTY[q.grade]||[1])[0]);
+const partyRec = q => q.kind==="특색 심사" ? 1 : q.boss ? 2 : Math.min(partyMax(q), (PARTY[q.grade]||[1])[0]);
 function gearList(f){ return bodyItems(f).concat(augItems(f), [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.ab && f.ab.coatOff && S && S.day <= f.ab.coatOff ? null : f.gear.armor, f.gear.acc].filter(Boolean)); }
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
@@ -4158,7 +4416,7 @@ const CLEAN_WIN = 0.8;
 const DIRECT_PR = 97;
 const scorePayMul = sc => { const p = clamp(Math.round(sc*100), 0, 100); return p <= 50 ? 0.75 : p <= 75 ? 0.75 + (p-50)/25*0.25 : 1 + (p-75)/25*0.25; };   // 목표 게임이 없는 직접 수행의 성공률(실패는 3%뿐)   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
-const directOnly = q => !!(q && (q.ruins || q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
+const directOnly = q => !!(q && (q.boss || q.ruins || q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
 const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
 const gamesFor = q => { const base = gamesFor0(q); if(!storyMG(q)) return base;
   return q.arc ? ["story"].concat(base.includes("str") || q.goal ? ["str"] : []) : ["story"].concat(base); };
@@ -4442,6 +4700,7 @@ const BGM = (function(){
 })();
 // 미니게임 창 제목과 의뢰로 곡을 고른다
 function bgmFor(title, q){
+  if(q && q.boss && BOSS_DEF[q.boss] && /^정면 돌파/.test(title)) return BOSS_DEF[q.boss].bgm;
   if(q && (q.kind==="환상체" || q.abnoFoe)){
     const a = q && typeof abnoOf==="function" ? abnoOf(q) : null, r = a ? a.risk : "TETH";
     return r==="ALEPH" ? "warn3" : (r==="HE" || r==="WAW") ? "warn2" : "warn1"; }
@@ -5001,7 +5260,7 @@ function mgCombat(ctx){
     party.forEach(p=>{ p.shinLive = false; p.mangLive = 0; p.shinUsed = false; p.mangPeak = 0; p.extraTurn = 0; });   // 신(心) · 망(望): 전투 안에서 두르고 감는다
     const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null,
       reqC = DF && DIST_TIER[DF.th] ? Math.max(1, q.req - DIST_TIER[DF.th].req) : q.req,   // 뒤틀림: 합 전투는 그 등급의 본래 요구치로 겨룬다(가산된 요구치는 자동 진행 성공률에만)
-      kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
+      kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : q.boss && BOSS_DEF[q.boss] ? Object.assign(foeKit(q.foe || "", g0), {wt:BOSS_DEF[q.boss].wt, v:0, aug:null}) : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
     const foe = {name: q.foe || FOE_NAMES[g0] || "적", wt:fwt, kit, spec: fwt==="none" ? null : Object.assign(defaultSpec(fwt), {v:kit.v, metal: kit.worn ? pick(RUST_METALS) : pick(["#b9aca9","#aab5b1","#8e959e","#5f6670"]), len: kit.worn ? 0.85 + Math.random()*0.15 : 0.95 + Math.random()*0.15}), parts:{}, cards: AB ? AB.cards.map(c=>Object.assign({},c)) : DF ? DF.cards.map(c=>Object.assign({},c)) : CARDS[fwt].map(c=>Object.assign({},c,{a:Math.max(1,c.a-1-(kit.worn?1:0)), b:c.b-1-(kit.worn?1:0)}))};
     foe.aug = kit.aug;
     /* ---- 림버스식 합 ----
@@ -5021,13 +5280,15 @@ function mgCombat(ctx){
     const CT = combatTier(q, AB, DF);
     foe.hits = CT.hits; foe.hitK = CT.k;
     foe.max = Math.max(1,Math.round(foeHpValue(q,AB,DF,g0) * (foe.aug ? clamp(0.85+0.15*augMul,0.85,1.2) : 1)));
+    if(q.boss && BOSS_DEF[q.boss]) foe.max = Math.round(foe.max*(BOSS_DEF[q.boss].hpK||1.3));
     foe.hp = foe.max; foe.shownHp = foe.max; foe.coinDown = 0; foe.weak = 0;   // 적에게는 정신력이 없다. 코인 앞면은 50% 고정이며 정신력 감소 기술은 다음 합의 코인 위력을 낮춘다.
     // 사건 전용 미니게임을 잘 해냈으면 상대가 지친 채로 싸움이 시작된다(최대 25%)
     const storyEdge = q.__edge ? Math.round(foe.max*0.25*clamp(q.__edge,0,1)) : 0; if(storyEdge){ foe.hp = Math.max(1, foe.hp - storyEdge); foe.shownHp = foe.hp; } delete q.__edge;
     foe.baseDamage = foeDmgValue(q,AB,DF,g0);
+    if(q.boss && BOSS_DEF[q.boss]) foe.baseDamage = Math.round(foe.baseDamage*(BOSS_DEF[q.boss].dmgK||1.1));
     // 신(心)을 깨우친 인간 적: 2급 이상 가운데 아주 일부. 첫 턴에 신을 두르고, 그 뒤 망을 한 겹씩 감는다(추가 행동)
     foe.shinMax = 0; foe.shinLive = false; foe.mangLive = 0;
-    if(!AB && !DF && g0 <= 2 && (q.foeShin || Math.random() < (g0 >= 2 ? 0.03 : g0 === 1 ? 0.06 : 0.2))) foe.shinMax = g0 >= 2 ? 1 : g0 === 1 ? 2 : 3;
+    if(!AB && !DF && !q.boss && g0 <= 2 && (q.foeShin || Math.random() < (g0 >= 2 ? 0.03 : g0 === 1 ? 0.06 : 0.2))) foe.shinMax = g0 >= 2 ? 1 : g0 === 1 ? 2 : 3;
     if(!AB&&!DF&&g0<=4)foe.skills.forEach(sk=>{sk.cp+=1;});
     const bonus = me => relicFx(me.f,"tyr") ? 0 : clamp(Math.round((power(me.f,["str"])/Math.max(1,reqC) - 1)*5), -4, 4);   // 요구치에 못 미치면 크게 밀린다(최대 -4)
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
@@ -5120,7 +5381,7 @@ function mgCombat(ctx){
     const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } } o.base += abnoEdge(me);
       if(me.wsp==="cloud") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
     const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
-    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + w.base + livePow(me)), cp: Math.max(0, sk.cp + (withFirst?firstSupport():0) + w.cp - (me.cpDown||0))}); };
+    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + w.base + livePow(me) - (me.bDown||0)), cp: Math.max(0, sk.cp + (withFirst?firstSupport():0) + w.cp - (me.cpDown||0))}); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
     const basicAtkCards=me=>egoAttackCards(me.f.ego,atkCards(me.wt));
@@ -5158,11 +5419,13 @@ function mgCombat(ctx){
     }
     function odds(a, spA, b, spB, chg){ const samples = 64; let w = 0; for(let i=0;i<samples;i++) if(simClash(a, spA, b, spB, chg, tecClashBonus()).win==="me") w++; return w/samples; }
     const oddLabel = p => p>=0.8 ? ["압도", "#7fe0a8"] : p>=0.6 ? ["우세", "#a8e07f"] : p>=0.4 ? ["호각", "#e0d27f"] : p>=0.2 ? ["열세", "#e0a37f"] : ["절망", "#e07f7f"];
-    let act = 0, turn = 1; const st = {};   // 턴 제한 없음 — 목표(사살/제압)를 이루거나 모두 쓰러질 때까지 싸운다
+    let act = 0, turn = 1; const st = {};
+    const BOSS = q.boss && BOSS_DEF[q.boss] ? bossFight(q.boss, {foe, party, act:()=>act, turn:()=>turn}) : null; if(BOSS) AXN.unshift(...BOSS.intro());   // 턴 제한 없음 — 목표(사살/제압)를 이루거나 모두 쓰러질 때까지 싸운다
     let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
     const longK = () => turn > 12 ? 1 + 0.1*(turn - 12) : 1;   // 합이 아주 길어지면 양쪽 모두 지쳐 한 대가 무거워진다(끝없이 이어지지 않게)
     const S2 = {log:[]};
     function rollFoeSkill(t){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def);
+      if(BOSS) return BOSS.roll(t, at, df);
       /* 인간 적: 강한 기술은 3~6턴 사이 무작위로 온다. 환상체·뒤틀림은 기존 3턴 주기 강공 그대로. */
       /* 인간 적의 강한 기술: 8~9급은 쓰지 않는다. 7~4급은 세 갈래 중 하나만 정해 3~6턴마다,
          3급 이상은 둘을 정해 하나는 3턴마다 꼭, 나머지 하나는 4턴 이후 무작위 턴(그 뒤 3~6턴 간격)에 쓴다. */
@@ -5201,7 +5464,7 @@ function mgCombat(ctx){
       blunt:{n:"둔기 내성", d:"둔기·건틀릿 같은 무기의 피해 -3", cut:3, kinds:["blunt","fist","staff","tool","none"]},
       gun:{n:"방탄 내성", d:"총기 피해 -3", cut:3, kinds:["gun","rifle"]},
       awe:{n:"특색의 위압감", d:"받는 모든 피해 -5", cut:5, all:true}};
-    if(!AB && !DF && g0 <= 1 && !foe.passive){ const colorFoe = g0 === 0 || q.kind==="특색 심사" || /특색/.test(foe.name||"");
+    if(!AB && !DF && !q.boss && g0 <= 1 && !foe.passive){ const colorFoe = g0 === 0 || q.kind==="특색 심사" || /특색/.test(foe.name||"");
       foe.passive = pick(colorFoe ? ["edge","blunt","gun","awe"] : ["edge","blunt","gun"]); }
     const passiveCut = me => { const P = foe.passive && FOE_PASSIVE[foe.passive]; if(!P) return 0; return P.all || P.kinds.includes(me.wt) ? P.cut : 0; };
     function foeHeavy(at, kind0){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a), N = foe.name;
@@ -5289,6 +5552,7 @@ function mgCombat(ctx){
         <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def) || !techReady(me)?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${!techReady(me) ? `<span style="color:#ffb35a">다시 쓰기까지 ${techWait(me)}턴 — 기술은 2턴에 한 번</span><br>` : ""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · ${tsk.def?"방어 기술":`피해 계수 ${(TECH_DAMAGE_MUL[tk.T.id]||1).toFixed(2)}배 · 기본 피해 약 ${techniqueShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}`}<br><span class="muted">상대의 수를 알 수 없다</span> · ${tk.T.d} · 기술 공통 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
       { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", sb); } }
       { const gb = foeSignBtn(); if(gb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", gb); } }
+      { const ob = BOSS && BOSS.offerBtn(); if(ob){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", ob); } } if(BOSS) bossFx.hud(BOSS.hud(), BOSS.B);
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
@@ -5304,7 +5568,7 @@ function mgCombat(ctx){
       phase = "anim"; m.ctrl.innerHTML = "";
       const guarding = si===1||reloading;
       const c = si===0 ? pick(basicAtkCards(me)) : guarding ? basicDefCard(me) : tk.card, sk = mySkill(tk ? tk.sk : skillOf(c), !guarding && !(foeSkill.def && !AB && !DF)), wNote = [], tNote = [], rNote = [];
-      let fk = foeSk(); const slpNow = !guarding && relicFx(me.f,"sleipnir") && !me.slpUsed;
+      let fk = foeSk(); if(BOSS && fk.bossSig){ bossFx.sig(fk.n); await wait(350); } const slpNow = !guarding && relicFx(me.f,"sleipnir") && !me.slpUsed;
       if(slpNow){ me.slpUsed = true; rNote.push("슬레이프니르 — 여덟 다리가 한 박자 먼저 내달렸다(앞면 확률 +15%)"); }
       if(!guarding && relicFx(me.f,"aegis") && !me.aegUsed){ me.aegUsed = true; fk = Object.assign({}, fk, {base: Math.max(1, fk.base - 3)}); rNote.push(`아이기스 — 눈이 뜨였다, ${josa(foe.name,"이","가")} 굳었다(기본 위력 -3)`); }
       const foeGuarding = fk.def && !guarding && !AB && !DF;
@@ -5352,7 +5616,7 @@ function mgCombat(ctx){
       if(won && me.sp2==="poise"){ crit = heads.filter(h=>h && Math.random()<0.35).length; P += crit*wSk.cp; }
       if(clash){ (won ? clash.mine : clash.foe).heads = heads; (won ? clash.mine : clash.foe).p = clashPower; clash.flipAt = performance.now(); clash.res = won ? "foe" : "me"; }
       let total = 0;
-      const egoNote = [], abNote = [];
+      const egoNote = [], abNote = [], bNote = [];
       me.lastWon = won;
       const DEFK = {riposte:1.5, zwerch:1.2, improv:1.0, brace:0.8, bind:1.2, counter:1.6, steadfast:0.8};
       if(won){ const damageMul=T?(TECH_DAMAGE_MUL[T.id]||1):1;
@@ -5427,6 +5691,7 @@ function mgCombat(ctx){
          if(dmg>0 && !(AB && AB.immune && !(me.f.grade<=1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))))dmg+=supportDamage(!!fk.def);
         if(me.drepHeal){ me.drepHeal = false; const h = Math.max(1, Math.round(dmg*0.3)); me.hp = Math.min(me.max, me.hp + h); tNote.push(`거둔 만큼 되찾았다(체력 +${h})`); }
         { const pc = passiveCut(me); if(pc && dmg > 0){ const d0 = dmg; dmg = Math.max(1, dmg - pc); rNote.push(`${FOE_PASSIVE[foe.passive].n} — 피해 ${d0}→${dmg}`); } }
+        if(BOSS) dmg = BOSS.taken(dmg, {me, T, fk}, bNote);
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
         if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = Math.round(foe.max*0.25); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
@@ -5438,6 +5703,7 @@ function mgCombat(ctx){
       }
       else { let dmg = Math.round(P*(relicFx(me.f,"tyr") ? 1 : clamp(Math.pow(reqC/Math.max(1,power(me.f,["str"])),0.22),0.85,1.25))*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*longK()*(me.f.tired && !accFx(me.f,"calm") ? TIRED_DMG : 1));
         if(sk.def) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+        if(BOSS){ const ex = BOSS.extra({me, fk}, bNote); if(ex) dmg += Math.round(ex*(sk.def ? 0.5 : 1)); }
         if(me.wsp==="meztil"){ dmg = Math.round(dmg*1.2); wNote.push("과속 — 몸이 따라가지 못했다(받는 피해 +20%)"); }
         if(me.wsp==="ranga" && me.rend){ me.rend = 0; wNote.push("벌려 둔 상처가 아물었다"); }
         if(T && T.id==="allout"){ dmg = Math.round(dmg*1.5); tNote.push("전력 공격 — 빈틈을 그대로 맞았다(받는 피해 ×1.5)"); }
@@ -5465,9 +5731,11 @@ function mgCombat(ctx){
         if(dmg > 0 && me.sink > 0){ const sl = me.sink*3; me.sp = clamp(me.sp - sl, -45, 45); hvNote.push(`침잠 — 마음이 가라앉는다(정신력 -${sl})`); me.sink--; }
         if(dmg > 0 && fk.heavy==="cripple"){ me.cpDown = 1; hvNote.push(`손목을 맞았다 — 다음 합 코인 위력 -1`); }
         if(dmg > 0 && fk.heavy==="status" && fk.stk){ me[fk.stk] = Math.min(9, (me[fk.stk]||0) + fk.stn); hvNote.push(`${HV_STATUS[fk.stk].n} ${me[fk.stk]}`); }
+        if(BOSS) dmg = BOSS.dealt(dmg, {me, fk, guarding: !!sk.def}, bNote);
         const w0 = woundOf(me.hp,me.max); me.hp = Math.max(0, me.hp - dmg); total = dmg;
         if(me.scarabNow){ me.scarabNow = false; me.hp = Math.max(me.hp, Math.round(me.max*0.74)); rNote.push("태양 스카라베 — 쓰러질 상처를 1로 버티고, 가슴의 원반이 동틀 녘처럼 데워 경상까지 되돌렸다"); } me.woundUp = woundOf(me.hp,me.max) > w0 || me.hp<=0; st.crit = false; if(dmg>0) attack("foe", dmg, fk);
         if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
+      if(BOSS) bNote.push(...BOSS.after({won, guarding, foeGuarding, reloading, T, fk, me}));
       await wait(900);
       clash = null;
       lines.push(reloading && fk.def ? "재장전 완료 — 피해 0, 체력 변화 없음." : won ? `기본 피해 ${P}${ammoPlus?` · 탄환 추가 피해 최대 +${ammoPlus}`:""} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : guarding ? `${jo(esc(me.name),"이")} 막아 피해를 절반으로 줄였다(${total}) — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}`);
@@ -5476,6 +5744,7 @@ function mgCombat(ctx){
       if(R.fired) egoNote.unshift("충전 10 소모 — 이번 턴 코인 위력 +1");
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       if(abNote.length) lines.push(`<span style="color:#ff9a8a">환상체</span> ${abNote.join(" · ")}`);
+      if(bNote.length) lines.push(`<span style="color:${THREAT_COL[BOSS.B.tier]||"#e8c25a"}">${esc(BOSS.B.name)}</span> ${bNote.join(" · ")}`);
       if(wNote.length) lines.push(`<span style="color:#f2c27a">고유 무기</span> ${wNote.join(" · ")}`);
       if(rNote.length) lines.push(`<span style="color:#d8b45a">유물</span> ${rNote.join(" · ")}`);
       if(T){ me.sp = clamp(me.sp - TECH_SP_COST, -45, 45); tNote.push(`기술 사용(정신력 -${TECH_SP_COST} → ${me.sp>=0?"+":""}${me.sp})`); }
@@ -5487,7 +5756,7 @@ function mgCombat(ctx){
     }
     // 쓰러뜨린 뒤 마무리: 제압할지, 숨통을 끊을지 고른다(의뢰 목표와 다르면 의뢰 실패)
     function finishMenu(){
-      phase = "finish"; downed = true;
+      phase = "finish"; downed = true; if(BOSS && !BOSS.killed){ BOSS.killed = true; bossFx.kill(BOSS.B); }
       m.info.innerHTML = `<div class="pk-text">${tick ? `<span style="color:#ffb35a">${tick}</span><br>` : ""}${jo(foe.name,"이")} 쓰러졌다. 의뢰 목표는 <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>이다. 어떻게 마무리할까?</div>`;
       m.ctrl.innerHTML = AB && AB.kill ? `<div class="pk-moves"><button data-fin="사살"><b>사살</b><small>알로 되돌릴 수 없는 죄종을 사살한다</small></button></div>` : AB && AB.possessed ? `<div class="pk-moves"><button data-fin="제압"><b>구두를 벗겨 낸다</b><small>발목을 잘라 구두를 벗기고 생존자를 구출한다</small></button></div>` : AB ? `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>환상체를 제압하여 알로 되돌린다</small></button></div>` : `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>상대를 생포한다</small></button><button data-fin="사살"><b>사살</b><small>상대를 사살한다</small></button></div>`;
     }
@@ -5508,7 +5777,7 @@ function mgCombat(ctx){
     }
     function turnEnd(){
       // 턴이 끝날 때: 화상이 타오르고, 재생이 상처를 메우고, 보호막이 다시 선다
-      const tk = tick ? [tick] : []; { const sm = foeSignMiss(); if(sm) tk.push(sm); }
+      const tk = tick ? [tick] : []; { const sm = foeSignMiss(); if(sm) tk.push(sm); } if(BOSS) tk.push(...BOSS.turnEnd());
       if(foe.burn > 0){ foe.hp = Math.max(0, foe.hp - foe.burn); tk.push(`${foe.brand ? "낙인 " : ""}화상 — ${jo(foe.name,"이")} ${foe.burn}의 피해`); if(!foe.brand) foe.burn--; }
       party.forEach(p=>{ if(p.hp<=0 || !(p.burn > 0)) return; p.hp = Math.max(0, p.hp - p.burn); tk.push(`화상 — ${esc(p.name)}이(가) ${p.burn}의 피해`.replace(`${esc(p.name)}이(가)`, jo(esc(p.name),"이"))); p.burn--; });
       party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } if(p.sp2==="shield") p.shield = 10; });
@@ -5558,7 +5827,8 @@ function mgCombat(ctx){
       setTimeout(()=>{ mgResult(m, res.score, text).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
-      if(b.dataset.sk==="4"){ if(phase==="skill") shinAct(); }
+      if(b.dataset.boss && BOSS){ if(phase==="skill"){ const t2 = b.dataset.boss==="yes" ? BOSS.accept() : BOSS.refuse(); tick = [t2].concat(tick ? [tick] : []).join("<br>"); skillMenu(); } }
+      else if(b.dataset.sk==="4"){ if(phase==="skill") shinAct(); }
       else if(b.dataset.sk==="5"){ if(phase==="skill") foeSignAct(); }
       else if(b.dataset.sk!==undefined && phase==="skill"){ party[act].fought = true; resolveClash(+b.dataset.sk,b.dataset.ammoType); }
       else if(b.dataset.fin && phase==="finish"){ outcome = b.dataset.fin; m.ctrl.innerHTML = ""; finish(); }
@@ -5575,6 +5845,7 @@ function mgCombat(ctx){
     // 선택지 칸이 더 커진 적이 있으면 그 높이를 유지한다(창이 위아래로 흔들리지 않게)
     new ResizeObserver(()=>{ const h = m.ctrl.scrollHeight; if(h > (parseFloat(m.ctrl.style.minHeight)||0)) m.ctrl.style.minHeight = h+"px"; }).observe(m.ctrl);
     const stage = m.bg.querySelector(".mg-stage"), glc = document.createElement("canvas");
+    if(BOSS){ bossFx.bind(stage); bossFx.cut(BOSS.B); }
     const gd = Math.min(PERF.low ? 1 : 1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
     // 그래픽 카드 없이 CPU로 셰이더를 흉내 내는 환경(소프트웨어 렌더러)이면 처음부터 2D로 그린다. 그 밖에도 처음 몇 프레임이 너무 느리면 2D로 내려간다.
@@ -6984,7 +7255,7 @@ function pickAbno(g){
   return {id:a.id, variant: vr || false}; }
 // 실제로 만나는 모습(아종이면 이름과 선호가 바뀐다)
 /* 의뢰지에는 환상체인지 죄종인지 적지 않는다 — 의뢰인은 생김새와 피해만 안다 */
-const requestDisplayKind = q => q && (q.kind==="환상체" || q.abno) ? "정체불명" : q.kind;
+const requestDisplayKind = q => q && q.boss && BOSS_DEF[q.boss] ? BOSS_DEF[q.boss].kindLabel : q && (q.kind==="환상체" || q.abno) ? "정체불명" : q.kind;
 const abnoOf = q => { const a = ABNO_BY[q.abno && q.abno.id]; if(!a) return null; return q.abno.variant ? Object.assign({}, a, {n:`${a.n} (아종: ${a.variant.n})`, pref:a.variant.pref, vid:a.id+"~v"}) : Object.assign({}, a, {vid:a.id}); };
 /* 도감: 같은 환상체를 만날수록 정보가 열린다(이름 → 위험 등급 → 선호 행동 → 폭주·전투 조건 → 이야기). 업적처럼 이 브라우저에 남는다. */
 const CODEX_KEY = "problem-solver-codex-v1";
@@ -7916,6 +8187,7 @@ async function dispatch(qid, fids, modeArg){
   if(fids.some(id=>S.fixers.some(f=>f.id===id && !bodyServiceReady(f)))){ toast("전신 의체 정비비를 내지 못한 해결사는 출동할 수 없습니다. 공방 → 의체에서 먼저 납부해 주세요."); return; }
   const team = fids.map(id=>S.fixers.find(x=>x.id===id)).filter(f=>f && canSend(f));
   if(!q || !team.length || team.length>partyMax(q)) return;
+  if(q.boss && team.length < 2){ toast("보스 의뢰는 2명 이상 출동해야 한다"); return; }
   if(!q.accepted){ toast('계약을 수락한 뒤 출동할 수 있습니다.'); return; }
   let mental = isMental(q);
   const marching = team.filter(f=>!canGo(f) && canMarch(f));
@@ -8034,7 +8306,7 @@ async function dispatch(qid, fids, modeArg){
   { const cl = contractResult(q, success); if(cl) lines.push(cl); }
   if(q.distFoe && success) team.forEach(f=>{ const e0 = distExp(f); f.dk = (f.dk||0) + 1; const e1 = distExp(f);
     if(e1 && (!e0 || e0.n!==e1.n)) lines.push(`<span style="color:#c9b0ff">${esc(f.name)}: 뒤틀림 경험 — <b>${e1.n}</b>(처치 ${f.dk}) · 이제 뒤틀림을 상대로 기본 위력 +${e1.base}${e1.cp ? `, 코인 위력 +${e1.cp}` : ""}</span>`); });
-  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); arcClueTick(q, team, success, lines); storyPost(q, success); hanaStarAfter(q, success, lines); officeStoryModule.after(q, team, success, lines);
+  idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); arcClueTick(q, team, success, lines); storyPost(q, success); hanaStarAfter(q, success, lines); bossAfter(q, success, lines); officeStoryModule.after(q, team, success, lines);
   if(success){
     if(q.ruins) ruinsReward(q,lines);
     if(q.scarJob) S.scarJobDone = S.day;
@@ -9389,7 +9661,7 @@ function startDay(first){
   if(S.debt>0){ const week=Math.floor((S.day-1)/7);
     if(!S.scarWeekDue||S.scarWeekDue.week!==week) S.scarWeekDue={week,amount:Math.min(S.debt,Math.max(Math.floor(S.money*0.35),10000))}; }
   rwSnap();
-  surroundingsTick(); genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn();
+  surroundingsTick(); genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn(); bossSpawn();
   if(typeof NAMELESS_P!=="undefined" && S.day >= 5 && Math.random() < NAMELESS_P) S.vnNameless = true;
   genRecruits();
   spawnRumors();
@@ -16005,6 +16277,7 @@ function reqStory(q){
   const L = [];
   if(q.prescript){ L.push("아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉엔 아무것도 적혀 있지 않았다.", "골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다.", `봉투 속 종이에는 한 줄뿐이다 — "${String(q.text).replace(/^지령: /,"")}"`, "따르면 사례가 온다. 따르지 않으면 대가를 치른다."); }
   else if(q.hanaStar){ L.push("하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달되었다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다.", ...retellReq(q.text, true), "협회는 이 일을 '지정 의뢰'라고 불렀다. 해내면 도시가 사무소 이름을 다시 부를 것이다. 실패하면, 아마 다른 이름으로.", q.bossLine || ""); }
+  else if(q.boss && BOSS_DEF[q.boss]){ const B = BOSS_DEF[q.boss]; L.push(B.open, `골목에서는 이런 소문이 돈다. "${B.rumor}"`, "기한은 없다고 했다. 다만 혼자서는 가지 말라는 말을 몇 번이나 덧붙였다."); }
   else if(q.trio){ L.push("하나 협회에서 사람이 왔다. 서류 한 장을 내밀고, 사무소를 직접 지명한 의뢰라고 했다.", ...retellReq(String(q.text).replace(/^하나 협회의 지명 — /,""), true), STORY_THREAT[threatOf(q)]); }
   else if(q.scarJob){ L.push("흉터가 다시 왔다. 이번에는 금고 쪽을 보지 않고, 접은 종이 한 장을 내밀었다.", ...retellReq(String(q.text).replace(/^남겨진 흉터의 의뢰 — /,""), true), "\"값은 넉넉히 치르지. 우리 사이에 그 정도는.\""); }
   else if(q.kind==="환상체"){
@@ -16046,6 +16319,7 @@ function specialRequestAction(q){
 function specialRequestTitle(q){
   if(q.prescript) return "검지 지령";
   if(q.hanaStar) return "하나 협회 지정 재해 토벌";
+  if(q.boss && BOSS_DEF[q.boss]) return BOSS_DEF[q.boss].reqTitle;
   if(q.starNom) return "도시의 별 지정 의뢰";
   if(q.ruins) return "폐쇄 L사 지부 지하 "+q.ruins.floor+"층 탐사";
   if(q.kind==="특색 심사") return "특색 지정 심사";
@@ -16136,8 +16410,8 @@ function render(){
   app.querySelector("#reqs").innerHTML = shownRequests.length ? shownRequests.slice().sort(compareRequests).map(q=>{
     const opts = (q.kind==="특색 심사" ? avail.filter(f=>f.id===q.target) : avail);
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
-    return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}" data-q="${q.id}"${(c=>c ? ` style="border-color:${c}"` : "")(reqBorderCol(q))}>
-      <div class="head">${q.personalNom?`<span class="badge" style="color:#e8d27a;border-color:currentColor">개인 지명 · ${esc(q.personalNom.name)}</span>`:""}${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} · ${arcStageOf(q.arc.ch)}</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.ruins?`<span class="badge" style="color:#9fe8b0;border-color:currentColor">폐허 L사 지하 ${q.ruins.floor}층 · 갈림길 탐험</span>`:""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
+    return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}${q.boss ? " boss" : ""}" data-q="${q.id}"${(c=>c ? ` style="border-color:${c};--bc:${c}"` : "")(reqBorderCol(q))}>
+      <div class="head">${q.boss?`<span class="boss-stamp">보스</span>`:""}${q.personalNom?`<span class="badge" style="color:#e8d27a;border-color:currentColor">개인 지명 · ${esc(q.personalNom.name)}</span>`:""}${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} · ${arcStageOf(q.arc.ch)}</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.ruins?`<span class="badge" style="color:#9fe8b0;border-color:currentColor">폐허 L사 지하 ${q.ruins.floor}층 · 갈림길 탐험</span>`:""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
         <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.deadline!=null&&q.deadline<=1?`<span class="badge deadline-urgent">오늘 마감</span>`:""}${q.risk && q.kind!=="환상체" && !q.abno ? `<span class="badge">${q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
@@ -20166,7 +20440,7 @@ function fxTestPanel(){
   el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>사건 · 특수 의뢰 전용 미니게임</b><div class="g"><select id="fxstory">${Object.entries(STORY_MG).map(([k,v])=>`<option value="${k}">${k} — ${v.t}</option>`).join("")}</select><button data-story="1">시험</button><button data-story="post">뒷이야기(성공)</button><button data-story="postfail">뒷이야기(실패)</button></div>
-   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><button data-mg="dist">뒤틀림 전투 시험</button><select id="fxdt"><option>도시 질병</option><option>도시 악몽</option><option>도시의 별</option></select><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
+   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><button data-mg="dist">뒤틀림 전투 시험</button><button data-mg="boss">보스 시험</button><select id="fxbs"><option value="rat">뜬소문 · 랫키어</option><option value="bark">도시 괴담 · 바르크</option><option value="theyer">도시 전설 · 테이어파이어</option><option value="deal99">도시 질병 · 99번째 거래처</option><option value="six">도시 악몽 · 여섯 번째 손가락</option><option value="twelve">도시의 별 · 12 과업의 대행자</option></select><button data-mg="bossreq">보스 의뢰 게시</button><select id="fxdt"><option>도시 질병</option><option>도시 악몽</option><option>도시의 별</option></select><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
@@ -20351,6 +20625,9 @@ function fxTestPanel(){
     if(sv==="1"){ const r = await mgStory({q, team:S.fixers.slice(0,3), idx:1, total:1}); toast(`전용 미니게임 ${Math.round(r*100)}점 — 싸움이 이어지면 상대 체력 -${Math.round(25*r)}%`); }
     else { const Pp = STORY_POST[storyKey(q)]; if(Pp) await vnPlay(`${STORY_MG[k].t} — ${sv==="post" ? "성공한 뒤" : "실패한 뒤"}`, sv==="post" ? Pp.ok : Pp.fail, null, null); } });
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
+    if(g==="boss"){ const team = S.fixers.slice(0,Math.max(2,+el.querySelector("#fxn").value)).filter(Boolean); const q = bossReq(el.querySelector("#fxbs").value);
+      const r = await mgCombat({q, team, idx:1, total:1}); save(); render(); toast(`보스 시험 — ${r.win ? "승리" : "패배"}`); return; }
+    if(g==="bossreq"){ const id = el.querySelector("#fxbs").value; S.requests = S.requests.filter(q=>!q.boss); S.requests.unshift(bossReq(id)); save(); render(); toast(`보스 의뢰 게시 — ${BOSS_DEF[id].reqTitle}`); return; }
     if(g==="dist"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean), th = el.querySelector("#fxdt").value;
       const gr = th==="도시의 별" ? 1 : th==="도시 악몽" ? 3 : 5;
       const q = {kind:"일반", text:"", goal:"사살", grade: gr, threat: th, attrs:["str"], req: Math.max(1, teamPower(team,["str"])/kk), reward: 10000, deadline: 2, client:"테스트 의뢰인"};
