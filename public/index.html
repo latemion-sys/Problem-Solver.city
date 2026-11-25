@@ -2765,7 +2765,7 @@ function migrate1247(d){
       const mul = (q.hazard ? 1.5 : 1)*(q.arc ? 1.5 : 1)*(q.hanaStar ? 3 : 1)*(q.prescript ? 1.4 : 1);
       q.reward = Math.max(100, Math.round(B[0]*mul*(0.85 + Math.random()*0.3)/100)*100); }); }
   // 1.2.4.7 이상 저장의 보수를 다시 줄이지 않는다.
-  migrateEgoStory169(d); d.v = VERSION;
+  migrateEgoStory169(d); stripInvalidPromoExams(d); d.v = VERSION;
   return d;
 }
 const NOM_P = 0.3;
@@ -2831,8 +2831,8 @@ function makeRequest(grade, opts={}){
   if(opts.kind){ kind = opts.kind; attrs = opts.attrs; }
   const P = requestGradePool(grade);
   if(!opts.kind){
-    const r = Math.random();
-    if(r < P.pW){ kind="환상체"; attrs=["wil"]; }
+    const r = opts.noAnomaly ? P.pW + Math.random() * (1 - P.pW) : Math.random();
+    if(!opts.noAnomaly && r < P.pW){ kind="환상체"; attrs=["wil"]; }
     else if(r < P.pW + P.pE){ kind="호위"; attrs=["str","agi"]; }
     else if(r < P.pW + P.pE + P.pS){ kind="수색"; attrs=["agi","tec"]; }
     else { attrs=[pick(["str","agi","tec"])]; }
@@ -2866,7 +2866,7 @@ function makeRequest(grade, opts={}){
   };
   if(opts.synd) applySyndicate(q, opts.synd);
   else if(!opts.kind && !ab && grade <= 8 && grade >= 2 && Math.random() < SYN_P) applySyndicate(q);
-  if(opts.distort) applyDistort(q, true); else if(!opts.kind && !ab && !q.synd) applyDistort(q, false);
+  if(!opts.noAnomaly){ if(opts.distort) applyDistort(q, true); else if(!opts.kind && !ab && !q.synd) applyDistort(q, false); }
   if(!opts.kind && !ab && !q.synd && !q.distFoe && grade <= 7 && Math.random() < ASSOC_P) return Object.assign(assocRequest(grade), opts.over||{});
   if(!opts.kind && IDX_THREATS.includes(threat) && !(S.idx && S.idx.closed) && Math.random() < IDX_P) return Object.assign(prescriptReq(q), opts.over||{});
   if(!opts.noRelic) markRelic(q);
@@ -3834,10 +3834,29 @@ const EARLY_DL_DAYS = 14;
    해결사: 6급까지는 매주, 5·4급은 3주에 한 번꼴. 3급 이상은 승급 심사 의뢰를 EXAM_NEED_FIXER건 해낸 상태에서 기존 조건을 채워야 한다. */
 const OFFICE_GAP = t => t >= 6 ? 14 : 21, FIXER_GAP = t => t >= 6 ? 7 : 21, EXAM_NEED_OFFICE = 3, EXAM_NEED_FIXER = 2;
 const examWanted = () => (S.officeGrade - 1 <= 3 && S.officeGrade > 1 && (S.examOk||0) < EXAM_NEED_OFFICE) || S.fixers.some(f=>f.grade >= 2 && f.grade - 1 <= 3 && (f.examOk||0) < EXAM_NEED_FIXER);
+// 승급 심사는 환상체·죄종·뒤틀림 관련 의뢰와 분리한다.
+function promoExamExcluded(q){
+  return !!(q && (officeTrustSpecial(q) || q.distorted || /환상체|뒤틀림|죄종/.test(String(q.risk||""))));
+}
+function stripInvalidPromoExams(d){
+  if(!d || !Array.isArray(d.requests)) return;
+  for(const q of d.requests){
+    if(!q.promoExam || !promoExamExcluded(q)) continue;
+    delete q.promoExam;
+    if(typeof q.text==="string") q.text=q.text.replace(/^\[승급 심사\]\s*/, "");
+    if(typeof q.sourceText==="string") q.sourceText=q.sourceText.replace(/^\[승급 심사\]\s*/, "");
+    if(q.client==="하나 협회 승급 심사과") q.client=q.distFoe || q.distorted || /뒤틀림/.test(q.kind||"") ? "하나 협회 긴급 공고" : "익명의 제보자";
+    if(!q.arc && !q.prescript && !q.hanaStar && !q.trio && !q.scarJob && !q.ruins && !q.nom && !q.personalNom && !q.officeStoryId) q.special=false;
+    // 의뢰 자체 및 기존 계약 보수·기한·수락 상태는 보존한다.
+  }
+}
 function examRequestTick(){
+  stripInvalidPromoExams(S);
   if(!examWanted() || S.requests.some(q=>q.promoExam)) return;
   const g = clamp(Math.min(S.officeGrade - 1, Math.min(...S.fixers.filter(f=>f.grade>=2).map(f=>f.grade - 1).concat([9]))), 1, 9);
-  const q = makeRequest(g); Object.assign(q, {promoExam:true, special:true, client:"하나 협회 승급 심사과", text:`[승급 심사] ${q.text}`, deadline: 3, reward: Math.round(q.reward*1.2/100)*100});
+  const q = makeRequest(g, {noAnomaly:true});
+  if(promoExamExcluded(q)) return; // 다른 생성 경로에서도 이상 의뢰에 심사가 붙지 않게 최종 확인
+  Object.assign(q, {promoExam:true, special:true, client:"하나 협회 승급 심사과", text:`[승급 심사] ${q.text}`, deadline: 3, reward: Math.round(q.reward*1.2/100)*100});
   S.requests.unshift(q); addLog(`하나 협회 승급 심사 의뢰가 올라왔다 — [${requestTitle(q)}]`); }
 // 개인 지명은 기존 사무소 지명과 별개. 하루마다 3급 이상(특색 포함) 각자 5%.
 const PERSONAL_NOM_P = 0.05;
@@ -7868,7 +7887,7 @@ async function dispatch(qid, fids, modeArg){
     else { ac("fail"); S.st.streak = 0; } }
   { const sc = mode==="play" ? (decisive!=null ? (success ? 0.85 : 0.2) : mgScore!=null ? mgScore : 0.5) : (success ? 0.65 : 0.15), add = (w, hard) => { w.n++; w.sc += sc; if(success){ w.ok++; if(hard || q.nom) w.hi++; } };
     S.wk = S.wk || {n:0, ok:0, hi:0, sc:0}; add(S.wk, q.grade!=null && q.grade <= S.officeGrade);
-    if(q.promoExam && success){ S.examOk = (S.examOk||0) + 1; team.forEach(f=>{ f.examOk = (f.examOk||0) + 1; }); }
+    if(q.promoExam && success && !promoExamExcluded(q)){ S.examOk = (S.examOk||0) + 1; team.forEach(f=>{ f.examOk = (f.examOk||0) + 1; }); }
     team.forEach(f=>{ f.wk = f.wk || {n:0, ok:0, hi:0, sc:0}; add(f.wk, q.grade!=null && q.grade <= f.grade); }); }
   const k = dmgFactor(team,q)*shareMul(team.length);
   const names = team.map(f=>f.name).join(", ");
