@@ -10490,16 +10490,41 @@ async function openForge(f, slot0, mode){
 
 /* ================= 기록 / 저장 ================= */
 
+// 유물 전용 기술은 실제 획득한 유물에 한해서만 기록에 공개한다.
+function relicTechniqueDiscoveries(d){
+  const ids=new Set(), definitions=RELICS.filter(R=>R.slot==="weapon" && TECHS["r_"+R.id]);
+  if(!d)return ids;
+  const inspect=g=>{if(g && g.relic && definitions.some(R=>g.id==="relic-"+R.id))ids.add(String(g.id).slice(6));};
+  for(const f of [...(d.fixers||[]),...(d.formerFixers||[]),...(d.recruitPool||[])])if(f&&f.gear)Object.values(f.gear).forEach(inspect);
+  (d.inventory||[]).forEach(inspect);
+  for(const row of d.records||[]){
+    if(!row||row.what!=="유물"||typeof row.note!=="string"||!row.note.includes(", 귀속 · "))continue;
+    for(const R of definitions)if(row.note.startsWith(R.name+"("+R.origin+") — "))ids.add(R.id);
+  }
+  return ids;
+}
+function rememberRelicTechniqueDiscoveries(d){
+  if(!d)return;
+  for(const id of relicTechniqueDiscoveries(d))acSet("relicTechDiscovered",id);
+}
+function revealedRelicTechniques(){
+  const L=ltLoad(), ids=new Set((L.set||{}).relicTechDiscovered||[]);
+  let d=S;
+  if(!d&&!FXTEST){try{d=JSON.parse(localStorage.getItem(SAVE_KEY));}catch(_){}}
+  for(const id of relicTechniqueDiscoveries(d))ids.add(id);
+  return ids;
+}
 function techniqueRecordHtml(weapon="all"){
   const kindName=k=>k==="none"?"맨손":(WEAPON_KINDS[k]||{}).n||k;
-  const entries=Object.entries(TECHS).filter(([id,T])=>weapon==="all"||techFits(id,weapon));
+  const revealed=revealedRelicTechniques();
+  const entries=Object.entries(TECHS).filter(([id,T])=>(!T.relic||revealed.has(T.relic))&&(weapon==="all"||techFits(id,weapon)));
   const rows=entries.map(([id,T])=>{
     const R=T.relic?RELICS.find(r=>r.id===T.relic):null;
     const use=T.kinds?T.kinds.map(kindName).join(" · "):"모든 무기 및 맨손";
     const learn=T.relic?((R?R.name:T.relic)+" 원본 장착 시 사용 가능"):id==="allout"?"기본 기술":T.stat?ATTR_NAME[T.stat]+" "+TECH_STAT_REQ+" 이상 · 의뢰 수행 8회 이상":"해당 무기 숙련도 및 해결사 급수에 따라 습득";
     return `<div class="cdx on"><div class="cdx-h"><b>${esc(T.n)}</b><span class="badge">${T.relic?"유물 전용":T.def?"방어 기술":"공격 기술"}</span></div><div class="cdx-g"><span>사용 가능 무기</span><div>${esc(use)}</div><span>습득 조건</span><div>${esc(learn)}</div><span>효과</span><div>${esc(T.d)}</div></div></div>`;
   }).join("");
-  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 기본 기술을 제외한 일반 기술은 습득 후 사용할 수 있으며, 유물 전용 기술은 봉인이 풀린 해당 유물을 장착해야 한다.</p><p class="muted" style="margin:0 0 10px">공통 효과: 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST} · 2턴에 한 번 사용 가능</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">기술 ${entries.length}개</p>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
+  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 기본 기술을 제외한 일반 기술은 습득 후 사용할 수 있으며, 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">공통 효과: 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST} · 2턴에 한 번 사용 가능</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">기술 ${entries.length}개</p>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
 }
 function recordReferenceTabs(active){
   const cx=codexRecordData();
@@ -10577,15 +10602,15 @@ async function openRecords(){
 function clearSave(){
   // 새 회차에 들어가기 직전의 직원 명단은 별도 보존하며, 시험 모드에서는 변경하지 않는다.
   if(!FXTEST){
-    if(S) archiveOffice(S);
-    else { try{ const d=JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers) archiveOffice(d); }catch(_){} }
+    if(S){ rememberRelicTechniqueDiscoveries(S); archiveOffice(S); }
+    else { try{ const d=JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers){ rememberRelicTechniqueDiscoveries(d); archiveOffice(d); } }catch(_){} }
   }
   try{ localStorage.removeItem(SAVE_KEY); }catch(_){}
 }
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 let saveWarningShown=false;
 function save(){
-  if(S){ migrateFixerGender(S); S.money = Math.max(0, Number(S.money)||0); migrate1247(S); migrateWorkshopDur(S); syncAllStatVitals(S); }
+  if(S){ migrateFixerGender(S); S.money = Math.max(0, Number(S.money)||0); migrate1247(S); migrateWorkshopDur(S); syncAllStatVitals(S); rememberRelicTechniqueDiscoveries(S); }
   if(S&&!FXTEST){
     try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({}, S, {ending: undefined})));/* 하루 정산 중 잠금(ending)은 저장하지 않는다 */saveWarningShown=false; }
     catch(e){if(!saveWarningShown){saveWarningShown=true;const w=document.getElementById("save-warning");
@@ -10725,7 +10750,7 @@ async function relicTry(q, team){
     S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 적합도 ${fit.v}, 거부당했다`}); ac("relicMiss"); save(); render(); return; }
   const it = relicItem(R, f, fit.tier), old = f.gear[R.slot]; f.gear[R.slot] = it; it.sealFree = fit.tier===0;
   if(old && !old.relic){ S.inventory = S.inventory || []; S.inventory.push(old); }
-  S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — ${RELIC_FIND_NOTE[X.mode]}, 적합도 ${fit.v}, 귀속 · ${SEAL_NAME[it.seal]}`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic");
+  S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — ${RELIC_FIND_NOTE[X.mode]}, 적합도 ${fit.v}, 귀속 · ${SEAL_NAME[it.seal]}`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic"); if(TECHS["r_"+R.id])acSet("relicTechDiscovered",R.id);
   try{ rememberCityRumor("fixer", `${S.officeName}의 ${jo(f.name,"이")} 유적에서 올라온 진짜 유물을 손에 넣었다는 말이 돈다.`); }catch(_){}
   save(); render();
   // 유물을 손에 넣은 뒤 — 이 사실을 어떻게 다룰지 고른다(유물 자체는 그대로 귀속)
