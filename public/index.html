@@ -1652,8 +1652,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a1.7.3"; // 합 위력·코인 위력 규칙 및 전투 규칙 일람
+const VERSION = "v.a1.7.5"; // 의뢰 요구치 대비 합 위력 보정 조정
 const CHANGELOG = [
+  ["v.a1.7.5", ["의뢰 요구치 대비 전력에 따른 기본 합 위력 보정 유지(기존 -4~+4에서 -3~+3으로 조정). 근력·재주 보정은 그대로 적용", "하단에는 현재 버전만 표시"]],
   ["v.a1.7.3", ["합 기본 위력: 무기·기술 기본값에 근력 15당 +1. 기존 의뢰 요구치 대비 기본 위력 보정 제거", "코인 위력: 무기·기술 코인 위력에 재주 15당 +1", "휘청임: 다음 실제 합에서 기본 위력 -2. 별도 코인 위력 감소와 구분하여 기술 설명·전투 상태·전투 내역에 표시", "기록 → 기술 일람 옆에 전투 규칙 추가: 무기별 기본 합 위력·코인 수·코인 위력과 피해량 산식·방어·예시 안내"]],
   ["11월 26일", ["재해 등급별 보스 의뢰 6종 추가 — 랫키어 · 바르크 · 테이어파이어 · 99번째 거래처 · 여섯 번째 손가락 · 12 과업의 대행자(기한 없음 · 2명 이상 · 직접 수행)",
     "보스 전용 연출: 등장 컷인, 기믹 표시줄, 필살기 예고 띠, 격파 연출, 게시판 보스 도장",
@@ -1679,7 +1680,6 @@ const CHANGELOG = [
     "체력 · 정신력 회복 비용을 등급별 표로, 환상체 기프트 확률 · 배율 조정"]]];
 function showChangelog(){ modal(`업데이트 적용 사항 · ${VERSION}`, `<div class="cl-list">${CHANGELOG.map(([d,xs])=>`<h4>${esc(d)}</h4><ul>${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`).join("")}</div>`, [{t:"닫기", primary:true}]); }
 try{ const vt = document.getElementById("verTag"); if(vt) vt.textContent = VERSION; const cb = document.getElementById("clBtn"); if(cb) cb.onclick = showChangelog; }catch(_){}
-const COUNSEL_REST_REV = "상담 휴식 개선 2";
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -5161,7 +5161,7 @@ const relicTechOf = f => { const w = f && f.gear && f.gear.weapon; return w && w
 // 방어구 · 장신구 원본의 효과(전투에서 저절로)
 const relicFx = (f, id) => !!(f && f.gear && ["armor","acc"].some(sl=>{ const g = f.gear[sl]; return g && g.relic && g.id==="relic-"+id && (g.seal||0)===0; }));
 const RELIC_PASSIVE = {sleipnir:"전투의 첫 합에서 앞면 확률 +15%", aegis:"전투의 첫 합에서 상대 기본 위력 -3", kavacha:"전투마다 처음 받는 체력 피해를 막아 낸다", karakawa:"합에서 이기면 피해 +2",
-  bell:"정신력 피해를 절반만 받는다", scarab:"쓰러질 피해를 한 번 체력 1로 버티고 경상으로 회복한다(하루 한 번)", tyr:"상대와 쥔 이의 강함을 맞춘다(받는 피해의 의뢰 요구치 대비 전력 보정을 1배로 고정). 근력·재주 자체의 합 위력 보정은 유지된다."};
+  bell:"정신력 피해를 절반만 받는다", scarab:"쓰러질 피해를 한 번 체력 1로 버티고 경상으로 회복한다(하루 한 번)", tyr:"상대와 쥔 이의 강함을 맞춘다(의뢰 요구치 대비 기본 합 위력 보정을 0으로, 받는 피해의 전력 보정을 1배로 고정). 근력·재주 자체의 합 위력 보정은 유지된다."};
 const techFits = (id, wt) => { const T = TECHS[id]; return !!T && (!T.kinds || T.kinds.includes(wt)); };
 // 깨우침: 같은 갈래의 무기로 출동한 횟수(장비) + 등급(기량) · 능력치(능력). 조건을 갖춘 출동마다 35%로 자연스럽게
 const TECH_STAT_REQ = 28;   // 새 성장 곡선(승급 +4/+1~3)에 맞춰 낮춤
@@ -5301,7 +5301,7 @@ function mgCombat(ctx){
     foe.shinMax = 0; foe.shinLive = false; foe.mangLive = 0;
     if(!AB && !DF && !q.boss && g0 <= 2 && (q.foeShin || Math.random() < (g0 >= 2 ? 0.03 : g0 === 1 ? 0.06 : 0.2))) foe.shinMax = g0 >= 2 ? 1 : g0 === 1 ? 2 : 3;
     if(!AB&&!DF&&g0<=4)foe.skills.forEach(sk=>{sk.cp+=1;});
-    // 기본 합 위력은 의뢰 요구치에 따른 상대 보정 대신 근력 15당 +1로 계산한다.
+    const bonus = me => relicFx(me.f,"tyr") ? 0 : clamp(Math.round((power(me.f,["str"])/Math.max(1,reqC) - 1)*5), -3, 3);   // 의뢰 요구치 대비 전력 보정(최대 ±3)
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
     const woundOf = (hp,max=100) => hp/max>0.75 ? 0 : hp/max>0.45 ? 1 : hp/max>0.18 ? 2 : 3;
@@ -5392,7 +5392,7 @@ function mgCombat(ctx){
     const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } } o.base += abnoEdge(me);
       if(me.wsp==="cloud") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
     const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
-    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, w.base + livePow(me) - (me.bDown||0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0)); };
+    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, bonus(me) + w.base + livePow(me) - (me.bDown||0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0)); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
     const basicAtkCards=me=>egoAttackCards(me.f.ego,atkCards(me.wt));
@@ -10920,9 +10920,10 @@ function combatRuleRecordHtml(){
     return '<div class="cdx on"><div class="cdx-h"><b>'+esc(name)+'</b></div><div class="cdx-g"><span>기본 동작</span><div>'+rows+'</div><span>피해 능력치 비중</span><div>'+Object.entries(weights).map(([k,w])=>esc(ATTR_NAME[k])+" "+Math.round(w*100)+"%").join(" · ")+'</div></div></div>';
   }).join("");
   return `<div class="cdx on"><div class="cdx-h"><b>합 위력과 코인 위력</b></div><div style="padding:10px;line-height:1.7">
-  <p><b>기본 위력 = 무기·기술의 기본값 + 내림(근력 ÷ 15) + 추가 보정 − 감소 효과</b> (최소 1)</p>
+  <p><b>기본 위력 = 무기·기술의 기본값 + 내림(근력 ÷ 15) + 의뢰 요구치 대비 전력 보정 + 추가 보정 − 감소 효과</b> (최소 1)</p>
+  <p><b>의뢰 요구치 대비 전력 보정:</b> 반올림((근력 기준 전력 ÷ 의뢰 요구치 − 1) × 5), 최소 -3 · 최대 +3. 티르의 오른손 장착 시 0. 뒤틀림은 등급의 본래 요구치를 사용한다.</p>
   <p><b>코인 위력 = 무기·기술의 코인 위력 + 내림(재주 ÷ 15) + 추가 보정 − 감소 효과</b> (최소 0)</p>
-  <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
+  <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45, 의뢰 전력 보정 0이라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
   <p>양쪽 코인을 던져 위력이 낮은 쪽의 코인 1개를 제거하고 다시 던진다. 동률이면 그대로 다시 던진다. 한쪽 코인이 모두 사라지면 패배한다. 최대 24회 굴림 제한에 도달하고 양측 코인이 남아 있으면 기존 규칙에 따라 해결사 승리로 처리한다.</p>
   <p>해결사의 앞면 확률은 전투 정신력 0에서 50%, +15에서 65%, +45에서 90%. 재주 10당 기존 앞면 확률 +0.25%p도 유지한다. 기술 등 추가 보정 후 5~95%로 제한한다. 적은 기본 50%이며 일부 기술은 예외다.</p>
   <p>기술 공통 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 정신력 -${TECH_SP_COST}. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 등급과 고유 기술에 따라 정해진다.</p>
@@ -16954,7 +16955,7 @@ function renderStart(){
         <input type="file" id="title-savefile" accept=".json,application/json" hidden>
       </div>
       <div class="spoiler"><b>스포일러 경고</b>로보토미 코퍼레이션과 라이브러리 오브 루이나, 림버스 컴퍼니의 관련 이야기가 나올 수 있습니다.</div>
-      <div class="ver">${VERSION} · ${COUNSEL_REST_REV}</div>
+      <div class="ver">${VERSION}</div>
     </div>
     <div class="name-panel" id="np" hidden>
       <div class="np-h">개업 신고서 <span>하나 협회 제출용</span></div>
