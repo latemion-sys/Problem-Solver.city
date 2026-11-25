@@ -1652,8 +1652,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a2.1.5.4"; // 전투·수색 개편
+const VERSION = "v.a2.1.5.7"; // 공방 무기 추가
 const CHANGELOG = [
+  ["v.a2.1.5.7", ["정식 공방 무기 6종 추가: 바람계곡 공방(풍압 봉 · 송풍 창), 코오리 공방(결빙 장갑 · 서리 단검), 알라스 공방 가속 건틀릿, 묵 공방 장도", "상급 공방 무기 6종 추가: 유리아 공방(의장 장검 · 진주 세검), 휠스 인더스트리 처형 망치, 크리스탈 아틀리에 결정 단검, 스크류 아틀리에 드릴 건틀릿, 메즈틸 공방 쌍검", "새 무기마다 공방 고유의 3D 디자인(송풍 날개 · 얼음 결정 · 금상감과 진주 등)", "새 공방의 고유 무기 능력: 바람계곡 [돌풍] · 코오리 [결빙] · 유리아 [명품 마감]"]],
   ["v.a2.1.5.4", ["일반 공격 직접 선택 2칸, 방어 전용 1칸, 기존 습득 기술은 특수 기술 1칸. 신·망은 다섯 번째 칸", "방어 방식 선택, 정신력 회복, 적 행동 예고 및 투지 추가. 특수 기술의 코인·피해·재사용 조정", "수색 현장 장부: 재주에 따른 추가 단서, 고정 행동 횟수와 성공 등급", "기술 일람과 전투 규칙 개편"]],
   ["v.a1.7.5", ["의뢰 요구치 대비 전력에 따른 기본 합 위력 보정 유지(기존 -4~+4에서 -3~+3으로 조정). 근력·재주 보정은 그대로 적용", "하단에는 현재 버전만 표시"]],
   ["v.a1.7.3", ["합 기본 위력: 무기·기술 기본값에 근력 15당 +1. 기존 의뢰 요구치 대비 기본 위력 보정 제거", "코인 위력: 무기·기술 코인 위력에 재주 15당 +1", "휘청임: 다음 실제 합에서 기본 위력 -2. 별도 코인 위력 감소와 구분하여 기술 설명·전투 상태·전투 내역에 표시", "기록 → 기술 일람 옆에 전투 규칙 추가: 무기별 기본 합 위력·코인 수·코인 위력과 피해량 산식·방어·예시 안내"]],
@@ -1930,6 +1931,9 @@ const MAKERS = {
   "파나르 공방":"압박 붕대.",
   "스티그마 공방":"[상급 공방] 달군 칼날로 오래 가는 낙인을 새긴다. 값이 비싸다.",
   "메즈틸 공방":"[상급 공방] 빠르지만 다루기 까다롭고 위험한 검.",
+  "바람계곡 공방":"강풍을 내뿜는 장비. 봉과 창에 송풍 날개를 달아 휘두를 때마다 바람을 밀어낸다.",
+  "코오리 공방":"하늘색 장갑으로 이름난 공방. 힘껏 친 자리가 하얗게 얼어붙는다.",
+  "유리아 공방":"[상급 공방] 14구 공방 거리에서도 손꼽히는 고급 공방. 마감과 장식부터 남다르다.",
   "휠스 인더스트리":"[인더스트리] 처형인의 대검.",
   "슈바르츠 인더스트리":"[인더스트리] 의체 전문.",
   "로직 아틀리에":"[아틀리에] 총기와 부품.",
@@ -1981,6 +1985,12 @@ const SHOP = [
   W_("m10",1,"로즈스패너 공방","로즈스패너 공방 전기톱","tool",{v:1,metal:"#b07a5a"},13,260000),
   W_("m11",1,"나미르 공방","나미르 공방 건틀릿","fist",{v:0,wid:1.3,glow:"#b48cff"},13,260000),
   W_("m13",1,"리플렛 공방","리플렛 공방 증기 대검","great",{v:2,glow:"#ff8a3a",metal:"#8e959e"},13,260000),
+  W_("m20",1,"코오리 공방","코오리 공방 서리 단검","blade",{v:3,metal:"#e4e7ea"},9,90000),
+  W_("m17",1,"바람계곡 공방","바람계곡 공방 풍압 봉","staff",{v:0,metal:"#7f97a8"},10,120000),
+  W_("m19",1,"코오리 공방","코오리 공방 결빙 장갑","fist",{v:0,metal:"#c8ccd2"},11,160000),
+  W_("m18",1,"바람계곡 공방","바람계곡 공방 송풍 창","spear",{v:0,metal:"#7f97a8"},12,200000),
+  W_("m21",1,"알라스 공방","알라스 공방 가속 건틀릿","fist",{v:0,metal:"#c8ccd2"},12,200000),
+  W_("m22",1,"묵 공방","묵 공방 장도","long",{v:1,metal:"#d8dce0"},13,260000),
   A_("ma2",1,"유니온 공방","유니온 공방 경량 방호 코트",{type:1,pad:1,collar:1},90000,{hpRed:0.2}),
   A_("ma1",1,"유니온 공방","유니온 공방 생체 보호구",{type:3,pad:1},160000,{hpRed:0.25}),
   C_("mc1",1,"파나르 공방","파나르 공방 압박 붕대",80000,{hpRed:0.08,mpRed:0.1}),
@@ -1994,6 +2004,12 @@ const SHOP = [
   W_("s6",2,"스티그마 공방","스티그마 공방 장검","long",{v:0,len:1.05,glow:"#ff8a3a"},22,1900000),
   W_("s1",2,"휠스 인더스트리","휠스 인더스트리 처형검","great",{v:0,len:1.05,wid:1.2},24,2400000),
   W_("s8",2,"스티그마 공방","스티그마 공방 할버드","spear",{v:3,glow:"#ff8a3a",metal:"#5f6670"},21,1700000),
+  W_("s14",2,"메즈틸 공방","메즈틸 공방 쌍검","twin",{v:0,metal:"#e4e7ea"},17,800000),
+  W_("s12",2,"크리스탈 아틀리에","크리스탈 아틀리에 결정 단검","twin",{v:1,metal:"#dfeaf2",glow:"#7fe0ff"},18,950000),
+  W_("s13",2,"스크류 아틀리에","스크류 아틀리에 드릴 건틀릿","fist",{v:0,metal:"#8e959e",glow:"#7fe0ff"},19,1100000),
+  W_("s10",2,"유리아 공방","유리아 공방 진주 세검","rapier",{v:1,metal:"#e4e7ea"},20,1300000),
+  W_("s9",2,"유리아 공방","유리아 공방 의장 장검","long",{v:0,metal:"#e4e7ea"},22,1900000),
+  W_("s11",2,"휠스 인더스트리","휠스 인더스트리 처형 망치","blunt",{v:5,metal:"#4a4f56"},23,2150000),
   A_("sa1",2,"슈바르츠 인더스트리","슈바르츠 인더스트리 의체 장갑",{type:3,pad:2,collar:1},1400000,{hpRed:0.38}),
   C_("sc1",2,"슈바르츠 인더스트리","슈바르츠 인더스트리 신경 의체",1200000,{mpRed:0.35,bonus:{wil:4}})
 ];
@@ -2037,7 +2053,9 @@ const WORKSHOP_LOOK = {
   m9:{style:"rose"}, m10:{style:"rose"}, m12:{style:"cloud", metal:"#c8ccd2"}, m15:{style:"cloud", metal:"#c8ccd2"}, m1:{style:"mook", metal:"#d8dce0"},
   m6:{style:"oldboys", metal:"#8e959e"}, m7:{style:"allas", metal:"#c8ccd2"}, m14:{style:"leaflet"}, m13:{style:"leaflet"}, m11:{},
   s1:{style:"wheels", metal:"#4a4f56", len:1.1, wid:1.3}, s2:{style:"crystal", metal:"#dfeaf2", glow:"#7fe0ff", len:1.15, wid:1.2}, s3:{style:"logic", metal:"#2e3136"}, s4:{style:"logic", metal:"#2e3136"},
-  s5:{style:"screw", glow:"#7fe0ff"}, s6:{style:"stigma", metal:"#5a4a44", glow:"#ff8a3a", wid:1.35}, s8:{style:"stigma", metal:"#4a3e3a", glow:"#ff8a3a"}, s7:{style:"meztil", metal:"#e4e7ea", len:1.15}};
+  s5:{style:"screw", glow:"#7fe0ff"}, s6:{style:"stigma", metal:"#5a4a44", glow:"#ff8a3a", wid:1.35}, s8:{style:"stigma", metal:"#4a3e3a", glow:"#ff8a3a"}, s7:{style:"meztil", metal:"#e4e7ea", len:1.15},
+  m17:{style:"valley"}, m18:{style:"valley"}, m19:{style:"koori"}, m20:{style:"koori"}, m21:{style:"allas"}, m22:{style:"mook"},
+  s9:{style:"yuria"}, s10:{style:"yuria"}, s11:{style:"wheels"}, s12:{style:"crystal"}, s13:{style:"screw"}, s14:{style:"meztil"}};
 SHOP.forEach(it=>{ const L = WORKSHOP_LOOK[it.id]; if(L) Object.assign(it.look, L); });
 /* 총기 능력치·구매가는 동급 무기 기준. 추가 피해는 별도 구매한 탄환에만 부여된다. */
 const GUN_PRICE_K = 1, GUN_POWER_K = 1, GUN_HP_RED = 0;
@@ -5302,7 +5320,7 @@ function mgCombat(ctx){
     foe.hits = CT.hits; foe.hitK = CT.k;
     foe.max = Math.max(1,Math.round(foeHpValue(q,AB,DF,g0) * (foe.aug ? clamp(0.85+0.15*augMul,0.85,1.2) : 1)));
     if(q.boss && BOSS_DEF[q.boss]) foe.max = Math.round(foe.max*(BOSS_DEF[q.boss].hpK||1.3));
-    foe.hp = foe.max; foe.shownHp = foe.max; foe.coinDown = 0; foe.weak = 0;   // 적에게는 정신력이 없다. 코인 앞면은 50% 고정이며 정신력 감소 기술은 다음 합의 코인 위력을 낮춘다.
+    foe.hp = foe.max; foe.shownHp = foe.max; foe.coinDown = 0; foe.weak = 0; foe.frost = 0;   // 적에게는 정신력이 없다. 코인 앞면은 50% 고정이며 정신력 감소 기술은 다음 합의 코인 위력을 낮춘다.
     // 사건 전용 미니게임을 잘 해냈으면 상대가 지친 채로 싸움이 시작된다(최대 25%)
     const storyEdge = q.__edge ? Math.round(foe.max*0.25*clamp(q.__edge,0,1)) : 0; if(storyEdge){ foe.hp = Math.max(1, foe.hp - storyEdge); foe.shownHp = foe.hp; } delete q.__edge;
     foe.baseDamage = foeDmgValue(q,AB,DF,g0);
@@ -5400,7 +5418,7 @@ function mgCombat(ctx){
     const ABNO_REF = {ZAYIN:8, TETH:7, HE:5, WAW:4, ALEPH:2};
     const abnoEdge = me => { const ref = AB && ABNO_REF[AB.risk]; if(!ref || !me || !me.f) return 0; const g = me.f.grade==null ? 9 : me.f.grade; return Math.max(0, ref - g); };
     const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } } o.base += abnoEdge(me);
-      if(me.wsp==="cloud") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
+      if(me.wsp==="cloud" || me.wsp==="yuria") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
     const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
     const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, bonus(me) + w.base + livePow(me) + (!sk.def?(me.resolveBoost||0):0) - (me.bDown||0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0)); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
@@ -5550,7 +5568,7 @@ function mgCombat(ctx){
       if(me.bleed) b.push(`<span style="color:#ff8a7a">출혈 ${me.bleed}</span>`); if(me.rupture) b.push(`<span style="color:#ff8a7a">파열 ${me.rupture}</span>`); if(me.sink) b.push(`<span style="color:#8ab0ff">침잠 ${me.sink}</span>`); if(me.burn) b.push(`<span style="color:#ffb35a">화상 ${me.burn}</span>`); if(me.cpDown) b.push(`<span style="color:#ffb35a">손이 무뎌짐(다음 합 코인 위력 -${me.cpDown})</span>`);
       if(me.ember) b.push(`불씨 ${me.ember}`); if(me.gaze) b.push(`시선 ${me.gaze}${me.contempt ? " · 경멸" : ""}`); { const gp = party.find(p=>p.grasp); if(gp) a.push(`${esc(gp.name)}를 움켜쥐고 있다(${gp.grasp})`); }
       if(AB && AB.fuse && foe.fuseMark) a.push(`성냥불 ${Math.max(0, AB.fuse - turn + 1)}턴 남음 → ${esc(foe.fuseMark.name)}`); if(foe.lampMark) a.push(`등불에 홀림: ${esc(foe.lampMark.name)} (${Math.max(0, 3 - turn + 1)}턴 남음)`);
-      if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push(`휘청임(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`); if(foe.coinDown) a.push(`코인 위력 감소 ${foe.coinDown}(다음 합)`);
+      if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.frost) a.push(`냉기 ${foe.frost}/3`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push(`휘청임(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`); if(foe.coinDown) a.push(`코인 위력 감소 ${foe.coinDown}(다음 합)`);
       { const ae = abnoEdge(me); if(ae) b.push(`환상체 보정 ${gName(me.f.grade)} vs ${AB.risk}(기준 ${ABNO_REF[AB.risk]}급) → 기본 위력 +${ae}`); }
       { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
       if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
@@ -5702,6 +5720,8 @@ function mgCombat(ctx){
         if(W==="namir" && turn%2===1 && !me.namirT){ dmg = Math.round(dmg*1.5); me.namirT = turn; wNote.push("구체 낙하 — 떠올랐다 내리꽂았다(×1.5)"); } if(W==="namir" && me.namirT && me.namirT!==turn && turn%2===0) me.namirT = 0;
         if(W==="leaflet"){ foe.burn = Math.min(9, foe.burn + 2); wNote.push(`화상 ${foe.burn}`); if(me.hits%3===0){ dmg += 4; wNote.push("증기 압력을 뺐다(+4)"); } }
         if(W==="stigma"){ foe.burn = Math.min(12, foe.burn + 3); foe.brand = true; wNote.push(`낙인 — 화상 ${foe.burn}`); }
+        if(W==="valley"){ foe.weak = Math.min(6, (foe.weak||0) + 2); if(me.hits%2===0){ foe.daze = 1; wNote.push(`돌풍 — 바람에 밀려 휘청인다(위축 ${foe.weak})`); } else wNote.push(`돌풍 — 위축 ${foe.weak}`); }
+        if(W==="koori"){ foe.frost = (foe.frost||0) + 1; if(foe.frost >= 3){ foe.frost = 0; foe.daze = 1; foe.coinDown += 1; wNote.push("결빙 — 맞은 자리가 하얗게 얼어붙었다(다음 합 기본 위력 · 코인 위력 감소)"); } else wNote.push(`냉기 ${foe.frost}`); }
         if(W==="wheels" && foe.hp <= foe.max*0.3){ dmg *= 2; wNote.push("처형 — 피해 2배"); }
         if(W==="logic"){ const ex = wSk.cp*2; dmg += ex; wNote.push(`연사 — 한 발 더(+${ex})`); }
         if(W==="crystal" && R.left){ dmg += R.left*2; wNote.push(`쌍 팔시온 — 남은 코인 ${R.left}개(+${R.left*2})`); }
@@ -5736,6 +5756,7 @@ function mgCombat(ctx){
         if(sk.def) dmg = Math.round(dmg*(guarding?({guard:0.5,evade:1,parry:0.65,counter:0.75}[mode]||0.5):0.5)); dmg = Math.max(1, dmg);
         if(BOSS){ const ex = BOSS.extra({me, fk}, bNote); if(ex) dmg += Math.round(ex*(sk.def ? 0.5 : 1)); }
         if(me.wsp==="meztil"){ dmg = Math.round(dmg*1.2); wNote.push("과속 — 몸이 따라가지 못했다(받는 피해 +20%)"); }
+        if(me.wsp==="yuria"){ dmg = Math.max(1, Math.round(dmg*0.85)); wNote.push("명품 마감 — 손에서 미끄러지지 않았다(받는 피해 -15%)"); }
         if(me.wsp==="ranga" && me.rend){ me.rend = 0; wNote.push("벌려 둔 상처가 아물었다"); }
         if(T && T.id==="allout"){ dmg = Math.round(dmg*1.5); tNote.push("전력 공격 — 빈틈을 그대로 맞았다(받는 피해 ×1.5)"); }
         if(T && (T.id==="fleche" || T.id==="charge")){ dmg = Math.round(dmg*1.3); tNote.push(`${T.n} — 무너진 자세로 받아냈다(받는 피해 ×1.3)`); }
@@ -10592,6 +10613,9 @@ const WORKSHOP_SP = {
   "휠스 인더스트리": {id:"wheels", n:"처형",        d:"상대 체력이 30% 이하이면 피해 2배."},
   "로직 아틀리에":   {id:"logic",  n:"연사",        d:"이긴 합 뒤 한 발을 더 쏜다(코인 위력 2배만큼 추가 피해)."},
   "크리스탈 아틀리에":{id:"crystal",n:"쌍 팔시온", d:"남은 코인으로 칠 때 코인 하나마다 피해 +2."},
+  "바람계곡 공방":   {id:"valley", n:"돌풍",        d:"맞히면 위축 2(최대 6). 두 번째로 맞힐 때마다 바람으로 밀어내 상대를 휘청이게 한다."},
+  "코오리 공방":     {id:"koori",  n:"결빙",        d:"맞히면 냉기 1. 냉기가 3이 되면 얼어붙어 다음 합 기본 위력과 코인 위력이 1씩 내려가고, 냉기는 사라진다."},
+  "유리아 공방":     {id:"yuria",  n:"명품 마감",   d:"기본 위력 +1. 합에서 져도 손에서 미끄러지지 않아 받는 피해 -15%."},
   "스크류 아틀리에": {id:"screw",  n:"방전",        d:"합마다 충전 3. 10이 되면 소모해 그 합의 코인 위력 +2. 다만 감전돼 자신도 조금 다친다."}
 };
 const wspOf = g => g && g.unique && g.wsp ? Object.values(WORKSHOP_SP).find(x=>x.id===g.wsp) || null : null;
@@ -17689,7 +17713,9 @@ function drawAdds(c, u, G, adds, col, edges, far, kind, gEnd, glow){
    · 리플렛: 증기를 쓰는 실험 무기 — 증기관 · 압력계 · 알라스: 손놀림을 가속 — 가속 고리 · 구름: 흑운회에 대는 칼 — 구름 무늬
    · 휠스 인더스트리: 맞히면 폭발하는 거대한 처형검 — 피스톤 약실 · 톱니바퀴 · 붉은 띠 · 크리스탈 아틀리에: 한 쌍의 팔시온 — 결정 날
    · 로직 아틀리에: 총기 — 흑철 몸체에 금빛 새김 · 스티그마: 가열 · 점화 — 달아오른 심 · 방열구 · 스크류: 전기로 강화한 드릴 — 나선 · 전류
-   · 메즈틸: 알라스보다 빠르고 위험한 칼 — 은빛 날의 속도선 */
+   · 메즈틸: 알라스보다 빠르고 위험한 칼 — 은빛 날의 속도선
+   · 바람계곡: 강풍을 내뿜는 장비 — 송풍 날개 · 바람길 · 코오리: 친 자리를 얼리는 하늘색 장갑 — 얼음 결정 · 서리
+   · 유리아(14구 프리미엄 공방): 금상감 · 진주 · 금장 */
 function drawStyle(c, u, G, s, col, far, kind, gEnd, edges){
   const st = s.style; if(!st || !G) return;
   const t = performance.now()/1000, lt = hexMix(col,"#ffffff",0.4), dk = hexMix(col,"#000000",0.4);
@@ -17767,6 +17793,25 @@ function drawStyle(c, u, G, s, col, far, kind, gEnd, edges){
     c.strokeStyle = "#d8b45a"; c.lineWidth = lw(0.004); c.beginPath(); c.ellipse((X(0)-0.01)*u, 0.02*u, 0.03*u, 0.022*u, 0, 0, 7); c.stroke(); c.beginPath(); c.ellipse((X(0)-0.005)*u, -0.016*u, 0.022*u, 0.014*u, 0, 0, 7); c.stroke();
     c.fillStyle = "#d8b45a"; c.beginPath(); c.arc(X(0)*u, mid(0)*u, lw(0.007), 0, 7); c.fill();
     glowLine([[X(0.05), mid(0.05)], [X(0.95), mid(0.95)]], "rgba(150,210,255,0.55)", 0.002, 0.02); }
+  else if(st==="valley"){   // 송풍 날개 둘 · 바람길
+    [0.12, 0.82].forEach((tt,k)=>{ const x = X(tt), y = mid(tt), r = Math.max(hw(tt)*2.4, 0.03);
+      c.strokeStyle = "#4a4f56"; c.lineWidth = lw(0.005); c.beginPath(); c.ellipse(x*u, y*u, r*0.32*u, r*u, 0, 0, 7); c.stroke();
+      c.strokeStyle = "#d8dde2"; c.lineWidth = lw(0.0025); for(let i=0;i<5;i++){ const a = t*(k ? 9 : -9) + i*1.2566; c.beginPath(); M(x, y); Lt(x + Math.cos(a)*r*0.3, y + Math.sin(a)*r*0.95); c.stroke(); }
+      c.fillStyle = "#7fd6ff"; c.beginPath(); c.arc(x*u, y*u, lw(0.005), 0, 7); c.fill(); });
+    if(!far){ c.save(); c.globalAlpha = 0.55; for(let i=0;i<3;i++){ const ph = (t*1.4 + i/3) % 1; glowLine([[X(0.3+ph*0.4), mid(0.3) - 0.014 - i*0.006], [X(0.42+ph*0.4), mid(0.42) - 0.016 - i*0.006]], "#bfe9ff", 0.0018, 0.02); } c.restore(); } }
+  else if(st==="koori"){   // 얼음 결정 · 서리
+    [[0.06,0.03],[0.12,0.045],[0.2,0.035],[0.3,0.05]].forEach(([tt,hh],i)=>{ const x = X(tt), y = i%2 ? G.bot(tt) : G.top(tt), sg = i%2 ? 1 : -1;
+      c.fillStyle = "rgba(170,225,255,0.9)"; c.beginPath(); M(x - 0.006, y); Lt(x + 0.01, y + sg*hh); Lt(x + 0.008, y); c.closePath(); c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.85)"; c.lineWidth = lw(0.0012); c.beginPath(); M(x - 0.002, y); Lt(x + 0.01, y + sg*hh); c.stroke(); edges.push([[x - 0.006, y], [x + 0.01, y + sg*hh]]); });
+    c.save(); c.globalAlpha = far ? 0.3 : 0.6; c.strokeStyle = "#cfeeff"; c.lineWidth = lw(0.002); c.beginPath(); for(let i=0;i<=16;i++){ const tt = 0.1 + 0.8*i/16; i ? Lt(X(tt), mid(tt)) : M(X(tt), mid(tt)); } c.stroke(); c.restore();
+    if(!far){ const sp = (t*0.5) % 1, sx = X(0.15 + sp*0.7), sy = mid(0.15 + sp*0.7), r = 0.01; c.strokeStyle = "rgba(255,255,255,0.9)"; c.lineWidth = lw(0.0018); c.beginPath(); M(sx-r, sy); Lt(sx+r, sy); M(sx, sy-r); Lt(sx, sy+r); c.stroke(); } }
+  else if(st==="yuria"){   // 금상감 · 진주 · 금장 코등이
+    c.save(); c.strokeStyle = "#d8a030"; c.lineWidth = lw(0.003); c.globalAlpha = far ? 0.5 : 0.95; c.beginPath();
+    for(let i=0;i<=40;i++){ const tt = 0.06 + 0.78*i/40, y = mid(tt) + Math.sin(i*0.9)*hw(tt)*0.3; i ? Lt(X(tt), y) : M(X(tt), y); } c.stroke(); c.restore();
+    [0.2,0.4,0.6].forEach(tt=>{ c.fillStyle = "#e8c060"; c.beginPath(); c.arc(X(tt)*u, mid(tt)*u, lw(0.004), 0, 7); c.fill(); });
+    const px = X(0) - 0.006, g = c.createRadialGradient((px-0.003)*u, -0.004*u, 0, px*u, 0, 0.012*u); g.addColorStop(0, "#ffffff"); g.addColorStop(1, "#c9c4d6");
+    c.fillStyle = g; c.beginPath(); c.arc(px*u, 0, lw(0.011), 0, 7); c.fill(); c.strokeStyle = "#d8a030"; c.lineWidth = lw(0.003); c.stroke();
+    c.fillStyle = "#d8a030"; c.fillRect((gripAt-0.006)*u, -0.014*u, 0.008*u, 0.028*u); }
 }
 function drawWeaponSpec(c, s, u, dark, opt){
   if(!s) return; opt = opt || {};
