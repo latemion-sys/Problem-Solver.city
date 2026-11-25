@@ -2238,23 +2238,25 @@ const randomOffice = () => pick(OFFICE_WORDS)+" 사무소";
 /* ================= 상태 ================= */
 let S = null;
 
-/* 성별: 여성 45% · 남성 45% · 전신 의체로 인한 무성 10%.
-   전신 의체는 성능은 같지만 정신력 피해를 1 덜 받고, 체력 피해를 1 더 받는다.
-   예전 저장의 해결사는 저장을 고치지 않고, 이름·번호로 정해진 값을 그때그때 계산해 쓴다. */
+/* 대표만 성별을 갖는다. 동료의 전신 의체 출신 여부는 성별과 무관한 기존 신체 특성이다. */
 const GENDERS = ["여성","남성","무성"];
 const rollGender = () => { const r = Math.random(); return r < 0.45 ? "여성" : r < 0.9 ? "남성" : "무성"; };
-function genderOf(f){ if(!f) return "여성"; if(GENDERS.includes(f.gender)) return f.gender;
+function legacyGenderOf(f){ if(!f) return "여성"; if(GENDERS.includes(f.gender)) return f.gender;
   let h = 7; String((f.id||0) + "|" + (f.name||"")).split("").forEach(c=>{ h = (h*31 + c.charCodeAt(0)) >>> 0; }); const r = (h % 1000)/1000;
   return r < 0.45 ? "여성" : r < 0.9 ? "남성" : "무성"; }
-const fullBody = f => genderOf(f)==="무성";
-const genderText = f => fullBody(f) ? "무성 (전신 의체 — 정신력 피해 -1 · 체력 피해 +1)" : genderOf(f);
+const genderOf = f => f&&f.isLeader ? legacyGenderOf(f) : undefined;
+const fullBody = f => !!(f&&(f.isLeader ? genderOf(f)==="무성" : f.originBody===true || (f.originBody===undefined && legacyGenderOf(f)==="무성")));
+const genderText = f => genderOf(f)==="무성" ? "무성 (전신 의체 — 정신력 피해 -1 · 체력 피해 +1)" : genderOf(f);
+function migrateFixerGender(d){ if(!d)return d; for(const f of [...(d.fixers||[]),...(d.recruitPool||[]),...(d.formerFixers||[])]){ if(!f)continue; if(f.isLeader){if(!GENDERS.includes(f.gender))f.gender=legacyGenderOf(f);continue;} if(typeof f.originBody!=="boolean")f.originBody=legacyGenderOf(f)==="무성";delete f.gender; } return d; }
 function newFixer(name, grade, stats, opts={}){
-  return Object.assign({ gender: rollGender(),
+  const f = Object.assign({
     id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
     hp:100, hpMax:100, mp:100, mpMax:100, trust:50, personality: pick(PERSONALITIES)[0], look: randomLook(), precious: null,
     gear:{weapon:null,armor:null,acc:null}, ego:null, title:null, cap:70,
     lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0, tech:"allout", techs:[], wuse:{}
   }, opts);
+  if(f.isLeader){if(!GENDERS.includes(f.gender)) f.gender=rollGender();}else{f.originBody=Math.random()<0.10;delete f.gender;}
+  return f;
 }
 // 네 능력치의 10 단위 고유 효과. 보너스를 저장해 여러 차례 로드해도 중복 적용하지 않는다.
 const statStep = (f,a) => Math.max(0,Math.floor((Number(f&&f.stats&&f.stats[a])||0)/10));
@@ -9722,7 +9724,7 @@ async function openManage(){
     <div class="mg-prev"><canvas class="mgp"></canvas><div><div class="fg-seg">${STATE_TABS.map(([k,n])=>`<button class="${mview===k?"on":""}" data-mview="${k}">${n}</button>`).join("")}</div>
       ${f.grade===0?`<button style="margin-top:8px" data-forgego="1">고유 방어구 제작</button>`:""}</div></div>
     <div class="kv">
-      <span>성별</span><b>${esc(genderText(f))}</b>
+      ${f.isLeader?`<span>성별</span><b>${esc(genderText(f))}</b>`:f.originBody?`<span>신체 특성</span><b>전신 의체 출신 · 정신력 피해 -1 · 체력 피해 +1</b>`:""}
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} ${f.renamed ? `<small class="muted">(이름은 정해졌다)</small>` : `<button data-rename="1" style="padding:2px 8px" title="이름은 한 번만 바꿀 수 있다">이름 정하기 (1회)</button>`}</b>
       <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
       <span>성격</span><b>${f.personality}</b>
@@ -10432,7 +10434,7 @@ function clearSave(){
 const FXTEST = location.hash==="#fxtest"; // 테스트 패널에서는 저장하지 않음
 let saveWarningShown=false;
 function save(){
-  if(S){ S.money = Math.max(0, Number(S.money)||0); migrate1247(S); migrateWorkshopDur(S); syncAllStatVitals(S); }
+  if(S){ migrateFixerGender(S); S.money = Math.max(0, Number(S.money)||0); migrate1247(S); migrateWorkshopDur(S); syncAllStatVitals(S); }
   if(S&&!FXTEST){
     try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign({}, S, {ending: undefined})));/* 하루 정산 중 잠금(ending)은 저장하지 않는다 */saveWarningShown=false; }
     catch(e){if(!saveWarningShown){saveWarningShown=true;const w=document.getElementById("save-warning");
@@ -10445,7 +10447,7 @@ const GEAR_RENAME = [["올드 보이즈","늙은소년"],["젤코바","느티나
 function renameGear(g){ if(!g) return; GEAR_RENAME.forEach(([a,b])=>{ if(g.maker) g.maker = g.maker.replace(a,b); if(g.name) g.name = g.name.replace(a,b); if(g.origName) g.origName = g.origName.replace(a,b); }); }
 function relicRefresh(f){ if(!f || !f.gear) return; ['weapon','armor','acc'].forEach(sl=>{ const g = f.gear[sl]; if(!g || !g.relic) return; if(g.id==="relic-horus") g.id = "relic-tyr"; const R = RELICS.find(r=>"relic-"+r.id===g.id); if(!R) return;
   const it = relicItem(R, {id:g.bound, name:g.boundName}, g.seal||0); if(g.sealFree!=null) it.sealFree = g.sealFree; f.gear[sl] = it; }); }
-function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ delete d.ending;   // 정산 도중 저장된 잠금이 남아 '하루 끝내기'가 막히지 않게
+function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d && d.fixers && !d.over){ migrateFixerGender(d); delete d.ending;   // 정산 도중 저장된 잠금이 남아 '하루 끝내기'가 막히지 않게
  d.fixers.forEach(f=>{ try{ relicRefresh(f); }catch(_){ } }); d.money = Math.max(0, Number(d.money)||0); pruneOldGifts(d); abRecMigrate(d); d.fixers.concat(d.recruitPool||[]).forEach(f=>{ if(!f.look) f.look = randomLook(); if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind: pick(["사람","물건","목표"]), text: ""}; if(!f.precious.text) f.precious.text = pick(PRECIOUS_POOL[f.precious.kind]); if(f.gear) [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear); if(f.gear) initDur(f.gear.weapon); if(!f.tech) f.tech = "allout"; if(!f.techs) f.techs = []; if(!f.wuse) f.wuse = {}; }); (d.inventory||[]).forEach(g=>{ renameGear(g); initDur(g); }); if(!d.weather) d.weather = rollWeather(); if(!d.district) d.district = rollDistrict(); if(!Number.isFinite(d.officeTrust)){
     const oldDone=Object.values(d.clients||{}).reduce((v,c)=>v+Math.max(0,Number(c&&c.n)||0),0);
     d.officeTrust=clamp(50+oldDone*2,0,100);
@@ -11622,120 +11624,717 @@ const ARC_STAGE = ["전개","절정"];
 const ARC_LEGACY = new Set(["gloves","courier","cranes","funeral","umbrella","clock"]);
 
 /* ================= 사무소 사람들과의 교류 =================
-   매주 두 번 이상, 아침에 사무소 사람 하나가 말을 걸어 온다. 선택지는 두 개, 그 사람 성격에 꼭 맞는 쪽을 고르면 신뢰 +2.
-   말투: warm 다정 · real 현실 · joke 농담 · firm 단호 · praise 칭찬 */
-const TALK_LIKE = {"공격적":"firm","신중함":"real","헌신":"warm","냉소":"joke","충동적":"joke","침착함":"real","집요함":"firm","낙천적":"joke",
-  "비관적":"warm","오만함":"praise","소심함":"warm","정의감":"firm","탐욕":"real","다정함":"warm","무심함":"real","광기":"joke"};
+   기존 주간 발생 횟수를 유지한다. 선택은 개인 신뢰와 대화 이력에만 영향을 준다. */
+const TALK_LIKE = {"공격적":"firm","신중함":"real","헌신":"warm","냉소":"joke","충동적":"joke","침착함":"real","집요함":"firm","낙천적":"joke","비관적":"warm","오만함":"praise","소심함":"warm","정의감":"firm","탐욕":"real","다정함":"warm","무심함":"real","광기":"joke"};
 const TALK_TOPICS = [
-  {open:["어제 의뢰 말인데요… 솔직히 제가 잘한 건지 모르겠어요.", "손이 아직도 좀 떨려요."],
-   o:{warm:"말없이 찬장에서 티백을 꺼내 따뜻한 차를 우려 준다", real:"어제 의뢰 기록을 같이 펼쳐 놓고 잘된 부분부터 짚어 준다", joke:"떨리는 손에 커피 대신 우유 한 잔을 쥐여 주며 웃는다", firm:"어깨를 짚고 고개를 끄덕이며 기운을 북돋아 준다", praise:"그 상황에서 끝까지 버틴 건 대단한 일이었다고 말해 준다"}},
-  {open:["창밖 좀 보세요. 오늘은 둥지 쪽 하늘이 유난히 맑네요.", "이런 날엔 의뢰가 잘 풀릴 것 같기도 하고요."],
-   o:{warm:"옆에 나란히 서서 한동안 같이 하늘을 올려다본다", real:"창문을 열어 두고 오늘 들어온 의뢰를 같이 훑어보자고 한다", joke:"이런 날씨면 금고 사정도 좀 맑아지면 좋겠다며 너스레를 떤다", firm:"좋은 날이니 오늘 일도 깔끔하게 끝내자며 등을 가볍게 두드린다", praise:"그런 걸 알아채는 눈썰미가 좋다며 웃어 준다"}},
-  {open:["무기 손질하다가 생각났는데요.", "처음 칼을 잡았을 때가 언제였는지 기억나세요?"],
-   o:{warm:"처음 무기를 쥐던 날 이야기를 천천히 들려준다", real:"손질하던 무기를 받아 들고 같이 날을 살펴봐 준다", joke:"첫날 제 발등부터 벨 뻔했던 이야기를 꺼내며 웃는다", firm:"지금 쥐고 있는 무기가 더 중요하다며 손등을 툭 친다", praise:"손질한 날을 불빛에 비춰 보고는 솜씨가 좋다고 감탄한다"}},
-  {open:["이번 주 보수 받으면 뭐 하실 거예요?", "저는… 아직 모르겠어요."],
-   o:{warm:"이번 주엔 다 같이 맛있는 걸 먹으러 가자고 한다", real:"장부를 펼쳐 놓고 쓸 몫과 모아 둘 몫을 같이 나눠 본다", joke:"금고 앞에 앉아 밤새 돈을 세어 보겠다며 장난스럽게 웃는다", firm:"네 몫은 네가 정하라며 믿는다는 듯 고개를 끄덕인다", praise:"이번 주엔 네 몫이 제일 컸다며 진심으로 치켜세운다"}},
-  {open:["요즘 밤에 잠이 잘 안 와요.", "꿈에 자꾸 그 골목이 나와서요."],
-   o:{warm:"담요를 꺼내 어깨에 덮어 주고 오늘은 일찍 들어가라고 한다", real:"오늘 일정을 비워 두고 하루 푹 쉬라고 한다", joke:"그 골목 집세가 싸면 같이 이사 가자며 실없이 웃긴다", firm:"깨어나면 우리가 옆에 있다고 단단하게 말해 준다", praise:"그런 일을 겪고도 아침마다 나와 줘서 고맙다고 말한다"}},
-  {open:["다른 사무소 사람들이 우리 얘기를 하더라고요.", "좋은 얘기인지 나쁜 얘기인지는… 잘 모르겠어요."],
-   o:{warm:"남들이 뭐라든 우리끼린 서로 안다며 웃어 준다", real:"소문은 두고 다음 의뢰부터 깔끔하게 끝내 보자며 계획을 같이 짠다", joke:"유명해졌으니 사인 연습이라도 해 두자며 펜을 건넨다", firm:"실적으로 보여 주면 된다며 묵묵히 고개를 끄덕인다", praise:"그만큼 네가 눈에 띄게 잘해 왔다는 뜻이라고 말해 준다"}},
-  {open:["저기… 혹시 제가 이 사무소에 계속 있어도 될까요?", "괜히 짐이 되는 건 아닌가 해서요."],
-   o:{warm:"말없이 어깨를 감싸 주고, 네 자리는 여기라고 말한다", real:"지난 의뢰들에서 네가 해낸 몫을 하나하나 짚어 준다", joke:"나가려면 위약금부터 내야 한다며 짐짓 엄한 척 웃는다", firm:"눈을 똑바로 보며 앞으로도 같이 가자고 말한다", praise:"네가 없으면 이 사무소는 반쪽이라고 진심으로 말한다"}},
-  {open:["길에서 고양이 한 마리를 봤어요. 털이 다 젖어 있더라고요.", "데려올 걸 그랬나 싶어서요."],
-   o:{warm:"다음에 또 보이면 같이 데려와서 돌보자고 한다", real:"남는 상자와 담요로 사무소 앞에 작은 쉼터를 만들어 보자고 한다", joke:"그 고양이가 우리보다 잘 먹고 다닐 거라며 웃는다", firm:"데려온다면 끝까지 같이 책임지자며 고개를 끄덕인다", praise:"그런 걸 지나치지 못하는 게 네 좋은 점이라고 말해 준다"}},
+  {
+    "id": "afterjob",
+    "title": "떨리는 손",
+    "intro": "탕비실에 컵 부딪치는 소리가 났다. 손잡이를 쥔 동료의 손이 조금 떨리고 있었다.",
+    "open": [
+      "어제 일 말인데요. 그때 제가 좀 더 빨랐으면 달라졌을까요?",
+      "자꾸 그 생각만 나네요."
+    ],
+    "tags": [
+      "hurt",
+      "work"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“돌아왔잖아. 일단 그걸로 됐어.”",
+        "r": "…그 말, 어제도 듣고 싶었어요. 고마워요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“다음엔 어디서 손을 보탤지 같이 생각해 보자.”",
+        "r": "좋아요. 혼자 생각하면 자꾸 같은 데서 막히거든요.",
+        "delta": 1
+      },
+      {
+        "tone": "firm",
+        "t": "“지나간 건 지나간 거야. 이제 그만.”",
+        "r": "…네. 그 얘긴 더 안 할게요.",
+        "delta": -1
+      }
+    ]
+  },
+  {
+    "id": "sky",
+    "title": "둥지 너머",
+    "intro": "창가에 선 동료가 손가락으로 구름 사이를 가리켰다.",
+    "open": [
+      "저쪽 둥지는 오늘 날씨도 좋겠네요.",
+      "여기서 올려다보면 하늘만큼은 똑같은데."
+    ],
+    "tags": [
+      "quiet",
+      "close"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "말없이 옆에 서서 같은 곳을 바라본다.",
+        "r": "이렇게 서 있으니까 좀 이상하네요. 출근한 게 아니라 놀러 온 것 같아요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“저쪽 공기까지 요금이 붙는 건 아니겠지?”",
+        "r": "쉿. 날개 귀에 들어가면 내일부터 붙을지도 몰라요.",
+        "delta": 1
+      },
+      {
+        "tone": "real",
+        "t": "“하늘 구경은 의뢰 끝나고 할까?”",
+        "r": "네, 알겠어요. 오늘은 일찍 돌아올 수 있었으면 좋겠네요.",
+        "delta": 0
+      }
+    ]
+  },
+  {
+    "id": "blade",
+    "title": "첫 무기",
+    "intro": "책상에 펼친 천 위로 무기 부품이 놓여 있었다.",
+    "open": [
+      "대표님은 처음 무기를 받았을 때 어땠어요?",
+      "저는 멋있어 보이려고 한참 들고 다녔거든요."
+    ],
+    "tags": [
+      "work"
+    ],
+    "opts": [
+      {
+        "tone": "joke",
+        "t": "“첫날에 손잡이를 거꾸로 쥐었어.”",
+        "r": "잠깐만요. 그 모습은 꼭 보고 싶었는데요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“처음엔 안 다치는 법부터 배웠지.”",
+        "r": "그게 맞네요. 살아 있어야 두 번째 무기도 사니까.",
+        "delta": 1
+      },
+      {
+        "tone": "praise",
+        "t": "“지금 손질하는 걸 보니 꽤 익숙해졌네.”",
+        "r": "보셨어요? 사실 이 부분은 제가 제일 자신 있어요.",
+        "delta": 2
+      }
+    ]
+  },
+  {
+    "id": "pay",
+    "title": "보수 봉투",
+    "intro": "동료가 빈 보수 봉투를 접어 책상 모서리에 올렸다.",
+    "open": [
+      "돈이 들어오면 제일 먼저 뭘 하고 싶어요?",
+      "이번엔 쓸 곳부터 정해 두려고요."
+    ],
+    "tags": [
+      "money"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“따뜻한 저녁 한 끼. 같이 먹으면 더 좋고.”",
+        "r": "그럼 메뉴는 제가 정해도 돼요? 비싼 건 안 고를게요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“다음 주에 곤란하지 않을 만큼은 남겨 둬야지.”",
+        "r": "역시 대표님이네요. 저도 이번엔 조금 떼어 둘래요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“금고에 넣고 돈 냄새부터 맡아야지.”",
+        "r": "하하, 돈이 말을 걸면 제가 먼저 알려 드릴게요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "dream",
+    "title": "잠들기 전",
+    "intro": "아직 해가 뜨기 전이었다. 동료는 책상에 기대 눈을 비비고 있었다.",
+    "open": [
+      "눈을 감으면 어제 그 골목이 보여요.",
+      "깨어 있으면 좀 괜찮은데."
+    ],
+    "tags": [
+      "hurt",
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“지금은 여기야. 잠깐 같이 앉아 있을까?”",
+        "r": "…그럼 조금만요. 말 안 해도 괜찮죠?",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“불편한 일이 있으면 말해 줘. 혼자 정리하지 말고.”",
+        "r": "네. 다음엔 잠들기 전에 한 번 얘기해 볼게요.",
+        "delta": 1
+      },
+      {
+        "tone": "firm",
+        "t": "“꿈은 꿈이지. 너무 마음 쓰지 마.”",
+        "r": "그렇게 되면 좋겠네요. …제가 알아서 할게요.",
+        "delta": -1
+      }
+    ]
+  },
+  {
+    "id": "rumor",
+    "title": "남의 입",
+    "intro": "동료가 접어 둔 신문을 책상 위에서 빙글 돌렸다.",
+    "open": [
+      "다른 사무소에서 우리 얘기를 하더라고요.",
+      "직접 들은 건 아닌데, 괜히 신경 쓰여서요."
+    ],
+    "tags": [
+      "work"
+    ],
+    "opts": [
+      {
+        "tone": "firm",
+        "t": "“우리 일을 제대로 하면 돼. 남의 입까지 맡은 건 아니잖아.”",
+        "r": "그렇죠. 다음에 만나면 일로 보여 주겠어요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“소문 낼 거면 광고비라도 내라고 해.”",
+        "r": "아, 그건 좋네요. 협회에 청구할까요?",
+        "delta": 1
+      },
+      {
+        "tone": "warm",
+        "t": "“누가 뭐라 해도 내가 같이 일해 본 너는 알아.”",
+        "r": "…그렇게 말해 주시면 좀 덜 신경 쓰이네요.",
+        "delta": 2
+      }
+    ]
+  },
+  {
+    "id": "seat",
+    "title": "내 자리",
+    "intro": "동료가 자기 책상 옆에 서서 한동안 빈 의자를 내려다봤다.",
+    "open": [
+      "저, 여기 계속 있어도 되는 거죠?",
+      "가끔은 제가 자리만 차지하는 것 같아서요."
+    ],
+    "tags": [
+      "close",
+      "hurt"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“네 자리는 네 거야. 걱정할 필요 없어.”",
+        "r": "…다행이다. 그럼 내일도 이 자리에 앉을게요.",
+        "delta": 2
+      },
+      {
+        "tone": "praise",
+        "t": "“네가 해낸 일은 내가 기억하고 있어.”",
+        "r": "기억해 주셨구나. 그 말이면 됐어요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“그건 앞으로도 같이 일해 보면서 알겠지.”",
+        "r": "네. 아직 보여 드릴 게 남았다고 생각할게요.",
+        "delta": 0
+      }
+    ]
+  },
+  {
+    "id": "cat",
+    "title": "젖은 발자국",
+    "intro": "현관 매트에 작은 발자국 몇 개가 남아 있었다.",
+    "open": [
+      "아까 고양이가 여기까지 왔어요.",
+      "문을 열었더니 도망가던데, 다시 오려나요?"
+    ],
+    "tags": [
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“다시 오면 그때는 기다려 주자.”",
+        "r": "좋아요. 먼저 다가가지 않는 편이 낫겠죠?",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“밤이 되기 전엔 어디론가 숨겠지.”",
+        "r": "그랬으면 좋겠어요. 길을 아는 녀석이면 다행이고요.",
+        "delta": 1
+      },
+      {
+        "tone": "joke",
+        "t": "“면접 보러 왔나 봐. 쥐 잡는 일은 잘하겠네.”",
+        "r": "그럼 보수는 생선으로 주세요. 제가 계약서 쓸게요.",
+        "delta": 2
+      }
+    ]
+  },
+  {
+    "id": "cup",
+    "title": "남겨 둔 한 모금",
+    "intro": "대표 자리 옆에 따뜻한 컵 하나가 놓여 있었다. 손잡이가 앉는 쪽을 향하고 있었다.",
+    "open": [
+      "아까 타 둔 건데 아직 안 식었네요.",
+      "…그냥, 제 것만 타기 좀 그래서요."
+    ],
+    "tags": [
+      "close",
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“다음엔 내가 네 것까지 타 줄게.”",
+        "r": "약속했어요. 다음 컵은 대표님 차례예요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“이거 마시면 의뢰 두 건 더 받아도 되는 건가?”",
+        "r": "아뇨. 한 잔 가지고 그렇게 부려 먹으면 안 되죠.",
+        "delta": 1
+      },
+      {
+        "tone": "real",
+        "t": "“고마워. 식기 전에 마실게.”",
+        "r": "네. 그럼 됐어요. …입에 맞으면 좋겠네요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "rain",
+    "title": "우산 하나",
+    "intro": "창문에 빗방울이 부딪쳤다. 동료가 손잡이가 휜 우산을 들고 와 펼쳤다.",
+    "open": [
+      "이게 두 사람까지 가려 주긴 할까요?",
+      "오늘 같은 날엔 둥지 쪽 길로 돌아가고 싶은데."
+    ],
+    "tags": [
+      "close",
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“어깨 좀 젖으면 어때. 같이 쓰면 되지.”",
+        "r": "…그럼 너무 멀리 서 있진 마세요. 제가 곤란하니까.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“바람 부는 쪽만 조심하면 되겠네.”",
+        "r": "좋아요. 들어 보니 아직 쓸 만한 우산이네요.",
+        "delta": 1
+      },
+      {
+        "tone": "joke",
+        "t": "“이 정도면 우산이 아니라 방패 아니야?”",
+        "r": "그럼 대표님이 앞에서 막으세요. 저는 뒤에 있을게요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "clock",
+    "title": "몇 분의 사치",
+    "intro": "벽시계가 유난히 크게 째깍거렸다. 동료가 시계를 올려다보며 웃었다.",
+    "open": [
+      "시간을 돈으로 파는 날개도 있다는데요.",
+      "이렇게 아무것도 안 하는 몇 분은 얼마나 할까요?"
+    ],
+    "tags": [
+      "quiet",
+      "money"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“지금은 팔 생각 없어. 그냥 같이 보내자.”",
+        "r": "…그건 좀 비싸게 쳐 줘야겠는데요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“시간을 아낀다고 늘 돈이 되는 건 아니지.”",
+        "r": "맞아요. 가끔은 이런 시간이 있어야 다음 일을 하니까.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“대표 할인으로 공짜. 대신 이자는 다음에.”",
+        "r": "이자라니, 무섭네요. 다음엔 제가 시간을 내 드릴게요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "window",
+    "title": "빈 광고판",
+    "intro": "건너편 건물의 광고판에서 새 얼굴이 웃고 있었다. 동료가 커튼을 반쯤 닫았다.",
+    "open": [
+      "저 표정으로 하루 종일 서 있으라면 얼마를 받아야 할까요?",
+      "저라면 점심 전에 관둘 것 같은데."
+    ],
+    "tags": [
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "joke",
+        "t": "“그 얼굴로 우리 사무소 광고나 찍어 볼래?”",
+        "r": "안 돼요. 대표님이 먼저 찍으면 생각해 볼게요.",
+        "delta": 2
+      },
+      {
+        "tone": "praise",
+        "t": "“네가 웃는 쪽이 훨씬 자연스러운데.”",
+        "r": "…갑자기 그런 말 하면 웃기 어렵잖아요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“광고는 광고지. 돈은 다른 데서 벌자.”",
+        "r": "그렇죠. 그래도 저 사람 월급은 궁금하네요.",
+        "delta": 0
+      }
+    ]
+  },
+  {
+    "id": "letter",
+    "title": "받는 사람 없음",
+    "intro": "서랍을 열던 동료가 반으로 접힌 봉투를 꺼냈다가 도로 접었다.",
+    "open": [
+      "가끔 편지를 써요. 보낼 곳은 없는데.",
+      "이상하죠? 쓰고 나면 할 말은 좀 줄어들더라고요."
+    ],
+    "tags": [
+      "close",
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“보내지 않아도 괜찮아. 네가 쓴 거니까.”",
+        "r": "네. 억지로 읽어 보겠다고 안 해서 좋아요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“보관할 곳이 필요하면 서랍 하나 써.”",
+        "r": "그럼 안쪽에 넣어 둘게요. 누구한테도 안 보이게요.",
+        "delta": 1
+      },
+      {
+        "tone": "firm",
+        "t": "“그건 네가 간직하면 돼. 말하고 싶을 때 말해.”",
+        "r": "…알겠어요. 언젠가는 먼저 보여 드릴지도 모르죠.",
+        "delta": 2
+      }
+    ]
+  },
+  {
+    "id": "repair",
+    "title": "단추 하나",
+    "intro": "동료가 외투를 여미려다 떨어진 단추를 손바닥에 올렸다.",
+    "open": [
+      "공방에서 칼은 멀쩡하게 받아 왔는데 옷은 이 모양이네요.",
+      "실이 어디 있더라."
+    ],
+    "tags": [
+      "quiet",
+      "work"
+    ],
+    "opts": [
+      {
+        "tone": "real",
+        "t": "“서랍 오른쪽. 필요하면 실을 꿰어 줄게.”",
+        "r": "이렇게 잘 아시는 거 보니 대표님도 꽤 자주 꿰매셨나 봐요.",
+        "delta": 2
+      },
+      {
+        "tone": "warm",
+        "t": "“가만있어 봐. 단추 떨어진 데부터 볼게.”",
+        "r": "…가까이 오시니까 제가 좀 긴장되는데요. 가만있을게요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“단추도 공방에 보내면 고유 단추가 되려나?”",
+        "r": "하하, 그럼 외투부터 등급 심사 받아야겠네요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "name",
+    "title": "부르는 이름",
+    "intro": "동료가 의뢰서에 적힌 대표의 이름을 소리 내 읽어 보았다.",
+    "open": [
+      "대표님이라고만 부르다가 이름을 보니까 낯설어요.",
+      "가끔은 이름으로 불러도 되나요?"
+    ],
+    "tags": [
+      "close"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“우리끼리 있을 땐 편하게 불러도 돼.”",
+        "r": "…그럼 둘만 있을 때 한 번 불러 볼게요.",
+        "delta": 2
+      },
+      {
+        "tone": "firm",
+        "t": "“일할 때는 대표로 불러 줘. 다른 때는 네 마음이고.”",
+        "r": "알겠어요. 밖에서는 선을 잘 지킬게요.",
+        "delta": 1
+      },
+      {
+        "tone": "real",
+        "t": "“아직은 대표가 편해.”",
+        "r": "네, 그럼 지금처럼 부를게요. 물어봐서 다행이네요.",
+        "delta": 0
+      }
+    ]
+  },
+  {
+    "id": "radio",
+    "title": "낮은 주파수",
+    "intro": "낡은 라디오에서 잡음이 흘렀다. 동료가 손잡이를 조금씩 돌렸다.",
+    "open": [
+      "여기서 노래가 나오던 주파수가 있었는데요.",
+      "오늘은 사람들 떠드는 소리만 들리네요."
+    ],
+    "tags": [
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“노래 찾을 때까지 같이 들어 볼까?”",
+        "r": "좋아요. 찾으면 대표님도 마음에 들어 하셨으면 좋겠어요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“우리가 노래하면 방송국에서 잡으러 오겠지?”",
+        "r": "그 전에 옆 사무소에서 항의하러 올걸요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“잡음이 심하면 꺼도 돼. 조용한 것도 좋지.”",
+        "r": "그러게요. 굳이 무슨 소리를 채워 넣을 필요는 없겠네요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "night",
+    "title": "불을 끄기 전에",
+    "intro": "사무소에 켜진 조명은 이제 책상 위 것뿐이었다. 동료가 현관 쪽을 돌아보았다.",
+    "open": [
+      "이상하게 이 문은 밖에서 볼 때랑 안에서 볼 때랑 느낌이 달라요.",
+      "안에 있으면 조금 안심이 되거든요."
+    ],
+    "tags": [
+      "close",
+      "hurt"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“네가 돌아올 곳이니까.”",
+        "r": "…그렇게 말하면 진짜로 집처럼 생각하게 되잖아요.",
+        "delta": 2
+      },
+      {
+        "tone": "firm",
+        "t": "“그 문이 계속 열려 있도록 우리가 버티는 거지.”",
+        "r": "네. 저도 제 몫은 지킬게요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“안에서 보면 집세가 안 보이거든.”",
+        "r": "하하. 그러면 장부는 절대 문 옆에 두지 마세요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "coin",
+    "title": "동전의 앞면",
+    "intro": "동료가 손등 위에 동전을 튕겨 올렸다가 움켜쥐었다.",
+    "open": [
+      "앞면이면 오늘 좋은 일이 생긴다던데요.",
+      "대표님도 한 번 맞혀 보실래요?"
+    ],
+    "tags": [
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "joke",
+        "t": "“옆면. 오늘은 좀 특별해야지.”",
+        "r": "그건 반칙이잖아요! …좋아요, 한 번만 더 던져 볼게요.",
+        "delta": 2
+      },
+      {
+        "tone": "firm",
+        "t": "“앞면. 그냥 내가 그렇게 정할래.”",
+        "r": "확신이 대단하시네요. 왠지 진짜 앞면일 것 같아요.",
+        "delta": 1
+      },
+      {
+        "tone": "real",
+        "t": "“어느 쪽이든 오늘은 오늘이지.”",
+        "r": "맞네요. 운에 맡겨 버리기엔 하루가 너무 길죠.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "meal",
+    "title": "마지막 한 입",
+    "intro": "동료가 종이 포장지를 펼쳤다. 안에는 반으로 나눈 빵이 남아 있었다.",
+    "open": [
+      "하나 다 먹기엔 좀 많아서요.",
+      "맛은 기대하지 마세요. 골목 끝에서 산 거라."
+    ],
+    "tags": [
+      "close",
+      "quiet"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“반씩 먹자. 네가 고른 거니까 맛있겠지.”",
+        "r": "…그런 말 들으면 다음엔 좀 더 좋은 걸 사 오고 싶어지는데요.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“맛없으면 의뢰인에게 넘기자.”",
+        "r": "대표님, 그렇게 하면 사무소 평판 떨어져요. 제가 먹을게요.",
+        "delta": 1
+      },
+      {
+        "tone": "real",
+        "t": "“고마워. 나머지는 네가 먹어.”",
+        "r": "네. 그럼 잘 먹을게요. 다음에도 생각나면 가져올게요.",
+        "delta": 1
+      }
+    ]
+  },
+  {
+    "id": "map",
+    "title": "돌아오는 길",
+    "intro": "동료가 구겨진 구역 지도를 펴고 손톱으로 익숙한 길을 짚었다.",
+    "open": [
+      "여길 지나서 모퉁이를 돌면 사무소가 보이잖아요.",
+      "그때만큼은 빨리 걷게 돼요."
+    ],
+    "tags": [
+      "work",
+      "close"
+    ],
+    "opts": [
+      {
+        "tone": "warm",
+        "t": "“다음에도 그 길로 돌아와. 여기서 기다릴게.”",
+        "r": "…네. 그럼 멀리 돌아가더라도 꼭 이쪽으로 올게요.",
+        "delta": 2
+      },
+      {
+        "tone": "real",
+        "t": "“그 골목은 밤 전에 지나야 해. 다른 길도 알아 두자.”",
+        "r": "알겠어요. 돌아오는 길을 하나 더 알아 두면 든든하겠죠.",
+        "delta": 2
+      },
+      {
+        "tone": "joke",
+        "t": "“간판이 너무 눈에 띄어서 그런가?”",
+        "r": "간판 때문만은 아닌데요. …아, 아무것도 아니에요.",
+        "delta": 1
+      }
+    ]
+  }
 ];
-// 교류 대답 — 동료는 대표에게 늘 존댓말을 쓴다. 대표보다 급수가 낮거나 같으면(jr) 조심스럽게, 대표보다 급수가 높은 고참이면(sr) 여유 있게 말한다.
-// 성격에 꼭 맞는 걸 해 줬을 때(ok)와 그렇지 않을 때(meh)를 나눈다. 어느 쪽이든 고마움은 전한다. 다친 상태·지친 상태면 대사 앞에 그 모습을 한 줄 붙인다.
-const TALK_LINES = {
-  "공격적":{ok:{jr:"…하, 이런 거 좋네요. 이 도시에선 망설이는 사람부터 뒷골목에 눕더라고요. 다음 일은 제가 맨 앞에 설게요.",
-                sr:"좋네요, 대표. 이 바닥 오래 굴러 보니까 결국 앞에 서는 사람이 살아남더라고요. 다음 칼부림은 저한테 맡겨요."},
-            meh:{jr:"…네, 고마워요. 그래도 저는 몸 쓰는 게 더 편하네요. 다음 일 나갈 때 앞에 세워 주세요.",
-                 sr:"하, 이것도 나쁘진 않네요. 그래도 저한텐 칼 한 번 더 휘두르는 게 약이에요."}},
-  "신중함":{ok:{jr:"네, 이렇게 짚고 넘어가니까 좀 낫네요. 계약서 한 줄 잘못 읽어서 문 닫은 사무소를 몇 군데나 봤거든요.",
-                sr:"고마워요. 날개 사람들도 결국 장부 앞에선 숫자로 말하잖아요. 오늘 밤에 기록 한 번 더 맞춰 둘게요."},
-            meh:{jr:"고마워요. 그래도 마음 놓이게 서류는 한 번만 더 볼게요.",
-                 sr:"고맙습니다. 그래도 저는 장부를 맞춰 봐야 잠이 오는 사람이라서요."}},
-  "헌신":{ok:{jr:"…고마워요, 정말로. 이 도시에서 누가 저를 챙겨 주는 게 이렇게 낯설 줄 몰랐어요. 저도 끝까지 곁에 있을게요.",
-              sr:"이거면 충분해요. 다들 무사히 이 문으로 돌아오기만 하면, 나머지는 제가 어떻게든 메울게요."},
-          meh:{jr:"고마워요. …저도 대표님 챙길 수 있게 더 열심히 할게요.",
-               sr:"마음 써 줘서 고마워요. 그래도 사무소 일은 제가 조금 더 짊어질게요."}},
-  "냉소":{ok:{jr:"하, 이건 좀 웃겼어요. 인정할게요. 이 도시에서 웃을 일 하나 건졌으니 오늘은 남는 장사네요.",
-              sr:"…이러는 대표라서 아직 여기 붙어 있는지도 모르겠네요. 다른 사무소였으면 진작 짐 쌌어요."},
-          meh:{jr:"…뭐, 나쁘진 않네요. 고맙다고 해 두죠.",
-               sr:"하, 대표답네요. 덕분에 조금은 덜 피곤하네요."}},
-  "충동적":{ok:{jr:"하하! 역시 대표님이에요! 아, 기분 좋다. 오늘은 뭐든 될 것 같은데, 의뢰 하나 더 받아도 돼요?",
-                sr:"그거죠, 그거! 이러니까 몸이 근질거리네요. 커피는 됐고, 당장 나가요!"},
-            meh:{jr:"헤헤, 고마워요! 근데 저는 얼른 나가서 몸이나 풀고 싶어요!",
-                 sr:"고마워요, 대표. 근데 가만히 있으니까 몸이 근질거리네요."}},
-  "침착함":{ok:{jr:"합리적이네요. 그렇게 하겠습니다. 대표님과 일하면 계산이 서서 좋습니다. 이 도시엔 계산이 안 서는 일이 너무 많거든요.",
-                sr:"좋습니다. 감정은 일 끝나고 정리하면 되니까요. 그래도 덕분에 마음이 조금 편해졌습니다."},
-            meh:{jr:"감사합니다. 덕분에 생각이 좀 정리됐습니다.",
-                 sr:"고맙습니다. 마음은 잘 받아 두겠습니다."}},
-  "집요함":{ok:{jr:"네, 끝까지 가 보죠. 손가락 놈들이 뭘 숨기든 한 번 문 건 안 놔요. 대표님도 그런 분이라 다행이에요.",
-                sr:"덕분에 놓쳤던 실마리가 다시 떠오르네요. 오늘 밤에 그 골목 한 번 더 돌아볼게요."},
-            meh:{jr:"고마워요. 그래도 그 일은 끝까지 파 봐야 직성이 풀릴 것 같아요.",
-                 sr:"고마워요. 놓친 실마리는 제가 마저 붙들고 있을게요."}},
-  "낙천적":{ok:{jr:"그쵸? 저도 그렇게 생각했어요! 뒷골목의 밤도 결국 아침이 오잖아요. 우리 사무소도 그럴 거예요.",
-                sr:"하하, 이런 거 좋네요. 이 도시가 아무리 험해도 이런 아침이 있으면 버틸 만하죠."},
-            meh:{jr:"헤헤, 고마워요! 그럼 오늘도 잘 풀리겠네요.",
-                 sr:"하하, 고마워요. 오늘 하루도 괜찮을 것 같네요."}},
-  "비관적":{ok:{jr:"…이렇게 해 주는 사람은 처음이에요. 어차피 다 무너질 거라고만 생각했는데, 오늘은 조금 덜 무서운 것 같아요.",
-                sr:"고마워요. 이 도시에서 다정한 건 빚처럼 느껴졌거든요. 근데 대표한테 받은 건 갚고 싶은 쪽이네요."},
-            meh:{jr:"…고마워요. 조금은, 아주 조금은 나아졌어요.",
-                 sr:"고마워요. …이런 아침이 오래가면 좋겠네요."}},
-  "오만함":{ok:{jr:"흥, 이제야 제대로 보시는군요. 이렇게까지 해 주시면 이 사무소 이름 좀 높여 드려야겠네요.",
-                sr:"당연한 일을. …그래도 대표한테 들으니 나쁘진 않네요. 협회 쪽에도 똑똑히 보여 주죠."},
-            meh:{jr:"흥, 그 정도는 받아 드리죠. 고맙다는 말은 안 하겠지만요.",
-                 sr:"흥. 뭐, 나쁘지 않은 대접이네요."}},
-  "소심함":{ok:{jr:"저, 정말요…? 이렇게 해 주실 줄 몰랐어요. 이번엔… 도망치지 않을게요. 진짜로요.",
-                sr:"고, 고마워요. 사실 계속 제가 짐만 되는 것 같았거든요. 오늘은 조금 더 해 볼게요."},
-            meh:{jr:"아, 고, 고마워요… 조금 진정됐어요.",
-                 sr:"고마워요… 다음엔 저도 뭔가 해 드릴게요."}},
-  "정의감":{ok:{jr:"네, 그게 맞아요. 이 도시가 아무리 비뚤어져도 우리까지 비뚤어질 필요는 없잖아요. 흔들리지 않을게요.",
-                sr:"대표를 믿어도 되는 거죠? …네, 믿을게요. 약한 사람이 뒷골목에서 사라지는 건 이제 그만 보고 싶어요."},
-            meh:{jr:"고마워요. 오늘 받은 마음은 잊지 않을게요.",
-                 sr:"고마워요. 대표 같은 사람이 있어서 아직 버틸 만하네요."}},
-  "탐욕":{ok:{jr:"좋아요, 셈이 맞는 분이 좋더라고요. 이 도시에서 공짜로 오는 건 뒷골목의 밤뿐이잖아요. 계속 같이 벌어 봐요.",
-              sr:"역시 말이 통하네요. 다음 의뢰 보수 좀 보여 줘요. 쓸 데가 벌써 줄을 서 있거든요."},
-          meh:{jr:"헤, 고마워요. 다음 주급도 잘 부탁드려요.",
-               sr:"고맙네요. 이 마음, 보수에도 좀 얹어 주면 더 좋고요."}},
-  "다정함":{ok:{jr:"따뜻하네요. 저도 대표님한테 그런 사람이 되고 싶어요. 다들 다치지 않고 돌아오는 사무소였으면 해요.",
-                sr:"덕분에 커피가 더 따뜻한 것 같네요. 오늘 저녁은 다 같이 먹어요. 제가 할게요."},
-            meh:{jr:"고마워요. 대표님도 너무 무리하지 마세요.",
-                 sr:"고마워요. 이따 제가 따뜻한 거라도 한 잔 탈게요."}},
-  "무심함":{ok:{jr:"…네. 이 정도면 됐어요. …아니, 사실 좀 괜찮았어요.",
-                sr:"…괜찮네요. 대표는 쓸데없이 길게 굴지 않아서 좋아요. 오늘 일, 맡겨요."},
-            meh:{jr:"…네. 고마워요.",
-                 sr:"…고마워요. 나쁘지 않네요."}},
-  "광기":{ok:{jr:"아하하! 이거 최고예요! 이 도시는 원래 미쳐 있으니까, 우리도 그만큼은 웃어 줘야죠. 오늘 일, 재밌겠다!",
-              sr:"좋아요, 좋아요. 톱니가 딱 맞물리는 느낌이네요. 오늘은 뭘 부숴 볼까요?"},
-          meh:{jr:"후후, 고마워요! 다음엔 좀 더 재밌는 것도 기대할게요!",
-               sr:"하하, 고마워요. 톱니가 조금 덜 삐걱대네요."}},
+const TALK_VOICE = {
+ "공격적":["입꼬리를 올리며 책상을 손끝으로 두드렸다.","잠시 미간을 좁혔다."],
+ "신중함":["한 번 고개를 끄덕이고 말을 골랐다.","잠깐 생각에 잠겼다."],
+ "헌신":["눈을 맞추더니 작게 웃었다.","대답을 삼키고 시선을 내렸다."],
+ "냉소":["코웃음 끝에 웃음이 묻어났다.","한쪽 눈썹이 올라갔다."],
+ "충동적":["금세 표정이 환해졌다.","입을 열었다가 도로 닫았다."],
+ "침착함":["천천히 고개를 끄덕였다.","조용히 시선을 돌렸다."],
+ "집요함":["눈을 가늘게 뜨고 웃었다.","손끝으로 탁자를 긁었다."],
+ "낙천적":["웃음을 참지 못하고 어깨를 들썩였다.","잠시 웃음이 잦아들었다."],
+ "비관적":["어깨에서 조금 힘이 빠졌다.","눈길이 바닥으로 향했다."],
+ "오만함":["턱을 살짝 들었지만 웃음은 숨기지 못했다.","팔짱을 끼고 잠시 말을 멈췄다."],
+ "소심함":["눈을 마주쳤다가 얼른 피했다.","손가락을 꼼지락거렸다."],
+ "정의감":["똑바로 눈을 맞췄다.","잠시 굳은 표정으로 고개를 끄덕였다."],
+ "탐욕":["눈이 반짝이며 몸을 조금 앞으로 기울였다.","손가락으로 책상 모서리를 쓸었다."],
+ "다정함":["눈가가 부드러워졌다.","작게 숨을 내쉬었다."],
+ "무심함":["무심한 표정에 아주 작은 웃음이 번졌다.","잠시 말없이 서 있었다."],
+ "광기":["기분 좋은 듯 작게 웃었다.","알 수 없는 표정으로 고개를 기울였다."]
 };
-// 대표보다 급수가 높은 고참이면 sr. 특색(0급)은 가장 높게 친다.
-const rankOf = g => g===0 ? -1 : g;
-const talkRegister = f => { const L = S && S.fixers.find(x=>x.isLeader); return L && rankOf(f.grade) < rankOf(L.grade) ? "sr" : "jr"; };
-// 지금 모습: 크게 다쳤거나, 정신이 바닥이거나, 지쳐 있으면 대사 앞에 한 줄
-function talkMood(f){ const n = f.name, nm = jo(n,"은");
-  if(f.hpMax && f.hp/f.hpMax < 0.4) return pick([`${nm} 붕대 감은 팔을 내려다보다 고개를 들었다.`, `${nm} 옆구리를 짚은 채 의자에 기대 있었다.`]);
-  if(f.mpMax && f.mp/f.mpMax < 0.35) return pick([`${n}의 눈 밑이 거뭇했다. 잠을 못 잔 얼굴이었다.`, `${nm} 한참 컵만 내려다보다가 입을 열었다.`]);
-  if(typeof STREAK_MAX!=="undefined" && (f.streak||0) >= STREAK_MAX) return `${nm} 하품을 삼키며 어깨를 주물렀다. 며칠째 쉬지 못했다.`;
-  return null; }
-const talkLine = (liked, P, f) => { const E = TALK_LINES[P] || TALK_LINES["다정함"], r = f ? talkRegister(f) : "jr"; return (liked ? E.ok : E.meh)[r]; };
-const TALK_TONE_LABEL = {warm:"다정하게", real:"현실적으로", joke:"농담으로", firm:"단호하게", praise:"추켜세운다"};
-function talkWeek(){ const w = Math.floor((S.day-1)/7); if(!S.talk || S.talk.w !== w) S.talk = {w, n:0, last:0}; return S.talk; }
+const talkMemory = f => { if(!f.talkMemory || !Array.isArray(f.talkMemory.history)) f.talkMemory={history:[]}; return f.talkMemory; };
+function talkWeek(){ const w=Math.floor((S.day-1)/7); if(!S.talk || S.talk.w!==w) S.talk={w,n:0,last:0}; return S.talk; }
+function talkTopic(f, rand=Math.random){
+  const hist=talkMemory(f).history, seen=new Set(hist.map(x=>x.id)), recent=new Set(hist.slice(-5).map(x=>x.id));
+  const trust=fixerTrust(f), hurt=f.hpMax&&f.hp/f.hpMax<.5 || f.mpMax&&f.mp/f.mpMax<.45, like=TALK_LIKE[f.personality]||"warm";
+  let pool=TALK_TOPICS.filter(t=>!seen.has(t.id) && (trust>=55 || !t.tags.includes("close")));
+  if(!pool.length) pool=TALK_TOPICS.filter(t=>!recent.has(t.id) && (trust>=55 || !t.tags.includes("close")));
+  if(!pool.length) pool=TALK_TOPICS.filter(t=>!recent.has(t.id));
+  const last=hist[hist.length-1], weights=pool.map(t=>1+(t.tags.includes("hurt")&&hurt?3:0)+(t.tags.includes("close")&&trust>=75?2:0)+(t.tags.includes("work")&&(f.done||0)>0?1:0)+(t.opts.some(o=>o.tone===like)?1:0)+(last&&last.tone==="real"&&t.tags.includes("work")?1:0)+(last&&last.tone==="warm"&&t.tags.includes("quiet")?1:0));
+  let r=rand()*weights.reduce((a,b)=>a+b,0); for(let i=0;i<pool.length;i++){r-=weights[i];if(r<0)return pool[i];}return pool[pool.length-1];
+}
+function talkOptions(f,tp){
+  const like=TALK_LIKE[f.personality]||"warm", hist=talkMemory(f).history, prev=hist[hist.length-1];
+  return tp.opts.map((o,i)=>{
+    let delta=o.delta+(o.tone===like?1:0);
+    if(prev&&prev.delta<0&&o.tone==="warm"&&o.delta>0)delta++;
+    if(prev&&prev.tone===o.tone&&prev.delta>0&&o.delta>0)delta++;
+    delta=Math.max(-2,Math.min(3,delta));
+    const voice=TALK_VOICE[f.personality]||TALK_VOICE["다정함"], after=[];
+    if(delta!==0)after.push(["",f.name+jo(f.name,"이").slice(f.name.length)+" "+voice[delta>0?0:1]]);
+    after.push([f.name,o.r]);
+    return {k:tp.id+":"+i,t:o.t,tone:o.tone,delta,after};
+  });
+}
 async function talkCheck(){
-  if(!S || S.over) return; const T = talkWeek(), left = 7 - ((S.day-1)%7), need = Math.max(0, 2 - T.n);
-  const pool = S.fixers.filter(f=>!f.isLeader && f.hp > 0); if(!pool.length || T.last === S.day) return;
-  if(!(need >= left || (need > 0 && Math.random() < 0.35) || (need === 0 && Math.random() < 0.1))) return;
-  const f = pick(pool), P = f.personality, like = TALK_LIKE[P] || "warm", tp = pick(TALK_TOPICS);
-  const others = Object.keys(tp.o).filter(k=>k!==like).sort(()=>Math.random()-0.5).slice(0,1), keys = [like].concat(others).sort(()=>Math.random()-0.5);
-  const opts = keys.map(k=>({k, t:tp.o[k], after:(m=>m ? [["", m]] : [])(talkMood(f)).concat([[f.name, talkLine(k===like, P, f)]])}));
-  T.n++; T.last = S.day;
-  const o = await vnPlay(`교류 — ${f.name}`, [["", `아침, ${f.name}${jo(f.name,"이").slice(f.name.length)} 커피를 들고 다가왔다.`]].concat(tp.open.map(t=>[f.name, t])), `${f.name}에게 어떻게 해 줄까?`, opts);
-  if(o && o.k===like){ const d = changeFixerTrust(f, 2, "교류 — 마음이 통했다"); if(d) toast(`${f.name}: 신뢰 +${d}`); }
-  else addLog(`${f.name}와 이야기를 나눴다`);
-  save(); }
+  if(!S||S.over)return;const T=talkWeek(),left=7-((S.day-1)%7),need=Math.max(0,2-T.n);
+  const pool=S.fixers.filter(f=>!f.isLeader&&f.hp>0);if(!pool.length||T.last===S.day)return;
+  if(!(need>=left||(need>0&&Math.random()<.35)||(need===0&&Math.random()<.1)))return;
+  const lastDay=f=>{const h=talkMemory(f).history;return h.length?h[h.length-1].day:0;};
+  const oldest=Math.min(...pool.map(lastDay)), f=pick(pool.filter(x=>lastDay(x)===oldest)),tp=talkTopic(f),opts=talkOptions(f,tp);
+  for(let i=opts.length-1;i>0;i--){const j=rnd(0,i);[opts[i],opts[j]]=[opts[j],opts[i]];}
+  const lines=[["",tp.intro]].concat(tp.open.map(t=>[f.name,t]));
+  T.n++;T.last=S.day;
+  const o=await vnPlay("교류 · "+tp.title+" · "+f.name,lines,"어떻게 답할까?",opts);
+  if(o){const d=changeFixerTrust(f,o.delta,"교류 · "+tp.title),mem=talkMemory(f);mem.history.push({id:tp.id,tone:o.tone,choice:o.k,delta:d,day:S.day});mem.history=mem.history.slice(-40);if(d)toast(f.name+": 신뢰 "+(d>0?"+":"")+d);else addLog(f.name+jo(f.name,"과").slice(f.name.length)+" 이야기를 나눴다");}
+  save();
+}
 /* ================= 장면 대화 (비주얼노벨식) =================
    lines: [[말하는 사람, 대사, 조건?]] — 말하는 사람이 ""이면 서술. 조건 "장:키"는 그 장에서 고른 선택일 때만 나온다.
    opts: [{k, t, al:{정의|현실|질서:n}, eff:{rw,req,dl,goal,foe}, after:[[s,t]]}]
@@ -14058,7 +14657,7 @@ function dislikeOf(f, q){ if(!f || f.isLeader || !q) return null; const P = f.pe
   if(["신중함","침착함"].includes(P) && q.hazard) return "{N} \"다음엔 준비할 시간을 좀 주세요\" 하고 굳은 얼굴로 말했다";
   if(P==="냉소" && /협회/.test(q.client||"")) return "{N} \"협회 심부름은 이번이 마지막이었으면 좋겠네요\" 하며 코웃음을 쳤다";
   if(P==="무심함" && q.kind==="호위") return "{N} 남 뒤치다꺼리는 귀찮다며 의자에 털썩 주저앉았다";
-  if(P==="낙천적" && q.distorted) return "{N} 웃지 않았다. 아는 얼굴을 벤 날엔 그도 웃지 못한다";
+  if(P==="낙천적" && q.distorted) return "{N} 웃지 않았다. 아는 얼굴을 벤 날엔 웃을 수 없었다";
   if(P==="광기" && q.goal==="제압") return "{N} \"끝까지 가면 안 되는 일은 재미없어요\" 하고 입을 삐죽였다";
   if(P==="집요함" && q.deadline!=null && q.deadline<=1 && !q.accepted) return "{N} 끝까지 파고들지 못하고 서둘러 마친 게 마음에 걸리는 모양이다";
   if(low==="wil" && q.kind==="환상체" && (st.wil||0) < 15) return "{N} 관자놀이를 짚은 채 한참을 앉아 있었다. 환상체 앞에만 서면 머리가 울린다고 했다";
