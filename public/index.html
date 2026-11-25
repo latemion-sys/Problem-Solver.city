@@ -1642,7 +1642,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a1.6.7"; // 급수 승급에 따른 주급 인상
+const VERSION = "v.a1.6.9"; // 개화 E.G.O. 형태·전투·문장 개선
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -1730,8 +1730,26 @@ function bindLook(box, L, st){
   box.addEventListener("click", e=>{ if(!e.target.dataset.lkrand) return; Object.assign(L, randomLook()); redraw(); });
 }
 /* 개화 E.G.O — 원작처럼 정해진 명칭이 없다. 대표든 동료든 이름은 플레이어가 직접 지어 준다. 짓지 않으면 "개화 E.G.O::" 로만 남는다. */
-const EGO_FORM_NAME = {weapon:"무기", armor:"의복", both:"일체형", tool:"도구형"};
-const egoSlot = e => e && e.type==="armor" ? "armor" : "weapon";   // 형상 고르기에서 정하는 쪽(일체형·도구형은 손에 드는 쪽)
+const EGO_FORM_NAME = {weapon:"무기", armor:"의복", both:"일체형"};
+const egoHasWeapon=e=>!!e&&(e.type==="weapon"||e.type==="both");
+const egoHasArmor=e=>!!e&&(e.type==="armor"||e.type==="both");
+const egoNameClean=v=>typeof v==="string"?v.trim().slice(0,30):"";
+const egoBudget=e=>e&&e.type==="both"?7:10;
+function syncEgoForm(f){
+  const e=f&&f.ego;if(!e)return;
+  if(e.type==="tool")e.type=EGO_SPECIAL.armor.some(x=>x.id===e.special)?"both":"weapon";
+  if(!EGO_FORM_NAME[e.type])e.type="weapon";
+  e.attackNames=Array.from({length:3},(_,i)=>egoNameClean(e.attackNames&&e.attackNames[i]));e.guardName=egoNameClean(e.guardName);
+  if(e.bonus){const vals=ATTRS.map(a=>Math.max(0,Math.floor(Number(e.bonus[a])||0))), total=vals.reduce((a,v)=>a+v,0), cap=egoBudget(e);if(total>cap){const scaled=vals.map(v=>Math.floor(v*cap/total));let left=cap-scaled.reduce((a,v)=>a+v,0);const order=vals.map((v,i)=>[i,v*cap/total-scaled[i]]).sort((a,b)=>b[1]-a[1]);for(let i=0;i<left;i++)scaled[order[i][0]]++;e.bonus=Object.fromEntries(ATTRS.map((a,i)=>[a,scaled[i]]));}}
+}
+function egoAttackCards(e,cards){
+  if(!egoHasWeapon(e))return cards;
+  const names=e.attackNames||[], list=cards.slice();if(list.length===2&&egoNameClean(names[2]))list.push(cards[0]);
+  return list.map((c,i)=>({...c,origName:c.origName||c.n,n:egoNameClean(names[i])||c.n+"[개화]",a:c.a+1,b:c.b+1}));
+}
+function egoDefenseCard(e,c){return egoHasArmor(e)?{...c,origName:c.origName||c.n,n:egoNameClean(e.guardName)||"방어[개화]"}:c;}
+const egoGuardCut=e=>egoHasArmor(e)?2:0;
+const egoSlot = e => e && e.type==="armor" ? "armor" : "weapon";   // 형상 고르기에서 정하는 쪽(일체형은 무기와 의복을 함께 편집)
 const egoSpecList = type => type==="weapon" ? EGO_SPECIAL.weapon : type==="armor" ? EGO_SPECIAL.armor : EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor);
 const egoSpecLabel = type => type==="weapon" ? "특수 공격" : type==="armor" ? "특수 방어" : "특수 능력";
 const egoLabel = e => `${e.unstable ? "불안정 " : ""}개화 E.G.O::${e.name}`;
@@ -1816,7 +1834,7 @@ const CLIENTS = {
 };
 const TEXTS = {
  // 물리(제압): 정면 돌파·제압·계약 이행 강제
- str_kill:["현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다고 한다","골목 아이들을 노리는 자가 있다. 다시는 움직이지 못하게 해 달라","배신한 조직원을 찾아 끝내 달라","밤마다 사람을 해치는 자를 처리해 달라"],
+ str_kill:["현상금이 걸린 강도를 처리해 달라. 의뢰인은 사살을 요구했다","골목 아이들을 노리는 자가 있다. 다시는 움직이지 못하게 해 달라","배신한 조직원을 찾아 끝내 달라","밤마다 사람을 해치는 자를 처리해 달라"],
  str:["계약을 어기고 문을 걸어 잠근 하청 업체 사무실을 열게 해 달라","골목을 점거한 조직 은신처의 셔터를 뚫고 들어가 정리해 달라","밀린 빚을 갚지 않는 자의 가게를 찾아가 받아 와 달라","무너진 창고 입구를 뚫고 남은 재고를 꺼내 달라"],
  // 속도: 기한이 빠듯한 배달·추격
  agi:["부품을 들고 달아난 배달원을 붙잡아 물건을 회수해 달라","도망친 채무자를 날이 밝기 전에 붙잡아 달라","급한 서류를 둥지 경계까지 기한 안에 전해 달라","소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라"],
@@ -2218,7 +2236,7 @@ const MAJOR_EVENTS = [
  "붉은색과 짙은 회색으로 칠한, 앞머리가 증기 기관차처럼 생긴 버스 한 대가 구역 경계를 넘나든다는 목격담이 끊이지 않는다.",
  "그 기관차 같은 버스에서 머리가 시계인 사람이 내렸다는 말이 있다. 째깍거리는 소리까지 들렸다고.",
  "그 버스에 탄 열두 명이 버려진 L사 지부만 골라 찾아다닌다는 소문이 돈다.",
- "그 버스에 붉은 눈의 사내도 타고 있었다는 말이 있지만, 직접 본 사람은 없다.",
+ "붉은 눈의 사내가 그 버스에 탔다는 소문도 돌았다. 제보는 모두 건너 들은 이야기였다.",
  "백야와 흑주가 지나간 뒤, L사 둥지 한가운데에 거대한 도서관이 나타났었다는 이야기가 다시 돈다.",
  "도서관에서 초대장을 받고 찾아간 사람들은 책이 되어 돌아오지 못했다는 소문이 있다.",
  "도서관이 사라지던 날, 그 안에 모여 있던 빛이 도시로 흩어졌다는 말이 협회 안에서도 오간다.",
@@ -2295,7 +2313,7 @@ function limitBasicTechs(f){
 function syncAllStatVitals(d){ if(d){ (d.fixers||[]).concat(d.recruitPool||[]).forEach(f=>{
   syncStatVitals(f);
   limitBasicTechs(f);
-  migrateEmploymentCost(f); syncGradeWage(f);
+  migrateEmploymentCost(f); syncGradeWage(f); syncEgoForm(f);
   (f.rw||[]).forEach(x=>{ if(x&&x.s) migrateEmploymentCost(x.s); });
   if(!f.isLeader && !Number.isFinite(f.trust)) f.trust=f.founder?65:50;
   if(f.grade<=1){ growOf(f); ATTRS.forEach(a=>{ if(f.gk[a]){ f.gk[a]=false; f.gc[a]=0; } }); }
@@ -3098,7 +3116,7 @@ const SYNDICATES = [
   {id:"kong", n:"콩콩이파", gr:8, col:"#f0b45a", req:0, pay:1.05,
    line:"장터와 가판대를 콩콩 뛰어다니며 좀도둑질을 하는 뒷골목 잔챙이 조직.",
    info:"우두머리 '콩콩이'를 따르는 열댓 명 남짓. 대부분 뒷골목에서 자란 아이들이거나 이제 막 어른이 된 녀석들이다. 훔치고, 튀고, 들키면 우르르 흩어진다. 해결사가 나서면 대개 하루면 끝나지만, 일주일만 지나면 다른 골목에 또 나타난다.",
-   lore:"콩콩이가 누군지 제대로 본 사람은 없다. 잡혀 온 아이들은 하나같이 자기가 콩콩이라고 우긴다. 둥지에서 버려진 아이들이 뒷골목에서 살아남는 가장 흔한 방법이 이거다.",
+   lore:"붙잡힌 아이들에게 콩콩이의 얼굴을 물으면 대답이 제각각이다. 잡혀 온 아이들은 하나같이 자기가 콩콩이라고 우긴다. 둥지에서 버려진 아이들이 뒷골목에서 살아남는 가장 흔한 방법이 이거다.",
    rows:[["가판대를 털고 달아난 콩콩이파 꼬맹이를 잡아 달라. 물건만 돌려받으면 된다고 한다","노점 할머니","일반","agi","person"],
          ["장터 입구에 진을 친 콩콩이파가 '통행료'를 걷고 있다. 쫓아내 달라","장터 상인회","일반","str","제압","콩콩이파 패거리"],
          ["콩콩이파가 훔쳐 간 가게 금고 열쇠를 찾아 달라","잡화점 주인","일반","tec","item"]],
@@ -3130,7 +3148,7 @@ const SYNDICATES = [
   {id:"lump", n:"살뭉치", gr:7, col:"#c4444a", req:2, pay:1.2,
    line:"피와 살인을 떠받드는 뒷골목 무리. 죽인 사람의 살점을 뭉쳐 '뭉치'를 빚는다.",
    info:"살인을 의식으로 여긴다. 정해진 밤이면 거리에서 아무나 골라 죽이고, 그 살점을 한데 뭉쳐 은신처 제단에 바친다. 뭉치가 커질수록 '그분'이 가까워진다고 믿는다. 조직이라기보다 떼거리에 가깝고, 겁이 없다.",
-   lore:"'그분'이 뭔지 아는 살뭉치 조직원은 없다. 다만 뭉치가 사람 키만큼 자랐던 어느 은신처에 해결사들이 들어갔다가, 아무도 돌아오지 않았다고 한다. 다음 날 그곳에는 뭉치도 사람도 없었다.",
+   lore:"살뭉치 조직원에게 '그분'의 정체를 물으면 대개 입을 다문다. 다만 뭉치가 사람 키만큼 자랐던 어느 은신처에 해결사들이 들어갔다가, 아무도 돌아오지 않았다고 한다. 다음 날 그곳에는 뭉치도 사람도 없었다.",
    rows:[["살뭉치가 '의식의 밤'을 예고했다. 그 밤이 오기 전에 은신처를 끝내 달라","구역 자경단","일반","str","사살","살뭉치 신도"],
          ["살뭉치에게 끌려간 사람들이 어디로 갔는지 알아내 달라","실종자 가족 모임","수색","tec"],
          ["살뭉치의 표적이 된 정육점 주인을 사흘 밤 지켜 달라","표적이 된 정육점 주인","호위","str"]],
@@ -3170,7 +3188,7 @@ const SYNDICATES = [
   {id:"smile", n:"웃는 얼굴들", gr:3, col:"#e07a7a", req:4, pay:1.5,
    line:"웃는 가면을 쓴 식인 조직. 밤마다 사람을 데려간다.",
    info:"다들 똑같이 웃는 가면을 쓰고, 가면 아래에서도 웃는다. 데려간 사람은 먹는다. 싸울 때도 웃음을 멈추지 않아서, 마주한 해결사들이 먼저 무너지는 일이 잦다.",
-   lore:"웃는 얼굴들은 누군가의 부탁을 받고 움직일 때가 있다고 한다. 그 '누군가'가 누군지 말하는 조직원은 없다. 입에 재갈이 물려 있거나, 이미 웃고 있거나.",
+   lore:"웃는 얼굴들은 누군가의 부탁을 받고 움직일 때가 있다고 한다. 그 의뢰인을 캐물으면 재갈을 문 얼굴이거나, 기묘하게 웃는 얼굴만 돌아온다.",
    rows:[["웃는 가면을 쓴 무리가 밤마다 사람을 데려간다. 은신처를 찾아 끝내 달라","실종자 가족 모임","일반","str","사살","웃는 얼굴들"],
          ["남편이 웃는 얼굴들에게 끌려갔다는 소문이 있다. 어디로 갔는지만이라도 알아봐 달라","실종자의 아내","수색","tec"],
          ["웃는 얼굴들에게서 겨우 도망친 증인을 협회 지부까지 데려다 달라. 놈들이 뒤를 밟고 있다","하나 협회 지부","호위","agi"]],
@@ -3220,7 +3238,7 @@ const CITY_FIXERS = [
   {t:"붉은 안개", col:"#ff5a52", need:9, line:"한때 도시에서 가장 이름난 특색.",
    rumor:"낡은 가죽 코트를 걸치고, 기묘하게 일렁이는 살점 같은 외날검을 들었던 전설의 해결사. 그녀가 지나간 자리에는 붉은 안개만 남았다고 전해진다. 도시에서 가장 강했던 사람을 꼽으라면 누구든 그녀부터 떠올릴 것이다. 하지만 어느 날 이후로 아무도 그녀를 보지 못했다. 이미 죽었다는 소문도, 아직 어딘가 살아 있다는 소문도 있다."},
   {t:"검은 침묵", col:"#a7a7b8", need:9, line:"모든 소리를 지워 버릴 만큼 격렬하게 싸우는 검은 가면의 특색.",
-   rumor:"그가 싸우는 동안에는 검은 가면에 피 튀는 소리만 들린다고들 한다. 손에 든 무기가 싸우는 내내 바뀐다는 목격담도 있다. 함께 다니던 사람이 죽은 뒤 남부 중지의 절반을 박살 냈다는 이야기도 같이 돌았다. 그 뒤로 어디 있는지 아는 사람은 없다."},
+   rumor:"그가 싸우는 동안에는 검은 가면에 피 튀는 소리만 들린다고들 한다. 손에 든 무기가 싸우는 내내 바뀐다는 목격담도 있다. 함께 다니던 사람이 죽은 뒤 남부 중지의 절반을 박살 냈다는 이야기도 같이 돌았다. 이후 그의 행방은 소문 속에서조차 끊겼다."},
   {t:"보라 눈물", col:"#b07cff", need:6, line:"어디서든 불쑥 나타나는 특색.",
    rumor:"한 구역에 있던 사람이 다음 순간 다른 구역에 서 있었다는 이야기가 끊이지 않는다. 해결사 일과는 상관없이, 사라진 아이를 찾아다닌다는 소문이 있다."},
   {t:"푸른 잔향", col:"#6aa2ff", need:6, line:"음악처럼 싸운다는 특색.",
@@ -3246,7 +3264,7 @@ function cityHtml(){
   return `<p class="muted" style="margin:0 0 8px">도시에서 보고 들은 것. 조직은 맞설수록, 이름난 해결사는 사무소가 높아질수록 더 많이 알게 된다. 이 브라우저에 남는다.</p>
     <h4 style="margin:10px 0 6px">뒷골목 조직 <span class="muted" style="font-weight:400">${nS}/${SYNDICATES.length}</span></h4>${sy}
     <h4 style="margin:16px 0 6px">이름난 해결사 <span class="muted" style="font-weight:400">${nF}/${CITY_FIXERS.length}</span></h4>${fx}
-    <h4 style="margin:16px 0 6px">이름없는 특색</h4>${d.nameless && d.nameless.n ? `<div class="cdx on" style="border-left:3px solid ${NAMELESS_COL}"><div class="cdx-h"><b style="color:${NAMELESS_COL}">${NAMELESS}</b><span class="badge">특색</span><span class="muted" style="font-size:11px">마주친 횟수 ${d.nameless.n}</span></div><div class="cdx-g"><span>소문</span><div>하나 협회에서 특색 판정을 받았지만 칭호도, 색도 받지 않은 해결사. 이름을 아는 사람은 없다.</div><span>마주침</span><div>${d.nameless.how.map(h=>esc(NAMELESS_HOW[h]||"")).join(" ")}</div></div></div>` : `<div class="cdx"><div class="cdx-h"><b>[ ??? ]</b><span class="badge">특색</span></div><div class="cdx-g"><span>소문</span><div><span class="muted">골목에서 드물게 마주친다는 특색이 있다. 칭호도 색도 없다고.</span></div></div></div>`}
+    <h4 style="margin:16px 0 6px">이름없는 특색</h4>${d.nameless && d.nameless.n ? `<div class="cdx on" style="border-left:3px solid ${NAMELESS_COL}"><div class="cdx-h"><b style="color:${NAMELESS_COL}">${NAMELESS}</b><span class="badge">특색</span><span class="muted" style="font-size:11px">마주친 횟수 ${d.nameless.n}</span></div><div class="cdx-g"><span>소문</span><div>하나 협회에서 특색 판정을 받았지만 칭호도, 색도 받지 않은 해결사. 하나 협회의 명부에도 이름 대신 빈칸이 남아 있다.</div><span>마주침</span><div>${d.nameless.how.map(h=>esc(NAMELESS_HOW[h]||"")).join(" ")}</div></div></div>` : `<div class="cdx"><div class="cdx-h"><b>[ ??? ]</b><span class="badge">특색</span></div><div class="cdx-g"><span>소문</span><div><span class="muted">골목에서 드물게 마주친다는 특색이 있다. 칭호도 색도 없다고.</span></div></div></div>`}
     <h4 style="margin:16px 0 6px">우리 사무소 출신</h4>${own}`;
 }
 const cityCount = () => { const d = cityLoad(); return SYNDICATES.filter(s=>(d.synd[s.id]||{}).seen).length + CITY_FIXERS.filter(c=>Math.min(d.best, S && !S.over ? S.officeGrade : 9)<=c.need).length; };
@@ -3275,7 +3293,7 @@ const REQ_POOL = [
   pW:0.15, pE:0.13, pS:0.14, kill:0.3,
   str:[["납품 대금을 떼먹고 사무실 문을 걸어 잠근 하청업자를 끌어내 달라. 경비까지 고용했다고 한다","하청 공사 현장 반장","하청 업체 경비"],["운송로를 막고 통행료를 걷는 조직원들을 몰아내 달라. 창고 셔터 뒤에 무장한 놈들이 숨어 있다","뒷골목 상인회","조직 행동대원"],
        ["채무자가 가게를 경호원들한테 맡기고 잠적했다. 계약서에 적힌 금액을 받아 와 달라","급전 대부 사무실","채무자의 경호원"],["무너진 창고 입구를 막고 선 자들을 치우고 재고를 꺼내 달라","고물상 '두 바퀴'","조직 행동대원"]],
-  str_kill:[["현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다고 한다","합법 경매장 감정사","현상금 걸린 강도"],["조직 장부를 들고 달아난 배신자를 찾아 처리해 달라. 의뢰인은 생포를 바라지 않는다","전당포 '둥근 저울'","배신한 조직원"]],
+  str_kill:[["현상금이 걸린 강도를 처리해 달라. 의뢰인은 사살을 요구했다","합법 경매장 감정사","현상금 걸린 강도"],["조직 장부를 들고 달아난 배신자를 찾아 처리해 달라. 의뢰인은 생포를 바라지 않는다","전당포 '둥근 저울'","배신한 조직원"]],
   agi:[["부품을 들고 달아난 배달원을 붙잡아 물건을 회수해 달라","'김씨 부품상'","person"],["도망친 채무자를 날이 밝기 전에 붙잡아 달라","급전 대부 사무실","person"],
        ["소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라","배달 조합","person"],["하청 연구소에서 풀려난 개조 짐승을 산 채로 잡아 달라. 연구소는 짐승을 죽이면 보수를 주지 않겠다고 한다","둥지 하청 연구소","beast"]],
   tec:[["경비 장치는 멀쩡한데 가게 물건만 사라졌다. 어디로 들어왔는지, 누가 그랬는지 밝혀 달라","골목 사진관","item"],["위조된 감정서를 가려내고 진짜 출처를 알아내 달라","합법 경매장 감정사","item"],
@@ -3306,7 +3324,7 @@ const REQ_POOL = [
 ];
 /* 의뢰 문구 보강 — 등급대마다 같은 문장이 덜 겹치도록. [문구, 의뢰인, 상대 또는 추적 대상] */
 [ { // 9~8급
-  str_kill:[["버스 정류장에서 노인들 지갑만 노리는 쥐를 다시는 얼씬도 못 하게 해 달라","버스 정류장 노점상","뒷골목 쥐"],["가게 뒤 창고에 불 지른 놈을 찾아 끝내 달라. 두 번은 없다","골목 세탁소 사장","방화범"]],
+  str_kill:[["버스 정류장에서 노인들 지갑만 노리는 쥐를 다시는 얼씬도 못 하게 해 달라","버스 정류장 노점상","뒷골목 쥐"],["가게 뒤 창고에 불 지른 놈을 찾아 끝내 달라. 이번에 끝내 달라","골목 세탁소 사장","방화범"]],
   tec:[["누가 가게 간판 전구를 하나씩 빼 가는지 알아내 달라","골목 사진관","item"],["엘리베이터에 붙은 협박 쪽지를 누가 붙였는지 알아내 달라","오래된 아파트 관리소","item"]],
   esc:[["밤 장사를 마친 포장마차 주인을 골목 끝까지 바래다 달라","시장 생선 가게"],["학원 끝난 아이들을 버스 정류장까지 데려다 달라","골목 학원 원장"]],
   srch:[["어제 골목에서 흘린 가게 열쇠 꾸러미를 찾아 달라","골목 슈퍼"],["폐건물 어딘가에 버려진 손수레를 찾아 달라","고물상 '두 바퀴'"],["아침마다 사라지는 신문 뭉치가 어디로 가는지 찾아 달라","오래된 아파트 관리소"]]},
@@ -3339,7 +3357,7 @@ const REQ_SCENE_ROWS = [
     str:[
       ["아침마다 빵집 앞에 자리 잡는 부랑자 둘을 다른 데로 보내 달라. 빵을 나눠 줘도 소용없었다고 한다.","골목 빵집 주인","부랑자",["새벽에 문을 열면 벌써 문 앞에 사람이 누워 있다. 빵을 사러 온 손님들은 발길을 돌린다.","빵집 주인이 몇 번이고 당부했다. \"내보내 주기만 하면 돼요. 다치게는 하지 말고요.\""]],
       ["폐품 수레를 밀던 노인을 발로 걷어찬 양아치들을 찾아 제압해 달라.","고물상 '두 바퀴'","동네 양아치",["고물상 영감이 부러진 수레 손잡이를 들고 왔다. 노인은 다리를 다쳤고, 놈들은 그 꼴을 보며 웃었다고 했다.","\"수레 고치는 값보다 그놈들 혼내 주는 값이 더 들어도 상관없소.\" 영감이 말했다."]],
-      ["야시장 입구에서 손님들을 위협하는 취객을 제압해 달라. 당한 상인만 벌써 셋이다.","야시장 좌판 상인","취객",["상인이 깨진 술병 하나를 접수대에 올려놓았다. 어제 그 취객이 던지고 간 거라고 했다.","\"아직 다친 손님은 없어요. 근데 오늘 밤에도 오면 장사 접어야 돼요.\""]]
+      ["야시장 입구에서 손님들을 위협하는 취객을 제압해 달라. 당한 상인만 벌써 셋이다.","야시장 좌판 상인","취객",["상인이 깨진 술병 하나를 접수대에 올려놓았다. 어제 그 취객이 던지고 간 거라고 했다.","\"다행히 손님들은 피했어요. 근데 오늘 밤에도 오면 장사 접어야 돼요.\""]]
     ],
     str_kill:[
       ["가게를 털고 달아나다 주인을 찌른 강도를 찾아 끝내 달라.","골목 철물점 주인","무장 강도",["철물점은 오늘도 문을 열었다. 주인 어깨에 감긴 붕대로 피가 배어 나오고 있었다.","\"그놈이 다시 온다고 했어요. 다음엔... 저 못 살아남을 거예요.\""]],
@@ -3414,7 +3432,7 @@ const REQ_SCENE_ROWS = [
       ["크게 다친 해결사를 병원까지 옮겨 달라. 그를 노리는 자들이 뒤를 쫓고 있다.","폐업한 사무소 직원",null,["직원은 들것에 실린 해결사의 팔을 붙든 채 연신 문 쪽을 살폈다. 습격한 놈들이 다시 올 거라고 했다.","\"보수가 모자란 건 알아요. 제 주급까지 얹을게요.\""]]
     ],
     srch:[
-      ["조직이 인질을 숨겨 둔 곳을 찾아 달라. 인질이 보내온 사진은 단 한 장뿐이다.","실종자 어머니",null,["어머니가 사진 속 벽에 붙은 파란 스티커를 손끝으로 짚었다. 다른 단서는 없었다.","\"아들이 어디 있는지만 알려 주세요. 데려오는 건 제가 할게요.\""]],
+      ["조직이 인질을 숨겨 둔 곳을 찾아 달라. 인질이 보내온 사진은 단 한 장뿐이다.","실종자 어머니",null,["어머니가 사진 속 벽에 붙은 파란 스티커를 손끝으로 짚었다. 사진 한 장이 수색의 출발점이었다.","\"아들이 어디 있는지만 알려 주세요. 데려오는 건 제가 할게요.\""]],
       ["날개 하청 창고에서 털린 실험 장치가 뒷골목 어딘가에 숨겨져 있다. 어느 건물인지 찾아 달라.","화물 보험 조사원",null,["조사원은 팔려 나가기 전에 장치를 되찾아야 한다고 했다. 생김새가 알려지기만 해도 근처 사람들까지 위험해진다고.","마지막 운송차의 운행 기록은 비어 있다. 길바닥에 남은 타이어 자국이 전부다."]]
     ]
   },
@@ -3440,7 +3458,7 @@ const REQ_SCENE_ROWS = [
       ["협회가 확보한 중요한 증인을 도시 경계 너머까지 데려다 달라.","협회 지부 연락관",null,["증인은 누가 이름만 불러도 몸을 떨었다. 그가 뭘 봤는지는 접수 담당자도 모른다고 한다.","연락관이 부탁했다. \"도착할 때까지 아무도 증인한테 말 걸지 마십시오.\""]]
     ],
     srch:[
-      ["폐쇄 구역에서 실종된 조사반이 마지막으로 움직인 곳을 찾아 달라.","협회 지부 연락관",null,["조사반은 넷이었고, 돌아온 사람은 없다. 구조 신호가 마지막으로 잡힌 곳은 빈 건물 지하다.","\"들어가실 땐 꼭 빠져나올 길부터 확인하세요.\" 연락관이 말했다."]],
+      ["폐쇄 구역에서 실종된 조사반이 마지막으로 움직인 곳을 찾아 달라.","협회 지부 연락관",null,["조사반 네 명 모두 실종 처리됐다. 구조 신호가 마지막으로 잡힌 곳은 빈 건물 지하다.","\"들어가실 땐 꼭 빠져나올 길부터 확인하세요.\" 연락관이 말했다."]],
       ["둥지 아래 비밀 운송로의 입구를 찾아 달라. 아는 사람들은 하나같이 입을 다물었다.","익명의 의뢰인",null,["의뢰인은 어느 구역의 지하도 지도 한 장만 남기고 돌아갔다. 들어갈 만한 건물마다 다른 기업 경비가 서 있다.","\"장소만 찾아 주시면 됩니다. 그다음 일은 다른 사람이 해요.\""]]
     ]
   }
@@ -3916,14 +3934,14 @@ function gearList(f){ return bodyItems(f).concat(augItems(f), [needsRepair(f.gea
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
-  if(f.ego){ p += {weapon:8, armor:3, both:6, tool:5}[f.ego.type] || 3; if(f.ego.bonus) p += attrs.reduce((s,a)=>s+(f.ego.bonus[a]||0),0)/attrs.length; }
+  if(f.ego){ p += {weapon:8, armor:3, both:6}[f.ego.type] || 3; if(f.ego.bonus) p += attrs.reduce((s,a)=>s+(f.ego.bonus[a]||0),0)/attrs.length; }
   if(f.ab && f.ab.flame) p += attrs.filter(a=>a==="agi").length*2*f.ab.flame.lv/attrs.length;   // 부서져 가는 갑옷의 용기의 불꽃
   return p;
 }
 // 팀 전력: 가장 강한 1명 + 나머지의 40%
 function teamPower(team, attrs){ const ps = team.map(f=>power(f,attrs)).sort((a,b)=>b-a); return ps[0] + 0.4*ps.slice(1).reduce((s,v)=>s+v,0); }
-function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.1}[f.ego.type] || 0; return Math.min(r,0.7); }
-function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2, tool:0.25}[f.ego.type] || 0; return Math.min(r,0.75); }
+function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego) r += {armor:0.35, both:0.2}[f.ego.type] || 0; return Math.min(r,0.7); }
+function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2}[f.ego.type] || 0; return Math.min(r,0.75); }
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
 const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 사람이 끼면 성공률 -7.5%p
 /* 신(心) · 망(望)
@@ -4857,7 +4875,7 @@ function equipDamage(f){
   const a=Object.entries(weights).reduce((s,[k,v])=>s+(Number(f.stats[k])||0)*v,0);
   // 개화 E.G.O.는 일반 공방 무기의 능력치 예산을 중복 합산하지 않는다.
   const eg=f.ego&&f.ego.type!=="armor"; // 개화 직후부터 피해 수치 적용. 외형 설정 여부와 무관.
-  const wp=eg?({weapon:21,both:20,tool:17}[f.ego.type]||20):(w&&Number(w.power)||0);
+  const wp=eg?({weapon:21,both:20}[f.ego.type]||20):(w&&Number(w.power)||0);
   return 4+0.3*a+wp;
 }
 function coinDamage(base,remaining,original,heads,mul=1){
@@ -4882,7 +4900,7 @@ function mgCombat(ctx){
        이긴 쪽은 남은 코인 수만큼 연달아 친다(코인마다 그때 던진 위력만큼 피해). 합이 길어질수록 피해가 조금 커진다.
        기본 방어: 합을 진행하지 않고 상대의 공격을 직접 받아 피해를 절반으로 줄인다.
        대표 행동자가 싸우고 동료는 무기별 효과로 지원한다. 적은 등급에 따라 동료를 견제한다. 대표 행동자가 쓰러지면 다음 사람이 나선다. */
-    const skillOf = c => { const multi = /연속|삼연|연타/.test(c.n), coins = c.def ? 1 : multi ? 3 : (c.b - c.a >= 6 ? 2 : 2);
+    const skillOf = c => { const multi = /연속|삼연|연타/.test(c.origName||c.n), coins = c.def ? 1 : multi ? 3 : (c.b - c.a >= 6 ? 2 : 2);
       const cp = Math.max(1, Math.round((c.b - c.a) / coins)); return {n:c.n, base:c.a, coins, cp, def:!!c.def, cleave:!!c.cleave}; };
     foe.skills = foe.cards.map(c=>skillOf(c));
     /* 등급 보정: 권장 인원이 뒤에서 거드는 만큼 상대도 기본 위력이 붙는다(4급 이상 의뢰는 +1~2, 3·2급은 체력·피해가 이미 커서 +1, 1급 이상 +2). 무기 숙련 감점(-1)은 그대로 둔다 */
@@ -4995,6 +5013,8 @@ function mgCombat(ctx){
     const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return Object.assign({}, sk, {base: Math.max(1, sk.base + bonus(me) + w.base + livePow(me)), cp: Math.max(0, sk.cp + (withFirst?firstSupport():0) + w.cp - (me.cpDown||0))}); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
+    const basicAtkCards=me=>egoAttackCards(me.f.ego,atkCards(me.wt));
+    const basicDefCard=me=>egoDefenseCard(me.f.ego,defCard(me.wt));
     const techOf = me => { const rt = relicTechOf(me.f); if(rt) return Object.assign({id:rt}, TECHS[rt]); const id = me.f.tech && techFits(me.f.tech, me.wt) ? me.f.tech : "allout"; return Object.assign({id}, TECHS[id]); };
     // 기술 스킬: 무기의 가장 센 공격(방어 기술이면 방어 동작)을 바탕으로 고친다
     const TECH_CD = 2, techReady = me => me.techTurn == null || turn - me.techTurn >= TECH_CD, techWait = me => Math.max(0, TECH_CD - (turn - me.techTurn));
@@ -5142,7 +5162,7 @@ function mgCombat(ctx){
         <span class="muted">· 적이 무엇을 할지는 맞붙어 보기 전까지 알 수 없다.</span>${foeSkill.heavy ? `<br><b style="color:#ff8a7a">${esc(foeSkill.tell || (foeSkill.tell = pick([`${foe.name}의 자세가 달라졌다`, `${jo(foe.name,"이")} 쥔 무기에 담긴 힘이 느껴진다`, `${jo(foe.name,"이")} 숨을 깊게 들이마신다`, `${foe.name}의 발끝에 무게가 실린다`, `공기가 무거워졌다 — ${jo(foe.name,"이")} 무언가를 노린다`])))} — ${foeSkill.hint || "크게 한 방이 온다."} 맞받아칠지, 막아 낼지 골라라.</b>` : ""}
         ${sup.length ? `<br><span class="muted">동료 지원: ${sup.map(p=>{const k=supportKind(p),g=supportGun(p);return `${esc(p.name)} — ${supportLabel[k]||"지원 효과 없음"}${k==="gun"?(g?` (탄창 ${g.mag}발)`:" (탄창 없음)"):""}${firstSupportUsed&&(k==="gun"||k==="tool")?" (첫 합 사용 완료)":""}`;}).join(" / ")}</span>` : ""}${plannedSuppress().length?`<br><b style="color:#ff9a8a">이번 턴 견제 예고: ${plannedSuppress().map(p=>esc(p.name)).join(", ")}</b>`:""}
         ${statusLine()}<br><span class="muted">능력치 효과: 근력 최대 체력 +${statHpPlus(me.f)} · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 재주 합 코인 앞면 +${statClashHeadPlus(me.f).toFixed(2)}%p · 의지 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
-      const chg = me.sp2==="charge" ? (me.charge||0) : null, ak = atkCards(me.wt), dc = defCard(me.wt), tk = techSkill(me);
+      const chg = me.sp2==="charge" ? (me.charge||0) : null, ak = basicAtkCards(me), dc = basicDefCard(me), tk = techSkill(me);
       const ammoGun = (!me.f.ego || me.f.ego.type==="armor") ? ammoMagazine(me.f.gear.weapon) : null;
       const hasBullet = !ammoGun || ammoGun.mag>0;
       const listedAmmoBonus = ammoGun ? (AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus : 0;
@@ -5154,8 +5174,8 @@ function mgCombat(ctx){
       const dk = mySkill(skillOf(dc));
       const tsk = mySkill(tk.sk), pT = foeSkill.def ? 1 : odds(tsk, mySp(me) + (tk.T.id==="afterimage" ? 15 : tk.T.id==="vault" || tk.T.id==="r_astrape" ? 10 : 0) + (tk.T.id==="kiai" || tk.T.id==="r_gyeongui" ? 15 : 0) + (relicFx(me.f,"sleipnir") && !me.slpUsed ? 15 : 0), foeSk(), 0, chg), [lt, ct] = oddLabel(pT);
       m.ctrl.innerHTML = `<div class="pk-moves">
-        <button data-sk="0" ${!hasBullet?"disabled":""}><b>기본 공격</b><small>${ak.map(c=>c.n).join(" · ")} 가운데 하나가 나간다 · 합 위력 ${lo}~${hi} · 기본 피해 약 ${baseShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}<br><span class="muted">상대의 수를 알 수 없다</span></small></button>
-        <button data-sk="1"><b>방어</b><small>${dc.n} · 합 없음 · 받는 피해 50% 감소 · 민첩 고정 감소 ${statGuardMinus(me.f)} · 반격 없음 · 상대도 방어하면 합이 일어나지 않는다</small></button>
+        <button data-sk="0" ${!hasBullet?"disabled":""}><b>기본 공격</b><small>${ak.map(c=>esc(c.n)).join(" · ")} 가운데 하나가 나간다 · 합 위력 ${lo}~${hi} · 기본 피해 약 ${baseShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}<br><span class="muted">상대의 수를 알 수 없다</span></small></button>
+        <button data-sk="1"><b>${egoHasArmor(me.f.ego)?esc(dc.n):"방어"}</b><small>${esc(dc.n)} · 합 없음 · 받는 피해 50% 감소 · 민첩 고정 감소 ${statGuardMinus(me.f)}${egoGuardCut(me.f.ego)?" · 개화 고정 감소 2":""} · 반격 없음 · 상대도 방어하면 합이 일어나지 않는다</small></button>
         <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def) || !techReady(me)?"disabled":""}><b>기술 · ${tk.T.n}</b><small>${!techReady(me) ? `<span style="color:#ffb35a">다시 쓰기까지 ${techWait(me)}턴 — 기술은 2턴에 한 번</span><br>` : ""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 위력 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · ${tsk.def?"방어 기술":`피해 계수 ${(TECH_DAMAGE_MUL[tk.T.id]||1).toFixed(2)}배 · 기본 피해 약 ${techniqueShown}${listedAmmoBonus?` · 탄환 최종 피해 +${listedAmmoBonus} 이하`:""}`}<br><span class="muted">상대의 수를 알 수 없다</span> · ${tk.T.d} · 기술 공통 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}</small></button>${ammoGun ? `<div class="muted" style="padding:4px 8px;font-size:12px">${ammunition}</div>${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}"><b>재장전 · ${a.name}</b><small>1턴 소요 · 방어와 같이 받는 피해 50% 감소 · 남은 탄환 ${ammoStock(ammoGun,a.id)}발</small></button>`).join("")}` : ""}</div>`;
       { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", sb); } }
       { const gb = foeSignBtn(); if(gb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", gb); } }
@@ -5173,7 +5193,7 @@ function mgCombat(ctx){
       if(reloading) loadAmmo(gun,arguments[1]);
       phase = "anim"; m.ctrl.innerHTML = "";
       const guarding = si===1||reloading;
-      const c = si===0 ? pick(atkCards(me.wt)) : guarding ? defCard(me.wt) : tk.card, sk = mySkill(tk ? tk.sk : skillOf(c), !guarding && !(foeSkill.def && !AB && !DF)), wNote = [], tNote = [], rNote = [];
+      const c = si===0 ? pick(basicAtkCards(me)) : guarding ? basicDefCard(me) : tk.card, sk = mySkill(tk ? tk.sk : skillOf(c), !guarding && !(foeSkill.def && !AB && !DF)), wNote = [], tNote = [], rNote = [];
       let fk = foeSk(); const slpNow = !guarding && relicFx(me.f,"sleipnir") && !me.slpUsed;
       if(slpNow){ me.slpUsed = true; rNote.push("슬레이프니르 — 여덟 다리가 한 박자 먼저 내달렸다(앞면 확률 +15%)"); }
       if(!guarding && relicFx(me.f,"aegis") && !me.aegUsed){ me.aegUsed = true; fk = Object.assign({}, fk, {base: Math.max(1, fk.base - 3)}); rNote.push(`아이기스 — 눈이 뜨였다, ${josa(foe.name,"이","가")} 굳었다(기본 위력 -3)`); }
@@ -5191,8 +5211,8 @@ function mgCombat(ctx){
       if(!guarding && me.wsp==="ye") me.ye = Math.min(10, me.ye + 2);
       if(!guarding && me.wsp==="screw") me.wchg = Math.min(10, me.wchg + 3);
       if(!guarding && me.sp2==="charge") me.charge = R.chg;
-      const lines = [reloading ? `${esc(me.name)}의 재장전 — ${AMMO_BY[gun.ammoType].name} ${gun.mag}/${ammoCap(gun)}발` : guarding ? `${esc(me.name)}의 방어 — ${foe.name}의 ${fk.n}`
-        : `${esc(me.name)}의 ${T ? `<b style="color:#9fd0ff">${c.n}</b>` : `기본 공격 — ${c.n}`} vs ${foe.name}의 ${fk.n}`];
+      const lines = [reloading ? `${esc(me.name)}의 재장전 — ${AMMO_BY[gun.ammoType].name} ${gun.mag}/${ammoCap(gun)}발` : guarding ? `${esc(me.name)}의 ${egoHasArmor(me.f.ego)?esc(c.n):"방어"} — ${foe.name}의 ${fk.n}`
+        : `${esc(me.name)}의 ${T ? `<b style="color:#9fd0ff">${c.n}</b>` : `기본 공격 — ${esc(c.n)}`} vs ${foe.name}의 ${fk.n}`];
       if(firstLines.length) lines.push(...firstLines);
        clash = guarding || foeGuarding ? null : {mine:{sk, coins:sk.coins, broken:0, heads:[], p:sk.base}, foe:{sk:fk, coins:fk.coins, broken:0, heads:[], p:fk.base}, t: performance.now(), res:null};
       m.info.innerHTML = `<div class="pk-text">${lines[0]} — ${reloading && fk.def?"적도 방어 중이므로 공격 없이 재장전한다":guarding?"합 없이 공격을 받아낸다":foeGuarding?"적이 합 없이 방어한다":"합!"}</div>`;
@@ -5322,7 +5342,7 @@ function mgCombat(ctx){
         if(isBlessed(me)){ dmg = Math.round(dmg*0.5); abNote.push("기사의 축복 — 받는 피해 절반"); }
         if(me.sp2==="evade" && Math.random()<0.25){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
         if(dmg > 0 && foe.weak > 0){ const cut = Math.min(dmg, foe.weak); dmg -= cut; rNote.push(`위축된 상대의 공격이 무뎌졌다(-${cut})`); foe.weak = Math.floor(foe.weak/2); }
-        if(guarding || (T && T.def)){ dmg=Math.max(0,dmg-statGuardMinus(me.f)); }
+        if(guarding || (T && T.def)){ dmg=Math.max(0,dmg-statGuardMinus(me.f)-((si===1||(T&&T.def))?egoGuardCut(me.f.ego):0)); }
          if(dmg>0 && !(AB && AB.enrage && foe.enraged))dmg=Math.max(0,dmg+supportIncoming());
         if(dmg && me.shield){ const ab = Math.min(me.shield, dmg); dmg -= ab; me.shield -= ab; egoNote.push(`보호막이 ${jo(ab,"을")} 막았다`); }
         if(dmg > 0 && relicFx(me.f,"kavacha") && !me.kavUsed){ me.kavUsed = true; dmg = 0; rNote.push("카바차 — 금 비늘이 칼날을 그대로 튕겨 냈다"); }
@@ -5478,8 +5498,8 @@ function mgCombat(ctx){
     // by: 공격하는 쪽("me" 우리, "foe" 적, "tie" 맞부딪침)
     function attack(by, dmg, card){
       const t0 = clock, big = st.crit ? 1.6 : 1, tmA = by==="tie" ? [200,90,90,360] : timingOf(by==="me" ? party[act].wt : foe.wt), imp = tmA[0]+tmA[1];
-      const myS = atkStyle(party[act].wt, by==="foe" ? null : card), foS = atkStyle(foe.wt, by==="tie" ? foeSkill : card);
-      st.ev.push({by, t0, crit: st.crit, style: by==="me" ? myS : foS, styleMe: myS, styleFoe: foS, multi: card && /삼연|연속 찌르기/.test(card.n) ? 3 : 1});
+      const myS = atkStyle(party[act].wt, by==="foe" ? null : card&&card.origName?{...card,n:card.origName}:card), foS = atkStyle(foe.wt, by==="tie" ? foeSkill : card);
+      st.ev.push({by, t0, crit: st.crit, style: by==="me" ? myS : foS, styleMe: myS, styleFoe: foS, multi: card && /삼연|연속 찌르기/.test(card.origName||card.n) ? 3 : 1});
       if(by==="tie" && SFX){ const x = 360, y = 230; SFX.slash(VFX_TYPE[myS]||"diag", x, y, 70, {face:1, delay:0.18}); SFX.slash(VFX_TYPE[foS]||"diag", x, y, 70, {face:-1, col:[1,0.6,0.5], delay:0.18});
         SFX.hit(x, y, {dir:-Math.PI/2, sparkDir:-Math.PI/2, pow:1.1, R:80, delay:0.29, spread:3.2}); setTimeout(()=>{ st.waves.push({x, y, t0:clock, k:0.6}); st.shake = 6; }, imp); return; }
       if(by==="tie"){ const x = 360, y = 230;
@@ -6231,7 +6251,7 @@ const ABNOS = [
   {id:"onesin", gentle:true, n:"단 한번의 악과 수백 가지의 선행", risk:"ZAYIN", canon:"L", code:"O-03-03", g:[6,5], fx:"absolve", form:"나무 십자가와 사람의 해골이 녹아 붙은 듯 한 몸이 되었고, 가시관이 둘을 단단히 묶고 있다. 허공에 떠서 희미한 빛을 낸다", look:"가시관으로 묶인 해골과 십자가가 허공에 떠 있다",
    rumor:"폐성당에 해골 하나가 떠 있다. 나무 십자가와 녹아 붙은 듯한 모양에, 가시관이 둘을 단단히 묶고 있다. 그 앞에서 죄를 털어놓으면 마음이 가벼워진다는 소문이 돈다. 확인해 달라", pref:PF("tec>agi>str>wil"), ctr:3, noCounter:true,
    noFight:true, doom:{t:"고백을 끝내지 못하고 물러났다. 해골은 아무것도 묻지 않았다", mind:0.02},
-   escape:"자리를 떠나지 않는다. 좋은 결과를 얻으면 행동한 이의 정신을 달래 준다. 알로 잠들 때는 그 자리의 모두가 털어놓은 죄를 받아 가, 일행 모두의 정신이 조금 가벼워진다. 실패해도 큰 탈은 없다", story:"[고해소 해골 앞 · 어느 해결사의 음성 메모]\n……그날 의뢰는 제압이었어요. 근데 제가 손을 좀 더 썼어요. 일부러는 아니었다고 하면, 거짓말이겠죠.\n(해골의 눈구멍이 희미하게 밝아진다)\n아, 방금 그것도 거짓말이네요. 일부러였어요.\n(빛이 가라앉는다)\n이상하네. 털어놓으니까 숨이 좀 쉬어져요. 사무소 사람들은 여길 '고해소'라고 불러요. 들어 주기만 하고 아무 말도 안 하니까. 대신 거짓말을 하면… 얘가 그걸 먹는 것 같아요. 아주 맛있게.\n다음에 또 올게요. 아마, 금방.",
+   escape:"자리를 떠나지 않는다. 좋은 결과를 얻으면 행동한 이의 정신을 달래 준다. 알로 잠들 때는 그 자리의 모두가 털어놓은 죄를 받아 가, 일행 모두의 정신이 조금 가벼워진다. 실패하면 통제 시도만 끝난다", story:"[고해소 해골 앞 · 어느 해결사의 음성 메모]\n……그날 의뢰는 제압이었어요. 근데 제가 손을 좀 더 썼어요. 일부러는 아니었다고 하면, 거짓말이겠죠.\n(해골의 눈구멍이 희미하게 밝아진다)\n아, 방금 그것도 거짓말이네요. 일부러였어요.\n(빛이 가라앉는다)\n이상하네. 털어놓으니까 숨이 좀 쉬어져요. 사무소 사람들은 여길 '고해소'라고 불러요. 들어 주기만 하고 아무 말도 안 하니까. 대신 거짓말을 하면… 얘가 그걸 먹는 것 같아요. 아주 맛있게.\n다음에 또 올게요. 아마, 금방.",
    like:"해골이 고요히 고개를 숙인다", dislike:"가시관이 조금 조여든다", rule:"heal",
    gifts:{a:{n:"가시 면류관", mpRed:0.03, bonus:{wil:2}}, b:{n:"참회", mpRed:0.03, selfUp:0.1}}},
   {id:"wellcheers", gentle:true, n:"뚜껑 따인 웰치어스", risk:"ZAYIN", canon:"L", code:"F-05-52", g:[6,5], form:"'웰치어스! 오션 소다' 광고가 보랏빛 화면에서 번쩍이는 회색 자판기. 겉면은 음료를 권하는 낙서투성이고, 곁에는 작업복과 노란 장화 차림의 사람만 한 새우 일꾼들이 서 있다", look:"번쩍이는 회색 자판기 옆에 새우를 닮은 일꾼 둘이 서 있다",
@@ -6310,7 +6330,7 @@ const ABNOS = [
   {id:"scorched", n:"불타버린 소녀", risk:"TETH", canon:"L", code:"F-01-02", g:[5,4], fuse:4, form:"숯처럼 새카맣게 탄 소녀. 하얀 눈과 하얗게 벌어진 입, 가는 두 다리, 그을린 꽁지머리를 했고, 불붙은 성냥개비 하나가 몸통을 꿰뚫고 있다", look:"가슴에 불붙은 성냥개비가 박힌 그을린 아이가 서 있다",
    rumor:"성냥 공장 터에 숯처럼 새카맣게 탄 아이가 걸어 다닌다. 하얀 눈과 하얗게 벌어진 입, 그을린 꽁지머리를 했고, 몸통에 불붙은 성냥개비 하나가 꽂혀 있다. 근처 상가에서는 원인 모를 폭발로 사람들이 다쳤다. 처리해 달라", pref:PF("agi>wil=str>tec"), ctr:2,
    escape:"폭주하면 일행 중 아무나 한 사람에게 성냥불 표식을 붙이고 다가간다. 네 번째 턴이 끝나기 전에 쓰러뜨리지 못하면 표식이 붙은 이를 끌어안고 터진다",
-   story:"[구역 소식지 · 사건 단신]\n지난밤 상가 거리에서 원인 모를 폭발이 일어나 여러 명이 다쳤다. 현장에서는 다 탄 성냥개비 하나가 나왔을 뿐, 폭발물의 흔적은 없었다.\n노점상 A 씨는 「숯처럼 새카만 여자애가 울면서 걸어왔다」고 말했다. 「사람들이 웃고 떠드는 쪽을 한참 쳐다보더니, 그중 한 사람한테 곧장 걸어갔어요. 다른 사람은 거들떠보지도 않고.」 A 씨는 아이가 무언가를 중얼거렸다고 덧붙였다. 사람들, 웃음, 따뜻해, 추워. 그런 말들이었다고 한다.\n이 구역에는 겨울마다 길에서 성냥을 팔던 아이가 있었다는 이야기가 전해진다. 그 아이를 기억하는 주민은 없다.",
+   story:"[구역 소식지 · 사건 단신]\n지난밤 상가 거리에서 원인 모를 폭발이 일어나 여러 명이 다쳤다. 현장에서는 다 탄 성냥개비 하나가 나왔을 뿐, 수거된 증거물은 그 성냥개비 한 개뿐이다.\n노점상 A 씨는 「숯처럼 새카만 여자애가 울면서 걸어왔다」고 말했다. 「사람들이 웃고 떠드는 쪽을 한참 쳐다보더니, 그중 한 사람한테 곧장 걸어갔어요. 다른 사람은 거들떠보지도 않고.」 A 씨는 아이가 무언가를 중얼거렸다고 덧붙였다. 사람들, 웃음, 따뜻해, 추워. 그런 말들이었다고 한다.\n이 구역에는 겨울마다 길에서 성냥을 팔던 아이가 있었다는 이야기가 전해진다. 주민들에게 아이 이야기를 꺼내면 하나같이 고개를 젓는다.",
    like:"성냥불이 고요히 탄다", dislike:"불꽃이 거세게 일렁인다",
    cards:[{n:"재로 만드는 손",a:3,b:9},{n:"폭발",a:2,b:12},{n:"그을음",a:3,b:6,def:true}], hp:1,
    gifts:{a:{n:"네 번째 성냥불", hpRed:0.06, bonus:{str:2}}, b:{n:"입에 문 성냥개비", mpRed:0.03, bonus:{wil:2,str:1}}}},
@@ -6362,13 +6382,13 @@ const ABNOS = [
    rumor:"재개발 현장 철근 사이에 머리 없는 커다란 사마귀가 붙어 있다. 잘린 흔적 없이 매끈한 목으로, 알집 하나를 품은 채 낫다리를 기도하듯 모으고 있다. 알집을 떼어 내려던 인부의 팔이 잘렸다. 처리해 달라", pref:PF("tec>str>agi>wil"), ctr:2, noCounter:true, rule:"killWork", killK:"wil",
    noFight:true, doom:{t:"알집을 위협한 순간, 머리 없는 사마귀의 낫이 행동하는 이를 베었다", maim:true, worker:true},
    escape:"자리를 떠나지 않는다. 알집을 위협하는 의지 행동을 하는 순간, 머리가 없어도 정확히 그 사람을 벤다",
-   story:"현장 메모 — 버려진 육교 아래\n· 크기는 사람 키의 두 배쯤. 머리가 없다. 잘린 흔적 없이, 처음부터 없었던 것처럼 매끈하다.\n· 알집 하나를 품은 채 움직이지 않는다. 낫다리를 모은 자세가 꼭 기도하는 것 같다.\n· 동료가 알집 쪽으로 손을 뻗자, 머리도 없는 것이 정확히 그 손목을 노렸다. 어떻게 알았는지 모르겠다.\n· 알집에서 무엇이 태어나는지 기다려 본 사람은 없다. 다만 알집 표면에 작은 머리 모양의 혹이 여럿 돋아 있었다.",
+   story:"현장 메모 — 버려진 육교 아래\n· 크기는 사람 키의 두 배쯤. 머리가 없다. 잘린 흔적 없이, 처음부터 없었던 것처럼 매끈하다.\n· 알집 하나를 품은 채 움직이지 않는다. 낫다리를 모은 자세가 꼭 기도하는 것 같다.\n· 동료가 알집 쪽으로 손을 뻗자, 머리도 없는 것이 정확히 그 손목을 노렸다. 어떻게 알았는지 모르겠다.\n· 알집을 관찰하던 인원은 부화하기 전에 모두 철수했다. 다만 알집 표면에 작은 머리 모양의 혹이 여럿 돋아 있었다.",
    like:"앞다리가 천천히 접힌다", dislike:"알집이 꿈틀거린다",
    gifts:{a:{n:"터진 알집", hpRed:0.06, bonus:{tec:2}}, b:{n:"당랑거철", hpRed:-0.03, bonus:{str:4,agi:1}}}},
   {id:"creed", n:"부러지지 않는 신념", base:"armor", risk:"TETH", code:"O-05-22-08", g:[5,4], form:"이가 다 빠진 검 한 자루가 바닥에 꽂혀 있다. 녹도 슬지 않았고, 칼자루 끝에 꺼지지 않는 흰 빛이 고여 있다", look:"이가 다 빠진 검 한 자루가 바닥에 꽂힌 채, 녹슬지도 부러지지도 않고 서 있다",
    rumor:"광장 기념비 앞에 이가 다 빠진 검 한 자루가 꽂혔다. 녹도 슬지 않았고, 칼자루 끝에 꺼지지 않는 흰 빛이 고여 있다. 뽑으려던 사람들은 손을 다쳤고, 손을 놓은 사람들은 이유 없이 부끄러워졌다. 확인해 달라", pref:PF("str>wil>agi>tec"), ctr:3, rule:"armor",
    escape:"의지 행동을 한 이에게 신념의 불꽃을 주지만, 불꽃을 받은 채 재주 행동으로 물러서면 검이 그를 벤다. 시험을 견디지 못하는 이가 늘면 스스로 뽑혀 나온다",
-   story:"칼날에 새겨진 글귀는 반쯤 닳아 한 줄만 읽힌다. '물러서지 않는다.'\n검의 주인은 오래전에 쓰러졌다. 무엇을 지키다 쓰러졌는지, 누구였는지 아는 사람은 없다.\n검만 그 자리에 꽂혀 남았다. 녹슬지도 부러지지도 않았다. 뽑아 보려던 사람은 많았지만, 검은 각오 없는 손에 잡히지 않았다.\n잡혔다가 물러선 손은 베였다. 검은 아직 주인의 신념을 기억한다. 그만한 각오를 가진 사람이 다시 나타날 때까지, 검은 그 자리에 서 있을 것이다.",
+   story:"칼날에 새겨진 글귀는 반쯤 닳아 한 줄만 읽힌다. '물러서지 않는다.'\n검의 주인은 오래전에 쓰러졌다. 검이 지키던 대상도 주인의 신원도 세월에 묻혔다.\n검만 그 자리에 꽂혀 남았다. 녹슬지도 부러지지도 않았다. 뽑아 보려던 사람은 많았지만, 검은 각오 없는 손에 잡히지 않았다.\n잡혔다가 물러선 손은 베였다. 검은 아직 주인의 신념을 기억한다. 그만한 각오를 가진 사람이 다시 나타날 때까지, 검은 그 자리에 서 있을 것이다.",
    like:"검날이 낮게 울린다", dislike:"검이 바닥에서 조금 솟는다",
    cards:[{n:"신념의 일격",a:3,b:10},{n:"물러서지 않는 검",a:4,b:8},{n:"꺾이지 않음",a:4,b:7,def:true}], hp:1.15,
    gifts:{a:{n:"신념", mpRed:0.03, bonus:{wil:3}}, b:{n:"검날", bonus:{str:3,agi:1}}}},
@@ -6424,7 +6444,7 @@ const ABNOS = [
   {id:"teddy", gentle:true, n:"행복한 테디", risk:"HE", canon:"L", code:"T-04-06", g:[4,3], form:"물어뜯긴 귀, 하나만 남은 흰 단추 눈, 엉킨 갈색 털, 빛바랜 초록 리본을 맨 커다란 곰 인형. 여기저기 터진 솔기로 솜이 비어져 나온다", look:"낡고 커다란 곰 인형이 두 팔을 벌린 채 앉아 있다",
    rumor:"폐보육원 놀이방에 커다란 곰 인형이 앉아 있다. 귀는 물어뜯겼고, 흰 단추 눈은 하나만 남았고, 빛바랜 초록 리본을 맸다. 그 인형을 안아 준 아이가 다음 날 숨진 채 발견됐다. 처리해 달라", pref:PF("tec>agi=wil>str"), ctr:3, noCounter:true, rule:"teddy",
    noFight:true, doom:{t:"곰 인형이 더는 아무도 안아 주지 않았다. 놀이방에 먼지만 내려앉았다", mind:0.02},
-   escape:"그 자리를 떠나지 않는다. 같은 사람이 연달아 두 번 행동하면 그를 꼭 끌어안았다가 숨이 막히기 전에 놓아준다(카운터 -1). 행동하는 이를 번갈아 보내는 편이 좋다. 실패해도 큰 탈은 없다",
+   escape:"그 자리를 떠나지 않는다. 같은 사람이 연달아 두 번 행동하면 그를 꼭 끌어안았다가 숨이 막히기 전에 놓아준다(카운터 -1). 행동하는 이를 번갈아 보내는 편이 좋다. 실패하면 통제 시도만 끝난다",
    story:"나는 곰돌이야. 일곱 살 생일에 커다란 상자에서 나왔어. 그 애가 나를 꼭 안아 줬어. 그게 내 첫 번째 기억이야.\n우리는 같이 여행도 갔어. 밤이 무서운 날엔 내가 그 애를 지켜 줬어. 그 애는 내 품에서 잠들었어. 매일매일.\n그러다 그 애가 커졌어. 나는 서랍장 밑으로 들어갔어. 나방들이 내 털에 앉았고, 귀가 뜯기고, 눈 하나가 떨어졌어. 그래도 괜찮았어. 그 애가 돌아올 거니까.\n어? 너 아까도 왔지? 두 번이나 와 줬네.\n너구나. 돌아왔구나.\n이번엔 꼭 안을게. 다시는 안 놓칠게. 꼭, 꼭, 꼭.",
    like:"곰 인형이 고개를 기울인다", dislike:"솜이 비어져 나온다",
    gifts:{a:{n:"곰귀 장신구", mpRed:0.09, bonus:{wil:2}}, b:{n:"곰발바닥", mpRed:0.06, bonus:{wil:3}}}},
@@ -6598,13 +6618,13 @@ const ABNOS = [
    rumor:"도심 하늘에 맥박치는 커다란 푸른 별이 떴다. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다. 그 소리를 들은 사람들이 하나둘 별을 향해 걸어갔다. 처리해 달라", pref:{str:"나쁨", agi:"좋음", tec:"나쁨", wil:"보통"}, ctr:2, low:"wil", lowStrict:true,
    cards:[{n:"푸른 맥박",a:5,b:12},{n:"끌어당기는 빛",a:6,b:13},{n:"별의 찬송",a:4,b:16},{n:"맥박치는 껍질",a:6,b:9,def:true}],
    escape:"마주치면 맥박이 들려 정신력이 15% 깎인다. 정신 방호도, 의지도 없이 정신력이 바닥난 이만 별에 흡수된다. 맥박이 커질 때 마음을 다잡아야 한다 — 징후를 놓치면 모두의 정신력이 깎인다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘로 떠올라 맥박을 울리며 날뛴다 — 싸워서 떨어뜨려야 한다",
-   story:"절망이 가장 깊던 해, 구역 하늘에 푸른 별이 떴다. 스스로 신이라 한 적은 없었다. 사람들이 먼저 무릎을 꿇었다.\n모임이 생겼다. 그들은 서로를 죄인이라 불렀고, 죄인을 받아 주는 곳은 저 별뿐이라 믿었다. 별에 닿는 것은 죽음이 아니라 있어야 할 곳으로 돌아가는 일이라고. 구역은 모임을 금했다. 이 도시에서 신성한 것은 없어야 했다.\n금지는 오래가지 않았다. 별 가까이에선 반기는 노래와 함성이 들렸고, 맥박이 울릴 때마다 마음 약한 이부터 발끝이 땅에서 떨어졌다. 가족들은 그들을 침대에 묶었다. 묶인 이들은 밤새 창문 쪽으로 몸을 틀었다.\n이제 별 아래로 다리들이 매달려 흔들린다. 모임 사람들은 그것을 환영의 손짓이라 부른다. 모두가 돌아가고 나면 이 구역엔 별만 남을 것이다.\n— 뒷면 부록 —\n곧 별이 되어서 만나자.",
+   story:"절망이 가장 깊던 해, 구역 하늘에 푸른 별이 떴다. 사람들은 푸른 별 앞에 먼저 무릎을 꿇고 그것을 신이라 불렀다.\n모임이 생겼다. 그들은 서로를 죄인이라 불렀고, 죄인을 받아 주는 곳은 저 별뿐이라 믿었다. 별에 닿는 것은 죽음이 아니라 있어야 할 곳으로 돌아가는 일이라고. 구역은 모임을 금했다. 이 도시에서 신성한 것은 없어야 했다.\n금지는 오래가지 않았다. 별 가까이에선 반기는 노래와 함성이 들렸고, 맥박이 울릴 때마다 마음 약한 이부터 발끝이 땅에서 떨어졌다. 가족들은 그들을 침대에 묶었다. 묶인 이들은 밤새 창문 쪽으로 몸을 틀었다.\n이제 별 아래로 다리들이 매달려 흔들린다. 모임 사람들은 그것을 환영의 손짓이라 부른다. 모두가 돌아가고 나면 이 구역엔 별만 남을 것이다.\n— 뒷면 부록 —\n곧 별이 되어서 만나자.",
    like:"맥박이 느려진다", dislike:"푸른 빛이 맥박친다",
    gifts:{a:{n:"별 안대", mpRed:0.15, bonus:{wil:4}}, b:{n:"별의 소리", bonus:{agi:7,wil:2}}}},
   {id:"nothing", n:"아무것도 없는", risk:"ALEPH", canon:"L", code:"O-06-20", g:[1,0], fx:"skin", immune:true, form:"피투성이로 짓이겨진 사람 같은 것이 세 다리로 선다. 살갗은 하얗고, 한쪽 다리는 뼈가 드러났으며 뒷다리에는 가죽이 없다. 평소에는 빼앗은 사람의 가죽을 쓰고 그 사람인 척한다", look:"방금 전까지 있던 동료의 얼굴을 한 무언가가 이쪽을 보고 웃는다",
    rumor:"실종됐던 직원이 사무실로 돌아왔다. 겉모습은 그대로인데, 말투가 반 박자씩 늦고 같은 인사만 되풀이한다. 동료들은 그가 사람이 아니라고 했다. 그날 밤 사무실에서 비명이 들렸다. 확인해 달라", pref:{str:"보통", agi:"나쁨", tec:"좋음", wil:"나쁨"}, ctr:1, low:"agi", rule:"badKill",
    escape:"정의(민첩)가 낮은 이가 행동을 마치면 카운터가 준다. 나쁜 행동을 한 이(실패 포함)는 그 자리에서 죽고 가죽을 빼앗긴다. 이틀 뒤 밤, 그 얼굴이 사무소 문을 두드린다. 열면 덮쳐 와 싸워야 하고, 열지 않으면 모두의 정신력이 조금 깎인다. 어지간한 물리적 공격은 거의 통하지 않는다(1급 이상이 쥔 고유 무기나 개화한 E.G.O. 무기만 상처를 낸다) 싸우지 않는 편이 좋다",
-   story:"[사무소 출입 기록]\n21:40 — 실종 처리되었던 해결사 ○○ 귀소. 외상 없음.\n21:41 — 접수 직원: 「○○ 씨? 살아 있었어요? 다들 걱정했는데.」\n○○: 「안녕.」\n접수 직원: 「…어디 다친 데는 없어요?」\n○○: 「안녕. 안녕. 다들, 안녕.」\n21:43 — 동료가 이름을 부름. 대답이 반 박자 늦음.\n21:44 — ○○: 「사랑해.」 (동료 메모: 그는 그런 말을 하는 사람이 아니었다.)\n21:45 — 기록 중단.\n(이 장 이후 출입 기록에는 같은 이름이 밤마다 한 줄씩 적혀 있다. 적은 사람은 없다.)",
+   story:"[사무소 출입 기록]\n21:40 — 실종 처리되었던 해결사 ○○ 귀소. 외상 없음.\n21:41 — 접수 직원: 「○○ 씨? 살아 있었어요? 다들 걱정했는데.」\n○○: 「안녕.」\n접수 직원: 「…어디 다친 데는 없어요?」\n○○: 「안녕. 안녕. 다들, 안녕.」\n21:43 — 동료가 이름을 부름. 대답이 반 박자 늦음.\n21:44 — ○○: 「사랑해.」 (동료 메모: 그는 그런 말을 하는 사람이 아니었다.)\n21:45 — 기록 중단.\n(이 장 이후 출입 기록에는 같은 이름이 밤마다 한 줄씩 적혀 있다. 담당자는 그 필체를 보고 당직자 명단부터 대조했다.)",
    like:"그것이 흉내를 멈춘다", dislike:"그것이 행동하는 이의 목소리로 웃는다",
    cards:[{n:"머리 발톱",a:5,b:13},{n:"뼈 파편",a:6,b:12},{n:"작별 인사",a:4,b:16},{n:"알 껍질",a:6,b:9,def:true}], hp:1.7,
    gifts:{a:{n:"모방삼안", bonus:{tec:5,agi:3}}, b:{n:"미미크리", hpRed:0.18, bonus:{str:5}}}},
@@ -6835,7 +6855,7 @@ const ABNO_UNFIGHTABLE = ["wall","spiderbud","armor","headlessmantis"];   // ALE
 const fightType = a => a.kill ? "kill" : a.rule2==="ranged" ? "cond" : !a.noFight ? "battle" : ABNO_UNFIGHTABLE.includes(a.id) ? "none" : a.gentle ? "gentle" : "gimmick";
 const FIGHT_TXT = {kill:["사살 전투","#ff8a7a","보는 즉시 사살한다 — 제압해 되돌릴 수 없다"], battle:["전투형","#8fd6a0","폭주하거나 날뛰면 전투로 제압해 알로 되돌린다"],
   cond:["조건부 전투","#e0c64a","멀리서 쏠 수 있는 총잡이가 있어야 맞설 수 있다. 없으면 재앙이 일어난다"],
-  gentle:["전투 없음","#8fd6a0","날뛰지도 싸우지도 않는다. 통제에 실패해도 큰 탈은 없다"],
+  gentle:["전투 없음","#8fd6a0","날뛰지도 싸우지도 않는다. 통제에 실패하면 통제 시도만 끝난다"],
   gimmick:["기믹형 · 전투 없음","#9ad0ff","날뛰지 않고 그 자리에 머문다. 통제에 실패하면 싸움 대신 재앙이 일어난다"],
   none:["전투 불가","#ff8a7a","맞서 싸울 수 없다. 손을 잘못 대는 순간 즉사·중상 기믹이 걸린다. 통제에 실패하면 재앙이 일어난다"]};
 const abnoRiskFor = g => g >= 7 ? "죄종" : g === 6 ? "ZAYIN" : g === 5 ? pick(["ZAYIN","TETH"]) : g === 4 ? pick(["TETH","HE"]) : g === 3 ? "HE" : g === 2 ? "WAW" : "ALEPH";
@@ -8532,7 +8552,7 @@ async function bloomEgo(f, opt={}){ ac("ego");
   await HeartFx.voice(f);
   await HeartFx.bloom(f, unstable);
   const nm = await promptBox("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 이 E.G.O.에 이름을 지어 준다.<br><span class="muted">이름은 지금만 지을 수 있다. 비워 두면 "${unstable ? "불안정 " : ""}개화 E.G.O::"로만 남고, 나중에 지을 수 없다.</span>`, "");
-  const ty = await modal("E.G.O. 형태", `${esc(f.name)}의 E.G.O.는 어떤 형태로 드러나는가?`, [{t:"무기",v:"weapon",primary:p[1]==="weapon"},{t:"의복",v:"armor",primary:p[1]==="armor"},{t:"일체형",v:"both"},{t:"도구형",v:"tool"}], true) || p[1];
+  const ty = await modal("E.G.O. 형태", `${esc(f.name)}의 E.G.O.는 어떤 형태로 드러나는가?`, [{t:"무기",v:"weapon",primary:p[1]==="weapon"},{t:"의복",v:"armor",primary:p[1]==="armor"},{t:"일체형",v:"both"}], true) || p[1];
   f.ego = {type: ty, unstable, name: (nm && nm!=="__c" ? String(nm).trim().replace(/^(불안정\s*)?개화\s*E\.G\.O::\s*/,"") : "").slice(0,20)};
   const type = f.ego.type;
   f.mp = Math.round(f.mpMax*0.5);
@@ -8929,7 +8949,7 @@ async function idxVisit(force){
     [{t:"찢는다", v:"no"}, {t:"따른다", v:"yes", primary:true}]);
   ac("idxGot");
   if(v==="yes"){ X.cur = {id:P.id, got:0, until:S.day + P.days, from:S.day}; X.last = P.id; addLog(`검지의 지령서를 받았다 — ${P.t}`); }
-  else { X.torn++; addLog("지령서를 찢었다."); if(X.torn >= 2){ X.closed = true; addLog("그 뒤로 문틈에 봉투가 끼워지는 일은 없었다."); } }
+  else { X.torn++; addLog("지령서를 찢었다."); if(X.torn >= 2){ X.closed = true; addLog("그날 이후 문틈은 다시 조용해졌다."); } }
   save(); render();
 }
 function idxOnDispatch(q, team, success){
@@ -8967,7 +8987,7 @@ function fingerScene(){
 async function fingerEnding(){
   if(!S) return; if(S.debt>0){ S.records.push({day:S.day, name:S.officeName, what:"빚 정리", note:`남은 빚 ${won(S.debt)}을 누군가 대신 정리했다`}); S.debt = 0; }
   await fingerScene(); ac("idxEnd");
-  await endingClose("지령", "흉터의 장부에서 그 사무소의 줄은 누군가 대신 그어 놓았다. 누가 그었는지 묻는 사람은 없었다.");
+  await endingClose("지령", "흉터의 장부에서 그 사무소의 줄은 누군가 대신 그어 놓았다. 장부를 넘기던 사람들은 그 줄을 지나쳤다.");
 }
 /* ================= 협회 의뢰 · 협회 직속 사무소 =================
    원작에서 협회는 소속 사무소(Associate Office)를 거느린다. 7급 이하 의뢰 가운데 일부를 하나 협회가 아닌 다른 협회가 맡긴다.
@@ -9770,6 +9790,14 @@ async function openRecruit(){
 // 체력·정신력 10 회복당 비용(등급별). 특색(0급)은 10,000안
 const HEAL_COST = {9:500, 8:1000, 7:1500, 6:2000, 5:2500, 4:3500, 3:4500, 2:6000, 1:7500, 0:10000};
 const healCost = f => HEAL_COST[f && f.grade!=null ? f.grade : 9] || 500;
+async function nameEgoSkills(f){
+  if(!f||!f.ego)return;const e=f.ego;syncEgoForm(f);let next=null;
+  const wt=weaponTypeOf(wGear(f))||"none", cards=(CARDS[wt]||CARDS.none).filter(c=>!c.def);
+  const rows=egoHasWeapon(e)?Array.from({length:3},(_,i)=>`<div class="fg-row"><span>기본 공격 ${i+1}</span><input data-ego-name="${i}" maxlength="30" value="${esc(e.attackNames[i])}" placeholder="${esc((cards[i]||cards[0]).n+"[개화]")}"></div>`).join(""):"";
+  const guard=egoHasArmor(e)?`<div class="fg-row"><span>방어</span><input data-ego-guard maxlength="30" value="${esc(e.guardName)}" placeholder="방어[개화]"></div>`:"";
+  const ok=await modal("개화 E.G.O. 기술 이름",`<p class="muted">기본 공격은 기존 무기 동작을 사용합니다. 이름을 비워 두면 [개화]가 붙은 기본 이름으로 표시됩니다.${cards.length===2&&egoHasWeapon(e)?" 세 번째 이름을 입력하면 첫 번째 공격의 동작을 사용하는 추가 이름이 활성화됩니다.":""}</p>${rows}${guard}`,[{t:"취소",v:false},{t:"저장",v:true,primary:true}],false,root=>{root.querySelector(".mf .primary").addEventListener("click",()=>{next={attackNames:egoHasWeapon(e)?Array.from(root.querySelectorAll("[data-ego-name]"),x=>egoNameClean(x.value)):e.attackNames,guardName:egoHasArmor(e)?egoNameClean(root.querySelector("[data-ego-guard]").value):e.guardName};},{capture:true});});
+  if(ok&&next){Object.assign(e,next);save();render();}
+}
 async function openManage(){
   let sel = S.fixers[0]?.id, mview = null;
   const draw = () => {
@@ -9798,7 +9826,7 @@ async function openManage(){
       <span>능력치 효과</span><b>근력: 최대 체력 +${statHpPlus(f)} · 민첩: 방어 고정 피해 -${statGuardMinus(f)} · 재주: 합 코인 앞면 +${statClashHeadPlus(f).toFixed(2)}%p · 의지: 최대 정신력 +${statMpPlus(f)}</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
-      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button>
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) <button data-egoforge="1" style="padding:2px 8px">${f.ego.look?"형상 다시 정하기":"형상 정하기"}</button> <button data-egonames="1" style="padding:2px 8px">기술 이름 설정</button><br><span class="muted" style="font-weight:400">${egoHasWeapon(f.ego)?"기본 공격 위력 +1 · "+egoAttackCards(f.ego,(CARDS[weaponTypeOf(wGear(f))||"none"]||CARDS.none).filter(c=>!c.def)).map(c=>esc(c.n)).join(" / "):""}${egoHasArmor(f.ego)?` · ${esc(f.ego.guardName||"방어[개화]")} · 방어 고정 피해 감소 2`:""}</span>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">아직 형상이 없다 — 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       <div class="gear-title">장비 관리${needsRepair(f.gear.weapon) ? ` <span class="need-fix-tag">${f.gear.weapon.durMax<=1 ? "무기가 부서졌다" : "무기 수리 필요"}</span>` : ""}</div>${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
       <span>기술 (${(f.techs||[]).length}/${MAX_BASIC_TECHS})</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
@@ -9831,6 +9859,7 @@ async function openManage(){
       else if(d.retouch && f){ await openForge(f, "weapon", "retouch"); }
       else if(d.seal!==undefined && f && f.gear[d.sslot||"weapon"] && f.gear[d.sslot||"weapon"].relic && f.gear[d.sslot||"weapon"].sealFree){ const sl = d.sslot||"weapon", g = f.gear[sl], R = RELICS.find(r=>"relic-"+r.id===g.id); if(R){ const it = relicItem(R, {id:g.bound, name:g.boundName}, +d.seal); it.sealFree = true; f.gear[sl] = it; } save(); }
       else if(d.egoforge && f){ await openForge(f, null, "ego"); }
+      else if(d.egonames && f){ await nameEgoSkills(f); }
       else if(d.sel){ sel=+d.sel; mview = null; }
       else if(d.heal && f){
         const hc = healCost(f), isH = d.heal.startsWith("hp"), all = d.heal.endsWith("all");
@@ -10285,7 +10314,7 @@ const EGO_SPECIAL = {
 const egoSpecial = e => e && e.special ? egoSpecList(e.type).find(x=>x.id===e.special) : null;
 const sumPts = o => ATTRS.reduce((t,a)=>t+(o[a]||0),0);
 const ptsText = o => ATTRS.filter(a=>o[a]>0).map(a=>`${ATTR_NAME[a]}+${o[a]}`).join(" · ") || "없음";
-function forgeBudget(mode, slot, kind, pw){ return mode==="ego" ? EGO_PTS : slot==="weapon" ? sumPts(profBonus(kind, pw||UNIQUE_POWER)) : UNIQUE_ARMOR_PTS; }
+function forgeBudget(mode, slot, kind, pw){ return mode==="egoBoth" ? 7 : mode==="ego" ? EGO_PTS : slot==="weapon" ? sumPts(profBonus(kind, pw||UNIQUE_POWER)) : UNIQUE_ARMOR_PTS; }
 function forgeDefault(mode, slot, kind, pw){
   const B = forgeBudget(mode, slot, kind, pw), o = {str:0,agi:0,tec:0,wil:0};
   if(slot==="weapon"){ Object.entries(WEAPON_KINDS[kind].prof).forEach(([k,v])=>o[k] = Math.round(B*v)); const d = B - sumPts(o), top = ATTRS.reduce((x,y)=>o[y]>o[x]?y:x, "str"); o[top] += d; }
@@ -10294,6 +10323,7 @@ function forgeDefault(mode, slot, kind, pw){
 }
 /* mode: "ego" E.G.O. 형상 · "upgrade" 공방이 벼려 준 고유 무기(이름은 이때만) · "retouch" 고유 무기 손질 · 없음 = 특색의 고유 방어구 */
 async function openForge(f, slot0, mode){
+  if(mode==="ego"){if(!f.ego)return;syncEgoForm(f);}
   const ego = mode==="ego", wpn = (mode==="upgrade" || mode==="retouch") && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null, up = !!wpn;
   if((mode==="upgrade" || mode==="retouch") && !wpn) return;
   const prevW = up ? wpn : null;
@@ -10301,27 +10331,28 @@ async function openForge(f, slot0, mode){
   const eL = ego && f.ego.look ? Object.assign({add:[]}, f.ego.look) : null;
   const st = {step: up ? 3 : 2, slot: ego ? egoSlot(f.ego) : up ? "weapon" : "armor", view:"combat",
     w: ego ? (egoSlot(f.ego)==="weapon" ? eL : null) : up ? Object.assign(defaultSpec(wpn.wtype), wpn.look||{}, {kind:wpn.wtype}) : null,
-    a: ego ? (egoSlot(f.ego)==="armor" ? eL : null) : prevA ? Object.assign({}, prevA.look) : null,
+    a: ego ? (egoSlot(f.ego)==="armor" ? eL : f.ego.type==="both"?Object.assign({type:2,pad:1,collar:1,trim:null},f.ego.look2||{}):null) : prevA ? Object.assign({}, prevA.look) : null,
     name: ego ? f.ego.name : up ? wpn.name : "", alloc: null, special: ego ? f.ego.special || null : null};
   if(st.w && !Array.isArray(st.w.add)) st.w.add = [];
   if(st.w && st.w.kind) st.w.add = st.w.add.filter(id=>addsFor(st.w.kind).some(x=>x.id===id));
   const kindName = () => st.slot==="weapon" ? WEAPON_KINDS[st.w.kind].n : ARMOR_TYPES[st.a.type];
   const defName = () => ego ? f.ego.name : up ? wpn.name : `${f.title||f.name}의 ${kindName()}`;
   const wpw = up ? (wpn.power || UNIQUE_POWER) : 0;
-  const budget = () => forgeBudget(mode, st.slot, st.w && st.w.kind, wpw);
+  const budgetMode=ego&&f.ego.type==="both"?"egoBoth":mode;
+  const budget = () => forgeBudget(budgetMode, st.slot, st.w && st.w.kind, wpw);
   // 능력 배분: 처음엔 지금 장비(또는 종류의 기본값), 종류가 바뀌어 총점이 달라지면 기본값으로 다시 맞춘다
   const syncAlloc = () => { const B = budget(), key = st.slot + (st.slot==="weapon" && st.w ? st.w.kind : "");
     if(!st.alloc){ const cur = ego ? f.ego.bonus : st.slot==="weapon" ? (prevW && prevW.wtype===(st.w&&st.w.kind) ? prevW.bonus : null) : (prevA ? prevA.bonus : null);
-      st.alloc = Object.assign({str:0,agi:0,tec:0,wil:0}, cur || {}); if(sumPts(st.alloc) !== B) st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind, wpw); st.allocKey = key; }
-    else if(st.allocKey !== key || sumPts(st.alloc) > B){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind, wpw); st.allocKey = key; } };
+      st.alloc = Object.assign({str:0,agi:0,tec:0,wil:0}, cur || {}); if(sumPts(st.alloc) !== B) st.alloc = forgeDefault(budgetMode, st.slot, st.w && st.w.kind, wpw); st.allocKey = key; }
+    else if(st.allocKey !== key || sumPts(st.alloc) > B){ st.alloc = forgeDefault(budgetMode, st.slot, st.w && st.w.kind, wpw); st.allocKey = key; } };
   let doneRes = null;
-  const look = () => { const base = fixerLook(f); if(st.slot==="weapon" && st.w) base.weapon = st.w; if(st.slot==="armor" && st.a) base.armor = st.a; return base; };
+  const look = () => { const base = fixerLook(f); if(st.slot==="weapon" && st.w) base.weapon = st.w; if(st.a && (st.slot==="armor" || (ego&&f.ego.type==="both"))) base.armor = st.a; return base; };
   const sw = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-sw">${arr.map(cl=>`<button class="sw ${cur===cl?"on":""}" data-${key}="${cl||"none"}" style="background:${cl||"transparent"}">${cl?"":"✕"}</button>`).join("")}</div></div>`;
   const seg = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-seg">${arr.map((n,i)=>`<button class="${cur===i?"on":""}" data-${key}="${i}">${n}</button>`).join("")}</div></div>`;
   const statLine = () => { if(up){ const w = wspOf(wpn); return `고유 무기 · 닳지 않음 · ${ptsText(wpn.bonus||{})}${w ? ` · 공방 특수 [${w.n}] ${w.d}` : ""}`; }
     const sp = ego && st.special ? (egoSpecList(f.ego.type).find(x=>x.id===st.special)||{}).n : null;
-    const base = ego ? ({weapon:"E.G.O. 무기(전투력 +8)", armor:"E.G.O. 의복(받는 피해 -35%)", both:"E.G.O. 일체형(전투력 +6 · 받는 피해 -20%)", tool:"E.G.O. 도구형(전투력 +5 · 정신력 피해 -25% · 체력 피해 -10%)"}[f.ego.type]) : up ? `고유 무기 · 위력 ${wpw} · 닳지 않음` : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
-    return [base, ptsText(st.alloc||{}), sp ? `${ego ? egoSpecLabel(f.ego.type) : st.slot==="weapon"?"특수 공격":"특수 방어"} [${sp}]` : ""].filter(Boolean).join(" · "); };
+    const base = ego ? ({weapon:"E.G.O. 무기(전투력 +8)", armor:"E.G.O. 의복(받는 피해 -35%)", both:"E.G.O. 일체형(전투력 +6 · 받는 피해 -20% · 능력치 7점)"}[f.ego.type]) : up ? `고유 무기 · 위력 ${wpw} · 닳지 않음` : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
+    return [base, ptsText(st.alloc||{}), sp ? `${ego ? (EGO_SPECIAL.weapon.some(x=>x.id===st.special)?"특수 공격":"특수 방어") : st.slot==="weapon"?"특수 공격":"특수 방어"} [${sp}]` : ""].filter(Boolean).join(" · "); };
   const steps = ["무기/방어구","종류","생김새","능력","확정"];
   const draw = () => {
     const skip = ego ? 1 : up ? 2 : 1, shown = steps.map((n,i)=>[n,i]).filter(([n,i])=> i>=skip && !(up && i===3));
@@ -10331,7 +10362,7 @@ async function openForge(f, slot0, mode){
       <button data-slot="armor"><b>방어구</b><small>${prevA?"지금: "+esc(prevA.name)+" (다시 만들면 대체된다)":"아직 없음"}</small></button></div>`;
     const back2 = "";
     if(st.step===2){
-      const lead = ego ? `<p class="muted">${esc(f.name)}의 <b>${esc(egoLabel(f.ego))}</b> — 어떤 ${({weapon:"무기", armor:"옷", both:"무기(옷은 E.G.O.를 따라 함께 바뀐다)", tool:"도구"})[f.ego.type]||"무기"}의 모습으로 드러날까?</p>` : "";
+      const lead = ego ? `<p class="muted">${esc(f.name)}의 <b>${esc(egoLabel(f.ego))}</b> — 어떤 ${({weapon:"무기", armor:"옷", both:"무기와 의복"})[f.ego.type]||"무기"}의 모습으로 드러날까?</p>` : "";
       if(st.slot==="weapon") return head + lead + `<p class="muted">무기 종류를 고른다. 종류마다 전투 기술이 다르다.</p>
         <div class="fg-kinds">${Object.entries(WEAPON_KINDS).map(([k,K])=>`<button data-kind="${k}" class="${st.w&&st.w.kind===k?"on":""}"><canvas class="wicon" data-ik="${k}"></canvas><b>${K.n}</b><small>${CAT_NAME[K.cat]}</small></button>`).join("")}</div>${back2}`;
       return head + lead + `<p class="muted">방어구 형태를 고른다.</p>
@@ -10348,6 +10379,7 @@ async function openForge(f, slot0, mode){
           + sw(METALS, st.w.metal, "metal", "금속색") + sw(GLOWS, st.w.glow, "glow", "발광")
           + `<div class="fg-row"><span>추가 붙임<br><small class="muted">${ad.length}/${ADD_MAX}</small></span><div class="fg-seg fg-add">${addsFor(st.w.kind).map(a=>`<button class="${ad.includes(a.id)?"on":""}" data-add="${a.id}" title="${esc(a.d)}" ${!ad.includes(a.id) && ad.length>=ADD_MAX ? "disabled" : ""}>${a.n}</button>`).join("")}</div></div>`;
       } else ctl = seg(ARMOR_TYPES, st.a.type, "atype", "형태") + seg(["없음","작게","크게"], st.a.pad||0, "pad", "어깨 장갑") + seg(["낮게","세움"], st.a.collar||0, "collar", "깃") + sw(GLOWS, st.a.trim, "trim", "장식선");
+      if(ego&&f.ego.type==="both"){ctl+=`<h4>일체형 의복</h4>`+seg(ARMOR_TYPES,st.a.type,"atype","형태")+seg(["없음","작게","크게"],st.a.pad||0,"pad","어깨 장갑")+seg(["낮게","세움"],st.a.collar||0,"collar","깃")+sw(GLOWS,st.a.trim,"trim","장식선");}
       return head + `<div class="fg-body">${prev}<div class="fg-ctl">${ctl}
         ${mode==="retouch" ? `<div class="fg-row"><span>이름</span><b>${esc(wpn.name)}</b></div>` : `<div class="fg-row"><span>이름</span><input id="fgname" maxlength="30" value="${esc(st.name || defName())}"></div>`}
         ${mode==="upgrade" ? `<p class="muted" style="font-size:12px;margin:0">이름은 지금만 지을 수 있다. 생김새는 나중에 공방 → 고유 장비에서 손질할 수 있다. 능력은 공방이 정했다.</p>` : ""}
@@ -10358,7 +10390,7 @@ async function openForge(f, slot0, mode){
       const rows = ATTRS.map(a=>`<div class="fg-row"><span>${ATTR_NAME[a]}</span><div class="fg-pts"><button data-ad="${a}" data-dv="-5" ${st.alloc[a]<=0?"disabled":""}>−5</button><button data-ad="${a}" data-dv="-1" ${st.alloc[a]<=0?"disabled":""}>−</button>
         <b>+${st.alloc[a]}</b><button data-ad="${a}" data-dv="1" ${left<=0||st.alloc[a]>=cap?"disabled":""}>+</button><button data-ad="${a}" data-dv="5" ${left<=0||st.alloc[a]>=cap?"disabled":""}>+5</button></div></div>`).join("");
       const spx = ego ? `<h4 style="margin:12px 0 6px">${egoSpecLabel(f.ego.type)} <span class="muted" style="font-weight:400;font-size:12px">하나를 고른다 · 합 전투에서 발동</span></h4>
-        <div class="fg-spec">${egoSpecList(f.ego.type).map(x=>`<button data-spec="${x.id}" class="${st.special===x.id?"on":""}"><b>${x.n}</b><small>${x.d}</small></button>`).join("")}</div>` : "";
+        ${(f.ego.type==="both"?[["무기 · 특수 공격",EGO_SPECIAL.weapon],["의복 · 특수 방어",EGO_SPECIAL.armor]]:[[egoSpecLabel(f.ego.type),egoSpecList(f.ego.type)]]).map(([label,items])=>`<h4>${label}</h4><div class="fg-spec">${items.map(x=>`<button data-spec="${x.id}" class="${st.special===x.id?"on":""}"><b>${x.n}</b><small>${x.d}</small></button>`).join("")}</div>`).join("")}` : "";
       return head + `<p class="muted">능력치 점수 <b>${B}</b>점을 나눠 준다. 한 능력치엔 최대 ${cap}점. 남은 점수 <b style="color:${left?"#e0d27f":"#9fe8b0"}">${left}</b>
         ${ego ? "" : st.slot==="weapon" ? "· 기본값은 무기 종류에 맞춘 배분 · 공방이 벼리며 위력이 올랐다" : `· 피해 감소(체력 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%)는 그대로`}
         <button data-reset="1" style="padding:2px 8px;margin-left:6px">기본값</button></p>
@@ -10394,7 +10426,7 @@ async function openForge(f, slot0, mode){
       else if(d.trim){ st.a.trim = d.trim==="none" ? null : d.trim; }
       else if(d.ad){ const B = budget(), cap = Math.min(STAT_CAP, B), left = B - sumPts(st.alloc), dv = +d.dv;
         st.alloc[d.ad] = dv>0 ? Math.min(cap, st.alloc[d.ad] + Math.min(dv, left)) : Math.max(0, st.alloc[d.ad] + dv); }
-      else if(d.reset){ st.alloc = forgeDefault(mode, st.slot, st.w && st.w.kind, wpw); }
+      else if(d.reset){ st.alloc = forgeDefault(budgetMode, st.slot, st.w && st.w.kind, wpw); }
       else if(d.spec){ st.special = d.spec; }
       else if(d.view){ st.view = d.view; box.querySelectorAll("[data-view]").forEach(x=>x.classList.toggle("on", x.dataset.view===st.view)); return; }
       else if(d.fgo){ const n = +d.fgo; if(n===4 && st.step===3){ const i = box.querySelector("#fgname"); if(i) st.name = i.value.trim(); } st.step = n; }
@@ -10402,6 +10434,7 @@ async function openForge(f, slot0, mode){
         const name = st.name || defName(), bonus = {}; ATTRS.forEach(a=>{ if(st.alloc && st.alloc[a]>0) bonus[a] = st.alloc[a]; });
         if(ego){
           Object.assign(f.ego, {name, look: Object.assign({}, st.slot==="weapon" ? st.w : st.a), bonus, special: st.special});
+          if(f.ego.type==="both")f.ego.look2={...st.a};
           S.records.push({day:S.day, name:f.name, what:"E.G.O. 형상", note:`${name} — ${statLine()}`});
           addLog(`${f.name}: E.G.O. [${name}]의 형상을 정했다`); save(); render(); doneRes = {name, ego:true};
           root.querySelector(".mf button").click(); return;
@@ -10576,7 +10609,7 @@ const RELICS = [
   {id:"astrape", slot:"weapon", name:"아스트라페", origin:"번개가 흐르는 단창", kind:"spear", look:{v:0, len:0.85, metal:"#e4e7ea", glow:"#9fd8ff"}, power:27, bonusAdd:{agi:3}, hpRed:0.05, d:"자루를 쥐면 손바닥 아래로 희미한 번개가 흐른다. 던진 적이 없는데도, 늘 손으로 돌아와 있다."},
   {id:"claiomh", slot:"weapon", name:"클라우 솔리스", origin:"빛의 양손검", kind:"long", look:{v:0, len:1.1, metal:"#f4f4ff", glow:"#fff2b0"}, power:29, bonusAdd:{str:2, wil:2}, d:"칼집에서 뽑으면 어두운 골목이 한낮처럼 밝아진다."},
   {id:"gyeongui", slot:"weapon", name:"경의검", origin:"남명 조식의 패검", kind:"blade", look:{v:4, len:1.0, metal:"#5f6670", glow:null}, power:26, bonusAdd:{wil:4, tec:2}, mpRed:0.12, d:"칼등에 두 글귀가 새겨져 있다 — 안으로 밝히는 것은 경(敬)이요, 밖으로 결단하는 것은 의(義)라. 칼보다 글귀가 먼저 사람을 벤다."},
-  {id:"ruyi", slot:"weapon", name:"여의봉", origin:"뜻대로 늘고 주는 쇠봉", kind:"staff", look:{v:0, len:1.05, metal:"#c9a86a", glow:"#f2d27a"}, power:27, bonusAdd:{agi:2, str:2}, d:"양 끝에 금테가 둘린 쇠봉. 손에 쥐는 사람의 뜻에 따라 길이와 무게가 달라진다는데, 아직 아무도 끝까지 늘려 본 적은 없다."},
+  {id:"ruyi", slot:"weapon", name:"여의봉", origin:"뜻대로 늘고 주는 쇠봉", kind:"staff", look:{v:0, len:1.05, metal:"#c9a86a", glow:"#f2d27a"}, power:27, bonusAdd:{agi:2, str:2}, d:"양 끝에 금테가 둘린 쇠봉. 손에 쥐는 사람의 뜻에 따라 길이와 무게가 달라진다는데, 지금껏 확인된 길이는 사용자에 따라 달랐다. 최대 길이는 미확인 상태다."},
   {id:"drepanon", slot:"weapon", name:"드레파논", origin:"데메테르의 낫", kind:"long", look:{v:1, len:1.0, metal:"#b9a46a", glow:"#c6ff5a"}, power:26, bonusAdd:{wil:2, tec:2}, hpRed:0.06, d:"곡식을 거두던 낫. 이 날이 지나간 자리에서는 이듬해 반드시 무언가가 자란다고 한다. 무엇이 자라는지는 말하는 사람마다 다르다."},
   {id:"sleipnir", slot:"armor", name:"슬레이프니르", origin:"여덟 다리 말이 그려진 견갑", look:{type:1, pad:2, collar:1, trim:"#9fd8ff"}, hpRed:0.4, bonus:{agi:4}, d:"유적 중간 층의 무너진 마구간 터에서, 녹슨 말굽 쇠 더미에 깔린 채로 나왔다. 잿빛 쇠판을 비늘처럼 여러 겹 포갠 견갑 한 쌍으로, 맨 윗판에 다리가 여덟 개인 말이 돋을새김되어 있다. 걸치고 걸으면 말의 다리 사이로 가느다란 빛이 미끄러져 지나가고, 그때마다 걸음이 한 박자씩 앞서 나간다. 오래 달려도 숨이 차지 않는다는 말이 함께 전해진다."},
   {id:"aegis", slot:"armor", name:"아이기스", origin:"방패", look:{type:3, pad:2, collar:1, trim:"#f2d27a"}, hpRed:0.48, mpRed:0.1, d:"유적 깊은 층, 물이 말라 버린 신전 바닥에서 올라온 둥근 청동 방패. 안쪽에 가죽 고리 두 개가 달려 왼팔에 찬다. 한가운데에는 머리카락 대신 뱀이 얽힌 얼굴이 새겨져 있는데, 평소에는 두 눈을 감고 있다. 싸움이 시작되면 그 눈이 천천히 뜨이고, 눈이 마주친 자는 덤벼들던 자세 그대로 잠시 굳는다. 막아 내는 방패라기보다 멈춰 세우는 방패에 가깝다."},
@@ -11188,7 +11221,7 @@ const ARCS = [
   "grade": 8,
   "n": "새벽 세 시의 배달부",
   "reward": 80000,
-  "end": "그 뒤로 새벽 세 시에 문을 두드리는 배달부는 없었다. 대신 골목 상인회는 매달 첫날, 사무소 앞에 따끈한 도시락 하나를 놓고 간다.",
+  "end": "그날 이후 새벽 세 시의 사무소 문은 조용했다. 대신 골목 상인회는 매달 첫날, 사무소 앞에 따끈한 도시락 하나를 놓고 간다.",
   "ch": [
    {
     "kind": "호위",
@@ -12081,7 +12114,7 @@ const TALK_TOPICS = [
     "title": "받는 사람 없음",
     "intro": "서랍을 열던 동료가 반으로 접힌 봉투를 꺼냈다가 도로 접었다.",
     "open": [
-      "가끔 편지를 써요. 보낼 곳은 없는데.",
+      "가끔 편지를 써서 서랍에 넣어 둬요.",
       "이상하죠? 쓰고 나면 할 말은 좀 줄어들더라고요."
     ],
     "tags": [
@@ -13083,7 +13116,7 @@ const ARC_VN = {
     ]
    },
    "return": {
-    "end": "그 뒤로 새벽 세 시에 문을 두드리는 배달부는 없었다. 다시 문을 연 가게 몇 곳이, 매달 첫날 사무소 앞에 도시락을 놓고 간다.",
+    "end": "그날 이후 새벽 세 시의 사무소 문은 조용했다. 다시 문을 연 가게 몇 곳이, 매달 첫날 사무소 앞에 도시락을 놓고 간다.",
     "lines": [
      [
       "",
@@ -14008,7 +14041,7 @@ const ARC_VN = {
     ]
    },
    "assoc": {
-    "end": "조제사와 공장장이 함께 협회로 넘겨졌다. 해독은 협회 의료반이 맡았다. 느렸지만, 빠뜨린 사람은 없었다.",
+    "end": "조제사와 공장장이 함께 협회로 넘겨졌다. 해독은 협회 의료반이 맡았다. 시간은 걸렸지만 의료반은 마지막 환자까지 치료했다.",
     "lines": [
      [
       "",
@@ -14021,7 +14054,7 @@ const ARC_VN = {
     "lines": [
      [
       "",
-      "의무실장은 보수를 보내왔다. 편지는 없었다."
+      "의무실장은 보수만 송금했다."
      ]
     ]
    }
@@ -14432,7 +14465,7 @@ const LEAN_END = {
     epi:["{o}은(는) 하나 협회 명부의 절차대로 문을 닫았다. 미결 의뢰 없음, 미납 채무 없음, 분쟁 기록 없음.","협회 직원은 서류를 넘기다 한 번 고개를 들었다. 이렇게 깨끗한 폐업 신고는 오랜만이라고.","명부에는 한 줄이 남았다. 이 도시에서 그건 꽤 드문 일이다."]}};
 const LEAN_CODA = {
   정의:"사람들은 그 사무소를 떠올릴 때 보수보다 먼저, 누군가를 지켜 준 밤을 이야기했다.",
-  현실:"장부의 마지막 쪽은 흑자였다. 이 도시에서 그보다 확실한 증명은 없다.",
+  현실:"장부의 마지막 쪽은 흑자였다. 장부의 숫자만큼은 그동안의 노력을 분명히 보여 주었다.",
   질서:"협회 기록에는 사무소의 이름 옆에 '규약 위반 없음'이라는 짧은 문구가 남았다."};
 function leanCoda(){ const k = typeof alignLean==="function" ? alignLean() : null; return k ? `<br><br>${LEAN_CODA[k]}` : ""; }
 async function leanEnding(k){ const E = LEAN_END[k]; if(!E) return;
@@ -14910,7 +14943,7 @@ const STORY_OPEN = {
     "오후 늦게 {c}의 도장이 찍힌 의뢰서가 배달됐다.",
     "{c}에서 나온 직원이 서류 봉투를 접수대에 올려놓았다.",
     "점심 무렵에 {c} 쪽 사람이 모자를 손에 쥔 채 들어와 의뢰서를 건넸다."],
-  anon:["아침에 보니 문틈에 봉투 하나가 끼워져 있었다. 보낸 사람 이름은 없었다.",
+  anon:["아침에 보니 문틈에 봉투 하나가 끼워져 있었다. 봉투의 발신인 칸은 비어 있었다.",
     "누가 두고 갔는지 모를 봉투가 접수대 위에 놓여 있었다.",
     "늦은 밤에 보니 우편함에 이름 없는 봉투가 들어 있었다."]};
 const CLIENT_SHOP = /(사진관|슈퍼|생선 가게|부품상'|수리점|정비소|'둥근 저울'|'두 바퀴'|'손끝')$/;
@@ -14921,7 +14954,7 @@ function storyOpen(q){ const k = clientKind(q.client); const pool = STORY_OPEN[k
   return pick(pool).replace(/\{w\}이\(가\)/g, jo(w,"이")).replace(/\{w\}/g, w).replace(/\{c\}/g, q.client); }
 /* 의뢰서 본문을 보고 덧붙일 의뢰인의 말을 고른다 — 같은 말이 두 번 나오지 않게 */
 const STORY_TAIL = {
-  kill:["의뢰인은 잠시 말을 고르더니, 살려 둘 필요는 없다고 했다.","\"다시 나타나면 또 누가 다칠 거예요. 끝내 주세요.\""],
+  kill:["의뢰인은 잠시 말을 고르더니, 사살로 계약해 달라고 했다.","\"다시 나타나면 또 누가 다칠 거예요. 끝내 주세요.\""],
   drive:["\"죽일 필요까진 없어요. 다시는 얼씬 못 하게만 해 주세요.\"","상대와 몇 번 말을 섞어 봤지만 소용없었다고 했다."],
   subdue:["상대와 몇 번 말을 섞어 봤지만 소용없었다고 했다.","\"더 다치는 사람이 나오기 전에 끝내 주세요.\"","\"말로 해서 들을 상대였으면 여기까지 안 왔죠.\""],
   catch:["\"산 채로 데려와 주세요. 물어볼 게 많아요.\"","의뢰인은 마지막으로 본 곳을 짚어 보이고는 자리를 비켜 주었다.","\"시간이 지날수록 멀리 가요. 오늘 안에 움직여 주세요.\""],
@@ -14950,7 +14983,7 @@ const STORY_KIND = {
   wil:["\"{t}.\" 이야기를 하는 내내 의뢰인의 눈이 자꾸 창밖을 향했다.", "\"{t}.\" 처음 듣는 종류의 이야기였다. 의뢰인도 제 말을 다 믿지는 않는 눈치였다."],
   호위:["\"{t}.\" \"가는 내내 곁에 있어 주세요. 무슨 일이 생겨도 사람이 먼저예요.\"", "\"{t}.\" \"노리는 놈이 있는지는 모르겠어요. 없다고 장담할 수도 없고요.\""],
   수색:["\"{t}.\" 단서는 몇 개 없다. 의뢰인은 마지막으로 본 곳을 손가락으로 짚어 보였다.", "\"{t}.\" \"경찰한테도 말했는데, 아무도 안 움직이더라고요.\""]};
-const STORY_GOAL = {"제압":"\"죽일 필요까진 없어요. 다시는 못 오게만 해 주세요.\"", "사살":"의뢰인은 잠시 말을 고르더니, 살려 둘 필요는 없다고 했다."};
+const STORY_GOAL = {"제압":"\"죽일 필요까진 없어요. 다시는 못 오게만 해 주세요.\"", "사살":"의뢰인은 잠시 말을 고르더니, 사살로 계약해 달라고 했다."};
 const STORY_THREAT = {
   "뜬소문":"동네에서 흔한 일이다. 그래도 맡았으면 끝까지 해야 한다.",
   "도시 괴담":"골목 사람들 입에 몇 번 오르내린 일이다.",
@@ -14959,7 +14992,7 @@ const STORY_THREAT = {
   "도시 악몽":"이 일을 감당할 사무소는 많지 않다. 의뢰인도 그걸 알고 여기까지 찾아왔다.",
   "도시의 별":"도시 전체가 숨죽이고 지켜보는 일이다. 이름난 사무소들도 몇 번이나 손을 뗐다고 한다."};
 const STORY_THREAT_ABNO = {
-  "뜬소문":"본 사람은 몇 있는데, 가까이 가 본 사람은 없다.",
+  "뜬소문":"목격자들은 하나같이 멀찍이서 보고 돌아섰다고 했다.",
   "도시 괴담":"골목 사람들 입에 벌써 몇 번 오르내렸다. 다들 그쪽 길로는 안 다닌다.",
   "도시 전설":"이 구역에서는 꽤 알려진 이야기다. 쉽게 끝나지는 않을 것이다.",
   "도시 질병":"구역 하나가 통째로 문을 걸어 잠갔다. 다친 사람이 벌써 몇 있다.",
@@ -15101,7 +15134,7 @@ const REQ_DETAIL_123 = {
   ],
   "복수의 해결사 사무소를 파괴한 위험 인물을 사살해 달라.": [
     "협회 중앙 작전실이 무너진 사무소들 위치를 지도 한 장에 표시했다. 건물마다 출입문이 안쪽에서 부서져 있었다.",
-    "이번 작전에 협상은 없다. 주변 사무소와 거리를 벌린 다음, 확실히 숨통을 끊어야 한다."
+    "이번 작전은 사살을 전제로 한다. 주변 사무소와 거리를 벌린 다음, 확실히 숨통을 끊어야 한다."
   ],
   "협회 호송 중 탈주한 현상금 해결사를 다시 붙잡아 달라": [
     "협회 지부 연락관이 호송차에서 끊어진 수갑을 직접 들고 왔다. 탈주자는 검문소 세 곳을 어떻게 빠져나가는지 미리 알고 있었다.",
@@ -15404,7 +15437,7 @@ const REQ_DETAIL_123 = {
     "인질이 갇힌 건물부터 찾아야 한다. \"구출대를 보낼 때까지, 놈들을 자극하지는 말아 주세요.\""
   ],
   "실종된 조사반이 마지막으로 확인한 지하 시설을 찾아 달라.": [
-    "협회 조사 담당자는 실종된 조사반이 마지막으로 확인한 지하 시설의 좌표만 넘겨줬다. 들어간 다섯 명 중 돌아온 사람은 없다.",
+    "협회 조사 담당자는 실종된 조사반이 마지막으로 확인한 지하 시설의 좌표만 넘겨줬다. 투입된 다섯 명은 전원 실종 처리됐다.",
     "시설 출입구와 조사반이 남긴 신호를 찾아야 한다. \"위험하다 싶으면 더 들어가지 마세요.\""
   ],
   "골목을 점거한 조직 은신처의 셔터를 뚫고 들어가 정리해 달라": [
@@ -15456,7 +15489,7 @@ const REQ_DETAIL_123 = {
     "누구 서명이 가짜인지 가려야 한다. 물건 출처를 밝힌 다음, 거래에 쓰인 서류를 경매장에 돌려줘야 한다."
   ],
   "거래 장부에서 빠져나간 돈의 흐름을 밝혀 달라": [
-    "중고 기계상이 거래 장부의 숫자를 짚으며 계산이 안 맞는다고 했다. 돈은 빠져나갔는데, 물건이 나간 흔적은 없었다.",
+    "중고 기계상이 거래 장부의 숫자를 짚으며 계산이 안 맞는다고 했다. 출금 내역만 남고 출고란은 비어 있었다.",
     "거래 시각과 입금 계좌를 하나씩 확인해야 한다. \"장부엔 손대지 마시고, 사라진 돈이 어디로 갔는지만 찾아 주세요.\""
   ],
   "의뢰서마다 같은 필체로 적힌 가짜 서명을 추적해 달라": [
@@ -15511,7 +15544,7 @@ const REQ_DETAIL_123 = {
     "지역 운송 조합이 배송로에서 통행료를 뜯는 조직원 명단을 내놓았다. 돌아가는 길에도 다른 패거리가 기다리고 있었다.",
     "행동대원들을 몰아내고 운송로를 다시 열어야 한다. 기사들이 싸움판에 끼어들지 않게 해 달라고 했다."
   ],
-  "현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다": [
+  "현상금이 걸린 강도를 처리해 달라. 사살로 마무리해 달라": [
     "합법 경매장 감정사가 현상 수배자 사진과 놈이 털어 간 물품 목록을 함께 보내왔다. 강도는 벌써 새 무기를 구해 다시 나타날 채비를 하고 있다.",
     "의뢰인은 사살을 원한다. 잡아 오거나 설득할 필요 없이, 현상금 대상인지만 확인하고 끝내면 된다."
   ],
@@ -15607,7 +15640,7 @@ const REQ_DETAIL_123 = {
     "골목 약국 약사가 쥐에게 털린 진열대와 흩어진 약 봉투를 보여 줬다. 같은 놈이 세 번째로 와서는, 약사까지 밀쳐 넘어뜨렸다.",
     "약사는 놈을 사살해 달라고 했다. \"얼굴은 제가 봤어요. 엉뚱한 사람 잡지 않게, 확인만 꼭 해 주세요.\""
   ],
-  "가게 뒤 창고에 불을 지른 놈을 찾아 끝내 달라. 두 번은 없다": [
+  "가게 뒤 창고에 불을 지른 놈을 찾아 끝내 달라. 이번에 끝내 달라": [
     "골목 세탁소 사장은 창고에 그을린 옷더미를 치우지도 않고 그대로 두었다. 방화범은 벌써 두 번이나 불을 지르고 달아났다.",
     "\"더는 못 살려 둡니다.\" 사장이 사살을 부탁했다. 옆 가게로 불이 번지지 않게 다가가야 한다."
   ],
@@ -15683,7 +15716,7 @@ const REQ_DETAIL_123 = {
     "작은 찻집 주인이 창가에서 싸우던 불량배 둘을 떠올렸다. 손님들이 문을 열었다가 고함 소리에 그냥 돌아가고 있었다.",
     "둘을 제압해 밖으로 내보내면 된다. \"잔이랑 탁자만은 깨지 말아 주세요.\""
   ],
-  "골목 아이들을 노리는 쥐를 처리해 달라. 살려 둘 필요는 없다": [
+  "골목 아이들을 노리는 쥐를 처리해 달라. 사살로 마무리해 달라": [
     "골목 학원 원장 말로는, 아이 하나가 밤길에 쥐한테 붙잡혔다가 가까스로 빠져나왔다. 그 뒤로 아이들은 학원이 끝나면 다른 길로 돌아간다.",
     "원장은 쥐를 사살해 달라고 했다. 아이들이 다시 그 길로 다닐 수 있어야 한다고."
   ],
@@ -15851,7 +15884,7 @@ function showSpecialRequestText(q){
 }
 function requestTitle(q){
   const specialTitle=specialRequestTitle(q); if(specialTitle) return specialTitle;
-  const names = requestTitle.names || (requestTitle.names = {"가게 앞을 차지하고 손님을 위협하는 패거리를 쫓아내 달라. 벌써 사흘째 문을 못 열었다":"상점 앞 쥐떼 퇴거","창고를 점거한 부랑자들을 내보내 달라. 맡겨 둔 물건을 꺼내러 들어갈 수가 없다":"창고 점거 부랑자 퇴거","골목 상인들한테 보호비를 뜯는 쥐들을 쫓아내 달라. 내일까지 돈을 못 내면 가판을 부수겠다고 했다":"보호비 뜯는 쥐 소탕","술값도 안 내고 가게 집기를 부순 손님을 제압해 달라. 주인이 직접 나섰다가 팔을 다쳤다":"주점 난동 손님 제압","공방에 넘길 고철만 골라 훔쳐 가는 도둑을 잡아 달라. 이번 납품까지 놓치면 가게 문을 닫아야 한다":"고철 절도범 체포","세탁소 뒷문을 뜯으려는 쥐들을 쫓아내 달라. 새벽마다 자물쇠가 하나씩 망가진다":"세탁소 뒷문 쥐 소탕","아침마다 빵집 앞에 자리 잡는 부랑자 둘을 다른 데로 보내 달라. 빵을 나눠 줘도 소용없었다고 한다":"빵집 앞 부랑자 퇴거","폐품 수레를 밀던 노인을 발로 걷어찬 양아치들을 찾아 제압해 달라":"노인 폭행 양아치 제압","야시장 입구에서 손님들을 위협하는 취객을 제압해 달라. 당한 상인만 벌써 셋이다":"야시장 취객 제압","아이들 몫의 식량을 빼앗고 흉기를 휘두른 쥐를 처리해 달라. 다친 사람이 벌써 셋이다":"식량 약탈 쥐 처리","가게를 세 번이나 턴 쥐새끼를 다시는 못 오게 해 달라":"상점 털이범 처리","버스 정류장에서 노인들 지갑만 노리는 쥐를 다시는 얼씬도 못 하게 해 달라":"정류장 소매치기 처리","가게 뒤 창고에 불 지른 놈을 찾아 끝내 달라. 두 번은 없다":"창고 방화범 처리","가게를 털고 달아나다 주인을 찌른 강도를 찾아 끝내 달라":"상점 강도 처리","골목 안쪽에서 밤마다 지나가는 사람을 찌르는 자를 처리해 달라":"골목 칼잡이 처리","집 나간 고양이 '보리'를 찾아 달라. 주인은 뒷골목의 밤이 오기 전까지 기다리겠다고 한다":"고양이 '보리' 수색","지갑을 낚아채 달아난 아이를 쫓아 지갑을 되찾아 달라":"낚아챈 지갑 회수","산책 중 줄이 풀려 달아난 강아지를 붙잡아 달라":"반려견 포획","외상값을 안 갚고 달아난 손님을 붙잡아 달라":"외상 채무자 추적","가게 생선을 물고 달아난 길고양이를 쫓아 달라":"생선 절도 고양이 추격","시장에서 돈통을 낚아채 달아난 아이를 붙잡아 달라. 돈은 그대로 돌려받아야 한다":"시장 돈통 회수","가게 문을 열자마자 뛰쳐나간 개를 찾아 달라. 목줄에 이름이 적혀 있다":"실종 반려견 수색","주머니를 턴 소매치기가 철교 아래로 달아났다. 검은 가방만은 꼭 되찾아 달라":"검은 가방 회수","잃어버린 결혼반지를 찾아 달라. 어제 지나온 골목 어딘가에 있다":"결혼반지 수색","구역 순환차에 두고 내린 서류 가방을 찾아 달라. 안에 든 계약서를 찾기 전에는 돌아갈 수 없다고 한다":"서류 가방 회수","누가 매일 아침 우유를 훔쳐 가는지 알아내 달라":"우유 절도 조사","사라진 우편물이 어디로 갔는지 알아내 달라":"실종 우편물 조사","누가 가게 간판 전구를 하나씩 빼 가는지 알아내 달라":"간판 전구 절도 조사","엘리베이터에 붙은 협박 쪽지를 누가 붙였는지 알아내 달라":"협박 쪽지 조사","문을 닫고 나서도 계산대가 이따금 열려 있다. 누가 손을 대는지 찾아 달라":"계산대 절도 조사","세탁소에 맡긴 외투에서 주인 모를 사진이 나왔다. 사진 속 사람들이 누군지 알아내 달라":"사진 속 인물 조사","아파트 공동 현관 잠금장치가 밤마다 풀린다. 누가 건드리는지 확인해 달라":"공동현관 침입 조사","시장까지 할머니의 짐수레를 지켜 달라":"시장 짐수레 호위","야간 근무를 마친 약국 직원을 집까지 데려다 달라. 며칠째 같은 남자가 뒤를 밟는다":"약국 직원 호위","일주일 치 장사 대금을 보관소까지 옮기는 길을 지켜 달라. 수금일을 아는 쥐들이 기다리고 있다":"장사 대금 호송","밤 장사를 마친 포장마차 주인을 골목 끝까지 바래다 달라":"포장마차 주인 호위","학원 끝난 아이들을 버스 정류장까지 데려다 달라":"학원생 호위","수술을 마친 아버지를 집까지 모셔 가야 한다. 길에서 넘어지지 않게 곁을 지켜 달라":"수술 환자 호송","하루 매상으로 받은 동전 자루를 교환소까지 옮기는 길에 동행해 달라":"매상 운반 호위","골목 끝에 사는 동생에게 약을 가져다줘야 한다. 돌아오는 길까지 부탁한다":"약품 전달 호위","사흘째 안 보이는 고양이를 골목 일대에서 찾아 달라":"실종 고양이 수색","놀이터에서 잃어버린 아이의 인형을 찾아 달라":"분실 인형 수색","어제 골목에서 흘린 가게 열쇠 꾸러미를 찾아 달라":"가게 열쇠 수색","폐건물 어딘가에 버려진 손수레를 찾아 달라":"폐건물 손수레 수색","아침마다 사라지는 신문 뭉치가 어디로 가는지 찾아 달라":"실종 신문 수색","지난주 문을 닫은 식당 주방에서 사라진 칼 상자를 찾아 달라":"주방 칼 상자 수색","비 오기 전에, 골목 배수구에 빠뜨린 반지 하나를 찾아 달라":"배수구 반지 수색","이삿짐 차가 떠난 뒤로, 침대 밑에 넣어 둔 편지 묶음이 없어졌다. 찾아 달라":"분실 편지 수색","폐창고에서 매일 같은 시각에 쇠 긁는 소리가 난다. 안에 사람이 있는지 확인해 달라":"폐창고 괴음 조사","납품 대금을 떼먹고 사무실 문을 걸어 잠근 하청업자를 끌어내 달라. 경비까지 고용했다고 한다":"하청업자 제압","운송로를 막고 통행료를 걷는 조직원들을 몰아내 달라. 창고 셔터 뒤에 무장한 놈들이 숨어 있다":"운송로 점거단 제압","채무자가 가게를 경호원들한테 맡기고 잠적했다. 계약서에 적힌 금액을 받아 와 달라":"계약 채무 회수","무너진 창고 입구를 막고 선 자들을 치우고 재고를 꺼내 달라":"창고 재고 회수","가게 앞을 막고 자릿세를 내놓으라는 조직원들을 쫓아내 달라":"자릿세 갈취단 제압","불법 개조 의수로 행패를 부리는 자를 붙잡아 달라":"불법 개조 의체 난동꾼 제압","밤마다 창고 셔터를 뜯는 일당을 제압해 달라":"창고털이 일당 제압","부품을 빼돌리던 경비들이 공방 창고를 점거했다. 무기를 내려놓게 해 달라":"공방 창고 점거단 제압","골목 수송차를 세우는 조직 행동대원들을 몰아내 달라. 기사들이 운행을 거부하고 있다":"수송로 확보","현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다고 한다":"현상수배 강도 처리","조직 장부를 들고 달아난 배신자를 찾아 처리해 달라. 의뢰인은 생포를 바라지 않는다":"조직 배신자 처리","배달원 셋을 다치게 한 강도를 끝내 달라. 증거는 이미 넘겼다고 한다":"배달원 습격범 처리","장기를 노리고 골목을 도는 자를 처리해 달라":"장기 사냥꾼 처리","남의 의수를 강제로 뜯어 가는 사냥꾼이 있다. 더 다치는 사람이 나오기 전에 처리해 달라":"의체 사냥꾼 처리","밤길 수송차를 습격해 운전자를 죽인 일당을 끝내 달라":"수송차 습격대 처리","부품을 들고 달아난 배달원을 붙잡아 물건을 회수해 달라":"도난 부품 회수","도망친 채무자를 날이 밝기 전에 붙잡아 달라":"도주 채무자 추적","소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라":"도난 물품 회수","하청 연구소에서 풀려난 개조 짐승을 산 채로 잡아 달라. 연구소는 짐승을 죽이면 보수를 주지 않겠다고 한다":"하청 연구소 탈주 개조체 포획","감정을 맡긴 시계를 들고 사라진 손님을 붙잡아 달라":"감정품 절도범 추적","시장 바닥을 휘젓고 달아난 개조 들개를 붙잡아 달라":"개조 들개 포획","검문소를 뛰어넘어 도망친 수배자를 붙잡아 달라. 의체 다리를 달았다":"검문소 탈주범 체포","공방에서 설계도를 훔친 자가 수로 쪽으로 달아났다. 물건을 되찾아 달라":"공방 설계도 회수","경비 장치는 멀쩡한데 가게 물건만 사라졌다. 어디로 들어왔는지, 누가 그랬는지 밝혀 달라":"상점 침입 사건 조사","위조된 감정서를 가려내고 진짜 출처를 알아내 달라":"위조 감정서 감별","사라진 직원의 마지막 행적을 조사해 달라":"실종 직원 행적 조사","장부에 없는 돈이 매주 같은 계좌로 빠져나간다. 어느 납품업자가 손을 댔는지 밝혀 달라":"납품 대금 횡령 조사","가게 금고만 정확히 비우고 사라진 수법을 밝혀 달라":"금고 절도 수법 조사","의뢰서마다 같은 필체로 적힌 가짜 서명을 쫓아 달라":"위조 서명 추적","창고 화물 열 개가 통째로 사라졌다. 출고 서명은 전부 멀쩡하다는데, 확인해 달라":"창고 화물 실종 조사","고쳐 단 의수가 움직일 때마다 남의 신호를 받는다. 원인을 찾아 달라":"개조 의수 신호 혼선 조사","둥지 경계 검문소까지 공방 납품 차량을 호위해 달라. 경쟁 업체가 운송을 훼방 놓는다고 한다":"공방 납품차 호위","야간 시장 개장 시간 동안 상인을 지켜 달라":"야시장 상인 경호","경매에서 낙찰된 물건을 고객에게 전달하는 길을 지켜 달라":"경매 낙찰품 호송","빚 독촉을 피해 이사 가는 가족의 짐차를 지켜 달라":"이삿짐 차량 호위","의수 부품 상자를 다른 정비소까지 옮겨 달라":"의체 부품 호송","구역을 떠나는 증인을 새 거처까지 데려다 달라. 이름은 의뢰를 받으면 알려 준다고 한다":"증인 거처 이전 호위","인공 장기 상자를 의무실까지 옮겨 달라. 온도 유지 장치가 멈추면 장기는 버려야 한다":"인공 장기 호송","폐공장에 숨겨진 장부를 찾아 달라":"폐공장 장부 수색","사흘째 연락이 없는 수리공을 찾아 달라":"실종 수리공 수색","뒷골목 하수로 어딘가에 떨어진 열쇠를 찾아 달라":"하수로 열쇠 수색","지하 주차장 어딘가에 숨겨진 장물 상자를 찾아 달라":"장물 상자 수색","배달 도중 사라진 화물 상자를 찾아 달라":"실종 화물 수색","폐기한 수송차에서 사라진 경비용 무전기를 찾아 달라. 누군가 그걸로 계속 송신하고 있다":"경비 무전기 수색","공장 철거 현장에서 인부 하나가 사라졌다. 그가 마지막으로 들어간 방을 찾아 달라":"실종 인부 수색","영업이 끝난 지하실에서 밤마다 낯선 노랫소리가 들린다. 내려간 직원 둘이 돌아오지 않았다":"지하실 괴음 조사","계단참에 똑같은 얼굴의 아이가 서 있다는 층이 있다. 확인해 달라":"계단참 이상 현상 조사","둥지 경계의 물류 도로를 가로막은 조직 간부를 제압해 달라. 날개 하청업체까지 피해를 보고 있다":"물류 도로 확보","의뢰인을 가로채고 사무소 셋을 습격한 무허가 해결사 무리를 제압해 달라. 뒤에 조직이 있다":"무허가 해결사 무리 제압","장물 경매장으로 넘어간 공방 시제품을 되찾아 달라. 무장 경비가 출입구를 막고 있다":"공방 시제품 회수","협회 등록을 빼앗기고 날뛰는 사무소 하나를 정리해 달라":"등록 말소 사무소 정리","둥지 경계 검문소를 무단 점거한 무리를 몰아내 달라":"검문소 탈환","밀수품 창고를 지키는 공방제 장비 경비를 뚫어 달라":"밀수 창고 돌파","민간 병원에 들이닥친 무장 조직을 쫓아내 달라. 환자들을 인질로 잡고 있다":"병원 점거단 제압","둥지 외곽 검문로를 차지한 경비대장을 끌어내 달라. 지나가는 사람마다 돈을 뜯는다":"외곽 검문로 확보","구역 주민을 사냥하듯 죽이는 자를 처리해 달라. 시신은 전부 같은 골목에서 나왔다":"사람 사냥꾼 처리","의뢰인을 둘이나 죽인 조직 간부를 끝내 달라":"조직 간부 처리","뒷골목 경매에 사람을 올리는 자를 처리해 달라":"인신매매 중개인 처리","해결사를 사칭해 의뢰인만 노리는 자를 끝내 달라":"사칭 해결사 처리","불법 시술을 받은 사람들을 실험체로 가둬 두는 기술자를 처리해 달라":"불법 시술 기술자 처리","협회 심사관을 죽인 사칭 해결사를 찾아 끝내 달라":"심사관 살해범 처리","날개 하청 연구소의 기술 자료를 들고 달아난 연구원을 산 채로 잡아 달라. 자료는 상하게 하지 말 것":"탈주 연구원 생포","밤의 시장에서 사라진 물건을 실은 수레를 쫓아 달라":"장물 수레 추격","뒷골목 하수로로 숨어든 개조 짐승을 몰아 붙잡아 달라":"하수로 개조 짐승 포획","둥지 출입증을 위조해 넘기고 달아난 자를 붙잡아 달라":"출입증 위조범 체포","증인을 태우고 달아난 차량을 따라붙어 멈춰 세워 달라":"납치 차량 추격","둥지 경계에서 추적 차량을 따돌리며 달아나는 배신자를 붙잡아 달라. 반드시 산 채로":"조직 배신자 생포","경매장 지하에서 달아난 경비용 의체를 붙잡아 달라. 안전장치가 꺼져 있다":"폭주 경비 의체 제압","실종된 해결사가 마지막으로 맡았던 계약의 발주처를 찾아 달라. 협회에 낸 서류와 내용이 다르다":"실종 해결사 계약 조사","둥지 경계 검문소의 기록이 조작된 흔적을 찾아 달라":"검문소 문서 조작 조사","사무소 셋이 같은 함정에 빠진 이유를 의뢰 기록에서 찾아내 달라":"사무소 습격 사건 조사","가짜 공방 각인이 찍힌 무기의 출처를 밝혀 달라":"위조 공방 무기 조사","의수에 심어진 추적 장치가 어디로 신호를 보내는지 알아내 달라":"의체 추적 장치 조사","협회 접수 서류에서 사라진 의뢰 세 건을 찾아 달라. 접수한 사람들은 모두 실종됐다":"하나 협회 접수 누락 조사","공방 신형 장비가 돌아갈 때마다 다른 기계가 고장 난다. 누가 손을 댔는지 확인해 달라":"공방 장비 교란 조사","조직의 보복을 피해 숨어 지내는 증인을 협회 지부까지 호위해 달라. 누군지 드러나서는 안 된다":"협회 증인 호위","둥지 병원으로 들어갈 회복 약품 운송을 지켜 달라. 검문소로 가는 길목에 조직이 진을 쳤다":"회복 약품 호송","협회 감사관을 사무소 순회 내내 지켜 달라":"하나 협회 감사관 경호","둥지 안 병원으로 이송되는 환자를 지켜 달라":"병원 환자 호송","협회에 증언하러 가는 연구원을 지켜 달라. 연구소 쪽에서 벌써 사람을 보냈다":"연구원 증언 호위","크게 다친 해결사를 병원까지 옮겨 달라. 그를 노리는 자들이 뒤를 쫓고 있다":"부상 해결사 호송","뒷골목 깊숙한 곳에 숨은 밀수 창고를 찾아 달라":"밀수 창고 수색","사라진 해결사 셋의 행방을 찾아 달라":"실종 해결사 수색","조직의 거래에 담보로 잡힌 인질들이 갇힌 건물을 찾아 달라":"인질 감금처 수색","둥지 하청 연구소에서 빠져나간 시료 상자를 찾아 달라":"연구소 시료 수색","조직이 인질을 숨겨 둔 곳을 찾아 달라. 인질이 보내온 사진은 단 한 장뿐이다":"인질 은신처 수색","날개 하청 창고에서 털린 실험 장치가 뒷골목 어딘가에 숨겨져 있다. 어느 건물인지 찾아 달라":"도난 실험 장치 수색","비어 있어야 할 교실에서 출석을 부르는 소리를 멈춰 달라":"폐교 출석 괴담 조사","폐역 대기실의 시계들이 한꺼번에 거꾸로 돌기 시작했다. 살펴보러 들어간 직원이 돌아오지 않았다":"폐역 역행 시계 조사","날개 공급 계약을 가로채려는 조직 대리인을 제압해 달라. 납품 시설 세 곳이 벌써 습격당했다":"공급 계약 분쟁 제압","협회가 배정한 사무소 둘을 전멸시킨 현상금 해결사를 제압해 달라. 피해가 더 커지기 전에 끝내야 한다":"현상금 해결사 제압","날개의 물류 기지를 노리는 무장 집단을 막아 달라":"날개 물류 기지 방어","특색을 노린다는 해결사 사냥꾼을 제압해 달라":"해결사 사냥꾼 제압","둥지 하나의 출입을 틀어쥔 조직의 간부진을 무너뜨려 달라":"조직 간부진 제압","협회 지부를 습격한 자들을 붙잡아 넘겨 달라":"협회 지부 습격범 체포","사무소 두 곳이 전멸한 구역을 차지한 무장 집단을 몰아내 달라":"무장 점거 구역 탈환","도시 경계에 무장 검문소를 세운 조직을 무너뜨려 달라. 협회 차량조차 지나가지 못한다":"불법 검문소 철거","도시 악몽급 재해로 지정된 괴인을 토벌해 달라. 담당 협회 지부가 긴급 의뢰를 냈다":"도시 악몽급 괴인 토벌","둥지 하나를 피로 물들인 자를 끝내 달라":"둥지 학살범 처리","구역 하나를 공포에 몰아넣은 연쇄 살인마를 끝내 달라":"연쇄 살인마 처리","날개의 기밀을 팔아넘기고 사람을 묻어 온 중개인을 처리해 달라":"날개 기밀 중개인 처리","도시의 악몽으로 분류된 살인자를 찾아 끝내 달라. 시신이 아직도 늘고 있다":"도시 악몽급 살인자 처리","날개 하청 사무실을 습격해 직원들을 죽인 무장 책임자를 사살해 달라":"하청 사무실 습격 지휘관 처리","폐쇄된 L사 지부에서 엔케팔린을 훔쳐 달아난 운반책을 산 채로 잡아 달라. 밀봉 용기는 절대 열지 말 것":"엔케팔린 운반책 생포","뒷골목의 밤이 시작되기 직전에 사라진 아이를 찾아 달라. 새벽까지 버틸 수 있을지 모른다":"실종 아동 수색","협회 호송 중 탈주한 현상금 해결사를 다시 붙잡아 달라":"탈주 현상금 해결사 체포","둥지 경계를 넘어 달아나는 밀수 차량을 멈춰 세워 달라":"밀수 차량 추격","폐쇄 구역으로 숨어든 실험체를 붙잡아 달라":"폐쇄 구역 실험체 포획","협회 호송망을 뚫고 달아난 해결사를 산 채로 잡아 달라. 발목에 추적기가 붙어 있다":"협회 호송 탈주범 생포","둥지 봉쇄선을 넘어가는 불법 화물차를 붙잡아 달라. 사고를 내서는 안 된다":"불법 화물차 추격","날개 내부의 배신자를 기록 속에서 찾아내 달라":"날개 내부 배신자 조사","건물 한 층이 통째로 사라지고 실종자가 열두 명 나왔다. 도면에 없는 구역이 어디인지 밝혀 달라":"사라진 층 조사","사라진 특색 해결사의 마지막 의뢰서를 복원해 달라":"특색 해결사 마지막 의뢰서 복원","날개 계약서에 숨겨진 조항의 진짜 뜻을 밝혀 달라":"날개 계약 조항 분석","둥지 하나가 통째로 비어 버린 날의 출입 기록을 맞춰 달라":"둥지 집단 실종 조사","경비 시스템을 속이고 이사회 건물에 들어간 침입자가 어떻게 들어갔는지 밝혀 달라":"이사회 건물 침입 경로 조사","협회 지부끼리 주고받은 서신 내용이 바뀌었다. 어느 단계에서 손을 탔는지 확인해 달라":"협회 서신 변조 조사","날개 경계까지 핵심 인물을 호위해 달라":"날개 핵심 인물 호위","손가락 산하 조직의 거래를 목격한 증인을 사흘 동안 지켜 달라. 협회가 신병을 넘겨받을 때까지다":"손가락 거래 목격자 경호","날개 이사회에 나서는 증인을 끝까지 지켜 달라":"이사회 증인 호위","협회가 압수한 유물 상자를 지부까지 옮겨 달라":"압수품 호송","날개 간부가 나설 비공개 청문회까지 호위해 달라. 도착했다는 사실조차 새어 나가선 안 된다":"날개 간부 청문회 호위","협회가 확보한 중요한 증인을 도시 경계 너머까지 데려다 달라":"협회 핵심 증인 호송","폐쇄된 둥지 구역에 남은 생존자를 찾아 달라":"폐쇄 둥지 생존자 수색","뒷골목의 밤에 사라진 사무소 하나의 흔적을 찾아 달라":"실종 사무소 수색","폐쇄 구역 깊은 곳의 지하 금고를 찾아 달라":"폐쇄 구역 지하 금고 수색","행방이 끊긴 수송대가 마지막으로 멈춘 곳을 찾아 달라":"실종 수송대 수색","폐쇄 구역에서 실종된 조사반이 마지막으로 움직인 곳을 찾아 달라":"실종 조사반 수색","둥지 아래 비밀 운송로의 입구를 찾아 달라. 아는 사람들은 하나같이 입을 다물었다":"둥지 지하 운송로 수색","밤마다 아무도 없는 거리에서 장례 행렬 발소리가 들린다. 조사하러 간 해결사까지 실종됐다":"텅 빈 거리 장례 행렬 조사","도시 악몽급 재해가 장악한 구역을 되찾아 달라. 구조를 요청한 생존자가 남아 있다":"도시 악몽 점거 구역 탈환","해결사 사무소 여럿을 박살 낸 위험인물을 사살해 달라":"고위험 인물 처리","대규모 봉쇄 직전에 달아난 핵심 용의자를 쫓아가 산 채로 잡아 달라":"핵심 용의자 생포","구역 하나의 보안 체계를 통째로 무너뜨린 침투 수법을 밝혀 달라":"구역 보안 붕괴 조사","도시 악몽급 재해가 번지는 구역에서 핵심 증인을 빼내 달라":"도시 악몽 구역 증인 구출","격리된 구역 안에서 연락이 끊긴 선발 조사대가 어디로 갔는지 찾아 달라":"격리 구역 조사대 수색","도시 악몽급으로 지정된 현상 주변의 이상 징후를 조사해 달라":"도시 악몽 주변 이상 징후 조사","협회 검문대를 무력화한 조직 대리인을 제압해 달라":"검문대 습격 조직 대리인 제압","둥지 외곽을 장악하고 민간인을 죽인 무장 지휘관을 사살해 달라":"외곽 무장 지휘관 처리","날개 기술 정보를 들고 봉쇄선을 뚫은 해결사를 쫓아 달라":"날개 기술 유출자 추적","서로 다른 구역에서 한꺼번에 벌어진 보안 침입이 어떻게 이어져 있는지 찾아 달라":"연쇄 보안 침입 조사","살해 위협을 받는 기업 감사를 비공개 심문 장소까지 호위해 달라":"기업 감사 호위","무장 경비가 지키는 폐쇄 연구 시설에 들어갈 자리를 찾아 달라":"폐쇄 연구시설 진입로 수색","다가간 해결사들이 서로를 적으로 착각하는 현상을 조사해 달라":"아군 오인 현상 조사","현상금이 걸린 전직 해결사가 차지한 회랑을 제압하고 민간인을 구해 달라":"현상금 해결사 제압·민간인 구출","사무소 두 곳을 전멸시킨 해결사 사냥꾼을 사살해 달라":"해결사 사냥꾼 처리","하청 기업의 핵심 설계 자료를 들고 달아난 경호 책임자를 산 채로 잡아 달라":"설계 자료 탈취범 생포","협회 의뢰 정보가 어떤 길로 적에게 넘어갔는지 정확히 밝혀 달라":"협회 정보 유출 조사","조직의 보복을 앞둔 협회 증언자를 안전 구역까지 호위해 달라":"협회 증언자 호위","폐쇄 구역에 들어간 상급 해결사 팀과 연락이 끊겼다. 마지막 위치를 확인해 달라":"실종 상급 해결사 팀 수색","고위 해결사들이 한꺼번에 이상한 행동을 보인 사건을 조사해 달라":"고위 해결사 이상 행동 조사","둥지 외곽 경비소를 장악한 무장 간부를 제압하고 출입로를 되찾아 달라":"둥지 외곽 경비소 탈환","연쇄 실종 사건을 지휘한 조직의 처형 담당자를 사살해 달라":"조직 처형인 처리","협회 경비를 뚫고 달아난 해결사를 누구보다 먼저 붙잡아 달라":"협회 탈주 해결사 체포","사무소 네 곳을 같은 함정으로 끌어들인 위조 계약의 발주처를 찾아 달라":"위조 계약 발주처 조사","내부 고발 자료를 쥔 연구 책임자를 공청회장까지 호위해 달라":"연구 책임자 호위","밀수 조직의 비밀 출입로가 어느 건물로 이어지는지 찾아 달라":"밀수 비밀 통로 수색","실험 현장에서 나타난 인지 이상 현상을 조사해 달라":"실험 현장 인지 이상 조사","강화 의체를 단 조직원들을 앞세워 진료소를 점거한 간부를 제압해 달라":"진료소 점거 간부 제압","협회 계약 해결사를 공격한 청부 살인업자를 사살해 달라":"청부업자 처리","보호하던 증인을 빼돌린 연락책을 찾아 산 채로 잡아 달라":"증인 납치 연락책 생포","의체 시술 명부가 어떻게 위조됐는지, 누가 얽혔는지 조사해 달라":"의체 시술 명부 위조 조사","조직에게 협박받는 연구소 검사관을 협회 청사까지 호위해 달라":"연구소 검사관 호위","실종된 조사반이 마지막으로 확인한 지하 시설을 찾아 달라":"실종 조사반 지하 시설 수색","시술을 받고 나서 동료를 공격하는 기술자의 상태를 확인해 달라":"시술 기술자 상태 조사","하청 경비대를 앞세워 구역 통행을 막아 버린 빚 수금원을 제압해 달라":"통행 차단 수금원 제압","구호 물품을 빼앗고 사람까지 해친 밀수 조직원을 사살해 달라":"구호 물품 약탈자 처리","공방 설계도 사본을 들고 달아난 중개인을 붙잡아 달라":"공방 설계도 탈취범 체포","납품한 개조 의체마다 같은 결함이 되풀이된다. 원인을 조사해 달라":"개조 의체 결함 조사","협회 연락 담당자를 조직의 감시망 밖까지 호위해 달라":"협회 연락관 호위","무장 조직이 빼돌려 숨긴 수송 물자가 어디 있는지 찾아 달라":"도난 수송 물자 수색","같은 공방에서 시술받은 작업자들이 똑같은 악몽을 꾼다. 시술 기록을 조사해 달라":"공방 집단 악몽 조사","배송로를 차지하고 통행료를 걷는 조직 행동대원을 몰아내 달라":"배송로 점거 조직원 제압","수송차를 습격해 운전자를 죽인 조직원을 사살해 달라":"수송차 습격 조직원 처리","의수 부품을 빼돌리고 달아난 하청 직원을 붙잡아 달라":"의체 부품 탈취범 체포","출고 서류마다 운송 번호가 다르게 적힌 까닭을 밝혀 달라":"운송 번호 위조 조사","조직이 노리는 부품 운반차를 조립 공장까지 호위해 달라":"부품 운반차 호위","폐기물 처리장에서 빠져나간 의료 기구 상자를 찾아 달라":"의료 기구 상자 수색","밤 창고에 나타난 정체 모를 그림자를 확인해 달라":"야간 창고 그림자 조사","야시장 수금통을 노리는 작은 패거리를 제압해 달라":"야시장 약탈단 제압","세탁소 주인을 칼로 찌르고 달아난 자를 찾아 사살해 달라":"세탁소 습격범 처리","값비싼 부품 상자를 낚아채 시장 쪽으로 달아난 도둑을 잡아 달라":"부품 상자 절도범 체포","골목 상점 자물쇠를 죄다 같은 수법으로 딴 범인을 찾아 달라":"연쇄 상점 침입 조사","수금일만 노리는 소매치기로부터 상인회 회계를 지켜 달라":"상인회 회계 경호","폐창고로 옮겨진 거래 물건이 어디 있는지 찾아 달라":"폐창고 거래 물품 수색","빈 다세대 건물에서 밤마다 들려오는 발소리가 어디서 나는지 확인해 달라":"빈 건물 괴음 조사","가게 앞을 차지하고 자릿세를 뜯는 불량배 둘을 제압해 달라. 손님들이 발길을 돌린다":"자릿세 뜯는 쥐 제압","밤길에 흉기를 들고 주민들을 쫓아다니는 쥐 한 놈을 처리해 달라":"골목 칼잡이 쥐 처리","옆집에서 빌린 손수레를 끌고 달아난 청년을 붙잡아 달라":"도난 손수레 회수","공구함에서 날마다 나사가 한 줌씩 없어진다. 이유를 알아내 달라":"공구함 부품 실종 조사","뒷골목의 밤이 끝난 뒤, 장사를 마친 상인의 귀갓길을 지켜 달라":"귀가 상인 호위","철길 옆 공터에서 잃어버린 짐 보따리를 찾아 달라":"분실 짐 보따리 수색","빈 점포에서 한밤중에 울리는 종소리를 조사해 달라":"빈 점포 종소리 조사","골목 아이들을 노리는 자가 있다. 다시는 움직이지 못하게 해 달라":"아이 노리는 자 처리","배신한 조직원을 찾아 끝내 달라":"조직 배신자 처리","밤마다 사람을 해치는 자를 처리해 달라":"야간 습격범 처리","계약을 어기고 문을 걸어 잠근 하청 업체 사무실을 열게 해 달라":"계약 위반 업체 제압","골목을 점거한 조직 은신처의 셔터를 뚫고 들어가 정리해 달라":"조직 은신처 소탕","밀린 빚을 갚지 않는 자의 가게를 찾아가 받아 와 달라":"연체 채무 회수","무너진 창고 입구를 뚫고 남은 재고를 꺼내 달라":"창고 재고 회수","급한 서류를 둥지 경계까지 기한 안에 전해 달라":"긴급 서류 전달","가게가 털린 현장을 조사해 누구 짓인지 알아내 달라":"상점 절도 조사","거래 장부에서 빠져나간 돈의 흐름을 밝혀 달라":"거래 대금 횡령 조사","밤마다 노래가 들리는 지하실을 조사해 달라":"지하실 괴음 조사","시계가 모두 거꾸로 도는 대기실을 정리해 달라":"대기실 역행 시계 조사","둥지 경계까지 화물 차량을 호위해 달라":"화물 차량 호위","협회 사무실까지 증인을 안전하게 데려다 달라":"협회 증인 호위","가판대를 털고 달아난 콩콩이파 꼬맹이를 잡아 달라. 물건만 돌려받으면 된다고 한다":"가판대 절도품 회수","장터 입구에 진을 친 콩콩이파가 '통행료'를 걷고 있다. 쫓아내 달라":"콩콩이파 제압","콩콩이파가 훔쳐 간 가게 금고 열쇠를 찾아 달라":"가게 금고 열쇠 회수","기름철 놈들이 의수 정비소를 점거하고 부품을 내놓으라며 버틴다. 몰아내 달라":"기름철 정비소 점거 해제","기름철이 고물상 창고에서 훔쳐 간 의체 관절 상자를 찾아 달라":"의체 관절 상자 수색","사람을 붙잡아 의체 값을 대려는 기름철 일당을 처리해 달라":"기름철 납치범 토벌","도끼를 멘 도끼파가 식당가를 돌며 자릿세를 걷는다. 다시는 얼씬도 못 하게 해 달라":"도끼파 제압","자릿세를 거부한 국숫집 문짝이 도끼에 쪼개졌다. 한 놈도 남기지 말아 달라":"도끼파 보복 토벌","도끼파에 빌린 돈을 갚으러 간다. 돈만 챙기고 손부터 쓸 놈들이니 따라가 지켜 달라":"도끼파 채무 상환 호위","녹슨 사슬파에 끌려간 형을 데려와 달라. 폐공장 쪽으로 갔다는 말이 있다":"납치 피해자 구출","녹슨 사슬파가 골목 어귀에서 사람을 묶어 간다. 놈들을 끝내 달라":"녹슨 사슬파 소탕","사슬파가 노리는 채무자를 빚 정리 사무소까지 무사히 데려다 달라":"사슬파 채무자 호위","살뭉치가 '의식의 밤'을 예고했다. 그 밤이 오기 전에 은신처를 끝내 달라":"살뭉치 은신처 소탕","살뭉치에게 끌려간 사람들이 어디로 갔는지 알아내 달라":"살뭉치 납치 피해자 수색","살뭉치의 표적이 된 정육점 주인을 사흘 밤 지켜 달라":"정육점 주인 경호","신체포기각서 수거팀이 오늘 밤 남편 다리를 '회수'하러 온다. 막아 달라":"신체 회수 대상자 경호","신체포기각서 사무실에서 아버지의 계약서 원본을 찾아와 달라":"신체포기각서 원본 회수","회수를 핑계로 아무나 끌고 가는 신체포기각서 수거팀을 처리해 달라":"신체포기각서 수거팀 제압","정중한 말투로 '옷감'을 사러 온다는 가면 쓴 재단사들이 있다. 사육제 작업장을 찾아 없애 달라":"사육제 작업장 소탕","둥지 경매장에 출처를 알 수 없는 비단이 흘러들었다. 사육제와 얽혀 있는지 확인해 달라":"의문의 비단 출처 조사","사육제가 '치수를 잰' 사람이 있다. 사흘 밤만 그 사람을 지켜 달라":"사육제 표적 경호","창틀에 검은 깃털이 꽂혀 있었다. 나이트윙의 표적이 된 것이다. 사흘만 지켜 달라":"나이트윙 표적 경호","나이트윙이 드나든 흔적을 쫓아 누가 의뢰했는지 알아내 달라":"나이트윙 의뢰인 조사","나이트윙 은신처가 드러났다. 놈들이 다시 날아오르기 전에 끝내 달라":"나이트윙 은신처 소탕","당나귀 · 개 · 고양이 · 닭 머리를 단 넷이 골목 가게마다 '공연비'를 뜯는다. 그만두게 해 달라":"브레멘 음악대 제압","밤마다 기괴한 합창이 울리고 나면 사람이 하나씩 사라진다. 브레멘 음악대를 끝내 달라":"브레멘 음악대 토벌","브레멘 음악대 '공연'을 보고 말을 잃은 아들을 데려와 달라. 놈들 은신처에 있다":"공연 피해자 구출","웃는 가면을 쓴 무리가 밤마다 사람을 데려간다. 은신처를 찾아 끝내 달라":"웃는 얼굴들 토벌","남편이 웃는 얼굴들에게 끌려갔다는 소문이 있다. 어디로 갔는지만이라도 알아봐 달라":"납치된 남편 수색","웃는 얼굴들에게서 겨우 도망친 증인을 협회 지부까지 데려다 달라. 놈들이 뒤를 밟고 있다":"웃는 얼굴들 증인 호위","일곱 해가 지나고 처음 걷는 두 발자국 아래에서, 세 번 손바닥으로 바닥을 내리쳐라":"발자국 지령","해가 지기 전, 열두 번째로 마주친 우산의 주인에게 그 우산의 무게를 물어라":"우산 무게 지령","왼손에 든 것을 내려놓지 말고, 계단 마흔네 칸을 거꾸로 내려가라":"역행 계단 지령","가장 먼저 우는 개에게 이름을 지어 주고, 그 이름을 세 번 틀리게 불러라":"개의 이름 지령","푸른 문이 달린 집의 초인종을 누르고, 문이 열리기 전에 떠나라":"푸른 문 지령","다섯 번째 골목의 가로등 밑에 서서, 불이 두 번 깜빡일 때까지 숨을 참아라":"가로등 지령","오늘 받은 거스름돈 중 가장 작은 동전을 반으로 갈라, 한쪽을 처음 보는 이의 신발 안에 넣어라":"동전 반쪽 지령","지붕 위의 까마귀가 날아오르기 전에 그 수를 세라. 짝수면 동쪽으로, 홀수면 서쪽으로 걸어라":"까마귀 지령","자정까지 사람의 이름이 들어간 말을 입 밖에 내지 마라. 단, 한 번은 반드시 불러야 한다":"이름 금기 지령","열여덟 시 정각, 붉은 것을 먹고 있는 사람의 접시에서 하나를 가져와라":"붉은 음식 지령","눈을 감고 가장 가까운 벽까지 걸어가, 이마를 대고 일곱까지 세어라. 여섯은 세지 마라":"벽 앞 계수 지령","오늘 처음 만나는 아이에게 지도를 그려 주어라. 존재하지 않는 곳으로 가는 길을":"존재하지 않는 길 지령","세 번째로 울리는 전화를 받고, 상대가 누구든 \"네, 다녀왔습니다\"라고 답하라":"세 번째 전화 지령","가장 높은 건물의 그림자가 가장 짧아질 때, 그 그림자 끝에 서 있는 사람을 쓰러뜨려라":"그림자 끝 지령","주인을 모르는 장갑 한 짝을 찾아, 해가 지기 전에 그 짝이 될 장갑을 만들어라":"장갑 한 짝 지령","빗물이 고인 웅덩이 아홉 개를 지나며, 여덟 번째에서만 발을 적셔라":"웅덩이 지령","빨랫줄에 널어 둔 빨간 고무장갑이 매일 밤 한 짝씩 사라진다. 어디로 가는지 찾아 달라":"빨간 고무장갑 수색","장갑을 가져가던 건 동네 아이들이었다. 오늘 밤 장갑을 들고 달아나는 아이를 붙잡아 사정을 들어 달라":"장갑 절도 아동 추적","아이들에게 장갑을 훔쳐 오게 시킨 쥐 두목을 혼내 달라. 아이들은 건드리지 말고":"뒷골목 쥐 두목 제압","문 닫은 가게마다 새벽 세 시에 주문하지 않은 상자가 배달된다. 보낸 곳을 찾아 달라":"의문의 소포 출처 조사","오늘 새벽, 상자를 받기로 한 국밥집 주인 곁을 지켜 달라. 배달부의 얼굴을 확인하고 싶다고 한다":"국밥집 주인 경호","배달부는 망할 가게를 골라 헐값에 사들이는 '가게 사냥꾼'의 심부름꾼이었다. 그들을 붙잡아 달라":"가게 사냥꾼 제압","사람이 사라진 자리마다 종이학이 한 마리씩 놓여 있다. 종이학에 숨은 표식을 풀어 달라":"종이학 표식 해독","숫자를 따라가면 다음에 사라질 사람이 보인다. 그 사람이 사라지기 전에 찾아 달라":"다음 실종 대상자 수색","종이학을 접던 자는 협회 명부에서 이름이 지워진 해결사였다. 백 번째를 접기 전에 끝내 달라":"종이학 해결사 처리","장례를 치른 시신이 며칠 뒤 의체를 단 채 거리를 걷는다는 신고가 잇따른다. 무덤을 확인해 달라":"시신 재출현 사건 조사","의체를 단 '돌아온 사람'을 목격한 증인을 협회 지부까지 데려가 달라. 누군가 그를 쫓고 있다":"의체 시신 목격자 호위","시신에 의체를 덧붙이던 장의사가 사람이 아닌 무언가로 변했다. 장례식장 지하에 남은 그것을 처리해 달라":"뒤틀린 장의사 토벌","검은 우산 행렬이 지나간 구역마다 소리가 사라진다. 행렬의 출발지를 찾아 달라":"검은 우산 행렬 출발지 수색","오늘 밤 행렬이 지나갈 블록의 사람들을 다른 구역까지 피신시켜 달라":"행렬 피해 구역 주민 대피","행렬의 맨 앞, 가장 큰 우산을 쓴 자를 쓰러뜨려 달라":"검은 우산의 주인 토벌","구역 하나가 같은 하루를 반복하고 있다. 중앙 시계탑에서 원인을 조사해 달라":"반복되는 하루 원인 조사","같은 하루를 반복하는 구역에서 매번 다르게 움직이는 사람을 찾아 달라":"시간 반복 예외 인물 수색","시계탑 꼭대기에서 하루를 붙잡고 있는 자를 쓰러뜨리고, 바늘을 다시 돌려 달라":"수요일을 붙잡은 자 토벌"});
+  const names = requestTitle.names || (requestTitle.names = {"가게 앞을 차지하고 손님을 위협하는 패거리를 쫓아내 달라. 벌써 사흘째 문을 못 열었다":"상점 앞 쥐떼 퇴거","창고를 점거한 부랑자들을 내보내 달라. 맡겨 둔 물건을 꺼내러 들어갈 수가 없다":"창고 점거 부랑자 퇴거","골목 상인들한테 보호비를 뜯는 쥐들을 쫓아내 달라. 내일까지 돈을 못 내면 가판을 부수겠다고 했다":"보호비 뜯는 쥐 소탕","술값도 안 내고 가게 집기를 부순 손님을 제압해 달라. 주인이 직접 나섰다가 팔을 다쳤다":"주점 난동 손님 제압","공방에 넘길 고철만 골라 훔쳐 가는 도둑을 잡아 달라. 이번 납품까지 놓치면 가게 문을 닫아야 한다":"고철 절도범 체포","세탁소 뒷문을 뜯으려는 쥐들을 쫓아내 달라. 새벽마다 자물쇠가 하나씩 망가진다":"세탁소 뒷문 쥐 소탕","아침마다 빵집 앞에 자리 잡는 부랑자 둘을 다른 데로 보내 달라. 빵을 나눠 줘도 소용없었다고 한다":"빵집 앞 부랑자 퇴거","폐품 수레를 밀던 노인을 발로 걷어찬 양아치들을 찾아 제압해 달라":"노인 폭행 양아치 제압","야시장 입구에서 손님들을 위협하는 취객을 제압해 달라. 당한 상인만 벌써 셋이다":"야시장 취객 제압","아이들 몫의 식량을 빼앗고 흉기를 휘두른 쥐를 처리해 달라. 다친 사람이 벌써 셋이다":"식량 약탈 쥐 처리","가게를 세 번이나 턴 쥐새끼를 다시는 못 오게 해 달라":"상점 털이범 처리","버스 정류장에서 노인들 지갑만 노리는 쥐를 다시는 얼씬도 못 하게 해 달라":"정류장 소매치기 처리","가게 뒤 창고에 불 지른 놈을 찾아 끝내 달라. 이번에 끝내 달라":"창고 방화범 처리","가게를 털고 달아나다 주인을 찌른 강도를 찾아 끝내 달라":"상점 강도 처리","골목 안쪽에서 밤마다 지나가는 사람을 찌르는 자를 처리해 달라":"골목 칼잡이 처리","집 나간 고양이 '보리'를 찾아 달라. 주인은 뒷골목의 밤이 오기 전까지 기다리겠다고 한다":"고양이 '보리' 수색","지갑을 낚아채 달아난 아이를 쫓아 지갑을 되찾아 달라":"낚아챈 지갑 회수","산책 중 줄이 풀려 달아난 강아지를 붙잡아 달라":"반려견 포획","외상값을 안 갚고 달아난 손님을 붙잡아 달라":"외상 채무자 추적","가게 생선을 물고 달아난 길고양이를 쫓아 달라":"생선 절도 고양이 추격","시장에서 돈통을 낚아채 달아난 아이를 붙잡아 달라. 돈은 그대로 돌려받아야 한다":"시장 돈통 회수","가게 문을 열자마자 뛰쳐나간 개를 찾아 달라. 목줄에 이름이 적혀 있다":"실종 반려견 수색","주머니를 턴 소매치기가 철교 아래로 달아났다. 검은 가방만은 꼭 되찾아 달라":"검은 가방 회수","잃어버린 결혼반지를 찾아 달라. 어제 지나온 골목 어딘가에 있다":"결혼반지 수색","구역 순환차에 두고 내린 서류 가방을 찾아 달라. 안에 든 계약서를 찾기 전에는 돌아갈 수 없다고 한다":"서류 가방 회수","누가 매일 아침 우유를 훔쳐 가는지 알아내 달라":"우유 절도 조사","사라진 우편물이 어디로 갔는지 알아내 달라":"실종 우편물 조사","누가 가게 간판 전구를 하나씩 빼 가는지 알아내 달라":"간판 전구 절도 조사","엘리베이터에 붙은 협박 쪽지를 누가 붙였는지 알아내 달라":"협박 쪽지 조사","문을 닫고 나서도 계산대가 이따금 열려 있다. 누가 손을 대는지 찾아 달라":"계산대 절도 조사","세탁소에 맡긴 외투에서 주인 모를 사진이 나왔다. 사진 속 사람들이 누군지 알아내 달라":"사진 속 인물 조사","아파트 공동 현관 잠금장치가 밤마다 풀린다. 누가 건드리는지 확인해 달라":"공동현관 침입 조사","시장까지 할머니의 짐수레를 지켜 달라":"시장 짐수레 호위","야간 근무를 마친 약국 직원을 집까지 데려다 달라. 며칠째 같은 남자가 뒤를 밟는다":"약국 직원 호위","일주일 치 장사 대금을 보관소까지 옮기는 길을 지켜 달라. 수금일을 아는 쥐들이 기다리고 있다":"장사 대금 호송","밤 장사를 마친 포장마차 주인을 골목 끝까지 바래다 달라":"포장마차 주인 호위","학원 끝난 아이들을 버스 정류장까지 데려다 달라":"학원생 호위","수술을 마친 아버지를 집까지 모셔 가야 한다. 길에서 넘어지지 않게 곁을 지켜 달라":"수술 환자 호송","하루 매상으로 받은 동전 자루를 교환소까지 옮기는 길에 동행해 달라":"매상 운반 호위","골목 끝에 사는 동생에게 약을 가져다줘야 한다. 돌아오는 길까지 부탁한다":"약품 전달 호위","사흘째 안 보이는 고양이를 골목 일대에서 찾아 달라":"실종 고양이 수색","놀이터에서 잃어버린 아이의 인형을 찾아 달라":"분실 인형 수색","어제 골목에서 흘린 가게 열쇠 꾸러미를 찾아 달라":"가게 열쇠 수색","폐건물 어딘가에 버려진 손수레를 찾아 달라":"폐건물 손수레 수색","아침마다 사라지는 신문 뭉치가 어디로 가는지 찾아 달라":"실종 신문 수색","지난주 문을 닫은 식당 주방에서 사라진 칼 상자를 찾아 달라":"주방 칼 상자 수색","비 오기 전에, 골목 배수구에 빠뜨린 반지 하나를 찾아 달라":"배수구 반지 수색","이삿짐 차가 떠난 뒤로, 침대 밑에 넣어 둔 편지 묶음이 없어졌다. 찾아 달라":"분실 편지 수색","폐창고에서 매일 같은 시각에 쇠 긁는 소리가 난다. 안에 사람이 있는지 확인해 달라":"폐창고 괴음 조사","납품 대금을 떼먹고 사무실 문을 걸어 잠근 하청업자를 끌어내 달라. 경비까지 고용했다고 한다":"하청업자 제압","운송로를 막고 통행료를 걷는 조직원들을 몰아내 달라. 창고 셔터 뒤에 무장한 놈들이 숨어 있다":"운송로 점거단 제압","채무자가 가게를 경호원들한테 맡기고 잠적했다. 계약서에 적힌 금액을 받아 와 달라":"계약 채무 회수","무너진 창고 입구를 막고 선 자들을 치우고 재고를 꺼내 달라":"창고 재고 회수","가게 앞을 막고 자릿세를 내놓으라는 조직원들을 쫓아내 달라":"자릿세 갈취단 제압","불법 개조 의수로 행패를 부리는 자를 붙잡아 달라":"불법 개조 의체 난동꾼 제압","밤마다 창고 셔터를 뜯는 일당을 제압해 달라":"창고털이 일당 제압","부품을 빼돌리던 경비들이 공방 창고를 점거했다. 무기를 내려놓게 해 달라":"공방 창고 점거단 제압","골목 수송차를 세우는 조직 행동대원들을 몰아내 달라. 기사들이 운행을 거부하고 있다":"수송로 확보","현상금이 걸린 강도를 처리해 달라. 의뢰인은 사살을 요구했다":"현상수배 강도 처리","조직 장부를 들고 달아난 배신자를 찾아 처리해 달라. 의뢰인은 생포를 바라지 않는다":"조직 배신자 처리","배달원 셋을 다치게 한 강도를 끝내 달라. 증거는 이미 넘겼다고 한다":"배달원 습격범 처리","장기를 노리고 골목을 도는 자를 처리해 달라":"장기 사냥꾼 처리","남의 의수를 강제로 뜯어 가는 사냥꾼이 있다. 더 다치는 사람이 나오기 전에 처리해 달라":"의체 사냥꾼 처리","밤길 수송차를 습격해 운전자를 죽인 일당을 끝내 달라":"수송차 습격대 처리","부품을 들고 달아난 배달원을 붙잡아 물건을 회수해 달라":"도난 부품 회수","도망친 채무자를 날이 밝기 전에 붙잡아 달라":"도주 채무자 추적","소매치기 일당을 추격해 빼앗긴 물건을 되찾아 달라":"도난 물품 회수","하청 연구소에서 풀려난 개조 짐승을 산 채로 잡아 달라. 연구소는 짐승을 죽이면 보수를 주지 않겠다고 한다":"하청 연구소 탈주 개조체 포획","감정을 맡긴 시계를 들고 사라진 손님을 붙잡아 달라":"감정품 절도범 추적","시장 바닥을 휘젓고 달아난 개조 들개를 붙잡아 달라":"개조 들개 포획","검문소를 뛰어넘어 도망친 수배자를 붙잡아 달라. 의체 다리를 달았다":"검문소 탈주범 체포","공방에서 설계도를 훔친 자가 수로 쪽으로 달아났다. 물건을 되찾아 달라":"공방 설계도 회수","경비 장치는 멀쩡한데 가게 물건만 사라졌다. 어디로 들어왔는지, 누가 그랬는지 밝혀 달라":"상점 침입 사건 조사","위조된 감정서를 가려내고 진짜 출처를 알아내 달라":"위조 감정서 감별","사라진 직원의 마지막 행적을 조사해 달라":"실종 직원 행적 조사","장부에 없는 돈이 매주 같은 계좌로 빠져나간다. 어느 납품업자가 손을 댔는지 밝혀 달라":"납품 대금 횡령 조사","가게 금고만 정확히 비우고 사라진 수법을 밝혀 달라":"금고 절도 수법 조사","의뢰서마다 같은 필체로 적힌 가짜 서명을 쫓아 달라":"위조 서명 추적","창고 화물 열 개가 통째로 사라졌다. 출고 서명은 전부 멀쩡하다는데, 확인해 달라":"창고 화물 실종 조사","고쳐 단 의수가 움직일 때마다 남의 신호를 받는다. 원인을 찾아 달라":"개조 의수 신호 혼선 조사","둥지 경계 검문소까지 공방 납품 차량을 호위해 달라. 경쟁 업체가 운송을 훼방 놓는다고 한다":"공방 납품차 호위","야간 시장 개장 시간 동안 상인을 지켜 달라":"야시장 상인 경호","경매에서 낙찰된 물건을 고객에게 전달하는 길을 지켜 달라":"경매 낙찰품 호송","빚 독촉을 피해 이사 가는 가족의 짐차를 지켜 달라":"이삿짐 차량 호위","의수 부품 상자를 다른 정비소까지 옮겨 달라":"의체 부품 호송","구역을 떠나는 증인을 새 거처까지 데려다 달라. 이름은 의뢰를 받으면 알려 준다고 한다":"증인 거처 이전 호위","인공 장기 상자를 의무실까지 옮겨 달라. 온도 유지 장치가 멈추면 장기는 버려야 한다":"인공 장기 호송","폐공장에 숨겨진 장부를 찾아 달라":"폐공장 장부 수색","사흘째 연락이 없는 수리공을 찾아 달라":"실종 수리공 수색","뒷골목 하수로 어딘가에 떨어진 열쇠를 찾아 달라":"하수로 열쇠 수색","지하 주차장 어딘가에 숨겨진 장물 상자를 찾아 달라":"장물 상자 수색","배달 도중 사라진 화물 상자를 찾아 달라":"실종 화물 수색","폐기한 수송차에서 사라진 경비용 무전기를 찾아 달라. 누군가 그걸로 계속 송신하고 있다":"경비 무전기 수색","공장 철거 현장에서 인부 하나가 사라졌다. 그가 마지막으로 들어간 방을 찾아 달라":"실종 인부 수색","영업이 끝난 지하실에서 밤마다 낯선 노랫소리가 들린다. 내려간 직원 둘이 돌아오지 않았다":"지하실 괴음 조사","계단참에 똑같은 얼굴의 아이가 서 있다는 층이 있다. 확인해 달라":"계단참 이상 현상 조사","둥지 경계의 물류 도로를 가로막은 조직 간부를 제압해 달라. 날개 하청업체까지 피해를 보고 있다":"물류 도로 확보","의뢰인을 가로채고 사무소 셋을 습격한 무허가 해결사 무리를 제압해 달라. 뒤에 조직이 있다":"무허가 해결사 무리 제압","장물 경매장으로 넘어간 공방 시제품을 되찾아 달라. 무장 경비가 출입구를 막고 있다":"공방 시제품 회수","협회 등록을 빼앗기고 날뛰는 사무소 하나를 정리해 달라":"등록 말소 사무소 정리","둥지 경계 검문소를 무단 점거한 무리를 몰아내 달라":"검문소 탈환","밀수품 창고를 지키는 공방제 장비 경비를 뚫어 달라":"밀수 창고 돌파","민간 병원에 들이닥친 무장 조직을 쫓아내 달라. 환자들을 인질로 잡고 있다":"병원 점거단 제압","둥지 외곽 검문로를 차지한 경비대장을 끌어내 달라. 지나가는 사람마다 돈을 뜯는다":"외곽 검문로 확보","구역 주민을 사냥하듯 죽이는 자를 처리해 달라. 시신은 전부 같은 골목에서 나왔다":"사람 사냥꾼 처리","의뢰인을 둘이나 죽인 조직 간부를 끝내 달라":"조직 간부 처리","뒷골목 경매에 사람을 올리는 자를 처리해 달라":"인신매매 중개인 처리","해결사를 사칭해 의뢰인만 노리는 자를 끝내 달라":"사칭 해결사 처리","불법 시술을 받은 사람들을 실험체로 가둬 두는 기술자를 처리해 달라":"불법 시술 기술자 처리","협회 심사관을 죽인 사칭 해결사를 찾아 끝내 달라":"심사관 살해범 처리","날개 하청 연구소의 기술 자료를 들고 달아난 연구원을 산 채로 잡아 달라. 자료는 상하게 하지 말 것":"탈주 연구원 생포","밤의 시장에서 사라진 물건을 실은 수레를 쫓아 달라":"장물 수레 추격","뒷골목 하수로로 숨어든 개조 짐승을 몰아 붙잡아 달라":"하수로 개조 짐승 포획","둥지 출입증을 위조해 넘기고 달아난 자를 붙잡아 달라":"출입증 위조범 체포","증인을 태우고 달아난 차량을 따라붙어 멈춰 세워 달라":"납치 차량 추격","둥지 경계에서 추적 차량을 따돌리며 달아나는 배신자를 붙잡아 달라. 반드시 산 채로":"조직 배신자 생포","경매장 지하에서 달아난 경비용 의체를 붙잡아 달라. 안전장치가 꺼져 있다":"폭주 경비 의체 제압","실종된 해결사가 마지막으로 맡았던 계약의 발주처를 찾아 달라. 협회에 낸 서류와 내용이 다르다":"실종 해결사 계약 조사","둥지 경계 검문소의 기록이 조작된 흔적을 찾아 달라":"검문소 문서 조작 조사","사무소 셋이 같은 함정에 빠진 이유를 의뢰 기록에서 찾아내 달라":"사무소 습격 사건 조사","가짜 공방 각인이 찍힌 무기의 출처를 밝혀 달라":"위조 공방 무기 조사","의수에 심어진 추적 장치가 어디로 신호를 보내는지 알아내 달라":"의체 추적 장치 조사","협회 접수 서류에서 사라진 의뢰 세 건을 찾아 달라. 접수한 사람들은 모두 실종됐다":"하나 협회 접수 누락 조사","공방 신형 장비가 돌아갈 때마다 다른 기계가 고장 난다. 누가 손을 댔는지 확인해 달라":"공방 장비 교란 조사","조직의 보복을 피해 숨어 지내는 증인을 협회 지부까지 호위해 달라. 누군지 드러나서는 안 된다":"협회 증인 호위","둥지 병원으로 들어갈 회복 약품 운송을 지켜 달라. 검문소로 가는 길목에 조직이 진을 쳤다":"회복 약품 호송","협회 감사관을 사무소 순회 내내 지켜 달라":"하나 협회 감사관 경호","둥지 안 병원으로 이송되는 환자를 지켜 달라":"병원 환자 호송","협회에 증언하러 가는 연구원을 지켜 달라. 연구소 쪽에서 벌써 사람을 보냈다":"연구원 증언 호위","크게 다친 해결사를 병원까지 옮겨 달라. 그를 노리는 자들이 뒤를 쫓고 있다":"부상 해결사 호송","뒷골목 깊숙한 곳에 숨은 밀수 창고를 찾아 달라":"밀수 창고 수색","사라진 해결사 셋의 행방을 찾아 달라":"실종 해결사 수색","조직의 거래에 담보로 잡힌 인질들이 갇힌 건물을 찾아 달라":"인질 감금처 수색","둥지 하청 연구소에서 빠져나간 시료 상자를 찾아 달라":"연구소 시료 수색","조직이 인질을 숨겨 둔 곳을 찾아 달라. 인질이 보내온 사진은 단 한 장뿐이다":"인질 은신처 수색","날개 하청 창고에서 털린 실험 장치가 뒷골목 어딘가에 숨겨져 있다. 어느 건물인지 찾아 달라":"도난 실험 장치 수색","비어 있어야 할 교실에서 출석을 부르는 소리를 멈춰 달라":"폐교 출석 괴담 조사","폐역 대기실의 시계들이 한꺼번에 거꾸로 돌기 시작했다. 살펴보러 들어간 직원이 돌아오지 않았다":"폐역 역행 시계 조사","날개 공급 계약을 가로채려는 조직 대리인을 제압해 달라. 납품 시설 세 곳이 벌써 습격당했다":"공급 계약 분쟁 제압","협회가 배정한 사무소 둘을 전멸시킨 현상금 해결사를 제압해 달라. 피해가 더 커지기 전에 끝내야 한다":"현상금 해결사 제압","날개의 물류 기지를 노리는 무장 집단을 막아 달라":"날개 물류 기지 방어","특색을 노린다는 해결사 사냥꾼을 제압해 달라":"해결사 사냥꾼 제압","둥지 하나의 출입을 틀어쥔 조직의 간부진을 무너뜨려 달라":"조직 간부진 제압","협회 지부를 습격한 자들을 붙잡아 넘겨 달라":"협회 지부 습격범 체포","사무소 두 곳이 전멸한 구역을 차지한 무장 집단을 몰아내 달라":"무장 점거 구역 탈환","도시 경계에 무장 검문소를 세운 조직을 무너뜨려 달라. 협회 차량조차 지나가지 못한다":"불법 검문소 철거","도시 악몽급 재해로 지정된 괴인을 토벌해 달라. 담당 협회 지부가 긴급 의뢰를 냈다":"도시 악몽급 괴인 토벌","둥지 하나를 피로 물들인 자를 끝내 달라":"둥지 학살범 처리","구역 하나를 공포에 몰아넣은 연쇄 살인마를 끝내 달라":"연쇄 살인마 처리","날개의 기밀을 팔아넘기고 사람을 묻어 온 중개인을 처리해 달라":"날개 기밀 중개인 처리","도시의 악몽으로 분류된 살인자를 찾아 끝내 달라. 시신이 아직도 늘고 있다":"도시 악몽급 살인자 처리","날개 하청 사무실을 습격해 직원들을 죽인 무장 책임자를 사살해 달라":"하청 사무실 습격 지휘관 처리","폐쇄된 L사 지부에서 엔케팔린을 훔쳐 달아난 운반책을 산 채로 잡아 달라. 밀봉 용기는 절대 열지 말 것":"엔케팔린 운반책 생포","뒷골목의 밤이 시작되기 직전에 사라진 아이를 찾아 달라. 새벽까지 버틸 수 있을지 모른다":"실종 아동 수색","협회 호송 중 탈주한 현상금 해결사를 다시 붙잡아 달라":"탈주 현상금 해결사 체포","둥지 경계를 넘어 달아나는 밀수 차량을 멈춰 세워 달라":"밀수 차량 추격","폐쇄 구역으로 숨어든 실험체를 붙잡아 달라":"폐쇄 구역 실험체 포획","협회 호송망을 뚫고 달아난 해결사를 산 채로 잡아 달라. 발목에 추적기가 붙어 있다":"협회 호송 탈주범 생포","둥지 봉쇄선을 넘어가는 불법 화물차를 붙잡아 달라. 사고를 내서는 안 된다":"불법 화물차 추격","날개 내부의 배신자를 기록 속에서 찾아내 달라":"날개 내부 배신자 조사","건물 한 층이 통째로 사라지고 실종자가 열두 명 나왔다. 도면에 없는 구역이 어디인지 밝혀 달라":"사라진 층 조사","사라진 특색 해결사의 마지막 의뢰서를 복원해 달라":"특색 해결사 마지막 의뢰서 복원","날개 계약서에 숨겨진 조항의 진짜 뜻을 밝혀 달라":"날개 계약 조항 분석","둥지 하나가 통째로 비어 버린 날의 출입 기록을 맞춰 달라":"둥지 집단 실종 조사","경비 시스템을 속이고 이사회 건물에 들어간 침입자가 어떻게 들어갔는지 밝혀 달라":"이사회 건물 침입 경로 조사","협회 지부끼리 주고받은 서신 내용이 바뀌었다. 어느 단계에서 손을 탔는지 확인해 달라":"협회 서신 변조 조사","날개 경계까지 핵심 인물을 호위해 달라":"날개 핵심 인물 호위","손가락 산하 조직의 거래를 목격한 증인을 사흘 동안 지켜 달라. 협회가 신병을 넘겨받을 때까지다":"손가락 거래 목격자 경호","날개 이사회에 나서는 증인을 끝까지 지켜 달라":"이사회 증인 호위","협회가 압수한 유물 상자를 지부까지 옮겨 달라":"압수품 호송","날개 간부가 나설 비공개 청문회까지 호위해 달라. 도착했다는 사실조차 새어 나가선 안 된다":"날개 간부 청문회 호위","협회가 확보한 중요한 증인을 도시 경계 너머까지 데려다 달라":"협회 핵심 증인 호송","폐쇄된 둥지 구역에 남은 생존자를 찾아 달라":"폐쇄 둥지 생존자 수색","뒷골목의 밤에 사라진 사무소 하나의 흔적을 찾아 달라":"실종 사무소 수색","폐쇄 구역 깊은 곳의 지하 금고를 찾아 달라":"폐쇄 구역 지하 금고 수색","행방이 끊긴 수송대가 마지막으로 멈춘 곳을 찾아 달라":"실종 수송대 수색","폐쇄 구역에서 실종된 조사반이 마지막으로 움직인 곳을 찾아 달라":"실종 조사반 수색","둥지 아래 비밀 운송로의 입구를 찾아 달라. 아는 사람들은 하나같이 입을 다물었다":"둥지 지하 운송로 수색","밤마다 아무도 없는 거리에서 장례 행렬 발소리가 들린다. 조사하러 간 해결사까지 실종됐다":"텅 빈 거리 장례 행렬 조사","도시 악몽급 재해가 장악한 구역을 되찾아 달라. 구조를 요청한 생존자가 남아 있다":"도시 악몽 점거 구역 탈환","해결사 사무소 여럿을 박살 낸 위험인물을 사살해 달라":"고위험 인물 처리","대규모 봉쇄 직전에 달아난 핵심 용의자를 쫓아가 산 채로 잡아 달라":"핵심 용의자 생포","구역 하나의 보안 체계를 통째로 무너뜨린 침투 수법을 밝혀 달라":"구역 보안 붕괴 조사","도시 악몽급 재해가 번지는 구역에서 핵심 증인을 빼내 달라":"도시 악몽 구역 증인 구출","격리된 구역 안에서 연락이 끊긴 선발 조사대가 어디로 갔는지 찾아 달라":"격리 구역 조사대 수색","도시 악몽급으로 지정된 현상 주변의 이상 징후를 조사해 달라":"도시 악몽 주변 이상 징후 조사","협회 검문대를 무력화한 조직 대리인을 제압해 달라":"검문대 습격 조직 대리인 제압","둥지 외곽을 장악하고 민간인을 죽인 무장 지휘관을 사살해 달라":"외곽 무장 지휘관 처리","날개 기술 정보를 들고 봉쇄선을 뚫은 해결사를 쫓아 달라":"날개 기술 유출자 추적","서로 다른 구역에서 한꺼번에 벌어진 보안 침입이 어떻게 이어져 있는지 찾아 달라":"연쇄 보안 침입 조사","살해 위협을 받는 기업 감사를 비공개 심문 장소까지 호위해 달라":"기업 감사 호위","무장 경비가 지키는 폐쇄 연구 시설에 들어갈 자리를 찾아 달라":"폐쇄 연구시설 진입로 수색","다가간 해결사들이 서로를 적으로 착각하는 현상을 조사해 달라":"아군 오인 현상 조사","현상금이 걸린 전직 해결사가 차지한 회랑을 제압하고 민간인을 구해 달라":"현상금 해결사 제압·민간인 구출","사무소 두 곳을 전멸시킨 해결사 사냥꾼을 사살해 달라":"해결사 사냥꾼 처리","하청 기업의 핵심 설계 자료를 들고 달아난 경호 책임자를 산 채로 잡아 달라":"설계 자료 탈취범 생포","협회 의뢰 정보가 어떤 길로 적에게 넘어갔는지 정확히 밝혀 달라":"협회 정보 유출 조사","조직의 보복을 앞둔 협회 증언자를 안전 구역까지 호위해 달라":"협회 증언자 호위","폐쇄 구역에 들어간 상급 해결사 팀과 연락이 끊겼다. 마지막 위치를 확인해 달라":"실종 상급 해결사 팀 수색","고위 해결사들이 한꺼번에 이상한 행동을 보인 사건을 조사해 달라":"고위 해결사 이상 행동 조사","둥지 외곽 경비소를 장악한 무장 간부를 제압하고 출입로를 되찾아 달라":"둥지 외곽 경비소 탈환","연쇄 실종 사건을 지휘한 조직의 처형 담당자를 사살해 달라":"조직 처형인 처리","협회 경비를 뚫고 달아난 해결사를 누구보다 먼저 붙잡아 달라":"협회 탈주 해결사 체포","사무소 네 곳을 같은 함정으로 끌어들인 위조 계약의 발주처를 찾아 달라":"위조 계약 발주처 조사","내부 고발 자료를 쥔 연구 책임자를 공청회장까지 호위해 달라":"연구 책임자 호위","밀수 조직의 비밀 출입로가 어느 건물로 이어지는지 찾아 달라":"밀수 비밀 통로 수색","실험 현장에서 나타난 인지 이상 현상을 조사해 달라":"실험 현장 인지 이상 조사","강화 의체를 단 조직원들을 앞세워 진료소를 점거한 간부를 제압해 달라":"진료소 점거 간부 제압","협회 계약 해결사를 공격한 청부 살인업자를 사살해 달라":"청부업자 처리","보호하던 증인을 빼돌린 연락책을 찾아 산 채로 잡아 달라":"증인 납치 연락책 생포","의체 시술 명부가 어떻게 위조됐는지, 누가 얽혔는지 조사해 달라":"의체 시술 명부 위조 조사","조직에게 협박받는 연구소 검사관을 협회 청사까지 호위해 달라":"연구소 검사관 호위","실종된 조사반이 마지막으로 확인한 지하 시설을 찾아 달라":"실종 조사반 지하 시설 수색","시술을 받고 나서 동료를 공격하는 기술자의 상태를 확인해 달라":"시술 기술자 상태 조사","하청 경비대를 앞세워 구역 통행을 막아 버린 빚 수금원을 제압해 달라":"통행 차단 수금원 제압","구호 물품을 빼앗고 사람까지 해친 밀수 조직원을 사살해 달라":"구호 물품 약탈자 처리","공방 설계도 사본을 들고 달아난 중개인을 붙잡아 달라":"공방 설계도 탈취범 체포","납품한 개조 의체마다 같은 결함이 되풀이된다. 원인을 조사해 달라":"개조 의체 결함 조사","협회 연락 담당자를 조직의 감시망 밖까지 호위해 달라":"협회 연락관 호위","무장 조직이 빼돌려 숨긴 수송 물자가 어디 있는지 찾아 달라":"도난 수송 물자 수색","같은 공방에서 시술받은 작업자들이 똑같은 악몽을 꾼다. 시술 기록을 조사해 달라":"공방 집단 악몽 조사","배송로를 차지하고 통행료를 걷는 조직 행동대원을 몰아내 달라":"배송로 점거 조직원 제압","수송차를 습격해 운전자를 죽인 조직원을 사살해 달라":"수송차 습격 조직원 처리","의수 부품을 빼돌리고 달아난 하청 직원을 붙잡아 달라":"의체 부품 탈취범 체포","출고 서류마다 운송 번호가 다르게 적힌 까닭을 밝혀 달라":"운송 번호 위조 조사","조직이 노리는 부품 운반차를 조립 공장까지 호위해 달라":"부품 운반차 호위","폐기물 처리장에서 빠져나간 의료 기구 상자를 찾아 달라":"의료 기구 상자 수색","밤 창고에 나타난 정체 모를 그림자를 확인해 달라":"야간 창고 그림자 조사","야시장 수금통을 노리는 작은 패거리를 제압해 달라":"야시장 약탈단 제압","세탁소 주인을 칼로 찌르고 달아난 자를 찾아 사살해 달라":"세탁소 습격범 처리","값비싼 부품 상자를 낚아채 시장 쪽으로 달아난 도둑을 잡아 달라":"부품 상자 절도범 체포","골목 상점 자물쇠를 죄다 같은 수법으로 딴 범인을 찾아 달라":"연쇄 상점 침입 조사","수금일만 노리는 소매치기로부터 상인회 회계를 지켜 달라":"상인회 회계 경호","폐창고로 옮겨진 거래 물건이 어디 있는지 찾아 달라":"폐창고 거래 물품 수색","빈 다세대 건물에서 밤마다 들려오는 발소리가 어디서 나는지 확인해 달라":"빈 건물 괴음 조사","가게 앞을 차지하고 자릿세를 뜯는 불량배 둘을 제압해 달라. 손님들이 발길을 돌린다":"자릿세 뜯는 쥐 제압","밤길에 흉기를 들고 주민들을 쫓아다니는 쥐 한 놈을 처리해 달라":"골목 칼잡이 쥐 처리","옆집에서 빌린 손수레를 끌고 달아난 청년을 붙잡아 달라":"도난 손수레 회수","공구함에서 날마다 나사가 한 줌씩 없어진다. 이유를 알아내 달라":"공구함 부품 실종 조사","뒷골목의 밤이 끝난 뒤, 장사를 마친 상인의 귀갓길을 지켜 달라":"귀가 상인 호위","철길 옆 공터에서 잃어버린 짐 보따리를 찾아 달라":"분실 짐 보따리 수색","빈 점포에서 한밤중에 울리는 종소리를 조사해 달라":"빈 점포 종소리 조사","골목 아이들을 노리는 자가 있다. 다시는 움직이지 못하게 해 달라":"아이 노리는 자 처리","배신한 조직원을 찾아 끝내 달라":"조직 배신자 처리","밤마다 사람을 해치는 자를 처리해 달라":"야간 습격범 처리","계약을 어기고 문을 걸어 잠근 하청 업체 사무실을 열게 해 달라":"계약 위반 업체 제압","골목을 점거한 조직 은신처의 셔터를 뚫고 들어가 정리해 달라":"조직 은신처 소탕","밀린 빚을 갚지 않는 자의 가게를 찾아가 받아 와 달라":"연체 채무 회수","무너진 창고 입구를 뚫고 남은 재고를 꺼내 달라":"창고 재고 회수","급한 서류를 둥지 경계까지 기한 안에 전해 달라":"긴급 서류 전달","가게가 털린 현장을 조사해 누구 짓인지 알아내 달라":"상점 절도 조사","거래 장부에서 빠져나간 돈의 흐름을 밝혀 달라":"거래 대금 횡령 조사","밤마다 노래가 들리는 지하실을 조사해 달라":"지하실 괴음 조사","시계가 모두 거꾸로 도는 대기실을 정리해 달라":"대기실 역행 시계 조사","둥지 경계까지 화물 차량을 호위해 달라":"화물 차량 호위","협회 사무실까지 증인을 안전하게 데려다 달라":"협회 증인 호위","가판대를 털고 달아난 콩콩이파 꼬맹이를 잡아 달라. 물건만 돌려받으면 된다고 한다":"가판대 절도품 회수","장터 입구에 진을 친 콩콩이파가 '통행료'를 걷고 있다. 쫓아내 달라":"콩콩이파 제압","콩콩이파가 훔쳐 간 가게 금고 열쇠를 찾아 달라":"가게 금고 열쇠 회수","기름철 놈들이 의수 정비소를 점거하고 부품을 내놓으라며 버틴다. 몰아내 달라":"기름철 정비소 점거 해제","기름철이 고물상 창고에서 훔쳐 간 의체 관절 상자를 찾아 달라":"의체 관절 상자 수색","사람을 붙잡아 의체 값을 대려는 기름철 일당을 처리해 달라":"기름철 납치범 토벌","도끼를 멘 도끼파가 식당가를 돌며 자릿세를 걷는다. 다시는 얼씬도 못 하게 해 달라":"도끼파 제압","자릿세를 거부한 국숫집 문짝이 도끼에 쪼개졌다. 한 놈도 남기지 말아 달라":"도끼파 보복 토벌","도끼파에 빌린 돈을 갚으러 간다. 돈만 챙기고 손부터 쓸 놈들이니 따라가 지켜 달라":"도끼파 채무 상환 호위","녹슨 사슬파에 끌려간 형을 데려와 달라. 폐공장 쪽으로 갔다는 말이 있다":"납치 피해자 구출","녹슨 사슬파가 골목 어귀에서 사람을 묶어 간다. 놈들을 끝내 달라":"녹슨 사슬파 소탕","사슬파가 노리는 채무자를 빚 정리 사무소까지 무사히 데려다 달라":"사슬파 채무자 호위","살뭉치가 '의식의 밤'을 예고했다. 그 밤이 오기 전에 은신처를 끝내 달라":"살뭉치 은신처 소탕","살뭉치에게 끌려간 사람들이 어디로 갔는지 알아내 달라":"살뭉치 납치 피해자 수색","살뭉치의 표적이 된 정육점 주인을 사흘 밤 지켜 달라":"정육점 주인 경호","신체포기각서 수거팀이 오늘 밤 남편 다리를 '회수'하러 온다. 막아 달라":"신체 회수 대상자 경호","신체포기각서 사무실에서 아버지의 계약서 원본을 찾아와 달라":"신체포기각서 원본 회수","회수를 핑계로 아무나 끌고 가는 신체포기각서 수거팀을 처리해 달라":"신체포기각서 수거팀 제압","정중한 말투로 '옷감'을 사러 온다는 가면 쓴 재단사들이 있다. 사육제 작업장을 찾아 없애 달라":"사육제 작업장 소탕","둥지 경매장에 출처를 알 수 없는 비단이 흘러들었다. 사육제와 얽혀 있는지 확인해 달라":"의문의 비단 출처 조사","사육제가 '치수를 잰' 사람이 있다. 사흘 밤만 그 사람을 지켜 달라":"사육제 표적 경호","창틀에 검은 깃털이 꽂혀 있었다. 나이트윙의 표적이 된 것이다. 사흘만 지켜 달라":"나이트윙 표적 경호","나이트윙이 드나든 흔적을 쫓아 누가 의뢰했는지 알아내 달라":"나이트윙 의뢰인 조사","나이트윙 은신처가 드러났다. 놈들이 다시 날아오르기 전에 끝내 달라":"나이트윙 은신처 소탕","당나귀 · 개 · 고양이 · 닭 머리를 단 넷이 골목 가게마다 '공연비'를 뜯는다. 그만두게 해 달라":"브레멘 음악대 제압","밤마다 기괴한 합창이 울리고 나면 사람이 하나씩 사라진다. 브레멘 음악대를 끝내 달라":"브레멘 음악대 토벌","브레멘 음악대 '공연'을 보고 말을 잃은 아들을 데려와 달라. 놈들 은신처에 있다":"공연 피해자 구출","웃는 가면을 쓴 무리가 밤마다 사람을 데려간다. 은신처를 찾아 끝내 달라":"웃는 얼굴들 토벌","남편이 웃는 얼굴들에게 끌려갔다는 소문이 있다. 어디로 갔는지만이라도 알아봐 달라":"납치된 남편 수색","웃는 얼굴들에게서 겨우 도망친 증인을 협회 지부까지 데려다 달라. 놈들이 뒤를 밟고 있다":"웃는 얼굴들 증인 호위","일곱 해가 지나고 처음 걷는 두 발자국 아래에서, 세 번 손바닥으로 바닥을 내리쳐라":"발자국 지령","해가 지기 전, 열두 번째로 마주친 우산의 주인에게 그 우산의 무게를 물어라":"우산 무게 지령","왼손에 든 것을 내려놓지 말고, 계단 마흔네 칸을 거꾸로 내려가라":"역행 계단 지령","가장 먼저 우는 개에게 이름을 지어 주고, 그 이름을 세 번 틀리게 불러라":"개의 이름 지령","푸른 문이 달린 집의 초인종을 누르고, 문이 열리기 전에 떠나라":"푸른 문 지령","다섯 번째 골목의 가로등 밑에 서서, 불이 두 번 깜빡일 때까지 숨을 참아라":"가로등 지령","오늘 받은 거스름돈 중 가장 작은 동전을 반으로 갈라, 한쪽을 처음 보는 이의 신발 안에 넣어라":"동전 반쪽 지령","지붕 위의 까마귀가 날아오르기 전에 그 수를 세라. 짝수면 동쪽으로, 홀수면 서쪽으로 걸어라":"까마귀 지령","자정까지 사람의 이름이 들어간 말을 입 밖에 내지 마라. 단, 한 번은 반드시 불러야 한다":"이름 금기 지령","열여덟 시 정각, 붉은 것을 먹고 있는 사람의 접시에서 하나를 가져와라":"붉은 음식 지령","눈을 감고 가장 가까운 벽까지 걸어가, 이마를 대고 일곱까지 세어라. 여섯은 세지 마라":"벽 앞 계수 지령","오늘 처음 만나는 아이에게 지도를 그려 주어라. 존재하지 않는 곳으로 가는 길을":"존재하지 않는 길 지령","세 번째로 울리는 전화를 받고, 상대가 누구든 \"네, 다녀왔습니다\"라고 답하라":"세 번째 전화 지령","가장 높은 건물의 그림자가 가장 짧아질 때, 그 그림자 끝에 서 있는 사람을 쓰러뜨려라":"그림자 끝 지령","주인을 모르는 장갑 한 짝을 찾아, 해가 지기 전에 그 짝이 될 장갑을 만들어라":"장갑 한 짝 지령","빗물이 고인 웅덩이 아홉 개를 지나며, 여덟 번째에서만 발을 적셔라":"웅덩이 지령","빨랫줄에 널어 둔 빨간 고무장갑이 매일 밤 한 짝씩 사라진다. 어디로 가는지 찾아 달라":"빨간 고무장갑 수색","장갑을 가져가던 건 동네 아이들이었다. 오늘 밤 장갑을 들고 달아나는 아이를 붙잡아 사정을 들어 달라":"장갑 절도 아동 추적","아이들에게 장갑을 훔쳐 오게 시킨 쥐 두목을 혼내 달라. 아이들은 건드리지 말고":"뒷골목 쥐 두목 제압","문 닫은 가게마다 새벽 세 시에 주문하지 않은 상자가 배달된다. 보낸 곳을 찾아 달라":"의문의 소포 출처 조사","오늘 새벽, 상자를 받기로 한 국밥집 주인 곁을 지켜 달라. 배달부의 얼굴을 확인하고 싶다고 한다":"국밥집 주인 경호","배달부는 망할 가게를 골라 헐값에 사들이는 '가게 사냥꾼'의 심부름꾼이었다. 그들을 붙잡아 달라":"가게 사냥꾼 제압","사람이 사라진 자리마다 종이학이 한 마리씩 놓여 있다. 종이학에 숨은 표식을 풀어 달라":"종이학 표식 해독","숫자를 따라가면 다음에 사라질 사람이 보인다. 그 사람이 사라지기 전에 찾아 달라":"다음 실종 대상자 수색","종이학을 접던 자는 협회 명부에서 이름이 지워진 해결사였다. 백 번째를 접기 전에 끝내 달라":"종이학 해결사 처리","장례를 치른 시신이 며칠 뒤 의체를 단 채 거리를 걷는다는 신고가 잇따른다. 무덤을 확인해 달라":"시신 재출현 사건 조사","의체를 단 '돌아온 사람'을 목격한 증인을 협회 지부까지 데려가 달라. 누군가 그를 쫓고 있다":"의체 시신 목격자 호위","시신에 의체를 덧붙이던 장의사가 사람이 아닌 무언가로 변했다. 장례식장 지하에 남은 그것을 처리해 달라":"뒤틀린 장의사 토벌","검은 우산 행렬이 지나간 구역마다 소리가 사라진다. 행렬의 출발지를 찾아 달라":"검은 우산 행렬 출발지 수색","오늘 밤 행렬이 지나갈 블록의 사람들을 다른 구역까지 피신시켜 달라":"행렬 피해 구역 주민 대피","행렬의 맨 앞, 가장 큰 우산을 쓴 자를 쓰러뜨려 달라":"검은 우산의 주인 토벌","구역 하나가 같은 하루를 반복하고 있다. 중앙 시계탑에서 원인을 조사해 달라":"반복되는 하루 원인 조사","같은 하루를 반복하는 구역에서 매번 다르게 움직이는 사람을 찾아 달라":"시간 반복 예외 인물 수색","시계탑 꼭대기에서 하루를 붙잡고 있는 자를 쓰러뜨리고, 바늘을 다시 돌려 달라":"수요일을 붙잡은 자 토벌"});
   const normalize = t=>String(t||"").replace(/^(?:(?:\[승급 심사\]\s*|하나 협회의 지명\s*—\s*|남겨진 흉터의 의뢰\s*—\s*|편지 속 사연:\s*|지령:\s*|매복\s*—\s*))+/,"").trim().replace(/[.。]+$/,"");
   const t=normalize(q.text), src=normalize(q.sourceText);
   const exact=Object.prototype.hasOwnProperty.call(names,t)?names[t]:(src&&Object.prototype.hasOwnProperty.call(names,src)?names[src]:null);
