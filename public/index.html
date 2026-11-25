@@ -10341,8 +10341,7 @@ async function openRecords(){
    <input type="file" accept=".json,application/json" id="save-file" hidden></div><div class="tabs"><button class="on" data-rec-tab="people">사무소 인사 기록</button><button data-rec-tab="surroundings">주변 상황</button></div><div id="record-tab-view">
    ${rec.length?`<div class="list">${rec.map(r=>`<div class="item"><div><b>${esc(r.name)}</b> <span class="badge">${r.what}</span><div class="d">${r.day}일차 · ${esc(r.note)}</div></div></div>`).join("")}</div>`:"<p class='muted'>아직 기록이 없다.</p>"}</div>
    ${(S.choiceLog||[]).length ? `<h4 style="margin:16px 0 6px">지나온 선택</h4><div class="list">${S.choiceLog.slice().reverse().slice(0,30).map(c=>`<div class="item"><div class="d">${c.day}일차 · ${esc(c.t)}</div></div>`).join("")}</div>${alignLean() ? `<p class="muted" style="font-size:12px;margin-top:6px">${esc({정의:"사람들은 이 사무소를 '사람부터 챙기는 곳'이라고 부른다.",현실:"사람들은 이 사무소를 '값은 비싸도 확실한 곳'이라고 부른다.",질서:"사람들은 이 사무소를 '규약대로 일하는 곳'이라고 부른다."}[alignLean()])}</p>` : ""}` : ""}
-   ${S.ledger && S.debt<=0 ? `<h4 style="margin:16px 0 6px">장부</h4><p class="muted" style="font-size:12px">서랍 속 낡은 장부. 원할 때 덮을 수 있다.</p><button class="primary" data-x="trio">장부를 펼친다</button>` : ""}
-   </div>`, [{t:"닫기"}], false, root=>{
+   ${S.ledger && S.debt<=0 ? `<h4 style="margin:16px 0 6px">장부</h4><p class="muted" style="font-size:12px">서랍 속 낡은 장부. 원할 때 덮을 수 있다.</p><button class="primary" data-x="trio">장부를 펼친다</button>` : ""}`, [{t:"닫기", x:true}, {t:"닫기"}], false, root=>{
     root.querySelector("#save-file").addEventListener("change",async e=>{
       const file=e.target.files&&e.target.files[0]; if(!file)return;
       try{
@@ -10444,6 +10443,15 @@ function modal(title, body, buttons, returnValue, onMount){
   });
 }
 function closeAll(){ modalStack.slice().forEach(c=>c()); modalStack=[]; }
+/* Esc로 맨 위 창을 닫는다 — 창의 × 또는 닫기·취소 버튼을 대신 눌러 주는 방식이라 창마다의 처리(저장·되돌리기)가 그대로 지켜진다.
+   선택지가 여럿인 창(어느 쪽을 고를지 정해야 하는 창)은 Esc로 고르지 않는다. 입력 칸에서 Esc를 눌러도 같다. */
+document.addEventListener("keydown", e=>{
+  if(e.key!=="Escape" || e.isComposing) return;
+  const bgs = document.querySelectorAll("#modal-root .modal-bg"); const top = bgs[bgs.length-1]; if(!top) return;
+  const x = top.querySelector(".mh .mx"), fb = [...top.querySelectorAll(".mf button")].filter(b=>!b.disabled);
+  const btn = x || fb.find(b=>/^(닫기|취소|아니오|아니요|나중에|그만둔다|돌아간다)$/.test(b.textContent.trim())) || (fb.length===1 ? fb[0] : null);
+  if(btn){ e.preventDefault(); e.stopPropagation(); btn.click(); }
+}, true);
 const confirmBox = (t,b) => modal(t, b, [{t:"취소",v:false},{t:"확인",v:true,primary:true}]);
 const alertBox = (t,b) => modal(t, b, [{t:"확인",primary:true}]);
 function promptBox(title, label, def, allowRandom){
