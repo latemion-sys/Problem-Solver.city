@@ -3903,7 +3903,7 @@ function requestSpeech(text){
     const p=part.trim(), end=(p.match(/[.!?。]$/)||["."])[0];
     let t=p.replace(/[.!?。]$/,"");
     if(end==="?") return t+end;
-    if(/(?:습니다|입니다|세요|해요|돼요|예요|이에요|대요|래요|네요|죠|군요|나요|까요|십시오|드립니다|어요|아요)$/.test(t)) return t+end;
+    if(/(?:니다|세요|해요|돼요|예요|이에요|대요|래요|네요|죠|군요|나요|까요|십시오|어요|아요)$/.test(t)) return t+end;
     t=t.replace(/해\s*달라$/,"해 주세요").replace(/아\s*달라$/,"아 주세요").replace(/어\s*달라$/,"어 주세요").replace(/여\s*달라$/,"여 주세요").replace(/줘$/,"주세요").replace(/ 달라$/," 주세요").replace(/해 줄 사무소를 구함$/,"해 줄 사무소를 찾고 있습니다").replace(/ 말 것$/," 말아 주세요");
     if(/(?:주세요|습니다|입니다)$/.test(t)) return t+end;
     if(/다고 한다$/.test(t)) return t.replace(/다고 한다$/,"다고 합니다")+end;
@@ -3937,7 +3937,10 @@ function requestNarrative(q, story){
   const ck=clientKind(q.client);
   const opening=lines.shift()|| (ck==="anon"?"발신인이 적혀 있지 않은 의뢰서가 도착했다.":"의뢰가 사무소에 접수됐다.");
   const doc=scripted||ck==="anon"||/봉투가 (?:왔|도착|끼워|놓여|들어)|의뢰서가 (?:배달|왔|도착)|서류.*배달|발신인|우편함|공고/.test(opening)||(ck==="org"&&!/찾아왔|내밀|들어왔|건넸|펼쳤|보여|말했|접수대/.test(opening));
-  const plain=core.replace(/^["“]|["”]$/g,"");
+  // 요청에서 제시한 개별 의뢰의 교정문은 그 원문과 일치할 때만 표시한다.
+  const sampleKey=normalized("형이 사라졌습니다. 전날까지도 '거래처'에 다녀온다는 말만 했어요. 골목 끝에 정장 차림의 무언가가 서 있는데, 머리 대신 커다란 모니터가 달렸고 그 둘레에 영수증이 주렁주렁 매달려 있답니다. 거기서 거래한 사람들은 뭘 내줬는지도 기억을 못 한대요. 더 사라지기 전에 끝내 주세요.");
+  const sampleMatch=!doc&&key===sampleKey;
+  const plain=sampleMatch?"형님이 사라졌습니다. 전날까지도 '거래처'에 다녀온다는 말만 했어요. 형이 사라지고 나서 자주 이야기하던 곳을 지나다 우연히 뒷골목 안쪽에 희미하게 정장 차림의 무언가가 서 있었던 걸 봤는데, 머리 대신 커다란 모니터가 달렸고 그 둘레에 영수증이 주렁주렁 매달려 있었습니다. 소문을 듣자 하니 거기서 거래한 사람들은 뭘 내줬는지도 기억을 못 한대요. 다른 사람들이 더 사라지기 전에 부디 끝내 주세요.":core.replace(/^["“]|["”]$/g,"");
   const speech=doc?`의뢰서에는 다음과 같은 내용이 적혀 있었다. 「${plain}${/[.!?。]$/.test(plain)?"":"."}」`:`"${requestSpeech(plain)}"`;
   // 예전 자동 생성 사연에서 의뢰 원문을 다시 풀어 쓴 줄만 걷어낸다.
   const repeated=new Set();
@@ -3956,7 +3959,14 @@ function requestNarrative(q, story){
     if(scripted) return true;
     const n=normalized(l);
     return n!==key&&n!==normalized(speech)&&!repeated.has(n)&&!/^의뢰 내용:\s*/.test(l);
-  }).map(l=>l.replace(/^골목에서는 이런 소문이 돈다[.:：]?\s*/,"관련 소문으로는 이런 이야기가 들려왔다. "));
+  }).map(l=>{
+    let t=l.replace(/^골목에서는 이런 소문이 돈다[.:：]?\s*/,"관련 소문으로는 이런 이야기가 들려왔다. ");
+    if(sampleMatch){
+      t=t.replace('영수증이 아흔아홉 장 차면, 마지막 장에 이름을 쓰게 한대.','영수증이 아흔아홉 장 차면, 기묘한 종이 한 장에 이름을 쓰게 한대.');
+      if(q.deadline==null) t=t.replace("기한은 없다고 했다. 다만 혼자서는 가지 말라는 말을 몇 번이나 덧붙였다.","의뢰인은 녀석은 움직이지 않으니 의뢰 기한은 없다고 이야기했다. 다만 혼자서는 가지 말라는 말을 몇 번이나 덧붙였다.");
+    }
+    return t;
+  });
   // 원문이 첫 줄인 오래된 사연도 접수 장면을 먼저 보여 준다.
   const start=normalized(opening)===key||repeated.has(normalized(opening))||normalized(opening)===normalized(speech)
     ? (doc?"사무소에 의뢰서가 도착했다.":"의뢰인이 찾아와 사정을 설명했다.") : opening;
