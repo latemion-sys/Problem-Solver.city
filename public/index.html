@@ -1642,7 +1642,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "V.a1.2.7"; // 신(心) · 망(望) 전투 추가 행동 · 신을 깨우친 적 · 금빛 신 · 망 고리 연출
+const VERSION = "v.a1.6.7"; // 급수 승급에 따른 주급 인상
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
 const ATTR_NAME = {str:"근력",agi:"민첩",tec:"재주",wil:"의지"};
@@ -1661,6 +1661,19 @@ const RISK = g => g>=8?"ZAYIN":g>=6?"TETH":g>=4?"HE":g>=2?"WAW":"ALEPH";
 const PROMO = {9:48,8:70,7:95,6:120,5:145,4:170,3:200,2:230};
 const COLOR_REQ_TOTAL = 250;
 const WAGE_K = 0.2;   // 인하 전 기준 금액을 주급과 고용비로 나눈다.
+// 기존 고용 계약의 기본 주급은 보존하고 승급한 급수 차이만큼 소액을 더한다.
+const WAGE_GRADE_ADD=Object.freeze({9:0,8:300,7:700,6:1200,5:2000,4:3200,3:5000,2:7500,1:11000,0:15000});
+const wageGrade=g=>g!=null&&Number.isInteger(Number(g))&&Number(g)>=0&&Number(g)<=9?Number(g):null;
+function syncGradeWage(f){
+  if(!f||f.isLeader)return 0;
+  const g=wageGrade(f.grade);if(g==null)return Math.max(0,Number(f.wage)||0);
+  if(!Number.isFinite(f.wageBase)||wageGrade(f.wageBaseGrade)==null){
+    f.wageBase=Math.max(0,Math.floor(Number(f.wage)||0));
+    f.wageBaseGrade=wageGrade(f.hiredGrade)??(f.founder?9:g);
+  }
+  f.wage=Math.max(0,Math.floor(f.wageBase)+Math.max(0,WAGE_GRADE_ADD[g]-WAGE_GRADE_ADD[f.wageBaseGrade]));
+  return f.wage;
+}
 const TECH_BASE_PLUS = 1, TECH_COIN_PLUS = 2, TECH_SP_COST = 10;
 function migrateEmploymentCost(f){
   if(!f || f.employmentCostV === 1) return f;
@@ -1672,7 +1685,8 @@ function migrateEmploymentCost(f){
 function setRecruitCost(f, base){
   f.wage = Math.floor(base*WAGE_K);
   f.cost = base-f.wage;
-  return migrateEmploymentCost(f);
+  migrateEmploymentCost(f);
+  f.wageBase=f.wage;f.wageBaseGrade=wageGrade(f.grade)??9;syncGradeWage(f);return f;
 }
 const HIRE_COST = {9:10000,8:20000,7:40000,6:80000,5:160000,4:320000,3:640000,2:1280000,1:2560000}; // 1급은 이전 회차 출신만 영입 가능
 const KIND_COLOR = {"L사 지부 탐사":"#4f9a89","죄종":"#c86a55","뒤틀림 처리":"#d0506a","일반":"#c9a86a","호위":"#6aa0c9","수색":"#7fb069","환상체":"#a37ad1","정체불명":"#a37ad1","뒤틀림 토벌":"#c94a4a","특색 심사":"#e8d27a","지명":"#e8d27a"};
@@ -2284,7 +2298,7 @@ function limitBasicTechs(f){
 function syncAllStatVitals(d){ if(d){ (d.fixers||[]).concat(d.recruitPool||[]).forEach(f=>{
   syncStatVitals(f);
   limitBasicTechs(f);
-  migrateEmploymentCost(f);
+  migrateEmploymentCost(f); syncGradeWage(f);
   (f.rw||[]).forEach(x=>{ if(x&&x.s) migrateEmploymentCost(x.s); });
   if(!f.isLeader && !Number.isFinite(f.trust)) f.trust=f.founder?65:50;
   if(f.grade<=1){ growOf(f); ATTRS.forEach(a=>{ if(f.gk[a]){ f.gk[a]=false; f.gc[a]=0; } }); }
@@ -2411,7 +2425,7 @@ function newGame(leaderName, officeName, partnerName, lead){
   syncStatVitals(P2); S.fixers.push(P2);
   P.trust = P2.trust = 65;
   P.precious = rollPrecious(P); P2.precious = rollPrecious(P2);
-  L.founder = P.founder = P2.founder = true; S.st = {}; setTimeout(()=>{ if(S){ ac("runs"); acSet("district", S.district); } }, 0);
+  L.founder = P.founder = P2.founder = true; syncGradeWage(P); syncGradeWage(P2); S.st = {}; setTimeout(()=>{ if(S){ ac("runs"); acSet("district", S.district); } }, 0);
   initSurroundings(); startDay(true);
   addLog(`${S.district.name}에서 ${S.officeName}의 문을 열었다. 남은 빚은 ${won(S.debt)}.`);
   save();
@@ -9146,14 +9160,14 @@ const COLOR_MAX = 3;
 const colorHeld = () => S ? S.fixers.filter(f=>f.grade===0).length : 0;
 async function passColor(f, preset){ if(colorHeld() >= COLOR_MAX && f.grade!==0) return; ac("color");
   const title = preset || (f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle());
-  f.grade = 0; f.title = title; f.tcol = colorOfTitle(title); f.cap = 80;
+  const oldWage=syncGradeWage(f); f.grade = 0; const newWage=syncGradeWage(f); f.title = title; f.tcol = colorOfTitle(title); f.cap = 80;
   f.unique = f.unique || {};
   await colorAscend(f.name, title, f.tcol);
   try{ rememberCityRumor("fixer", `하나 협회가 새 특색을 올렸다 — [${title}] ${f.name}`); }catch(_){}
   cityNote("color", {t:title, n:f.name, o:S.officeName, day:S.day, col:f.tcol});
   S.records.push({day:S.day, name:f.name, what:"특색 지정", note:title});
   playFx("특색 심사", title, f.name, true); save();
-  const go = await modal("특색 지정", `${jo(esc(f.name),"이")} 특색 <b style="color:${f.tcol}">[${esc(title)}]</b>${jo(title,"로").slice(title.length)} 지정되었다.<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
+  const go = await modal("특색 지정", `${jo(esc(f.name),"이")} 특색 <b style="color:${f.tcol}">[${esc(title)}]</b>${jo(title,"로").slice(title.length)} 지정되었다.${!f.isLeader&&newWage>oldWage?`<br><span style="color:#e8c98a">주급 ${won(oldWage)} → ${won(newWage)} (다음 정산부터)</span>`:""}<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
   if(go) await openForge(f, "armor");
 }
 function randomColorTitle(){
@@ -9641,7 +9655,7 @@ function officeFees(ended){ S.money=Math.max(0,Number(S.money)||0); let h = "";
   if(ended % 7 === 0){ S.fixers.filter(f=>accFx(f,"inject")).forEach(f=>{ if(S.money >= INJ_COST){ S.money -= INJ_COST; f.injLack = false; h += `<span>약값</span><b>-${won(INJ_COST)} (${esc(f.name)}의 강화 주입기)</b>`; }
     else { f.injLack = true; h += `<span></span><b style="color:#ff8a7a">${esc(f.name)}: 약값을 못 냈다 — 이번 주는 강화 주입기가 오히려 몸을 갉아먹는다(체력 피해 +12%)</b>`; } }); }
   if(ended % 7 === 0){
-    const workers=S.fixers.filter(f=>!f.isLeader && ((f.wage||0)>0 || (f.wageDue||0)>0));
+    const workers=S.fixers.filter(f=>!f.isLeader && (syncGradeWage(f)>0 || (f.wageDue||0)>0));
     let due=0,paid=0,unpaid=0;
     workers.forEach(f=>{
       f.wageDue=Math.max(0,Number(f.wageDue)||0)+Math.max(0,Number(f.wage)||0);
@@ -9669,8 +9683,8 @@ async function review(){
     if(f.grade>=2){ const R = reviewOf(f.wk, f.grade), tg = f.grade - 1, gapLeft = FIXER_GAP(tg) - (S.day - (f.promoDay||0)), examLack = tg <= 3 && (f.examOk||0) < EXAM_NEED_FIXER;
       if(R.ok && gapLeft > 0) R.why.unshift(`지난 승급 뒤 ${FIXER_GAP(tg)/7}주가 지나야 한다(${Math.ceil(gapLeft/7)}주 남음)`);
       if(examLack) R.why.unshift(`승급 심사 의뢰 ${f.examOk||0}/${EXAM_NEED_FIXER}건`);
-      if(R.ok && gapLeft <= 0 && !examLack){ ac("promo"); f.promoDay = S.day; f.examOk = 0; f.wk = {n:0, ok:0, hi:0, sc:0}; f.grade--; f.hpMax+=10; f.mpMax+=10; f.hp+=10; f.mp+=10; const up = promoStats(f);
-        lines.push(`${esc(f.name)}: ${gName(f.grade+1)} → <b>${gName(f.grade)}</b> <span class="muted">· ${up.join(" · ")}</span>`);
+      if(R.ok && gapLeft <= 0 && !examLack){ ac("promo"); f.promoDay = S.day; f.examOk = 0; f.wk = {n:0, ok:0, hi:0, sc:0}; const oldWage=syncGradeWage(f); f.grade--; const newWage=syncGradeWage(f); f.hpMax+=10; f.mpMax+=10; f.hp+=10; f.mp+=10; const up = promoStats(f);
+        lines.push(`${esc(f.name)}: ${gName(f.grade+1)} → <b>${gName(f.grade)}</b> <span class="muted">· ${up.join(" · ")}</span>${!f.isLeader&&newWage>oldWage?`<br><span style="color:#e8c98a">주급 ${won(oldWage)} → ${won(newWage)} (다음 주부터)</span>`:""}`);
         S.records.push({day:S.day,name:f.name,what:"승급",note:gName(f.grade)}); }
       else if((f.wk && f.wk.n) || examLack) wait.push(`${esc(f.name)}: 보류 — ${R.why[0]}`); }
     // 보류 또는 일반 승급 대상이 아닌 해결사의 개인 실적은 다음 심사로 이월한다.
@@ -9748,7 +9762,7 @@ async function openRecruit(){
       if(nm===null) return;
       if(!S.recruitPool.includes(f) || S.money<f.cost || officeCompanionCount()>=officeCompanionMax()) { toast("그사이 고용 한도 또는 자금이 달라졌습니다."); return; }
       f.name = nm || f.name; S.money -= f.cost; f.hiredDay=S.day; delete f.cost;
-      S.fixers.push(f); S.recruitPool = S.recruitPool.filter(x=>x!==f); ac("hire"); f.hiredGrade = f.grade; S.records.push({day:S.day, name:f.name, what:"영입", note:gName(f.grade)});
+      S.fixers.push(f); S.recruitPool = S.recruitPool.filter(x=>x!==f); ac("hire"); f.hiredGrade = f.grade; syncGradeWage(f); S.records.push({day:S.day, name:f.name, what:"영입", note:gName(f.grade)});
       addLog(`${jo(f.name,"을")} 고용했다(${gName(f.grade)}).`);
       root.querySelector("#rlist").innerHTML = draw(); const cap=root.querySelector("#recruit-cap"); if(cap) cap.textContent=`동료 ${officeCompanionCount()}/${officeCompanionMax()}명 (대표 제외) · 한도를 늘리려면 공방 → 사무소 확장에서 비용을 지불하세요.`; save(); render();
     });
@@ -9775,7 +9789,7 @@ async function openManage(){
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} ${f.renamed ? `<small class="muted">(이름은 정해졌다)</small>` : `<button data-rename="1" style="padding:2px 8px" title="이름은 한 번만 바꿀 수 있다">이름 정하기 (1회)</button>`}</b>
       <span>등급</span><b>${gName(f.grade)}${f.title?" · "+esc(f.title):""}</b>
       <span>성격</span><b>${f.personality}</b>
-      ${!f.isLeader?`<span>개인 신뢰</span><b>${fixerTrust(f)}/100 · 의뢰 성과·주급에 따라 변동</b>`:""}
+      ${!f.isLeader?`<span>개인 신뢰</span><b>${fixerTrust(f)}/100 · 의뢰 성과·주급에 따라 변동</b><span>주급</span><b>${won(syncGradeWage(f))}${f.wageDue>0?` · <span style="color:#ff8a7a">미납 ${won(f.wageDue)}</span>`:""}${f.grade>0?` · <span class="muted">다음 승급 시 +${won(WAGE_GRADE_ADD[f.grade-1]-WAGE_GRADE_ADD[f.grade])}</span>`:""}</b>`:""}
       <span>간직한 것</span><b style="${f.precious&&f.precious.lost?"color:#e7a07c":""}">${esc(preciousText(f))}</b>
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
@@ -16391,7 +16405,7 @@ function renderStart(){
         <input type="file" id="title-savefile" accept=".json,application/json" hidden>
       </div>
       <div class="spoiler"><b>스포일러 경고</b>로보토미 코퍼레이션과 라이브러리 오브 루이나, 림버스 컴퍼니의 관련 이야기가 나올 수 있습니다.</div>
-      <div class="ver">v${VERSION}</div>
+      <div class="ver">${VERSION}</div>
     </div>
     <div class="name-panel" id="np" hidden>
       <div class="np-h">개업 신고서 <span>하나 협회 제출용</span></div>
