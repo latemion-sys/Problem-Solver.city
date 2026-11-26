@@ -2903,8 +2903,9 @@ function contractResult(q,success){
   const base = Math.random()<0.5 ? 1 : 2, extra = officeTrustSpecial(q) ? 2 : 0;
   return changeOfficeTrust(base+extra,`계약 이행 · ${q.client}${extra?" · 뒤틀림/죄종/환상체 관련 보너스 +2":""}`);
 }
-function pickRow(rows){
+function pickRow(rows,grade){
   if(!rows || !rows.length) return null;
+  if(grade!=null&&S){const suitable=rows.filter(r=>requestClientSuitable(r[1],grade,S.officeGrade));if(suitable.length)rows=suitable;}
   const recent=new Set((S && S.reqHistory || []).slice(-24));
   const fresh=rows.filter(r=>!recent.has(r[0]));
   return pick(fresh.length?fresh:rows);
@@ -2949,22 +2950,22 @@ function makeRequest(grade, opts={}){
   const kw = grade===9 && !ab && !opts.noKw && Math.random() < 0.35, base = kw ? Math.round(base0*1.25) : base0, req = kw ? req0 + 2 : req0, threat = kw ? "도시 괴담" : threat0;
   const key = attrs[0];
   let text, client, foe = null, chase = null, row, scene = null;
-  if(kind==="호위"){ row = pickRow(P.esc); }
-  else if(kind==="수색"){ row = pickRow(P.srch); }
-  else if(kind==="환상체"){ row = pickRow(P.wil); }
-  else if(P[key]){ row = pickRow(P[key]); }
+  if(kind==="호위"){ row = pickRow(P.esc,grade); }
+  else if(kind==="수색"){ row = pickRow(P.srch,grade); }
+  else if(kind==="환상체"){ row = pickRow(P.wil,grade); }
+  else if(P[key]){ row = pickRow(P[key],grade); }
   if(row){ text = row[0]; client = row[1]; scene = row[3] || null; if(key==="str") foe = row[2] || null; else chase = row[2] || null; }
-  if(ab){ const A = ABNO_BY[ab.id]; text = A.kill || /달라$/.test(A.rumor) ? A.rumor : `${A.rumor}. 확인하고 처리해 달라`; scene=null; }
+  if(ab){ const A = ABNO_BY[ab.id]; client=anomalyClient(grade,null,client); text = A.kill || /달라$/.test(A.rumor) ? A.rumor : `${A.rumor}. 확인하고 처리해 달라`; scene=null; }
   else if(!row){ text = pick(TEXTS[key] || TEXTS.str); client = pick(CLIENTS[key] || CLIENTS.str); }
   // 물리 일반 의뢰는 제압 / 사살로 나뉜다(낮은 등급은 대부분 제압)
   let goal = null;
   if(ab && ABNO_BY[ab.id].kill) goal = "사살";
-  if(kind==="일반" && key==="str"){ goal = opts.goal || (Math.random()<P.kill ? "사살" : "제압"); if(goal==="사살"){ const k2 = pickRow(P.str_kill); text = k2[0]; client = k2[1]; foe = k2[2]; scene = k2[3] || null; } }
+  if(kind==="일반" && key==="str"){ goal = opts.goal || (Math.random()<P.kill ? "사살" : "제압"); if(goal==="사살"){ const k2 = pickRow(P.str_kill,grade); text = k2[0]; client = k2[1]; foe = k2[2]; scene = k2[3] || null; } }
   const lootChance = kind==="수색"?0.07:kind==="환상체"?0.05:0.03;
   // 환상체 의뢰 일부는 고위험(75% 기준을 넘김)
   const hazard = kind==="환상체" && !opts.kind && Math.random()<0.25;
   const q = {
-    id:S.nextId++, kind, attrs, grade, threat, risk: ab ? ABNO_BY[ab.id].risk : null, abno: ab, hazard, goal, foe, chase,
+    id:S.nextId++, clientOfficeGrade:S.officeGrade, kind, attrs, grade, threat, risk: ab ? ABNO_BY[ab.id].risk : null, abno: ab, hazard, goal, foe, chase,
     client, text, ...(scene?{story:scene.slice()}:{}), reward: (r0 => ["도시 질병","도시 악몽","도시의 별"].includes(threat) ? Math.ceil(r0*1.1) : r0)(Math.round(base*(hazard?1.5:1)*(0.85+Math.random()*0.3)/100)*100),   // 도시 질병 이상은 보수 +10%(올림)
     req: easeReq(Math.round(req*(hazard?1.25:1)) + rnd(-1,1), threat), deadline: rnd(1,3),
     loot: Math.random()<lootChance*(hazard?2:1) ? rollLoot(grade) : null, special:false
@@ -3038,9 +3039,9 @@ function applyDistort(q, force){
   for(let i=0; i<12 && onBoard.has(`${E.p} ${job}`); i++){ E = pick(EP.length ? EP : DIST_EMO); job = pick(DIST_JOBS); }
   const place = pick(DIST_PLACES);
   q.distFoe = {lvl:T.lvl, hp:T.hp, cards:T.cards, mp:T.mp, th, place, who:{job, e:E.e, name:`${E.p} ${job}`, look:E.look}};
-  q.client = pick(DIST_CLIENT);
-  q.text = q.client==="하나 협회 긴급 공고" ? `${th}급 '뒤틀림'으로 분류된 위협이 ${place}에 나타났다. 급히 처리할 사무소를 구함.`
-    : `${place}에서 사람 하나가 괴물로 변했다. 이미 다친 사람이 여럿이다. 급하게 처리해 줄 사무소를 구함.`;
+  q.client = anomalyClient(q.grade,place,null);
+  q.text = distortionContract(q);
+  delete q.story;delete q.storyAuth;delete q.storyV;
   q.req += T.req; q.reward = Math.round(q.reward*T.pay/100)*100; q.deadline = Math.min(q.deadline||2, 2);
   return q; }
 function distAfter(q, team, success, lines){
@@ -4270,12 +4271,14 @@ function requestNarrative(q, story){
   const normalized=t=>String(t||"").replace(/[\s"'“”‘’「」.。!?]/g,"");
   const core=raw.replace(/^(?:\[승급 심사\]\s*|하나 협회의 지명\s*—\s*|남겨진 흉터의 의뢰\s*—\s*|편지 속 사연:\s*|지령:\s*)/,"");
   const key=normalized(core);
-  const scripted=!!(q.arc||q.officeStoryId!=null||q.prescript||q.hanaStar||q.trio||q.scarJob||q.kind==="특색 심사");
+  const scripted=!!(q.arc||q.officeStoryId!=null||q.prescript||q.hanaStar||q.trio||q.scarJob||q.boss||q.kind==="특색 심사");
+  if(!scripted&&(q.distFoe||q.kind==="환상체"||q.abno))return anomalyNarrative(q);
   // 작가가 작성한 사건/지령의 고유 장면과 대사는 그대로 보존한다.
   if(scripted&&lines.some(l=>normalized(l).includes(key))) return lines;
   const ck=clientKind(q.client);
-  const opening=lines.shift()|| (ck==="anon"?"발신인이 적혀 있지 않은 의뢰서가 도착했다.":"의뢰가 사무소에 접수됐다.");
-  const doc=scripted||ck==="anon"||/봉투가 (?:왔|도착|끼워|놓여|들어)|의뢰서가 (?:배달|왔|도착)|서류.*배달|발신인|우편함|공고/.test(opening)||(ck==="org"&&!/찾아왔|내밀|들어왔|건넸|펼쳤|보여|말했|접수대/.test(opening));
+  let opening=lines.shift()|| (ck==="anon"?"발신인이 적혀 있지 않은 의뢰서가 도착했다.":"의뢰가 사무소에 접수됐다.");
+  if(!scripted&&ck==="org"){if(!q.institutionOpening)q.institutionOpening=institutionalOpen(q);opening=q.institutionOpening;}
+  const doc=scripted||ck==="anon"||ck==="org"||/봉투가 (?:왔|도착|끼워|놓여|들어)|의뢰서가 (?:배달|왔|도착)|서류.*배달|발신인|우편함|공고/.test(opening)||(ck==="org"&&!/찾아왔|내밀|들어왔|건넸|펼쳤|보여|말했|접수대/.test(opening));
   // 요청에서 제시한 개별 의뢰의 교정문은 그 원문과 일치할 때만 표시한다.
   const sampleKey=normalized("형이 사라졌습니다. 전날까지도 '거래처'에 다녀온다는 말만 했어요. 골목 끝에 정장 차림의 무언가가 서 있는데, 머리 대신 커다란 모니터가 달렸고 그 둘레에 영수증이 주렁주렁 매달려 있답니다. 거기서 거래한 사람들은 뭘 내줬는지도 기억을 못 한대요. 더 사라지기 전에 끝내 주세요.");
   const sampleMatch=!doc&&key===sampleKey;
@@ -9646,7 +9649,7 @@ const ASSOC_REQ = {zwei:{kind:"호위", attrs:["str","agi"]}, seven:{kind:"수�
 // 협회를 먼저 고르고(다섯 협회 같은 확률) 그 협회가 맡길 일로 의뢰를 새로 만든다
 function assocRequest(grade, id){ id = id || pick(Object.keys(ASSOCS)); const A = ASSOCS[id], R = ASSOC_REQ[id];
   const q = makeRequest(Math.min(grade, 7), {kind:R.kind, attrs:R.attrs.slice(), goal:R.goal});
-  q.assoc = id; q.client = `${A.n} ${pick(["남부","북부","동부","서부"])} ${rnd(1,6)}과`; q.reward = Math.round(q.reward*1.15/100)*100; return q; }
+  q.assoc = id; q.client = `${A.n} ${pick(["남부","북부","동부","서부"])} ${associationSection(q.grade,S.officeGrade)}과`; q.reward = Math.round(q.reward*1.15/100)*100; return q; }
 function assocAfter(q, team, success, lines){ if(!q.assoc || !success) return; const A = ASSOCS[q.assoc];
   S.assoc = S.assoc || {}; const n = S.assoc[q.assoc] = (S.assoc[q.assoc]||0) + 1; ac("assoc");
   lines.push(`<span style="color:${A.col}">${A.n}</span> — 지부 장부에 사무소 이름이 한 줄 더 적혔다 <span class="muted">(협회 의뢰 ${n}건)</span>`); }
@@ -15702,11 +15705,53 @@ const STORY_OPEN = {
     "누가 두고 갔는지 모를 봉투가 접수대 위에 놓여 있었다.",
     "늦은 밤에 보니 우편함에 이름 없는 봉투가 들어 있었다."]};
 const CLIENT_SHOP = /(사진관|슈퍼|생선 가게|부품상'|수리점|정비소|'둥근 저울'|'두 바퀴'|'손끝')$/;
-const CLIENT_ORG = /(조합|중개소|연구소|사무실|관리소|사무소|상인회|공방|연락실|조사실|작전실|조사반|감사실|대응실|모임|연합|업체|진료소|위원회|출판사)$/;
-function clientKind(c){ c = String(c||""); if(/^익명/.test(c)) return "anon"; if(CLIENT_SHOP.test(c)) return "shop"; if(CLIENT_ORG.test(c)) return "org"; return "person"; }
-function storyOpen(q){ const k = clientKind(q.client); const pool = STORY_OPEN[k==="shop" ? "person" : k];
-  const w = k==="shop" ? `${q.client} 주인` : q.client;
-  return pick(pool).replace(/\{w\}이\(가\)/g, jo(w,"이")).replace(/\{w\}/g, w).replace(/\{c\}/g, q.client); }
+const CLIENT_ORG = /(조합|중개소|연구소|사무실|관리소|사무소|상인회|공방|연락실|조사실|작전실|조사반|감사실|대응실|모임|연합|업체|진료소|위원회|출판사|관리청|본부|지부|부서|부대|경비대|관리단|지원단|센터|대책반|공고|재단|회사|기업|법인|기관|은행|학교|병원|시설|경비실|관리국|관리부|공사|담당과)$/;
+function clientKind(c){c=String(c||"").replace(/^\[|\]$/g,"").trim();if(/^익명|^발신인 불명/.test(c))return "anon";if(/협회/.test(c)&&!/협회.*(해결사|직원|조사원|담당자|관계자|출신)$/.test(c))return "org";if(CLIENT_SHOP.test(c))return "shop";if(CLIENT_ORG.test(c)||/날개.*(?:경비|관리|연구|하청|부서)|^구역 관리|^하나 협회/.test(c))return "org";return "person";}
+function associationSection(grade,office){const g=Math.max(1,Math.min(9,Math.round((Number(grade)||9)*.7+(Number(office)||9)*.3)));return g<=2?rnd(1,2):g<=4?rnd(2,3):g<=6?rnd(4,5):rnd(5,6);}
+function requestClientSuitable(c,grade,office){const k=clientKind(c),g=Math.max(grade,office);if(/하나 협회|날개.*(?:본부|임원)|지부장/.test(c||""))return g<=4;if(/협회|날개|관리청/.test(c||""))return g<=7;if(g<=3)return k==="org"||k==="anon"||/책임자|대표|간부|검사관|연구원|해결사|관계자|증인/.test(c||"");return true;}
+function anomalyClient(grade,place,original){
+  const office=Number(S?.officeGrade)||9,g=Math.max(grade,office),p=String(place||"");
+  if(/협회 지부/.test(p))return "하나 협회 지부";
+  if(g<=3)return pick(["하나 협회 지부","하나 협회 지부",/둥지|검문소/.test(p)?"날개 경비 하청 업체":"구역 관리청"]);
+  if(g<=5)return pick(["하나 협회 지부","구역 관리청",/시장|야시장/.test(p)?"인근 상인 연합":"날개 경비 하청 업체"]);
+  if(original&&requestClientSuitable(original,grade,office)&&!/협회 긴급 공고/.test(original))return original;
+  return pick(["인근 상인 연합","익명의 제보자","구역 관리청"]);
+}
+function distortionContract(q){const D=q.distFoe,place=D.place||"해당 구역",th=D.th||threatOf(q);return /하나 협회/.test(q.client||"")?place+"에서 발생한 이상 현상을 "+th+"급 뒤틀림으로 분류했다. 현장 접근 시 민간인 추가 피해를 억제하고 대상을 처리한 뒤 결과를 지부에 보고할 것.":place+"에서 사람이 괴물로 변했다는 신고가 들어왔다. 해당 대상을 처리해 달라.";}
+function institutionalOpen(q){
+  const c=String(q.client||"").replace(/^\[|\]$/g,""),office=Number(q.clientOfficeGrade||S?.officeGrade)||9,rank=gName(office);
+  if(/하나 협회/.test(c))return office<=3?"하나 협회 지부에서 재해 등급 심사 결과와 함께 "+rank+" 사무소인 이곳에 정식 발주 서류를 보냈다.":"하나 협회 지부의 의뢰 배정 담당자가 사건 자료를 접수대에 내려놓았다. 사무소 등급에 맞춰 출동 가능 인원을 확인했다.";
+  if(q.assoc&&ASSOC_OPEN[q.assoc])return assocOpen(q);
+  if(/협회/.test(c))return c+" 소속 업무 담당자가 제복 차림으로 찾아와 담당 업무와 계약 범위를 설명했다.";
+  if(/날개|경비 하청|경비대/.test(c))return c+"의 현장 책임자가 출입 절차와 업무 범위를 적은 서류를 내밀었다.";
+  if(/관리청|관리국|관리부|관리단|관리소/.test(c))return c+"의 현장 대응 담당자가 사건 구역과 접수된 신고를 정리한 자료를 건넸다.";
+  if(/상인회|상인 연합|조합/.test(c))return c+" 측 대표가 구성원들에게 접수된 피해 내역을 모아 찾아왔다.";
+  return c+"에서 계약 담당자가 찾아왔다. "+rank+" 사무소가 맡을 업무 범위와 보수를 확인한 뒤 의뢰서를 펼쳤다.";
+}
+function storyOpen(q){const k=clientKind(q.client);if(k==="org")return institutionalOpen(q);const pool=STORY_OPEN[k==="shop"?"person":k],w=k==="shop"?q.client+" 주인":q.client;return pick(pool).replace(/\{w\}이\(가\)/g,jo(w,"이")).replace(/\{w\}/g,w).replace(/\{c\}/g,q.client);}
+function institutionalTail(q){if(/하나 협회/.test(q.client||""))return "출동 결과와 확인된 피해 상황은 지부에 보고하도록 명시돼 있었다.";if(q.assoc&&ASSOC_TAIL[q.assoc])return ASSOC_TAIL[q.assoc];if(/날개|경비/.test(q.client||""))return "현장에 들어가기 전 담당자에게 계약 범위와 출입 절차를 확인하라는 안내가 붙어 있었다.";return q.kind==="호위"?"계약 대상과 인계 지점을 확인한 뒤 출동하라는 조건이었다.":q.kind==="수색"?"확인한 위치와 증거를 정리해 담당자에게 전달하기로 했다.":"계약 범위 밖의 조치는 의뢰인 측과 별도로 협의하기로 했다.";}
+function anomalyNarrative(q){
+  const k=clientKind(q.client),org=k==="org",hana=/하나 협회/.test(q.client||""),dist=!!q.distFoe;
+  if(!q.anomalyOpening)q.anomalyOpening=storyOpen(q);
+  const raw=dist?distortionContract(q):String(q.text||"").replace(/[.。]+$/,"");
+  const out=[q.anomalyOpening];
+  if(dist){
+    const place=q.distFoe.place||"해당 구역";
+    if(hana)out.push("의뢰 내용은 "+(q.distFoe.th||threatOf(q))+"급 뒤틀림의 처리였다. "+place+"의 현장 자료와 함께, 추가 피해를 막고 결과를 보고하라는 지시가 전달됐다.");
+    else if(org)out.push(place+"에서 사람이 괴물로 변했다는 신고가 접수됐다. 담당자는 현장에 접근할 수 있는 해결사를 구하고 있다고 설명했다.", "정확한 정체나 변이 원인은 확인되지 않았다. 계약상 목표는 해당 위협의 처리다.");
+    else if(k==="anon")out.push("봉투에는 "+place+"에서 사람이 괴물로 변했다는 제보와 처리 요청이 적혀 있었다.", "제보자가 직접 목격했는지, 다른 사람에게 들었는지는 알 수 없었다.");
+    else out.push("“"+place+"에서 사람이 괴물로 변했다는 이야기가 돌고 있어요. 무슨 일이 벌어진 건지 모르겠지만, 더 다치기 전에 처리해 주세요.”");
+  }else{
+    if(org)out.push("담당자가 전달한 현장 제보는 다음과 같았다. 「"+raw+"」","확인되지 않은 대상의 정체는 단정하지 않고 현장에서 조사하도록 했다.");
+    else if(k==="anon")out.push("봉투에는 다음과 같은 제보가 적혀 있었다. 「"+raw+"」");
+    else out.push("의뢰인은 자신이 알고 있는 일을 이야기했다. “"+requestSpeech(raw)+"”");
+  }
+  if(org)out.push(institutionalTail(q));
+  if(q.nom)out.push("이번 계약은 이 사무소를 지정한 별도 의뢰로 접수됐다.");
+  if(q.loot)out.push(lootLine(q));if(q.relic)out.push("현장 주변에서 정체를 확인하지 못한 물건을 봤다는 별도 제보가 있었다.");
+  out.push(q.deadline==null?"계약상 별도 마감 기한은 없었다.":"계약상 남은 기한은 "+q.deadline+"일이었다.");
+  return out.filter(Boolean);
+}
 /* 의뢰서 본문을 보고 덧붙일 의뢰인의 말을 고른다 — 같은 말이 두 번 나오지 않게 */
 const STORY_TAIL = {
   kill:["의뢰인은 잠시 말을 고르더니, 사살로 계약해 달라고 했다.","\"다시 나타나면 또 누가 다칠 거예요. 끝내 주세요.\""],
@@ -15811,7 +15856,7 @@ const ASSOC_TAIL = {
   seven:"\"확인된 것만 보고해 주십시오. 추측은 따로 적어 주시고요.\"",
   dieci:"\"보수와 별개로, 현장에서 알게 된 건 저희와도 나눠 주셔야 합니다. 앎은 쌓일수록 값이 나가니까요.\""};
 const assocOpen = q => pick(ASSOC_OPEN[q.assoc]).replace(/\{c\}/g, q.client);
-const STORY_V = 3;   // 사연 문장 규칙이 바뀌면 올린다 — 저장된 범용 사연은 다시 만든다
+const STORY_V = 4;   // 사연 문장 규칙이 바뀌면 올린다 — 저장된 범용 사연은 다시 만든다
 function storyIsOldGeneric(q){ const st = q.story; if(!Array.isArray(st) || !st.length) return true;
   const t0 = String(q.text||"").replace(/^지령: /,"").replace(/[.。]$/,"");
   return st.some(l => l===`"${t0}"` || l===`"${t0}."` || l===`"${q.text}."` || (q.storyV!==STORY_V && l===`「${t0}.」`)); }
@@ -16568,7 +16613,7 @@ function reqStory(q){
     if(sc){ if(!q.storyAuth){ q.story = q.grade===1 && q.threat==="도시의 별" ? sc.map(gradeOneStarText) : sc.slice();
       if(q.assoc && ASSOC_OPEN[q.assoc]){ q.story.unshift(assocOpen(q)); q.story.push(ASSOC_TAIL[q.assoc]); }
       q.storyAuth = true; } return q.story; } }
-  if(q.story && (q.storyV===STORY_V || q.arc || q.officeStoryId!=null || !storyIsOldGeneric(q))) return q.story;
+  if(q.story && (q.storyV===STORY_V || q.arc || q.officeStoryId!=null || q.storyAuth || (!q.distFoe&&q.kind!=="환상체"&&clientKind(q.client)!=="org"&&!storyIsOldGeneric(q)))) return q.story;
   const L = [];
   if(q.prescript){ L.push("아침에 문을 여니 문틈에 하얀 봉투가 끼워져 있었다. 겉봉엔 아무것도 적혀 있지 않았다.", "골목 끝에서 단정한 차림의 사람이 이쪽을 보고 있다가, 눈이 마주치자 고개를 숙이고 사라졌다.", `봉투 속 종이에는 한 줄뿐이다 — "${String(q.text).replace(/^지령: /,"")}"`, "따르면 사례가 온다. 따르지 않으면 대가를 치른다."); }
   else if(q.hanaStar){ L.push("하나 협회의 직인이 찍힌 두꺼운 서류철이 직접 배달되었다. 수신인 칸에는 사무소 이름이 또렷하게 적혀 있다.", ...retellReq(q.text, true), "협회는 이 일을 '지정 의뢰'라고 불렀다. 해내면 도시가 사무소 이름을 다시 부를 것이다. 실패하면, 아마 다른 이름으로.", q.bossLine || ""); }
@@ -16589,9 +16634,9 @@ function reqStory(q){
     L.push(...retellReq(t0, doc));
     const tk = storyTailKind(q, t0);
     if(AS) L.push(ASSOC_TAIL[q.assoc]);
-    else if(ck!=="anon") L.push(withLead(pick(STORY_TAIL[tk])));
-    if(q.goal==="제압" && tk==="subdue" && !AS && ck!=="anon") L.push("\"죽일 필요까진 없어요.\" 의뢰인이 한 번 더 못 박았다.");
-    if(q.goal==="사살" && tk!=="kill" && !AS && ck!=="anon" && !/살려 둘|끝내/.test(t0)) L.push(STORY_TAIL.kill[0]);
+    else if(ck==="org")L.push(institutionalTail(q));else if(ck!=="anon") L.push(withLead(pick(STORY_TAIL[tk])));
+    if(q.goal==="제압" && tk==="subdue" && !AS && ck!=="anon" && ck!=="org") L.push("\"죽일 필요까진 없어요.\" 의뢰인이 한 번 더 못 박았다.");
+    if(q.goal==="사살" && tk!=="kill" && !AS && ck!=="anon" && ck!=="org" && !/살려 둘|끝내/.test(t0)) L.push(STORY_TAIL.kill[0]);
     if(q.synd){ const sy = SYNDICATES.find(x=>x.id===q.synd); if(sy) L.push(`뒤에 ${sy.n}이(가) 있다는 말이 돈다. 그 이름을 듣자 사무소 안이 잠깐 조용해졌다.`.replace(`${sy.n}이(가)`, jo(sy.n,"이"))); }
     if(q.hazard) L.push("보수는 평소보다 높다. 그만큼 위험하다는 뜻이다."); }
   if(q.loot) L.push(lootLine(q));
