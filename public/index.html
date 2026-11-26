@@ -1652,8 +1652,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a2.1.5.7"; // 공방 무기 추가
+const VERSION = "v.a2.2.7"; // 전투 키워드 개편
 const CHANGELOG = [
+  ["v.a2.2.7", ["해결사 최초 키워드 설정: 일반 공격 두 칸 및 특수 기술 한 칸, 해금 순서 확정 후 변경 불가", "등급에 따라 키워드 1~3개 해금 및 수치 1·3·5·7·9 적용. 출혈·화상·침잠·진동·충전·호흡 개편", "일부 7급 이상 인간 적에게 보호막 및 보호막 회복 방어 기술 추가. 전투 화면·기술 일람·공방 및 에고 설명 동기화"]],
   ["v.a2.1.5.7", ["정식 공방 무기 6종 추가: 바람계곡 공방(풍압 봉 · 송풍 창), 코오리 공방(결빙 장갑 · 서리 단검), 알라스 공방 가속 건틀릿, 묵 공방 장도", "상급 공방 무기 6종 추가: 유리아 공방(의장 장검 · 진주 세검), 휠스 인더스트리 처형 망치, 크리스탈 아틀리에 결정 단검, 스크류 아틀리에 드릴 건틀릿, 메즈틸 공방 쌍검", "새 무기마다 공방 고유의 3D 디자인(송풍 날개 · 얼음 결정 · 금상감과 진주 등)", "새 공방의 고유 무기 능력: 바람계곡 [돌풍] · 코오리 [결빙] · 유리아 [명품 마감]"]],
   ["v.a2.1.5.4", ["일반 공격 직접 선택 2칸, 방어 전용 1칸, 기존 습득 기술은 특수 기술 1칸. 신·망은 다섯 번째 칸", "방어 방식 선택, 정신력 회복, 적 행동 예고 및 투지 추가. 특수 기술의 코인·피해·재사용 조정", "수색 현장 장부: 재주에 따른 추가 단서, 고정 행동 횟수와 성공 등급", "기술 일람과 전투 규칙 개편"]],
   ["v.a1.7.5", ["의뢰 요구치 대비 전력에 따른 기본 합 위력 보정 유지(기존 -4~+4에서 -3~+3으로 조정). 근력·재주 보정은 그대로 적용", "하단에는 현재 버전만 표시"]],
@@ -2335,6 +2336,29 @@ const genderOf = f => f&&f.isLeader ? legacyGenderOf(f) : undefined;
 const fullBody = f => !!(f&&(f.isLeader ? genderOf(f)==="무성" : f.originBody===true || (f.originBody===undefined && legacyGenderOf(f)==="무성")));
 const genderText = f => genderOf(f)==="무성" ? "무성 (전신 의체 — 정신력 피해 -1 · 체력 피해 +1)" : genderOf(f);
 function migrateFixerGender(d){ if(!d)return d; for(const f of [...(d.fixers||[]),...(d.recruitPool||[]),...(d.formerFixers||[])]){ if(!f)continue; if(f.isLeader){if(!GENDERS.includes(f.gender))f.gender=legacyGenderOf(f);continue;} if(typeof f.originBody!=="boolean")f.originBody=legacyGenderOf(f)==="무성";delete f.gender; } return d; }
+const KEYWORD_NAMES=Object.freeze({bleed:"출혈",burn:"화상",sink:"침잠",tremor:"진동",charge:"충전",poise:"호흡"});
+const KEYWORD_SLOTS=["일반 공격 1","일반 공격 2","특수 기술"];
+const KEYWORD_ORDERS=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+function keywordTier(g){g=Number.isFinite(Number(g))?Number(g):9;return g<=1?{n:3,v:9}:g<=3?{n:2,v:7}:g<=5?{n:2,v:5}:g<=7?{n:1,v:3}:{n:1,v:1};}
+function validKeywordPlan(p){return !!(p&&Array.isArray(p.keys)&&p.keys.length===3&&p.keys.every(k=>Object.hasOwn(KEYWORD_NAMES,k))&&Array.isArray(p.order)&&p.order.length===3&&p.order.every(i=>Number.isInteger(i)&&i>=0&&i<3)&&new Set(p.order).size===3);}
+function keywordPlanFields(prefix){return KEYWORD_SLOTS.map((n,i)=>`<div class="field"><label>${n}</label><select data-kw="${prefix}-${i}">${Object.entries(KEYWORD_NAMES).map(([k,v],j)=>`<option value="${k}" ${j===i?"selected":""}>${v}</option>`).join("")}</select></div>`).join("")+`<div class="field"><label>해금 순서</label><select data-kw="${prefix}-order">${KEYWORD_ORDERS.map((o,i)=>`<option value="${i}">${o.map(x=>KEYWORD_SLOTS[x]).join(" → ")}</option>`).join("")}</select></div>`;}
+function readKeywordPlan(root,prefix){return {keys:KEYWORD_SLOTS.map((_,i)=>root.querySelector('[data-kw="'+prefix+'-'+i+'"]').value),order:KEYWORD_ORDERS[+root.querySelector('[data-kw="'+prefix+'-order"]').value].slice()};}
+function lockKeywordPlan(f,p){if(validKeywordPlan(f.keywordPlan)||!validKeywordPlan(p))return false;f.keywordPlan={keys:p.keys.slice(),order:p.order.slice()};return true;}
+function keywordFor(f,slot){const p=f.keywordPlan,t=keywordTier(f.grade);if(!validKeywordPlan(p)||!p.order.slice(0,t.n).includes(slot))return null;return {id:p.keys[slot],v:t.v};}
+function keywordPlanText(f){if(!validKeywordPlan(f.keywordPlan))return "미설정";const t=keywordTier(f.grade),p=f.keywordPlan;return p.order.map((slot,i)=>KEYWORD_SLOTS[slot]+" · "+KEYWORD_NAMES[p.keys[slot]]+(i<t.n?" "+t.v:" (미해금)")).join(" / ");}
+async function chooseKeywordPlan(f){if(validKeywordPlan(f.keywordPlan))return true;let p=null;const t=keywordTier(f.grade);const ok=await modal("전투 키워드 최초 설정",`<p><b>${esc(f.name)}</b> · ${gName(f.grade)} · 현재 ${t.n}칸, 부여량 ${t.v}</p><p class="muted">무기를 사용한 적중 시 발동합니다. 세 칸의 키워드와 해금 순서는 확정하면 변경할 수 없습니다. 두 번째 일반 공격 동작을 바꾸거나 무기를 교체해도 설정은 유지됩니다.</p>${keywordPlanFields("hire")}`,[{t:"취소",v:false},{t:"확정 (변경 불가)",v:true,primary:true}],false,root=>{p=readKeywordPlan(root,"hire");root.addEventListener("change",()=>{p=readKeywordPlan(root,"hire");});});if(!ok)return false;return lockKeywordPlan(f,p);}
+async function ensureOfficeKeywords(){if(FXTEST||!S)return true;for(const f of S.fixers){if(!validKeywordPlan(f.keywordPlan)){while(!validKeywordPlan(f.keywordPlan)){if(await chooseKeywordPlan(f)){save();break;}if(await modal("키워드 설정 필요","기존 해결사의 최초 설정을 마쳐야 합니다.",[{t:"다시 설정",v:true,primary:true}])!==true)return false;}}}return true;}
+function keywordAdd(target,id,n){const cap=id==="charge"?20:id==="poise"?50:Infinity;target[id]=Math.min(cap,Math.max(0,(Number(target[id])||0)+Math.max(0,Number(n)||0)));return target[id];}
+function keywordSnapshot(target){return Object.fromEntries(["bleed","burn","sink","tremor"].map(k=>[k,Math.max(0,Number(target[k])||0)]));}
+function keywordImpact(target,before,defFactor,notes){const take=(k,n)=>{target[k]=Math.max(0,(target[k]||0)-n);};let extra=0;
+  if(before.bleed){const b=Math.round(before.bleed*Math.max(0,defFactor));extra+=b;take("bleed",before.bleed);notes.push("출혈 추가 피해 "+b);}
+  if(before.burn){extra+=before.burn;take("burn",before.burn);notes.push("화상 추가 피해 "+before.burn);}
+  if(before.sink&&(target.shield||0)>0){const n=Math.min(target.shield,before.sink);target.shield-=n;take("sink",before.sink);notes.push("침잠 보호막 -"+n);}
+  if(before.tremor>=10){take("tremor",10);target.daze=1;notes.push("진동 10 소모 — 다음 합 휘청임");}
+  return extra;
+}
+function keywordShield(target,dmg,notes){const n=Math.min(Math.max(0,dmg),target.shield||0);if(n){target.shield-=n;notes.push("보호막 "+n+" 흡수");}return dmg-n;}
+function keywordSpend(target,id){if((target[id]||0)<10)return false;target[id]-=10;return true;}
 function newFixer(name, grade, stats, opts={}){
   const f = Object.assign({
     id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
@@ -2452,7 +2476,7 @@ function archiveOffice(d){
     if(blocked.has(id) || seen.has(id)) continue;
     seen.add(id);
     people.push({key:id, name:f.name,grade:f.grade, stats:{...f.stats},look:f.look?{...f.look}:null,
-      personality:f.personality,precious:f.precious?{...f.precious}:null});
+      personality:f.personality,precious:f.precious?{...f.precious}:null,keywordPlan:validKeywordPlan(f.keywordPlan)?{keys:f.keywordPlan.keys.slice(),order:f.keywordPlan.order.slice()}:null});
   }
   a.offices.push({key, name:d.officeName, people});
   formerSave(a);
@@ -2484,7 +2508,7 @@ function formerCandidate(officeGrade, leaderGrade){
   if(!pool.length) return null;
   const p=pick(pool), f=newFixer(p.name,p.grade,{...p.stats},{look:p.look?{...p.look}:randomLook(),personality:p.personality,alumniKey:p.key,fromOffice:p.officeName});
   f.hpMax=f.mpMax=100+(9-p.grade)*10; f.hp=f.hpMax; f.mp=f.mpMax; syncStatVitals(f);
-  f.precious=p.precious?{...p.precious}:rollPrecious(f);
+  f.precious=p.precious?{...p.precious}:rollPrecious(f);if(validKeywordPlan(p.keywordPlan))lockKeywordPlan(f,p.keywordPlan);
   const base=Math.round(HIRE_COST[p.grade]*(0.9+Math.random()*0.2)/100)*100;
   setRecruitCost(f, base);
   return f;
@@ -2502,6 +2526,7 @@ function newGame(leaderName, officeName, partnerName, lead){
   // 미리보기 한정: 두 번째 9급 동료를 이름·능력치·성격·외형 모두 무작위로 생성한다.
   const P2 = newFixer(randomName(), 9, genStats(9));
   syncStatVitals(P2); S.fixers.push(P2);
+  [L,P,P2].forEach((f,i)=>{if(lead&&Array.isArray(lead.keywordPlans))lockKeywordPlan(f,lead.keywordPlans[i]);else if(FXTEST)lockKeywordPlan(f,{keys:["bleed","burn","charge"],order:[0,1,2]});});
   P.trust = P2.trust = 65;
   P.precious = rollPrecious(P); P2.precious = rollPrecious(P2);
   L.founder = P.founder = P2.founder = true; syncGradeWage(P); syncGradeWage(P2); S.st = {}; setTimeout(()=>{ if(S){ ac("runs"); acSet("district", S.district); } }, 0);
@@ -5335,8 +5360,10 @@ function mgCombat(ctx){
     const woundOf = (hp,max=100) => hp/max>0.75 ? 0 : hp/max>0.45 ? 1 : hp/max>0.18 ? 2 : 3;
     party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); if(p.sp2==="mind") p.sp = Math.max(0, p.sp); if(p.sp2==="shield") p.shield = 10; });
     foe.burn = 0; foe.bleed = 0; foe.rupture = 0; foe.tremor = 0; foe.daze = 0; foe.brand = false; let tick = "";
+    foe.shieldMax=!AB&&!DF&&!q.boss&&g0<=7&&Math.random()<(g0<=3?0.45:g0<=5?0.35:0.25)?Math.min(24,8+2*(7-g0)):0;foe.shield=foe.shieldMax;
+    if(foe.shieldMax){const d=foe.skills.find(c=>c.def);if(d)foe.barrierSkill={...d,n:"보호막 전개",barrier:true};}
     /* 환상체 전투 기믹과 마탄 */
-    const AXN = [], isBlessed = p => p.f.ab && p.f.ab.bless && S.day <= p.f.ab.bless.until;
+    const AXN = [];if(foe.shieldMax)AXN.push(`<b>적 보호막 ${foe.shieldMax}</b> · 방어 기술로 일부 재생`); const isBlessed = p => p.f.ab && p.f.ab.bless && S.day <= p.f.ab.bless.until;
     if(S.bullets && S.bullets.length){ const b = S.bullets.shift();
       const k7 = b.n ? ((b.n - 1) % 7) + 1 : (b.evil ? 7 : 1);
       if(k7 === 7){ const t = pick(party); t.hp = 0; AXN.push(`<b style="color:#ff8a7a">어디선가 마탄이 날아왔다. 일곱 번째 탄환이 ${esc(jo(t.name,"을"))} 골랐다</b>`); }
@@ -5390,7 +5417,7 @@ function mgCombat(ctx){
         const k=supportKind(p);
         let d=Math.max(0,Math.round(foe.baseDamage*.5*(1-redHP(p.f))*(p.f.tired&&!accFx(p.f,"calm")?TIRED_DMG:1))-(k==="spear"||k==="lance"?1:0));
         if(isBlessed(p))d=Math.round(d*.5);
-        if(p.shield&&d){const c=Math.min(p.shield,d);p.shield-=c;d-=c;}
+        if(d>0)d+=keywordImpact(p,keywordSnapshot(p),1-redHP(p.f),lines);d=keywordShield(p,d,lines);
         if(d>0&&p.sp2==="evade"&&Math.random()<.25)d=0;
         if(d>0&&relicFx(p.f,"kavacha")&&!p.kavUsed){p.kavUsed=true;d=0;}
         if(d>=p.hp&&p.sp2==="endure"&&!p.endured){p.endured=true;d=Math.max(0,p.hp-1);}
@@ -5418,9 +5445,9 @@ function mgCombat(ctx){
     const ABNO_REF = {ZAYIN:8, TETH:7, HE:5, WAW:4, ALEPH:2};
     const abnoEdge = me => { const ref = AB && ABNO_REF[AB.risk]; if(!ref || !me || !me.f) return 0; const g = me.f.grade==null ? 9 : me.f.grade; return Math.max(0, ref - g); };
     const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } } o.base += abnoEdge(me);
-      if(me.wsp==="cloud" || me.wsp==="yuria") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1; if(me.wsp==="screw" && me.wchg>=10) o.cp += 2; return o; };
+      if(me.wsp==="cloud" || me.wsp==="yuria") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1;  return o; };
     const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
-    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, bonus(me) + w.base + livePow(me) + (!sk.def?(me.resolveBoost||0):0) - (me.bDown||0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0)); };
+    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, bonus(me) + w.base + livePow(me) + (!sk.def?(me.resolveBoost||0):0) - (me.bDown||0) - (me.daze?CLASH_DAZE_CUT:0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0) + (!sk.def&&(me.charge||0)>=10?1:0)); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
     const basicAtkCards=me=>egoAttackCards(me.f.ego,normalAttackCards(me.wt));
@@ -5428,6 +5455,11 @@ function mgCombat(ctx){
     const basicPick=(me,slot)=>{const a=basicAtkCards(me);return a[Math.min(a.length-1,Math.max(0,slot))]||a[0];};
     const guardModes={guard:"방어",evade:"회피",parry:"흘려내기",counter:"반격"};
     const isBasic=si=>si===0||si===6||si===7;
+    const keywordSlot=si=>si===0?0:(si===6||si===7)?1:si===2?2:-1;
+    const armedKeyword=(me,slot)=>me.wt!=="none"&&slot>=0?keywordFor(me.f,slot):null;
+    const keywordLabel=(me,slot)=>{const k=armedKeyword(me,slot);return k?` · ${KEYWORD_NAMES[k.id]} ${k.v}`:"";};
+    function onWeaponKeyword(me,si,notes){const k=armedKeyword(me,keywordSlot(si));if(!k)return;const dest=k.id==="charge"||k.id==="poise"?me:foe;keywordAdd(dest,k.id,k.v);notes.push(`${KEYWORD_NAMES[k.id]} +${k.v} (보유 ${dest[k.id]})`);}
+    function barrierAct(){if(!foeSkill.barrier)return "";const old=foe.shield||0;foe.shield=Math.min(foe.shieldMax,old+Math.ceil(foe.shieldMax*0.6));return `적 보호막 전개 — ${old} → ${foe.shield}`;}
     const gainResolve=(me,n)=>{me.resolve=clamp(me.resolve+n,0,100);};
     function guardRecover(me,n){const inc=Math.max(1,n-(me.guardStreak>1?4:0));const before=me.sp;me.sp=clamp(me.sp+inc,-45,45);return me.sp-before;}
     function resolveAction(id){const me=party[act],cost=id==="breath"?30:id==="strike"?50:100;if(me.resolveTurn===turn||me.resolve<cost||me.resolveBoost)return;me.resolve-=cost;me.resolveTurn=turn;if(id==="breath"){const before=me.sp;me.sp=clamp(me.sp+15,-45,45);tick=`심호흡 — 전투 정신력 +${me.sp-before}`;}else{me.resolveBoost=id==="strike"?2:3;me.resolveIgnore=id==="last";tick=id==="strike"?"혼신의 일격 — 다음 공격 기본 위력 +2":"사즉생 — 다음 공격 기본 위력 +3, 음수 정신력 확률 불이익 무시";}skillMenu();}
@@ -5472,6 +5504,7 @@ function mgCombat(ctx){
     const S2 = {log:[]};
     function rollFoeSkill(t){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def);
       if(BOSS) return BOSS.roll(t, at, df);
+      if(foe.barrierSkill&&foe.shield<=Math.floor(foe.shieldMax*.4)&&t%3===0)return {...foe.barrierSkill};
       /* 인간 적: 강한 기술은 3~6턴 사이 무작위로 온다. 환상체·뒤틀림은 기존 3턴 주기 강공 그대로. */
       /* 인간 적의 강한 기술: 8~9급은 쓰지 않는다. 7~4급은 세 갈래 중 하나만 정해 3~6턴마다,
          3급 이상은 둘을 정해 하나는 3턴마다 꼭, 나머지 하나는 4턴 이후 무작위 턴(그 뒤 3~6턴 간격)에 쓴다. */
@@ -5503,8 +5536,8 @@ function mgCombat(ctx){
        status 특수 기술(3급 이상 해결사 수준만): 맞히면 출혈·파열·침잠·화상 1~2 */
     const HV_STATUS = {bleed:{n:"출혈", tag:"베어 가르기", tell:"의 날 끝이 번뜩인다", hint:"맞으면 피가 멎지 않는다"},
       rupture:{n:"파열", tag:"급소 찌르기", tell:"의 눈이 급소만 좇는다", hint:"맞으면 상처가 안에서부터 터진다"},
-      sink:{n:"침잠", tag:"짓누르기", tell:"의 눈빛이 가라앉았다. 주위 공기가 눅눅해진다", hint:"맞으면 마음이 가라앉는다"},
-      burn:{n:"화상", tag:"달군 일격", tell:"의 무기에서 열기가 피어오른다", hint:"맞으면 살이 탄다"}};
+      sink:{n:"침잠", tag:"짓누르기", tell:"의 눈빛이 가라앉았다. 주위 공기가 눅눅해진다", hint:"맞으면 다음 피격 시 보호막이 감소한다"},
+      burn:{n:"화상", tag:"달군 일격", tell:"의 무기에서 열기가 피어오른다", hint:"맞으면 살이 탄다"},tremor:{n:"진동",tag:"충격 타격",tell:"의 무기가 떨린다",hint:"진동 10이 쌓이면 다음 피격 시 휘청인다"}};
     /* 1급 이상 인간 적의 패시브 — 셋 중 하나. 특색급이면 '특색의 위압감'까지 넷 중 하나 */
     const FOE_PASSIVE = {edge:{n:"날붙이 내성", d:"날이 달린 무기의 피해 -3", cut:3, kinds:["blade","long","twin","great","spear","lance","rapier","saw"]},
       blunt:{n:"둔기 내성", d:"둔기·건틀릿 같은 무기의 피해 -3", cut:3, kinds:["blunt","fist","staff","tool","none"]},
@@ -5565,15 +5598,15 @@ function mgCombat(ctx){
     const coinStr = sk => "●".repeat(sk.coins);
     function statusLine(){ const me = party[act], a = [], b = [];
       if(foe.clock != null) a.push(`징벌 새의 시간 ${Math.max(0, foe.clock - turn + 1)}턴`); if(AB && AB.movement) a.push(`이번 악장: <b>${["공격","방어","기술"][foe.allow]}</b>만 닿는다`);
-      if(me.bleed) b.push(`<span style="color:#ff8a7a">출혈 ${me.bleed}</span>`); if(me.rupture) b.push(`<span style="color:#ff8a7a">파열 ${me.rupture}</span>`); if(me.sink) b.push(`<span style="color:#8ab0ff">침잠 ${me.sink}</span>`); if(me.burn) b.push(`<span style="color:#ffb35a">화상 ${me.burn}</span>`); if(me.cpDown) b.push(`<span style="color:#ffb35a">손이 무뎌짐(다음 합 코인 위력 -${me.cpDown})</span>`);
+      if(me.tremor)b.push(`진동 ${me.tremor}`);if(me.daze)b.push(`휘청임(다음 합 기본 위력 -${CLASH_DAZE_CUT})`);if(foe.shieldMax)a.push(`보호막 ${foe.shield}/${foe.shieldMax}`);if(foe.sink)a.push(`침잠 ${foe.sink}`);if(me.bleed) b.push(`<span style="color:#ff8a7a">출혈 ${me.bleed}</span>`); if(me.rupture) b.push(`<span style="color:#ff8a7a">파열 ${me.rupture}</span>`); if(me.sink) b.push(`<span style="color:#8ab0ff">침잠 ${me.sink}</span>`); if(me.burn) b.push(`<span style="color:#ffb35a">화상 ${me.burn}</span>`); if(me.cpDown) b.push(`<span style="color:#ffb35a">손이 무뎌짐(다음 합 코인 위력 -${me.cpDown})</span>`);
       if(me.ember) b.push(`불씨 ${me.ember}`); if(me.gaze) b.push(`시선 ${me.gaze}${me.contempt ? " · 경멸" : ""}`); { const gp = party.find(p=>p.grasp); if(gp) a.push(`${esc(gp.name)}를 움켜쥐고 있다(${gp.grasp})`); }
       if(AB && AB.fuse && foe.fuseMark) a.push(`성냥불 ${Math.max(0, AB.fuse - turn + 1)}턴 남음 → ${esc(foe.fuseMark.name)}`); if(foe.lampMark) a.push(`등불에 홀림: ${esc(foe.lampMark.name)} (${Math.max(0, 3 - turn + 1)}턴 남음)`);
       if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.frost) a.push(`냉기 ${foe.frost}/3`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push(`휘청임(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`); if(foe.coinDown) a.push(`코인 위력 감소 ${foe.coinDown}(다음 합)`);
       { const ae = abnoEdge(me); if(ae) b.push(`환상체 보정 ${gName(me.f.grade)} vs ${AB.risk}(기준 ${ABNO_REF[AB.risk]}급) → 기본 위력 +${ae}`); }
       { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
       if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
-      if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? ` 충전 ${me.wchg}/10` : ""}`); }
-      if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.sp2==="charge") b.push(`충전 ${me.charge||0}/10`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
+      if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? " · 적중 충전 +3" : ""}`); }
+      if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge)b.push(`충전 ${me.charge}/20`);if(me.poise)b.push(`호흡 ${me.poise}/50`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
       return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
@@ -5588,11 +5621,11 @@ function mgCombat(ctx){
       const techniqueShown = (equipDamage(me.f)*(TECH_DAMAGE_MUL[tk.T.id]||1)).toFixed(1);
       const ammunition = ammoGun ? `<br><span style="color:#f2d27a">탄창 ${ammoGun.mag}/${ammoCap(ammoGun)} · ${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).name} (+${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus})</span>` : "";
       const previewFirst=!(foeSkill.def&&!AB&&!DF), tsk=mySkill(tk.sk,previewFirst);
-      const attackButton=(c,i)=>{const v=mySkill(skillOf(c),previewFirst),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${listedAmmoBonus?` · 탄환 +${listedAmmoBonus} 이하`:""}</small></button>`;};
+      const attackButton=(c,i)=>{const v=mySkill(skillOf(c),previewFirst),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"}${keywordLabel(me,i===0?0:1)} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${listedAmmoBonus?` · 탄환 +${listedAmmoBonus} 이하`:""}</small></button>`;};
       const second=clamp(me.basicChoice||1,1,Math.max(1,ak.length-1));
       m.ctrl.innerHTML = `<div class="pk-moves">${attackButton(ak[0],0)}<div style="display:flex;flex-direction:column;gap:4px">${attackButton(ak[second]||ak[0],second)}${ak.length>2?`<select data-basic-choice="1" aria-label="두 번째 공격 동작">${ak.slice(1).map((c,i)=>`<option value="${i+1}" ${second===i+1?"selected":""}>${esc(c.n)}</option>`).join("")}</select>`:""}</div>
         <div style="display:flex;flex-direction:column;gap:4px"><button data-sk="1"><b>${egoHasArmor(me.f.ego)?esc(dc.n):"방어"} · ${guardModes[me.guardMode]}</b><small>${me.guardMode==="evade"?"회피 성공 시 직접 피해 0, 실패 시 전부":me.guardMode==="parry"?"피해 35% 감소, 성공 시 다음 합 적 코인 위력 -1":me.guardMode==="counter"?"피해 25% 감소, 일반 인간 적에게 반격":"피해 50% 감소"} · 정신력 회복 · 합 없음</small></button><select data-guard-mode="1" aria-label="방어 방식">${Object.entries(guardModes).map(([id,n])=>`<option value="${id}" ${me.guardMode===id?"selected":""}>${n}</option>`).join("")}</select></div>
-        <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def)||!techReady(me)?"disabled":""}><b>특수 기술 · ${esc(tk.T.n)}</b><small>${!techReady(me)?`<span style="color:#ffb35a">재사용까지 ${techWait(me)}턴</span><br>`:""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · 피해 기준 ${techniqueShown} · ${esc(tk.T.d)} · 공통 기본 +${TECH_BASE_PLUS} · 코인 +${TECH_COIN_PLUS} · 정신력 -${TECH_SP_COST} · 사용 간격 ${techCD(me)}턴</small></button></div>`;
+        <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def)||!techReady(me)?"disabled":""}><b>특수 기술 · ${esc(tk.T.n)}</b><small>${!techReady(me)?`<span style="color:#ffb35a">재사용까지 ${techWait(me)}턴</span><br>`:""}${tsk.def?"방어 · ":""}${keywordLabel(me,2)} · 기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · 피해 기준 ${techniqueShown} · ${esc(tk.T.d)} · 공통 기본 +${TECH_BASE_PLUS} · 코인 +${TECH_COIN_PLUS} · 정신력 -${TECH_SP_COST} · 사용 간격 ${techCD(me)}턴</small></button></div>`;
       { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", sb); } }
       { const gb = foeSignBtn(); if(gb){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", gb); } }
       { const ob = BOSS && BOSS.offerBtn(); if(ob){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", ob); } } if(BOSS) bossFx.hud(BOSS.hud(), BOSS.B);
@@ -5601,7 +5634,7 @@ function mgCombat(ctx){
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
       if(si===2 && !techReady(party[act])) return;
-      if(si===1 && foeSkill.def){ const me=party[act];me.fought=true;me.guardStreak++;const rec=guardRecover(me,5);gainResolve(me,3); tick = `${esc(jo(party[act].name,"과"))} ${esc(foe.name)} 모두 방어 태세를 굳혔다 — 합 없음 · 정신력 +${rec}`; return next(); } // 둘 다 막으면 지나간다
+      if(si===1 && foeSkill.def){ const barrier=barrierAct();const me=party[act];me.fought=true;me.guardStreak++;const rec=guardRecover(me,5);gainResolve(me,3); tick = `${esc(jo(party[act].name,"과"))} ${esc(foe.name)} 모두 방어 태세를 굳혔다 — 합 없음 · 정신력 +${rec}${barrier?" · "+barrier:""}`; return next(); } // 둘 다 막으면 지나간다
       const me = party[act], gun=(!me.f.ego||me.f.ego.type==="armor")?ammoMagazine(me.f.gear.weapon):null;
       const reloading=si===3, tk = si===2 ? techSkill(me) : null, T = tk ? tk.T : null;
       if(reloading && (!gun || !AMMO_BY[arguments[1]] || ammoStock(gun,arguments[1])<=0))return;
@@ -5613,6 +5646,7 @@ function mgCombat(ctx){
       phase = "anim"; m.ctrl.innerHTML = "";
       const guarding = si===1||reloading, mode=reloading?"guard":me.guardMode; if(si===1)me.guardStreak++;else me.guardStreak=0;
       const c = isBasic(si) ? basicPick(me,si===0?0:si===6?1:2) : guarding ? basicDefCard(me) : tk.card, sk = mySkill(tk ? tk.sk : skillOf(c), !guarding && !(foeSkill.def && !AB && !DF)), wNote = [], tNote = [], rNote = [];
+      const barrier=barrierAct();if(barrier)tNote.push(barrier);if(!guarding&&!sk.def&&keywordSpend(me,"charge")){tNote.push("충전 10 소모 — 이번 공격 코인 위력 +1");}
       let fk = foeSk(); if(BOSS && fk.bossSig){ bossFx.sig(fk.n); await wait(350); } const slpNow = !guarding && relicFx(me.f,"sleipnir") && !me.slpUsed;
       if(slpNow){ me.slpUsed = true; rNote.push("슬레이프니르 — 여덟 다리가 한 박자 먼저 내달렸다(앞면 확률 +15%)"); }
       if(!guarding && relicFx(me.f,"aegis") && !me.aegUsed){ me.aegUsed = true; fk = Object.assign({}, fk, {base: Math.max(1, fk.base - 3)}); rNote.push(`아이기스 — 눈이 뜨였다, ${josa(foe.name,"이","가")} 굳었다(기본 위력 -3)`); }
@@ -5623,15 +5657,15 @@ function mgCombat(ctx){
       if(T && T.id==="iai"){ me.iaiFirst = !me.iaiUsed; me.iaiUsed = true; }
       if(!guarding && !foeGuarding && foe.daze){ foe.daze = 0; wNote.push(`${josa(foe.name,"이","가")} 휘청이며 합에 나선다(휘청임 · 기본 위력 -${CLASH_DAZE_CUT})`); }
        if(!guarding && !foeGuarding && foe.coinDown){ wNote.push(`상대 코인 위력 ${foeSkill.cp} → ${fk.cp}(이번 합)`); foe.coinDown = 0; }
-      if(!guarding && me.wsp==="screw" && me.wchg>=10){ me.wchg = 0; me.hp = Math.max(1, me.hp - 3); wNote.push("방전 — 코인 위력 +2, 손끝이 저릿하게 감전됐다"); }
+      
       const ignoreResolve=!!me.resolveIgnore&&!sk.def&&!guarding;
       const R = guarding ? {ex:[], win:"foe", left:fk.coins, count:0, a:sk, chg:me.charge||null, fired:false}
         : foeGuarding ? {ex:[], win:"me", left:sk.coins, count:0, a:sk, chg:me.charge||null, fired:false}
-        : simClash(sk, (ignoreResolve?Math.max(0,mySp(me)):mySp(me)) + (T && T.id==="afterimage" ? 15 : T && (T.id==="vault" || T.id==="r_astrape") ? 10 : 0) + (slpNow ? 15 : 0), fk, 0, me.sp2==="charge" ? (me.charge||0) : null, tecClashBonus());
+        : simClash(sk, (ignoreResolve?Math.max(0,mySp(me)):mySp(me)) + (T && T.id==="afterimage" ? 15 : T && (T.id==="vault" || T.id==="r_astrape") ? 10 : 0) + (slpNow ? 15 : 0), fk, 0, null, tecClashBonus());
       if(!guarding && !sk.def){me.resolveBoost=0;me.resolveIgnore=false;}
       if(!guarding && me.wsp==="ye") me.ye = Math.min(10, me.ye + 2);
-      if(!guarding && me.wsp==="screw") me.wchg = Math.min(10, me.wchg + 3);
-      if(!guarding && me.sp2==="charge") me.charge = R.chg;
+      
+      
       const lines = [reloading ? `${esc(me.name)}의 재장전 — ${AMMO_BY[gun.ammoType].name} ${gun.mag}/${ammoCap(gun)}발` : guarding ? `${esc(me.name)}의 ${egoHasArmor(me.f.ego)?esc(c.n):"방어"} — ${foe.name}의 ${fk.n}`
         : `${esc(me.name)}의 ${T ? `<b style="color:#9fd0ff">${c.n}</b>` : `기본 공격 — ${esc(c.n)}`} vs ${foe.name}의 ${fk.n}`];
       if(firstLines.length) lines.push(...firstLines);
@@ -5643,11 +5677,8 @@ function mgCombat(ctx){
         clash.res = e.loser; if(e.loser==="foe") clash.foe.broken++; else if(e.loser==="me") clash.mine.broken++;
         await wait(e.loser ? 380 : 300);
       }
-      if(!guarding && !foeGuarding && foe.bleed > 0){ const bd = foe.bleed; foe.hp = Math.max(0, foe.hp - bd); foe.bleed = Math.floor(foe.bleed*2/3); lines.push(`<span style="color:#ff8a7a">출혈</span> — 합을 겨루느라 ${jo(foe.name,"이")} ${bd}의 피해를 입었다.`);
-        if(foe.hp<=0){ clash = null; m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`; await wait(1100); S2.log = lines.concat(S2.log).slice(0,4); return next(); } }
-      if(!guarding && !foeGuarding && me.bleed > 0){ const bd = me.bleed; me.hp = Math.max(0, me.hp - bd); me.bleed = Math.floor(me.bleed*2/3); lines.push(`<span style="color:#ff8a7a">출혈</span> — 합을 겨루느라 ${jo(esc(me.name),"이")} ${bd}의 피해를 입었다.`);
-        if(me.hp<=0){ clash = null; m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`; await wait(1100); S2.log = lines.concat(S2.log).slice(0,4); return next(); } }
       const hvNote = [];
+      if(!guarding&&!foeGuarding&&me.daze){me.daze=0;hvNote.push("휘청임 — 이번 합 기본 위력 -"+CLASH_DAZE_CUT);}
       if(!guarding && !foeGuarding && me.cpDown){ hvNote.push(`손이 무뎌진 채 합에 나섰다(코인 위력 -${me.cpDown})`); me.cpDown = 0; }
       const won = R.win==="me", wSk = won ? R.a : fk; if(!guarding&&!foeGuarding)gainResolve(me,won?5:15); else if(foeGuarding)gainResolve(me,3); me.spBefore = me.sp; me.lastWonPrev = me.lastWon;
       // 합이 진행된 경우에만 승패로 정신력이 변한다.
@@ -5660,13 +5691,13 @@ function mgCombat(ctx){
       const heads = flip(R.left, won ? (ignoreResolve?Math.max(0,me.sp):me.sp) : 0, won ? 0 : (wSk.headAdj||0)); const clashPower=powOf(wSk, heads);
       let P = won ? coinDamage(equipDamage(me.f),R.left,wSk.coins,heads,1) : coinDamage(foe.baseDamage,R.left,wSk.coins,heads,1);
       const ammoPlus=won&&firedRound?Math.min(6,firedRound.bonus):0; let ammoEffective=ammoPlus, crit = 0;
-      if(won && me.sp2==="poise"){ crit = heads.filter(h=>h && Math.random()<0.35).length; P += crit*wSk.cp; }
+      
       if(clash){ (won ? clash.mine : clash.foe).heads = heads; (won ? clash.mine : clash.foe).p = clashPower; clash.flipAt = performance.now(); clash.res = won ? "foe" : "me"; }
       let total = 0;
       const egoNote = [], abNote = [], bNote = [];
       me.lastWon = won;
       const DEFK = {riposte:1.5, zwerch:1.2, improv:1.0, brace:0.8, bind:1.2, counter:1.6, steadfast:0.8};
-      if(won){ const damageMul=T?(TECH_DAMAGE_MUL[T.id]||1):(c.normalMul||1);
+      if(won){ const oldKeyword=keywordSnapshot(foe);const damageMul=T?(TECH_DAMAGE_MUL[T.id]||1):(c.normalMul||1);
         let dmg = Math.round(P*damageMul*(wSk.def ? (T && DEFK[T.id]!=null ? DEFK[T.id] : 0.6) : 1)*longK()); if(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(foe.crack) dmg += foe.crack;
         if(relicFx(me.f,"karakawa")){ dmg += 2; rNote.push("카라카와 — 범의 힘이 실렸다(+2)"); }
@@ -5675,7 +5706,7 @@ function mgCombat(ctx){
           if(id==="r_claiomh"){ foe.weak = (foe.weak||0) + 2; tNote.push(`빛의 일섬 — 막는 손째로 베어 냈다, 눈이 부셔 움츠러든다(위축 ${foe.weak})`); }
           if(id==="r_gyeongui"){ dmg = Math.round(dmg*1.5); tNote.push("의(義) — 밖으로 끊어냈다(×1.5)"); }
           if(id==="r_ruyi"){ foe.daze = 1; tNote.push(`여의 — 늘어난 봉이 먼저 닿아 내리찍었다, ${josa(foe.name,"이","가")} 휘청인다(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); }
-          if(id==="r_drepanon"){ foe.bleed = Math.min(9, foe.bleed + 3); me.drepHeal = true; tNote.push(`추수 — 출혈 ${foe.bleed}`); }
+          if(id==="r_drepanon"){ keywordAdd(foe,"bleed",3); me.drepHeal = true; tNote.push(`추수 — 출혈 ${foe.bleed}`); }
           if(id==="riposte") tNote.push("되찌르기 — 막은 그대로 찔러 들어갔다"); if(id==="zwerch") tNote.push("가로지르기 — 받으며 동시에 벴다");
           if(id==="zorn" || id==="sweep" || id==="throw"){ foe.daze = 1; } if(id==="zorn") tNote.push(`분노베기 — ${josa(foe.name,"이","가")} 휘청인다(다음 합 기본 위력 -${CLASH_DAZE_CUT})`);
           if(id==="sweep"){ foe.coinDown += 2; tNote.push(`자루 걸기 — 발을 걸어 넘어뜨렸다(휘청임 · 다음 합 기본 위력 -${CLASH_DAZE_CUT} · 코인 위력 -${foe.coinDown})`); }
@@ -5687,39 +5718,39 @@ function mgCombat(ctx){
           const PASSIVE = {iai: me.iaiFirst ? "발도 — 뽑는 첫 칼에 모든 것을 실었다(+6)" : null, fleche:"플레슈 — 몸을 던져 뛰어들었다(+4)", charge:"돌격 — 그대로 들이받았다(+5)", onestrike:"일격 — 코인 하나에 모두 실었다",
             fanning:"패닝 — 해머를 연달아 쳐 쏟아부었다(코인 5)", flurry:"연환격 — 쉬지 않고 이어 쳤다(코인 +2)", spin:"회전 연격 — 휘돌려 이어 쳤다(코인 +1)", afterimage:"잔상 걸음 — 눈이 따라오지 못했다", allout:null};
           if(PASSIVE[id]) tNote.push(PASSIVE[id]);
-          if(id==="drawcut"){ foe.bleed = Math.min(9, foe.bleed + 3); tNote.push(`그어베기 — 출혈 ${foe.bleed}`); }
+          if(id==="drawcut"){ keywordAdd(foe,"bleed",3); tNote.push(`그어베기 — 출혈 ${foe.bleed}`); }
           if(id==="momentum" && me.lastWonPrev) tNote.push("휘몰이 — 앞선 기세를 실었다(+4)");
           if(id==="suppress"){ foe.weak = (foe.weak||0) + 3; foe.daze = 1; tNote.push(`제압 사격 — ${josa(foe.name,"이","가")} 머리를 숙였다(휘청임 · 다음 합 기본 위력 -${CLASH_DAZE_CUT} · 위축 ${foe.weak})`); }
           if(id==="deadeye") tNote.push("정조준 — 한 발에 실었다");
           if(id==="crack"){ foe.crack = Math.min(5, (foe.crack||0) + 1); tNote.push(`갑주 깨기 — 금 ${foe.crack}(이후 피해 +${foe.crack})`); }
           if(id==="improv"){ foe.down = Math.min(3,(foe.down||0) + 1); tNote.push(`임기응변 — 비틀어 막았다(상대 기본 위력 -${foe.down})`); }
           if(id==="brace") tNote.push("버텨 서기 — 받아 낸 힘을 그대로 돌려줬다");
-          if(id==="impale"){ foe.bleed = Math.min(9, foe.bleed + 2); foe.daze = 1; tNote.push(`꿰어 박기 — 출혈 ${foe.bleed}, ${josa(foe.name,"이","가")} 휘청인다(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); }
+          if(id==="impale"){ keywordAdd(foe,"bleed",2); foe.daze = 1; tNote.push(`꿰어 박기 — 출혈 ${foe.bleed}, ${josa(foe.name,"이","가")} 휘청인다(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); }
           if(id==="vault") tNote.push("장대 넘기 — 위에서 내려쳤다");
           if(id==="bind"){ foe.weak = (foe.weak||0) + 2; tNote.push(`칼날 묶기 — 묶인 칼날을 비틀어 찔렀다(위축 ${foe.weak})`); }
           if(id==="counter") tNote.push("카운터 — 먼저 꽂았다(×1.6)");
-          if(id==="whirl"){ foe.bleed = Math.min(9, foe.bleed + 2); tNote.push(`회오리 베기 — 출혈 ${foe.bleed}`); }
+          if(id==="whirl"){ keywordAdd(foe,"bleed",2); tNote.push(`회오리 베기 — 출혈 ${foe.bleed}`); }
           if(id==="crush" && fk.def) tNote.push("짓누르기 — 막는 동작째로 눌렀다");
           if(id==="rush" && R.left){ dmg += R.left*2; tNote.push(`몰아치기 — 남은 코인 ${R.left}개(+${R.left*2})`); }
           if(id==="focus") tNote.push("집중 — 또렷하게 쳤다");
           if(id==="steadfast"){ me.sp = clamp(me.sp + 8, -45, 45); tNote.push(`불굴 — 버텨 내고 되받았다(정신력 ${me.sp>=0?"+":""}${me.sp})`); } }
-        if(crit) egoNote.push(`호흡 — 치명타 ${crit}개`);
+        
         if(me.sp2==="rupture"){ if(foe.rupture) egoNote.push(`파열 +${foe.rupture}`); dmg += foe.rupture; foe.rupture += 2; }
-        if(me.sp2==="burn"){ foe.burn = Math.min(9, foe.burn + 3); egoNote.push(`화상 ${foe.burn}`); }
-        if(me.sp2==="bleed"){ foe.bleed = Math.min(9, foe.bleed + 3); egoNote.push(`출혈 ${foe.bleed}`); }
-        if(me.sp2==="sink"){ foe.weak = (foe.weak||0) + 2; egoNote.push(`침잠 — 적이 가라앉는다(위축 ${foe.weak})`); }
+        if(me.sp2==="burn"){ keywordAdd(foe,"burn",3); egoNote.push(`화상 ${foe.burn}`); }
+        if(me.sp2==="bleed"){ keywordAdd(foe,"bleed",3); egoNote.push(`출혈 ${foe.bleed}`); }
+        if(me.sp2==="sink"){keywordAdd(foe,"sink",3);egoNote.push(`침잠 ${foe.sink}`); }
         // 고유 무기: 공방 특수
         const W = me.wsp; me.hits++;
         if(W==="ye" && me.ye){ dmg = Math.round(dmg*(1 + me.ye*0.03)); wNote.push(`예(銳) ${me.ye} — 피해 +${me.ye*3}%`); }
         if(W==="ranga"){ if(me.rend){ dmg += me.rend; wNote.push(`찢어발기기 — 벌려 둔 상처를 다시 할퀴었다(+${me.rend})`); } me.rend = Math.min(8, (me.rend||0) + 2); }
-        if(W==="cloud"){ foe.bleed = Math.min(9, foe.bleed + 2); wNote.push(`흑운도 — 출혈 ${foe.bleed}`); }
+        if(W==="cloud"){ keywordAdd(foe,"bleed",2); wNote.push(`흑운도 — 출혈 ${foe.bleed}`); }
         if(W==="zelkova"){ const ex = Math.max(1, Math.round(P*0.4)); dmg += ex; wNote.push(`한 쌍 — 다른 손으로 한 번 더(+${ex})`); }
         if(W==="oldboys"){ foe.daze = 1; foe.coinDown += 1; wNote.push(`내려찍기 — ${josa(foe.name,"이","가")} 휘청인다(다음 합 기본 위력 -${CLASH_DAZE_CUT} · 코인 위력 -${foe.coinDown})`); }
-        if(W==="nester"){ foe.tremor += 3; if(foe.tremor >= 6){ const tr = foe.tremor; dmg += tr; foe.weak = (foe.weak||0) + Math.ceil(tr/2); foe.tremor = 0; wNote.push(`진동 단추 — 진동 ${jo(tr,"을")} 터뜨렸다(+${tr})`); } else wNote.push(`진동 ${foe.tremor}`); }
-        if(W==="rose"){ foe.tremor = foe.tremor ? Math.min(20, foe.tremor*2) : 2; if(foe.tremor >= 8){ const tr = foe.tremor; dmg += tr; foe.tremor = 0; wNote.push(`떨림 증폭 — 진동 ${jo(tr,"이")} 터졌다(+${tr})`); } else wNote.push(`진동 ${foe.tremor}`); }
+        if(W==="nester"){keywordAdd(foe,"tremor",3);wNote.push(`진동 단추 — 진동 ${foe.tremor}`);}
+        if(W==="rose"){keywordAdd(foe,"tremor",foe.tremor?Math.min(10,foe.tremor):2);wNote.push(`떨림 증폭 — 진동 ${foe.tremor}`);}
         if(W==="namir" && turn%2===1 && !me.namirT){ dmg = Math.round(dmg*1.5); me.namirT = turn; wNote.push("구체 낙하 — 떠올랐다 내리꽂았다(×1.5)"); } if(W==="namir" && me.namirT && me.namirT!==turn && turn%2===0) me.namirT = 0;
-        if(W==="leaflet"){ foe.burn = Math.min(9, foe.burn + 2); wNote.push(`화상 ${foe.burn}`); if(me.hits%3===0){ dmg += 4; wNote.push("증기 압력을 뺐다(+4)"); } }
-        if(W==="stigma"){ foe.burn = Math.min(12, foe.burn + 3); foe.brand = true; wNote.push(`낙인 — 화상 ${foe.burn}`); }
+        if(W==="leaflet"){ keywordAdd(foe,"burn",2); wNote.push(`화상 ${foe.burn}`); if(me.hits%3===0){ dmg += 4; wNote.push("증기 압력을 뺐다(+4)"); } }
+        if(W==="stigma"){ keywordAdd(foe,"burn",3); foe.brand = true; wNote.push(`낙인 — 화상 ${foe.burn}`); }
         if(W==="valley"){ foe.weak = Math.min(6, (foe.weak||0) + 2); if(me.hits%2===0){ foe.daze = 1; wNote.push(`돌풍 — 바람에 밀려 휘청인다(위축 ${foe.weak})`); } else wNote.push(`돌풍 — 위축 ${foe.weak}`); }
         if(W==="koori"){ foe.frost = (foe.frost||0) + 1; if(foe.frost >= 3){ foe.frost = 0; foe.daze = 1; foe.coinDown += 1; wNote.push("결빙 — 맞은 자리가 하얗게 얼어붙었다(다음 합 기본 위력 · 코인 위력 감소)"); } else wNote.push(`냉기 ${foe.frost}`); }
         if(W==="wheels" && foe.hp <= foe.max*0.3){ dmg *= 2; wNote.push("처형 — 피해 2배"); }
@@ -5741,6 +5772,7 @@ function mgCombat(ctx){
         if(me.drepHeal){ me.drepHeal = false; const h = Math.max(1, Math.round(dmg*0.3)); me.hp = Math.min(me.max, me.hp + h); tNote.push(`거둔 만큼 되찾았다(체력 +${h})`); }
         { const pc = passiveCut(me); if(pc && dmg > 0){ const d0 = dmg; dmg = Math.max(1, dmg - pc); rNote.push(`${FOE_PASSIVE[foe.passive].n} — 피해 ${d0}→${dmg}`); } }
         if(BOSS) dmg = BOSS.taken(dmg, {me, T, fk}, bNote);
+        if(dmg>0){const blocked=AB&&AB.immune&&!(me.f.grade<=1&&((me.f.gear.weapon&&me.f.gear.weapon.unique&&!needsRepair(me.f.gear.weapon))||(me.f.ego&&me.f.ego.type!=="armor")));if(!blocked){const factor=fk.def&&!wSk.def&&!(T&&["mordhau","crush","r_claiomh"].includes(T.id))?.5:1;dmg+=keywordImpact(foe,oldKeyword,factor,tNote);if(keywordSpend(me,"poise")){dmg+=Math.round(5*factor);tNote.push("호흡 10 소모 — 공격 피해 +5(방어 적용)");}onWeaponKeyword(me,si,tNote);if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}dmg=keywordShield(foe,dmg,tNote);}
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
         if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = Math.round(foe.max*0.25); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
@@ -5768,12 +5800,12 @@ function mgCombat(ctx){
         if(AB && AB.fx==="apple"){ me.seed = (me.seed||0) + 1; if(me.seed >= 3){ me.seed = 0; dmg += 10; abNote.push(`<b style="color:#ff8a7a">박힌 씨앗 셋이 한꺼번에 싹을 틔웠다(+10)</b>`); } else abNote.push(`씨앗이 박혔다(${me.seed}/3)`); }
         if(AB && AB.fx==="frost"){ me.frost = (me.frost||0) + 1; if(me.frost >= 3){ me.frost = 0; dmg += 6; abNote.push(`<b style="color:#9ad0ff">손이 서리에 굳었다(+6)</b>`); } else abNote.push(`손끝에 서리가 앉았다(${me.frost}/3)`); }
         if(isBlessed(me)){ dmg = Math.round(dmg*0.5); abNote.push("기사의 축복 — 받는 피해 절반"); }
-        if(me.sp2==="evade" && Math.random()<0.25){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
+        const egoEvaded=me.sp2==="evade" && Math.random()<0.25;if(egoEvaded){ dmg = 0; egoNote.push("회피 — 공격을 흘려 피했다"); }
         if(dmg > 0 && foe.weak > 0){ const cut = Math.min(dmg, foe.weak); dmg -= cut; rNote.push(`위축된 상대의 공격이 무뎌졌다(-${cut})`); foe.weak = Math.floor(foe.weak/2); }
         if((guarding && mode!=="evade") || (T && T.def)){ dmg=Math.max(0,dmg-statGuardMinus(me.f)-((si===1||(T&&T.def))?egoGuardCut(me.f.ego):0)); }
          if(dmg>0 && !(AB && AB.enrage && foe.enraged))dmg=Math.max(0,dmg+supportIncoming());
         if(evadeOK){dmg=0;tNote.push("회피 성공 — 직접 공격 무효");} if(parryOK){foe.coinDown=Math.max(foe.coinDown||0,1);tNote.push("흘려내기 성공 — 다음 합 상대 코인 위력 -1");}
-        if(dmg && me.shield){ const ab = Math.min(me.shield, dmg); dmg -= ab; me.shield -= ab; egoNote.push(`보호막이 ${jo(ab,"을")} 막았다`); }
+        const landed=!evadeOK&&!egoEvaded;if(landed){const factor=(sk.def?(guarding?({guard:.5,evade:1,parry:.65,counter:.75}[mode]||.5):T&&T.id==="brace"?.25:T&&T.id==="counter"?1:.5):1)*(1-redHP(me.f));dmg+=keywordImpact(me,keywordSnapshot(me),factor,hvNote);if(fk.heavy==="status"&&fk.stk){if(fk.stk==="rupture")me.rupture=Math.min(9,(me.rupture||0)+fk.stn);else keywordAdd(me,fk.stk,fk.stn);hvNote.push(`${HV_STATUS[fk.stk].n} +${fk.stn}`);}}dmg=keywordShield(me,dmg,egoNote);
         if(dmg > 0 && relicFx(me.f,"kavacha") && !me.kavUsed){ me.kavUsed = true; dmg = 0; rNote.push("카바차 — 금 비늘이 칼날을 그대로 튕겨 냈다"); }
         if(dmg >= me.hp && me.hp > 0 && relicFx(me.f,"scarab") && me.f.scarabDay !== S.day){ me.f.scarabDay = S.day; dmg = Math.max(0, me.hp - 1); me.scarabNow = true; }
         if(me.sp2==="endure" && !me.endured && dmg >= me.hp){ dmg = Math.max(0, me.hp - 1); me.endured = true; egoNote.push("인내 — 쓰러질 공격을 버텼다"); }
@@ -5781,13 +5813,13 @@ function mgCombat(ctx){
         if(dmg > 0 && me.hp <= 20 && accFx(me.f,"bandage")){ dmg = 0; me.f.gear.acc = null; egoNote.push("간이 보존 붕대 — 상처를 그대로 붙잡았다(붕대는 삭아 없어졌다)"); }
         if(dmg > 0 && fullBody(me.f)) dmg += 1;
         if(dmg > 0 && me.rupture > 0){ dmg += me.rupture; hvNote.push(`파열 — 상처가 터졌다(+${me.rupture})`); me.rupture--; }
-        if(dmg > 0 && me.sink > 0){ const sl = me.sink*3; me.sp = clamp(me.sp - sl, -45, 45); hvNote.push(`침잠 — 마음이 가라앉는다(정신력 -${sl})`); me.sink--; }
+        
         if(dmg > 0 && fk.heavy==="cripple"){ me.cpDown = 1; hvNote.push(`손목을 맞았다 — 다음 합 코인 위력 -1`); }
-        if(dmg > 0 && fk.heavy==="status" && fk.stk){ me[fk.stk] = Math.min(9, (me[fk.stk]||0) + fk.stn); hvNote.push(`${HV_STATUS[fk.stk].n} ${me[fk.stk]}`); }
+        
         if(BOSS) dmg = BOSS.dealt(dmg, {me, fk, guarding: !!sk.def}, bNote);
         const w0 = woundOf(me.hp,me.max); me.hp = Math.max(0, me.hp - dmg); total = dmg;
         if(me.scarabNow){ me.scarabNow = false; me.hp = Math.max(me.hp, Math.round(me.max*0.74)); rNote.push("태양 스카라베 — 쓰러질 상처를 1로 버티고, 가슴의 원반이 동틀 녘처럼 데워 경상까지 되돌렸다"); } me.woundUp = woundOf(me.hp,me.max) > w0 || me.hp<=0; st.crit = false; if(dmg>0) attack("foe", dmg, fk);
-        if(si===1&&me.hp>0){const rec=guardRecover(me,mode==="evade"&&evadeOK?12:mode==="parry"&&parryOK?9:7);gainResolve(me,evadeOK||parryOK?10:7);tNote.push(`방어 행동 — 정신력 +${rec} · 투지 ${me.resolve}/100`);if(mode==="counter"&&dmg>0&&!AB&&!DF&&!BOSS){const ret=Math.max(1,Math.round(equipDamage(me.f)*0.3));foe.hp=Math.max(0,foe.hp-ret);tNote.push(`반격 — ${ret} 피해`);}}
+        if(si===1&&me.hp>0){const rec=guardRecover(me,mode==="evade"&&evadeOK?12:mode==="parry"&&parryOK?9:7);gainResolve(me,evadeOK||parryOK?10:7);tNote.push(`방어 행동 — 정신력 +${rec} · 투지 ${me.resolve}/100`);if(mode==="counter"&&dmg>0&&!AB&&!DF&&!BOSS){let ret=Math.max(1,Math.round(equipDamage(me.f)*0.3));ret+=keywordImpact(foe,keywordSnapshot(foe),1,tNote);ret=keywordShield(foe,ret,tNote);foe.hp=Math.max(0,foe.hp-ret);tNote.push(`반격 — ${ret} 피해`);}}
         if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       if(BOSS) bNote.push(...BOSS.after({won, guarding, foeGuarding, reloading, T, fk, me}));
       await wait(900);
@@ -5795,7 +5827,7 @@ function mgCombat(ctx){
       lines.push(reloading && fk.def ? "재장전 완료 — 피해 0, 체력 변화 없음." : won ? `코인 보정 후 피해 ${P}${ammoPlus?` · 탄환 추가 피해 최대 +${ammoPlus}`:""} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : guarding ? `${jo(esc(me.name),"이")} ${guardModes[mode]}로 대응했다(피해 ${total}) — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}`);
       if(fk.heavy==="rush" && !reloading){ foe.coinDown = Math.max(foe.coinDown||0, 1); hvNote.push(`${jo(foe.name,"이")} 숨을 몰아쉰다 — 다음 공격 코인 위력 -1`); }
       if(hvNote.length) lines.push(`<span style="color:#ff9a6a">적 기술</span> ${hvNote.join(" · ")}`);
-      if(R.fired) egoNote.unshift("충전 10 소모 — 이번 턴 코인 위력 +1");
+      
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
       if(abNote.length) lines.push(`<span style="color:#ff9a8a">환상체</span> ${abNote.join(" · ")}`);
       if(bNote.length) lines.push(`<span style="color:${THREAT_COL[BOSS.B.tier]||"#e8c25a"}">${esc(BOSS.B.name)}</span> ${bNote.join(" · ")}`);
@@ -5832,8 +5864,6 @@ function mgCombat(ctx){
     function turnEnd(){
       // 턴이 끝날 때: 화상이 타오르고, 재생이 상처를 메우고, 보호막이 다시 선다
       const tk = tick ? [tick] : []; { const sm = foeSignMiss(); if(sm) tk.push(sm); } if(BOSS) tk.push(...BOSS.turnEnd());
-      if(foe.burn > 0){ foe.hp = Math.max(0, foe.hp - foe.burn); tk.push(`${foe.brand ? "낙인 " : ""}화상 — ${jo(foe.name,"이")} ${foe.burn}의 피해`); if(!foe.brand) foe.burn--; }
-      party.forEach(p=>{ if(p.hp<=0 || !(p.burn > 0)) return; p.hp = Math.max(0, p.hp - p.burn); tk.push(`화상 — ${esc(p.name)}이(가) ${p.burn}의 피해`.replace(`${esc(p.name)}이(가)`, jo(esc(p.name),"이"))); p.burn--; });
       party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } if(p.sp2==="shield") p.shield = 10; });
       if(AB && AB.aoe && turn % AB.aoe === 0 && foe.hp > 0){ const hung = [];
         party.forEach(p=>{ if(p.hp<=0) return; let d = Math.max(4, Math.round(26*(1-redHP(p.f)))); if(isBlessed(p)) d = Math.round(d*0.5); p.hp = Math.max(0, p.hp - d); if(p.hp<=0){ p.death = "hanged"; hung.push(p.name); } });
@@ -10219,6 +10249,7 @@ async function openRecruit(){
       const f = S.recruitPool.find(x=>x.id===id); if(!f || f.grade < (leader()?.grade ?? 9) || S.money<f.cost || officeCompanionCount()>=officeCompanionMax()) { toast("사무소 고용 한도 또는 고용 조건을 확인하세요."); return; }
       const nm = f.alumniKey ? f.name : await promptBox("이름", "이 해결사의 이름을 정한다(그대로 두거나 랜덤).", f.name, true);
       if(nm===null) return;
+      if(!await chooseKeywordPlan(f))return;
       if(!S.recruitPool.includes(f) || S.money<f.cost || officeCompanionCount()>=officeCompanionMax()) { toast("그사이 고용 한도 또는 자금이 달라졌습니다."); return; }
       f.name = nm || f.name; S.money -= f.cost; f.hiredDay=S.day; delete f.cost;
       S.fixers.push(f); S.recruitPool = S.recruitPool.filter(x=>x!==f); ac("hire"); f.hiredGrade = f.grade; syncGradeWage(f); S.records.push({day:S.day, name:f.name, what:"영입", note:gName(f.grade)});
@@ -10288,6 +10319,7 @@ async function openManage(){
       <span>특수 기술 (${(f.techs||[]).length}/${MAX_BASIC_TECHS})</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[]);
         return `<select data-tech="1">${list.map(id=>`<option value="${id}" ${(f.tech||"allout")===id?"selected":""} ${techFits(id, wt)?"":"disabled"}>${TECHS[id].n}${techFits(id, wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
           <br><span class="muted" style="font-weight:400">${esc(TECHS[f.tech && techFits(f.tech, wt) ? f.tech : "allout"].d)} · 기술 공통 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST}${(f.techs||[]).length ? "" : " · 무기를 오래 쓰거나 능력치가 높아지면 기술을 깨우친다."}</span>`; })()}</b>
+      <span>전투 키워드</span><b>${esc(keywordPlanText(f))}<br><span class="muted">최초 설정 고정 · 무기 장착 시 적용</span></b>
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
     ${reviewProgressHtml()}
@@ -10604,8 +10636,8 @@ const WORKSHOP_SP = {
   "느티나무 공방":     {id:"zelkova",n:"한 쌍",       d:"이긴 합 뒤, 다른 손의 무기로 한 번 더 친다(그 위력의 40%)."},
   "늙은소년 공방":{id:"oldboys",n:"내려찍기",    d:"맞히면 휘청임(다음 합 기본 위력 -2) 및 코인 위력 -1."},
   "알라스 공방":     {id:"allas",  n:"가속",        d:"손놀림이 빨라져 합을 겨룰 때 앞면 확률 +12%."},
-  "네스터 공방":     {id:"nester", n:"진동 단추",   d:"맞히면 진동 3. 진동이 6 이상이 되면 터뜨려 진동만큼 피해를 더하고 상대를 진동의 절반만큼 위축시킨다(다음 공격 피해 감소)."},
-  "로즈스패너 공방": {id:"rose",   n:"떨림 증폭",   d:"맞히면 진동 2. 이미 진동이 있으면 두 배로 키운다. 진동이 8 이상이면 터져 진동만큼 피해."},
+  "네스터 공방":     {id:"nester", n:"진동 단추",   d:"맞히면 진동 3. 진동 10마다 다음 피격 시 10을 소모해 다음 합 휘청임을 부여한다."},
+  "로즈스패너 공방": {id:"rose",   n:"떨림 증폭",   d:"맞히면 진동 2. 이미 진동이 있으면 현재 진동만큼(최대 10) 추가한다. 피격 시 진동 10을 소모해 다음 합 휘청임."},
   "나미르 공방":     {id:"namir",  n:"구체 낙하",   d:"홀수 턴의 첫 합을 이기면, 떠올랐다 내리꽂아 피해 1.5배."},
   "리플렛 공방":     {id:"leaflet",n:"증기 압력",   d:"맞히면 화상 2. 세 번째로 맞힐 때마다 압력을 한꺼번에 빼 피해 +4."},
   "스티그마 공방":   {id:"stigma", n:"낙인",        d:"맞히면 화상 3(최대 12). 새겨진 화상은 턴이 끝나도 줄지 않는다."},
@@ -10616,7 +10648,7 @@ const WORKSHOP_SP = {
   "바람계곡 공방":   {id:"valley", n:"돌풍",        d:"맞히면 위축 2(최대 6). 두 번째로 맞힐 때마다 바람으로 밀어내 상대를 휘청이게 한다."},
   "코오리 공방":     {id:"koori",  n:"결빙",        d:"맞히면 냉기 1. 냉기가 3이 되면 얼어붙어 다음 합 기본 위력과 코인 위력이 1씩 내려가고, 냉기는 사라진다."},
   "유리아 공방":     {id:"yuria",  n:"명품 마감",   d:"기본 위력 +1. 합에서 져도 손에서 미끄러지지 않아 받는 피해 -15%."},
-  "스크류 아틀리에": {id:"screw",  n:"방전",        d:"합마다 충전 3. 10이 되면 소모해 그 합의 코인 위력 +2. 다만 감전돼 자신도 조금 다친다."}
+  "스크류 아틀리에": {id:"screw",  n:"방전",        d:"적중 시 충전 3. 최대 20. 다음 공격 시 충전 10을 소모해 코인 위력 +1."}
 };
 const wspOf = g => g && g.unique && g.wsp ? Object.values(WORKSHOP_SP).find(x=>x.id===g.wsp) || null : null;
 async function checkUpgrade(f){
@@ -10759,12 +10791,12 @@ function forgeFx(f, g, maker, uses, sp, upStat){
 const EGO_PTS = 10, UNIQUE_ARMOR_PTS = 6, STAT_CAP = 24;
 const EGO_SPECIAL = {
   weapon:[
-  {id:"burn",    n:"화상", d:"맞힐 때마다 화상 3을 새긴다. 적은 턴이 끝날 때 화상만큼 피해를 입고, 화상은 1씩 줄어든다."},
-  {id:"bleed",   n:"출혈", d:"맞힐 때마다 출혈 3을 새긴다. 적은 합을 겨룰 때마다 출혈만큼 피해를 입고, 출혈은 3분의 1씩 줄어든다."},
+  {id:"burn",    n:"화상", d:"맞힐 때마다 화상 3. 다음 피격 시 보유 화상만큼 방어 무시 추가 피해를 주고 해당 수치를 소모한다."},
+  {id:"bleed",   n:"출혈", d:"맞힐 때마다 출혈 3. 다음 피격 시 보유 출혈만큼 방어 적용 추가 피해를 주고 해당 수치를 소모한다."},
   {id:"rupture", n:"파열", d:"맞힐 때마다 파열이 2씩 쌓이고, 쌓인 파열만큼 피해가 더 들어간다."},
-  {id:"sink",    n:"침잠", d:"맞힐 때마다 적을 위축 2만큼 짓누른다(다음 공격 피해 감소)."},
-  {id:"poise",   n:"호흡", d:"남은 코인으로 칠 때 앞면 코인마다 35% 확률로 치명타(그 코인 위력 2배)."},
-  {id:"charge",  n:"충전", d:"합을 겨룰 때마다 충전이 2씩 쌓인다. 10이 되면 전부 소모해 그 턴의 코인 위력 +1."}],
+  {id:"sink",    n:"침잠", d:"맞힐 때마다 침잠 3. 보호막이 있는 적의 다음 피격 시 보유 침잠만큼 보호막을 감소시키고 해당 수치를 소모한다."},
+  {id:"poise",   n:"호흡", d:"적중 시 호흡 3. 최대 50. 다음 공격 적중 시 호흡 10을 소모해 피해 +5(방어 적용)."},
+  {id:"charge",  n:"충전", d:"적중 시 충전 3. 최대 20. 다음 공격 시 충전 10을 소모해 코인 위력 +1."}],
   armor:[
   {id:"shield",  n:"보호막", d:"매 턴 시작에 받는 피해 10을 막아 주는 보호막이 생긴다."},
   {id:"thorns",  n:"가시",   d:"맞으면 받은 피해의 20%(최소 1)를 상대에게 되돌려 준다."},
@@ -10952,6 +10984,7 @@ function revealedRelicTechniques(){
   for(const id of relicTechniqueDiscoveries(d))ids.add(id);
   return ids;
 }
+function keywordRulesHtml(){return `<div class="cdx on"><div class="cdx-h"><b>전투 키워드</b></div><div class="cdx-g"><span>최초 설정</span><div>일반 공격 1·2, 특수 기술에 각각 키워드 하나와 해금 순서 설정. 무기 교체 후에도 변경 불가, 맨손 및 기본 방어 제외. 적중마다 한 번 부여하며 새로 부여한 수치는 다음 피격부터 발동.</div><span>등급별</span><div>9~8급 1칸 × 1 · 7~6급 1칸 × 3 · 5~4급 2칸 × 5 · 3~2급 2칸 × 7 · 1급 이상 3칸 × 9</div><span>출혈</span><div>다음 피격 시 보유량만큼 추가 피해(방어·방어구 적용), 발동 수치 소모.</div><span>화상</span><div>다음 피격 시 보유량만큼 추가 피해(방어 무시), 발동 수치 소모. 보호막은 피해를 흡수할 수 있음.</div><span>침잠</span><div>보호막이 있는 대상 피격 시 보유량만큼 보호막 감소 후 수치 소모. 보호막이 없으면 유지.</div><span>진동</span><div>피격 시 10 이상이면 10 소모, 다음 실제 합 휘청임(기본 위력 -2). 중복 휘청임 없음.</div><span>충전</span><div>자신에게 축적, 최대 20. 다음 공격 시작 시 10 소모, 이번 공격 코인 위력 +1.</div><span>호흡</span><div>자신에게 축적, 최대 50. 다음 공격 적중 시 10 소모, 피해 +5(방어 적용).</div><span>보호막</span><div>체력 피해를 먼저 흡수한다. 일부 7급 이상 인간 적은 전투 시작 보호막 8~24 및 3턴 주기의 조건부 보호막 전개(최대량의 60% 회복)를 사용한다.</div></div></div>`;}
 function techniqueRecordHtml(weapon="all"){
   const kindName=k=>k==="none"?"맨손":(WEAPON_KINDS[k]||{}).n||k;
   const revealed=revealedRelicTechniques();
@@ -10964,7 +10997,7 @@ function techniqueRecordHtml(weapon="all"){
   }).join("");
   const normalRows=Object.keys(CARDS).filter(k=>weapon==="all"||weapon===k).map(k=>`<div class="cdx on"><div class="cdx-h"><b>${esc(kindName(k))}</b><span class="badge">일반 공격</span></div><div class="cdx-g">${normalAttackCards(k).map(c=>{const v=clashCardSkill(c);return `<span>${esc(c.n)}</span><div>${c.normalRole} · 기본 ${v.base} · 코인 ${v.coins}개 × ${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 피해 ${c.normalMul.toFixed(2)}배</div>`;}).join("")}</div></div>`).join("");
   const guardRows='<div class="cdx on"><div class="cdx-h"><b>방어 전용 기술</b></div><div class="cdx-g"><span>방어</span><div>피해 50% 감소 · 정신력 7 회복</div><span>회피</span><div>성공률 25~75% · 일반 직접 피해 무효 및 정신력 12 회복</div><span>흘려내기</span><div>피해 35% 감소 · 성공률 45~80% · 성공 시 다음 합 적 코인 위력 -1 및 정신력 9 회복</div><span>반격</span><div>피해 25% 감소 · 일반 인간 적에게 받은 피해가 있으면 무기 피해 기준의 30% 반격 · 정신력 7 회복</div></div></div>';
-  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 전력 공격을 제외한 특수 기술은 습득 후 장착할 수 있으며, 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">공통 효과: 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST} · 일반 특수 기술 2턴 간격 · 발도, 돌격, 패닝 및 일부 유물 기술 3턴 간격</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">특수 기술 ${entries.length}개</p><h4>일반 공격</h4>${normalRows}<h4>방어 기술</h4>${guardRows}<h4>특수 기술</h4>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
+  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 전력 공격을 제외한 특수 기술은 습득 후 장착할 수 있으며, 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">공통 효과: 기본 위력 +${TECH_BASE_PLUS} · 코인 위력 +${TECH_COIN_PLUS} · 사용 시 정신력 -${TECH_SP_COST} · 일반 특수 기술 2턴 간격 · 발도, 돌격, 패닝 및 일부 유물 기술 3턴 간격</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">특수 기술 ${entries.length}개</p>${keywordRulesHtml()}<h4>일반 공격</h4>${normalRows}<h4>방어 기술</h4>${guardRows}<h4>특수 기술</h4>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
 }
 function combatRuleRecordHtml(){
   const baseRows=Object.entries(CARDS).map(([kind,cards])=>{
@@ -10973,7 +11006,7 @@ function combatRuleRecordHtml(){
     const weights=(WEAPON_KINDS[kind]||{}).prof||{str:.4,agi:.3,tec:.3};
     return '<div class="cdx on"><div class="cdx-h"><b>'+esc(name)+'</b></div><div class="cdx-g"><span>기본 동작</span><div>'+rows+'</div><span>피해 능력치 비중</span><div>'+Object.entries(weights).map(([k,w])=>esc(ATTR_NAME[k])+" "+Math.round(w*100)+"%").join(" · ")+'</div></div></div>';
   }).join("");
-  return `<div class="cdx on"><div class="cdx-h"><b>합 위력과 코인 위력</b></div><div style="padding:10px;line-height:1.7">
+  return `${keywordRulesHtml()}<div class="cdx on"><div class="cdx-h"><b>합 위력과 코인 위력</b></div><div style="padding:10px;line-height:1.7">
   <p><b>기본 위력 = 무기·기술의 기본값 + 내림(근력 ÷ 15) + 의뢰 요구치 대비 전력 보정 + 추가 보정 − 감소 효과</b> (최소 1)</p>
   <p><b>의뢰 요구치 대비 전력 보정:</b> 반올림((근력 기준 전력 ÷ 의뢰 요구치 − 1) × 5), 최소 -3 · 최대 +3. 티르의 오른손 장착 시 0. 뒤틀림은 등급의 본래 요구치를 사용한다.</p>
   <p><b>코인 위력 = 무기·기술의 코인 위력 + 내림(재주 ÷ 15) + 추가 보정 − 감소 효과</b> (최소 0)</p>
@@ -17020,7 +17053,8 @@ function renderStart(){
         <div class="field"><label>사무소 이름</label><input id="s2" maxlength="20" value="${esc(randomOffice())}"><button data-r="s2">랜덤</button></div>
         <div class="field"><label>첫 번째 동료 이름</label><input id="s3" maxlength="16" value="${esc(randomName())}"><button data-r="s3">랜덤</button></div>
         <div class="field"><label>개업 구역</label><input id="s4" readonly value="${esc(NEWLEAD.district.name)}${NEWLEAD.district.note ? " — "+esc(NEWLEAD.district.note) : ""}"><button data-r="s4">랜덤</button></div>
-        <h4 class="np-sub">대표의 생김새와 성격</h4><div id="lkbox">${lookFields(NEWLEAD.look, NEWLEAD.pers)}</div>
+        <h4 class="np-sub">전투 키워드 (최초 확정 후 변경 불가)</h4><p class="muted">대표와 동료 두 명의 키워드 및 해금 순서를 지정합니다. 현재는 1칸만 활성화되며 승급에 따라 자동 해금됩니다.</p>${["대표","첫 번째 동료","두 번째 동료"].map((n,i)=>`<details ${i===0?"open":""}><summary>${n}</summary>${keywordPlanFields("start"+i)}</details>`).join("")}
+         <h4 class="np-sub">대표의 생김새와 성격</h4><div id="lkbox">${lookFields(NEWLEAD.look, NEWLEAD.pers)}</div>
         <h4 class="np-sub">마음속에 간직한 것 <span class="muted" style="font-weight:400;font-size:11px">— 이것을 잃은 채 정신력이 바닥나면 목소리가 들어온다</span></h4>
         <div class="field"><label>종류</label><select id="pk"><option value="마음">정하지 않음</option><option>사람</option><option>물건</option><option>목표</option></select></div>
         <div class="field"><label>무엇을</label><input id="pt" maxlength="24" placeholder="비워 두면 &quot;소중한 것&quot;"><button data-r="pt">예시</button></div>
@@ -17046,7 +17080,7 @@ function renderStart(){
         if(obj.codex&&typeof obj.codex==="object")codexSave(obj.codex);
         if(obj.city&&typeof obj.city==="object")citySave(obj.city);
       }
-      save();leaveTitle();render();spawnRumors();toast(`${esc(S.officeName)} · ${S.day}일차 저장을 불러왔다.`);
+      if(!await ensureOfficeKeywords())return;save();leaveTitle();render();spawnRumors();toast(`${esc(S.officeName)} · ${S.day}일차 저장을 불러왔다.`);
     }catch(err){await alertBox("불러오기 실패",esc(err&&err.message||"파일을 확인해 주세요."));}
     finally{e.target.value="";}
   });
@@ -17058,7 +17092,7 @@ function renderStart(){
     if(t==="ach") return openAchievements();
     if(t==="records") return openReferenceRecords();
     if(t==="backup"){ts.querySelector("#title-savefile").click();return;}
-    if(t==="cont"){ S = load(); leaveTitle(); render(); spawnRumors(); playFx("아침", `${S.day}일차`, `${districtOf().name} — 사무소에 돌아왔다.`, true); return; }
+    if(t==="cont"){ S = load(); if(!S)return; if(!await ensureOfficeKeywords())return; leaveTitle(); render(); spawnRumors(); playFx("아침", `${S.day}일차`, `${districtOf().name} — 사무소에 돌아왔다.`, true); return; }
     if(t==="new"){ ts.querySelector("#tui").classList.add("hide"); ts.querySelector("#np").hidden=false; Title.focus(1); return; }
     if(t==="back"){ ts.querySelector("#tui").classList.remove("hide"); ts.querySelector("#np").hidden=true; Title.focus(0); return; }
     if(t==="go"){
@@ -17071,7 +17105,8 @@ function renderStart(){
       const pk = ts.querySelector("#pk").value, pt = ts.querySelector("#pt").value.trim();
       NEWLEAD.precious = pt ? {kind: pk==="마음" ? "마음" : pk, text: pt} : null;
       { const gv = ts.querySelector("#sg") && ts.querySelector("#sg").value; NEWLEAD.gender = GENDERS.includes(gv) ? gv : rollGender(); }
-      newGame(a, b, c, NEWLEAD);
+      NEWLEAD.keywordPlans=[0,1,2].map(i=>readKeywordPlan(ts,"start"+i));
+       newGame(a, b, c, NEWLEAD);
       leaveTitle(); render();
       playFx("아침", "1일차", `${S.district.name} — ${S.officeName}의 첫날. 의뢰 ${S.requests.length}건.`, true);
     }
