@@ -1655,7 +1655,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a2.3.1"; // 전투 키워드 개편
 const CHANGELOG = [
-  ["v.a2.3.1", ["무기 12종과 맨손의 일반 공격 및 특수 기술 코인 수·코인 위력·기본 위력 개편", "동일 공방 등급의 기본 평균 합 위력 균등화(정신력 0, 앞면 50% 기준): 양산 12 · 정식 16 · 상급 20 · 고유 24", "전투 화면과 기술 일람에 새 위력·코인 구성 표시"]],
+  ["v.a2.3.1", ["무기 12종과 맨손의 일반 공격 및 특수 기술 코인 수·코인 위력·기본 위력 개편", "동일 공방 등급의 기본 평균 합 위력 균등화(정신력 0, 앞면 50% 기준): 양산 12 · 정식 16 · 상급 20 · 고유 24", "전투 화면과 기술 일람에 새 위력·코인 구성 표시", "개화 E.G.O. 장비 상급 공방 기준 재설정: 무기형 기본 피해 +5, 의복형 보호막 20, 일체형 기본 피해 +2 및 보호막 5. 보호막 특수 효과 선택 시 10 추가"]],
   ["v.a2.2.8.6", ["이름이 잊혀진 자 실패 엔딩 「이름 없이 베인 사무소」 연출 추가", "인간형 적·환상체·뒤틀림 등급별 체력 +10~50 및 방어력 5~15 (죄종 제외)", "5급 이상 적 적중 키워드 부여 · 보스 고유 효과 유지", "출혈 최대 24 · 화상 최대 12", "이름이 잊혀진 자 의뢰 실패 시 의뢰 소멸 및 일반 의뢰 재개 · 누적 3회 실패 시 특수 엔딩"]],
   ["v.a2.2.8.4", ["모든 무기 기본 공격 3종 직접 선택 · 키워드는 1번부터 순차 활성화 · 특수 기술 별도", "4주마다 하나 협회 정기 훈련: 기본 위력·코인 위력·능력치·특수 기술 성장 및 희귀 기술 16종", "엔딩 이후 20주마다 이름이 잊혀진 자 등장 · 해결 전 다른 의뢰 출동 불가 · 등장마다 코인 위력 +1", "출혈·화상·침잠·진동 최대 30, 턴 종료 시 3 감소"]],
   ["v.a2.2.7", ["해결사 최초 키워드 설정: 일반 공격 두 칸 및 특수 기술 한 칸, 해금 순서 확정 후 변경 불가", "등급에 따라 키워드 1~3개 해금 및 수치 1·3·5·7·9 적용. 출혈·화상·침잠·진동·충전·호흡 개편", "일부 7급 이상 인간 적에게 보호막 및 보호막 회복 방어 기술 추가. 전투 화면·기술 일람·공방 및 에고 설명 동기화"]],
@@ -1777,6 +1777,12 @@ function bindLook(box, L, st){
 const EGO_FORM_NAME = {weapon:"무기", armor:"의복", both:"일체형"};
 const egoHasWeapon=e=>!!e&&(e.type==="weapon"||e.type==="both");
 const egoHasArmor=e=>!!e&&(e.type==="armor"||e.type==="both");
+const EGO_WORKSHOP_TIER=2, EGO_WEAPON_POWER=20, EGO_ARMOR_HP_RED=.38;
+const egoExtraDamage=e=>egoHasWeapon(e)?(e.type==="weapon"?5:2):0;
+const egoShieldBase=e=>egoHasArmor(e)?(e.type==="armor"?20:5):0;
+const egoShieldMax=e=>egoShieldBase(e)+(egoHasArmor(e)&&e.special==="shield"?10:0);
+const egoHpRed=e=>egoHasArmor(e)?EGO_ARMOR_HP_RED:0;
+function egoGearSummary(e){if(!e)return "";const parts=["상급 공방 수준"];if(egoHasWeapon(e))parts.push(`기본 피해 +${egoExtraDamage(e)}`);if(egoHasArmor(e))parts.push(`체력 피해 -${Math.round(egoHpRed(e)*100)}%`,`보호막 ${egoShieldMax(e)} (기본 ${egoShieldBase(e)}${e.special==="shield"?" + 특수 효과 10":""})`);return parts.join(" · ");}
 const egoNameClean=v=>typeof v==="string"?v.trim().slice(0,30):"";
 const egoBudget=e=>e&&e.type==="both"?7:10;
 const egoFormLocked=e=>!!(e&&(e.formLocked||e.look));
@@ -1791,7 +1797,7 @@ function syncEgoForm(f){
 function egoAttackCards(e,cards){
   if(!egoHasWeapon(e))return cards;
   const names=e.attackNames||[], list=cards.slice();if(list.length===2&&egoNameClean(names[2]))list.push(cards[0]);
-  return list.map((c,i)=>({...c,origName:c.origName||c.n,n:egoNameClean(names[i])||c.n+"[개화]",a:c.a+1,b:c.b+1}));
+  return list.map((c,i)=>({...c,origName:c.origName||c.n,n:egoNameClean(names[i])||c.n+"[개화]"}));
 }
 function egoDefenseCard(e,c){return egoHasArmor(e)?{...c,origName:c.origName||c.n,n:egoNameClean(e.guardName)||"방어[개화]"}:c;}
 const egoGuardCut=e=>egoHasArmor(e)?2:0;
@@ -4377,7 +4383,7 @@ function power(f, attrs){
 }
 // 팀 전력: 가장 강한 1명 + 나머지의 40%
 function teamPower(team, attrs){ const ps = team.map(f=>power(f,attrs)).sort((a,b)=>b-a); return ps[0] + 0.4*ps.slice(1).reduce((s,v)=>s+v,0); }
-function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); if(f.ego) r += {armor:0.35, both:0.2}[f.ego.type] || 0; return Math.min(r,0.7); }
+function redHP(f){ let r=0; gearList(f).forEach(g=>r+=g.hpRed||0); r += egoHpRed(f.ego); return Math.min(r,0.7); }
 function redMP(f){ let r=0; gearList(f).forEach(g=>r+=g.mpRed||0); if(f.ego) r += {armor:0.35, both:0.2}[f.ego.type] || 0; return Math.min(r,0.75); }
 // 요구치와 같으면 75%, 넘을수록 높아짐(요구치가 클수록 1점의 무게는 작아짐)
 const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 사람이 끼면 성공률 -7.5%p
@@ -4465,7 +4471,7 @@ function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30
 /* ================= 장비 정보(연출용) ================= */
 function weaponTypeOf(g){ if(!g) return null; if(g.wtype) return g.wtype==="drill" ? "lance" : g.wtype; const s = SHOP.find(i=>i.name===g.name); return s ? s.wtype : "blade"; }
 // E.G.O.가 형상을 갖추면 그 무기·방어구 모습으로 나선다(가진 장비 대신)
-function wGear(f){ return f.ego && f.ego.type!=="armor" && f.ego.look ? {name:f.ego.name, wtype:f.ego.look.kind, look:f.ego.look, ego:true} : needsRepair(f.gear.weapon) ? null : f.gear.weapon; }
+function wGear(f){ const w=needsRepair(f.gear.weapon)?null:f.gear.weapon;if(egoHasWeapon(f.ego)){const kind=f.ego.look?.kind||weaponTypeOf(w)||"blade",look=f.ego.look||w?.look||defaultSpec(kind);return {name:f.ego.name,wtype:kind,look,ego:true,tier:EGO_WORKSHOP_TIER,power:EGO_WEAPON_POWER};}return w; }
 function aGear(f){ return f.ego && f.ego.type==="armor" && f.ego.look ? {name:f.ego.name, look:f.ego.look, ego:true} : f.ego && f.ego.type==="both" && f.ego.look ? {name:f.ego.name, look:Object.assign({type:2, pad:1, collar:1, trim:f.ego.look.glow||null}, f.ego.look2||{}), ego:true} : f.gear.armor; }
 function leadGear(f){
   if(!f) return null; const w = wGear(f), acc = f.gear.acc, ar = aGear(f);
@@ -5332,9 +5338,9 @@ function equipDamage(f){
   const w=wGear(f), spec=w&&WEAPON_KINDS[w.wtype], weights=spec&&spec.prof||{str:.4,agi:.3,tec:.3};
   const a=Object.entries(weights).reduce((s,[k,v])=>s+(Number(f.stats[k])||0)*v,0);
   // 개화 E.G.O.는 일반 공방 무기의 능력치 예산을 중복 합산하지 않는다.
-  const eg=f.ego&&f.ego.type!=="armor"; // 개화 직후부터 피해 수치 적용. 외형 설정 여부와 무관.
-  const wp=eg?({weapon:21,both:20}[f.ego.type]||20):(w&&Number(w.power)||0);
-  return 4+0.3*a+wp+shinAwakeDamage(f);
+  const eg=egoHasWeapon(f.ego); // 개화 직후부터 피해 수치 적용. 외형 설정 여부와 무관.
+  const wp=eg?EGO_WEAPON_POWER:(w&&Number(w.power)||0);
+  return 4+0.3*a+wp+egoExtraDamage(f.ego)+shinAwakeDamage(f);
 }
 function clashCardSkill(c){
   const multi=/연속|삼연|연타/.test(c.origName||c.n), coins=c.def?1:(c.normalCoins||(multi?3:2));
@@ -5360,7 +5366,7 @@ const WEAPON_COIN_RANGE=Object.freeze({blade:[2,3],long:[1,3],great:[1,2],blunt:
 const clashMean=sk=>sk.base+sk.coins*sk.cp/2;
 function weaponTierBonus(tier){return 4*Math.max(0,Math.min(3,Math.floor(Number(tier)||0)));}
 function weaponClashTier(f){
-  if(f&&egoHasWeapon(f.ego))return 3;
+  if(f&&egoHasWeapon(f.ego))return EGO_WORKSHOP_TIER;
   const w=f&&wGear(f);if(!w)return 0;
   if(w.unique||w.relic)return 3;
   const ref=SHOP.find(g=>g.id===w.id||g.name===w.name);
@@ -5450,7 +5456,7 @@ function mgCombat(ctx){
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
     const woundOf = (hp,max=100) => hp/max>0.75 ? 0 : hp/max>0.45 ? 1 : hp/max>0.18 ? 2 : 3;
-    party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); if(p.sp2==="mind") p.sp = Math.max(0, p.sp); if(p.sp2==="shield") p.shield = 10; });
+    party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); if(p.sp2==="mind") p.sp = Math.max(0, p.sp); p.shield = egoShieldMax(p.f.ego); });
     foe.burn = 0; foe.bleed = 0; foe.rupture = 0; foe.tremor = 0; foe.daze = 0; foe.brand = false; let tick = "";
     foe.shieldMax=!AB&&!DF&&!q.boss&&g0<=7&&Math.random()<(g0<=3?0.45:g0<=5?0.35:0.25)?Math.min(24,8+2*(7-g0)):0;foe.shield=foe.shieldMax;
     if(foe.shieldMax){const d=foe.skills.find(c=>c.def);if(d)foe.barrierSkill={...d,n:"보호막 전개",barrier:true};}
@@ -5689,7 +5695,7 @@ function mgCombat(ctx){
       { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
       if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
       if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? " · 적중 충전 +3" : ""}`); }
-      if(shinAwakeClash(me.f))b.push(`신 깨우침: 기본 피해 +${shinAwakeDamage(me.f)} · 합 기본 위력 +${shinAwakeClash(me.f)}`);if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge)b.push(`충전 ${me.charge}/20`);if(me.poise)b.push(`호흡 ${me.poise}/50`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
+      if(shinAwakeClash(me.f))b.push(`신 깨우침: 기본 피해 +${shinAwakeDamage(me.f)} · 합 기본 위력 +${shinAwakeClash(me.f)}`);if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(egoShieldMax(me.f.ego)) b.push(`보호막 ${me.shield}/${egoShieldMax(me.f.ego)}`);else if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge)b.push(`충전 ${me.charge}/20`);if(me.poise)b.push(`호흡 ${me.poise}/50`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
       return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
@@ -5951,7 +5957,7 @@ function mgCombat(ctx){
     function turnEnd(){
       // 턴이 끝날 때: 화상이 타오르고, 재생이 상처를 메우고, 보호막이 다시 선다
       const tk = tick ? [tick] : []; { const sm = foeSignMiss(); if(sm) tk.push(sm); } if(BOSS) tk.push(...BOSS.turnEnd());
-      party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } if(p.sp2==="shield") p.shield = 10; });
+      party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } p.shield = egoShieldMax(p.f.ego); });
       if(AB && AB.aoe && turn % AB.aoe === 0 && foe.hp > 0){ const hung = [];
         party.forEach(p=>{ if(p.hp<=0) return; let d = Math.max(4, Math.round(26*(1-redHP(p.f)))); if(isBlessed(p)) d = Math.round(d*0.5); p.hp = Math.max(0, p.hp - d); if(p.hp<=0){ p.death = "hanged"; hung.push(p.name); } });
         tk.push(`<b style="color:#e8d27a">심판 — 저울이 기울었다. 모두가 깊은 상처를 입었다</b>${hung.length ? ` · <b style="color:#ff8a7a">${hung.map(esc).join(", ")}: 교수대에 매달렸다</b>` : ""}`); }
@@ -9137,7 +9143,7 @@ async function bloomEgo(f, opt={}){ ac("ego");
   f.mp = Math.round(f.mpMax*0.5);
   playFx("에고", "E.G.O. 개화", `${f.name} — ${egoLabel(f.ego)}`, true); save(); render();
   S.records.push({day:S.day, name:f.name, what:"E.G.O. 개화", note:`${egoLabel(f.ego)} (${EGO_FORM_NAME[type]})`});
-  const go = await modal("E.G.O. 개화", `${esc(f.name)}의 E.G.O.가 피어났다 — <b>${esc(egoLabel(f.ego))}</b> (${EGO_FORM_NAME[type]})<br>${f.ego.desc ? `<span class="muted">${esc(f.ego.desc)}</span><br>` : ""}${f.ego.origin ? `<span class="muted">살아온 날: ${esc(f.ego.origin)}</span><br>` : ""}전투력이 크게 오른다. ${unstable ? `<b style="color:#e7a07c">다만 금이 간 채로 피어났다</b> — 정신력이 다시 바닥나면 20% 확률로 뒤틀릴 수 있다.` : "정신력이 다시 바닥나면 뒤틀림 확률은 1%다."}<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${egoSpecLabel(type)})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다. 최초 확정 이후에는 형상과 능력 배분을 변경할 수 없다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
+  const go = await modal("E.G.O. 개화", `${esc(f.name)}의 E.G.O.가 피어났다 — <b>${esc(egoLabel(f.ego))}</b> (${EGO_FORM_NAME[type]})<br>${f.ego.desc ? `<span class="muted">${esc(f.ego.desc)}</span><br>` : ""}${f.ego.origin ? `<span class="muted">살아온 날: ${esc(f.ego.origin)}</span><br>` : ""}${esc(egoGearSummary(f.ego))}. ${unstable ? `<b style="color:#e7a07c">다만 금이 간 채로 피어났다</b> — 정신력이 다시 바닥나면 20% 확률로 뒤틀릴 수 있다.` : "정신력이 다시 바닥나면 뒤틀림 확률은 1%다."}<br><span class="muted">E.G.O.의 생김새와 능력(능력치 배분 + ${egoSpecLabel(type)})을 직접 정할 수 있다. 관리에서 나중에 정해도 된다. 최초 확정 이후에는 형상과 능력 배분을 변경할 수 없다.</span>`, [{t:"나중에",v:false},{t:"지금 정하기",v:true,primary:true}], true);
   if(go) await openForge(f, null, "ego");
 }
 function removeFixer(f, what, note){ markFormerLeaving(f,what); if(what!=="해고" && what!=="이탈"){ S.st = S.st || {}; S.st.lost = (S.st.lost||0) + 1; }
@@ -10473,7 +10479,7 @@ async function openManage(){
       <span>능력치 효과</span><b>근력: 기본 위력 +${statClashBasePlus(f)} · 최대 체력 +${statHpPlus(f)} · 민첩: 방어 고정 피해 -${statGuardMinus(f)} · 재주: 코인 위력 +${statClashCoinPlus(f)} · 합 코인 앞면 +${statClashHeadPlus(f).toFixed(2)}%p · 의지: 최대 정신력 +${statMpPlus(f)}</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
       <span>정신력</span><b>${f.mp}/${f.mpMax} <span class="lv ${level(f.mp,f.mpMax)[1]}">${level(f.mp,f.mpMax)[0]}</span></b>
-      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) ${egoFormLocked(f.ego)?`<span class="muted" style="font-size:12px">형상 확정 · 변경 불가</span>`:`<button data-egoforge="1" style="padding:2px 8px">형상 정하기</button>`} <button data-egonames="1" style="padding:2px 8px">기술 이름 설정</button><br><span class="muted" style="font-weight:400">${egoHasWeapon(f.ego)?"기본 공격 위력 +1 · "+egoAttackCards(f.ego,(CARDS[weaponTypeOf(wGear(f))||"none"]||CARDS.none).filter(c=>!c.def)).map(c=>esc(c.n)).join(" / "):""}${egoHasArmor(f.ego)?` · ${esc(f.ego.guardName||"방어[개화]")} · 방어 고정 피해 감소 2`:""}</span>
+      ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) ${egoFormLocked(f.ego)?`<span class="muted" style="font-size:12px">형상 확정 · 변경 불가</span>`:`<button data-egoforge="1" style="padding:2px 8px">형상 정하기</button>`} <button data-egonames="1" style="padding:2px 8px">기술 이름 설정</button><br><span class="muted" style="font-weight:400">${esc(egoGearSummary(f.ego))}${egoHasWeapon(f.ego)?" · "+egoAttackCards(f.ego,(CARDS[weaponTypeOf(wGear(f))||"none"]||CARDS.none).filter(c=>!c.def)).map(c=>esc(c.n)).join(" / "):""}${egoHasArmor(f.ego)?` · ${esc(f.ego.guardName||"방어[개화]")} · 방어 고정 피해 감소 2`:""}</span>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">미정 상태 · 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       <div class="gear-title">장비 관리${needsRepair(f.gear.weapon) ? ` <span class="need-fix-tag">${f.gear.weapon.durMax<=1 ? "무기가 부서졌다" : "무기 수리 필요"}</span>` : ""}</div>${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
       <span>특수 기술 (${(f.techs||[]).length}/${MAX_BASIC_TECHS})</span><b>${(()=>{ const wt = weaponTypeOf(wGear(f)) || "none", list = ["allout"].concat(f.techs||[],f.hanaArts||[]);
@@ -10959,7 +10965,7 @@ const EGO_SPECIAL = {
   {id:"poise",   n:"호흡", d:"적중 시 호흡 3. 최대 50. 다음 공격 적중 시 호흡 10을 소모해 피해 +5(방어 적용)."},
   {id:"charge",  n:"충전", d:"적중 시 충전 3. 최대 20. 다음 공격 시 충전 10을 소모해 코인 위력 +1."}],
   armor:[
-  {id:"shield",  n:"보호막", d:"매 턴 시작에 받는 피해 10을 막아 주는 보호막이 생긴다."},
+  {id:"shield",  n:"보호막", d:"기본 보호막에 10 추가. 매 턴 시작에 의복형 30, 일체형 15로 회복한다."},
   {id:"thorns",  n:"가시",   d:"맞으면 받은 피해의 20%(최소 1)를 상대에게 되돌려 준다."},
   {id:"evade",   n:"회피",   d:"합에서 졌을 때 25% 확률로 공격을 완전히 피한다."},
   {id:"endure",  n:"인내",   d:"쓰러질 공격을 전투마다 한 번 버티고 숨이 붙은 채 남는다."},
@@ -11006,7 +11012,7 @@ async function openForge(f, slot0, mode){
   const seg = (arr, cur, key, lbl) => `<div class="fg-row"><span>${lbl}</span><div class="fg-seg">${arr.map((n,i)=>`<button class="${cur===i?"on":""}" data-${key}="${i}">${n}</button>`).join("")}</div></div>`;
   const statLine = () => { if(up){ const w = wspOf(wpn); return `고유 무기 · 닳지 않음 · ${ptsText(wpn.bonus||{})}${w ? ` · 공방 특수 [${w.n}] ${w.d}` : ""}`; }
     const sp = ego && st.special ? (egoSpecList(f.ego.type).find(x=>x.id===st.special)||{}).n : null;
-    const base = ego ? ({weapon:"E.G.O. 무기(전투력 +8)", armor:"E.G.O. 의복(받는 피해 -35%)", both:"E.G.O. 일체형(전투력 +6 · 받는 피해 -20% · 능력치 7점)"}[f.ego.type]) : up ? `고유 무기 · 위력 ${wpw} · 닳지 않음` : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
+    const base = ego ? egoGearSummary({...f.ego,special:st.special}) : up ? `고유 무기 · 위력 ${wpw} · 닳지 않음` : st.slot==="armor" ? `체력 피해 -${Math.round(UNIQUE_ARMOR.hpRed*100)}% · 정신력 피해 -${Math.round(UNIQUE_ARMOR.mpRed*100)}%` : "";
     return [base, ptsText(st.alloc||{}), sp ? `${ego ? (EGO_SPECIAL.weapon.some(x=>x.id===st.special)?"특수 공격":"특수 방어") : st.slot==="weapon"?"특수 공격":"특수 방어"} [${sp}]` : ""].filter(Boolean).join(" · "); };
   const steps = ["무기/방어구","종류","생김새","능력","확정"];
   const draw = () => {
@@ -11158,7 +11164,7 @@ function techniqueRecordHtml(weapon="all"){
   }).join("");
   const normalRows=Object.keys(CARDS).filter(k=>weapon==="all"||weapon===k).map(k=>`<div class="cdx on"><div class="cdx-h"><b>${esc(kindName(k))}</b><span class="badge">일반 공격</span></div><div class="cdx-g">${normalAttackCards(k).map(c=>{const v=clashCardSkill(c);return `<span>${esc(c.n)}</span><div>${c.normalRole} · 기본 ${v.base} · 코인 ${v.coins}개 × ${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 평균 ${clashMean(v).toFixed(1)} · 피해 ${c.normalMul.toFixed(2)}배</div>`;}).join("")}</div></div>`).join("");
   const guardRows='<div class="cdx on"><div class="cdx-h"><b>방어 전용 기술</b></div><div class="cdx-g"><span>방어</span><div>피해 50% 감소 · 정신력 7 회복</div><span>회피</span><div>성공률 25~75% · 일반 직접 피해 무효 및 정신력 12 회복</div><span>흘려내기</span><div>피해 35% 감소 · 성공률 45~80% · 성공 시 다음 합 적 코인 위력 -1 및 정신력 9 회복</div><span>반격</span><div>피해 25% 감소 · 일반 인간 적에게 받은 피해가 있으면 무기 피해 기준의 30% 반격 · 정신력 7 회복</div></div></div>';
-  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 전력 공격을 제외한 특수 기술은 습득 후 장착할 수 있으며, 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">특수 기술은 무기별 평균 합 위력을 기준으로 개별 효과를 반영한다. 공방 등급별 기본 위력: 양산 +0 / 정식 +4 / 상급 +8 / 고유·개화 +12. 일반 공격 평균: 양산 12 / 정식 16 / 상급 20 / 고유 24. 맨손 제외. 사용 시 정신력 -${TECH_SP_COST} · 일반 특수 기술 2턴 간격 · 발도, 돌격, 패닝 및 일부 유물 기술 3턴 간격</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">특수 기술 ${entries.length}개</p>${keywordRulesHtml()}<p class="muted">하나 협회 4주 훈련: 일반 코인 +1 (33%), 기본 능력치 +1 (50%), 일반 기본 위력 +1 (11%), 특수 기본·코인 위력 +1 (5%), 희귀 기술 16종 중 미습득 1개 (1%).</p><h4>일반 공격</h4>${normalRows}<h4>방어 기술</h4>${guardRows}<h4>특수 기술</h4>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
+  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 전력 공격을 제외한 특수 기술은 습득 후 장착할 수 있으며, 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">특수 기술은 무기별 평균 합 위력을 기준으로 개별 효과를 반영한다. 공방 등급별 기본 위력: 양산 +0 / 정식 +4 / 상급 +8 / 고유 +12 / 개화 무기 +8. 일반 공격 평균: 양산 12 / 정식 16 / 상급 20 / 고유 24. 맨손 제외. 사용 시 정신력 -${TECH_SP_COST} · 일반 특수 기술 2턴 간격 · 발도, 돌격, 패닝 및 일부 유물 기술 3턴 간격</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">특수 기술 ${entries.length}개</p>${keywordRulesHtml()}<p class="muted">하나 협회 4주 훈련: 일반 코인 +1 (33%), 기본 능력치 +1 (50%), 일반 기본 위력 +1 (11%), 특수 기본·코인 위력 +1 (5%), 희귀 기술 16종 중 미습득 1개 (1%).</p><h4>일반 공격</h4>${normalRows}<h4>방어 기술</h4>${guardRows}<h4>특수 기술</h4>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
 }
 function combatRuleRecordHtml(){
   const baseRows=Object.entries(CARDS).map(([kind,cards])=>{
@@ -11174,10 +11180,10 @@ function combatRuleRecordHtml(){
   <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45, 의뢰 전력 보정 0이라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
   <p>양쪽 코인을 던져 위력이 낮은 쪽의 코인 1개를 제거하고 다시 던진다. 동률이면 그대로 다시 던진다. 한쪽 코인이 모두 사라지면 패배한다. 최대 24회 굴림 제한에서 코인이 더 많이 남은 쪽이 승리하며, 같으면 양측 50% 확률로 승리한다.</p>
   <p>해결사의 앞면 확률은 전투 정신력 -45에서 27.5%, 0에서 50%, +15에서 62%, +45에서 85%. 재주 10당 기존 앞면 확률 +0.25%p도 유지한다. 기술 등 추가 보정 후 5~95%로 제한한다. 적은 기본 50%이며 일부 기술은 예외다.</p>
-  <p>특수 기술은 무기별 코인 구조를 바탕으로 평균 합 위력을 조정하며 정신력 -${TECH_SP_COST}. 양산 +0 · 정식 +4 · 상급 +8 · 고유·개화 +12의 기본 위력 보정을 받는다. 일반 공격의 기준 평균은 각각 12 · 16 · 20 · 24이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 등급과 고유 기술에 따라 정해진다.</p>
+  <p>특수 기술은 무기별 코인 구조를 바탕으로 평균 합 위력을 조정하며 정신력 -${TECH_SP_COST}. 양산 +0 · 정식 +4 · 상급 +8 · 고유 +12 / 개화 무기 +8의 기본 위력 보정을 받는다. 일반 공격의 기준 평균은 각각 12 · 16 · 20 · 24이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 등급과 고유 기술에 따라 정해진다.</p>
   <p><b>방어와 투지:</b> 방어 피해 50% 감소, 회피 성공률 25~75%(민첩·정신력), 흘려내기 피해 35% 감소 및 성공률 45~80%(재주)로 다음 합 코인 위력 -1, 반격 피해 25% 감소 및 일반 인간 적에게 무기 피해 기준 30% 반격. 회피 실패 시 방어 고정 감소 미적용. 방어 행동은 정신력 7, 회피 성공 12, 흘려내기 성공 9 회복(연속 방어는 4 감소). 합 승리 투지 5, 패배 15, 방어 7~10, 적 방어 3. 투지 30 심호흡 +15 정신력, 50 혼신의 일격 기본 위력 +2, 100 사즉생 기본 위력 +3 및 음수 정신력 무시. 전투마다 0으로 시작하며 턴당 한 번 추가 행동.</p><p><b>휘청임:</b> 다음 실제 합에서 기본 위력 -${CLASH_DAZE_CUT}. 중복으로 쌓이지 않으며 합을 한 번 진행하면 소멸한다. 코인 위력 감소는 별개이며 해당 합의 각 앞면 코인에 적용된다. 기본 방어·재장전 등 합이 없는 행동으로는 소모하지 않는다. 예: 기본 6, 코인 위력 5, 앞면 2개일 때 휘청임만 받으면 14, 코인 위력 -2까지 받으면 10.</p>
   </div></div><div class="cdx on"><div class="cdx-h"><b>피해량 계산 (직접 전투)</b></div><div style="padding:10px;line-height:1.7">
-  <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 일반 무기 공격력 대신 무기형 21, 복합형 20을 적용한다.</p>
+  <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 상급 공방 기준 공격력 20에 무기형 +5, 일체형 +2의 기본 피해를 더한다. 개화 의복은 체력 피해 38% 감소, 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
   <p><b>② 코인 보정 피해 = 반올림(무기 피해 기준 × 잔존 계수 × 앞면 계수)</b> (최소 1). 잔존 계수 = 0.55 + 0.45 × (남은 코인 수 ÷ 원래 코인 수). 앞면 계수 = 0.9 + 0.2 × (공격 재굴림의 앞면 수 ÷ 남은 코인 수).</p>
   <p><b>③ 실제 피해:</b> 코인 보정 피해에 일반 공격 역할별(강공 1.10배, 견제 0.90배, 집중 1.00배) 또는 특수 기술별 피해 배율, 방어 기술 반격 계수, 장기전 계수(13턴부터 턴마다 +10%)를 곱한다. 이후 상대 방어(통상 50% 감소), 무기·유물·상태·탄환·동료 지원·적 내성 및 특수 기믹을 적용한다. 합 위력 그 자체가 피해량으로 더해지지는 않는다.</p>
   <p><b>예시:</b> 무기 피해 기준 20, 코인 2개 중 1개 남아 앞면이면 20 × 0.775 × 1.1 = 17.05 → 17 피해. 피해 배율 1.25인 전력 공격이면 17 × 1.25 → 21. 다른 보정 없이 적이 일반 방어하면 11 피해.</p>
