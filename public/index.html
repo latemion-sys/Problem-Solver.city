@@ -7645,7 +7645,10 @@ const CODEX_STEPS = ["이름","위험 등급","선호 행동","폭주 · 전투 
 // 환상체 기프트: 통제(작업 한 번 · 통제 완료) / 제압(직접 싸운 대표 · 참가 전원). 각각 +2%p 상향
 const AB_GIFT_RATE = Object.freeze({action:0.04, control:0.10, fighter:0.10, suppression:0.04});
 function makeGift(a, how, grade){ if(!a.gifts) return null; const id = String(a.vid||a.id).split("~")[0];
-  const RC = abRec(); let k = RC.giftPick[id]; if(!k){ k = Math.random() < 0.5 ? "a" : "b"; if(!window.__peekGift){ RC.giftPick[id] = k; abRecSave(RC); } }
+  // 비탈출·전투 불가 개체는 두 기프트 모두 통제로 획득하며, 사무소별 고정 선택을 적용하지 않는다.
+  let k;
+  if(a.noFight){ if(how!=="ctrl") return null; k = Math.random() < 0.5 ? "a" : "b"; }
+  else { const RC = abRec(); k = RC.giftPick[id]; if(!k){ k = Math.random() < 0.5 ? "a" : "b"; if(!window.__peekGift){ RC.giftPick[id] = k; abRecSave(RC); } } }
   const G = a.gifts[k]; if(!G) return null;
   return Object.assign({slot:"acc", name:G.n, gift:{abno:a.vid, from:a.n, kind: how==="ctrl" ? "통제" : "제압", grade}, giftV2:GIFT_V}, giftStats(a, G));  }
 // 도감 개방과 무관하게 실제 수행자에게 각각 독립 판정한다.
@@ -17375,7 +17378,7 @@ function codexRecordHtml(){
         <span>전투 조건</span><div>${L(4) ? (T=>`<b style="color:${T[1]}">${T[0]}</b> — ${T[2]}`)(FIGHT_TXT[fightType(e)]) : lock(4)}</div>
         <span>이야기</span><div style="white-space:pre-line">${L(5) ? esc(e.story) : lock(5)}</div>
         ${e.kill ? "" : `<span>기프트</span><div>${(c.gifts||[]).length ? c.gifts.map(esc).join(", ") : `<span class="muted">아직 얻지 못했다</span>`}</div>`}</div></div>`; };
-  const cdxBody = met.length ? `<p class="muted" style="margin:0 0 8px">도시에서 마주친 환상체와 죄종의 정보를 확인할 수 있다. 조우 횟수에 따라 이름, 위험 등급, 선호 행동, 폭주·전투 조건, 관련 이야기가 차례로 공개되며, 확인한 정보는 현재 브라우저에 저장된다.</p>${met.map(row).join("")}`
+  const cdxBody = met.length ? `<p class="muted" style="margin:0 0 8px">도시에서 마주친 환상체와 죄종의 정보를 확인할 수 있다. 조우 횟수에 따라 이름, 위험 등급, 선호 행동, 폭주·전투 조건, 관련 이야기가 차례로 공개되며, 확인한 정보는 현재 브라우저에 저장된다. 환상체의 기프트는 2개가 있다.</p>${met.map(row).join("")}`
     : `<div class="ach-empty"><div class="ach-empty-ic">◇</div><b>아직 마주친 환상체가 없다</b><div class="d">환상체 의뢰에서 만난 환상체가 여기에 기록된다.</div></div>`;
   return cdxBody;
 }
