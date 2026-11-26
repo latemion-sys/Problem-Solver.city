@@ -1691,7 +1691,7 @@ const CHANGELOG = [
     "의뢰 게시판 정렬, 의뢰 테두리를 재해 등급 색으로, 의뢰 명칭 정리",
     "3급 이상 해결사 개인 지명 의뢰, 동료 해결사 카드 접기 · 펼치기",
     "체력 · 정신력 회복 비용을 등급별 표로, 환상체 기프트 확률 · 배율 조정"]]];
-function showChangelog(){ modal(`업데이트 적용 사항 · ${VERSION}`, `<div class="cl-list">${CHANGELOG.map(([d,xs])=>`<h4>${esc(d)}</h4><ul>${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`).join("")}</div>`, [{t:"닫기", primary:true}]); }
+function showChangelog(){ modal(`업데이트 적용 사항 · ${VERSION}`, `<div class="cl-list">${CHANGELOG.slice(0,2).map(([d,xs])=>`<h4>${esc(d)}</h4><ul>${xs.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`).join("")}</div>`, [{t:"닫기", primary:true}]); }
 try{ const vt = document.getElementById("verTag"); if(vt) vt.textContent = VERSION; const cb = document.getElementById("clBtn"); if(cb) cb.onclick = showChangelog; }catch(_){}
 const SAVE_KEY = "problem-solver-office-save-v1";
 const ATTRS = ["str","agi","tec","wil"];
