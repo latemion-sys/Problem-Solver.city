@@ -4504,11 +4504,21 @@ const CLEAN_WIN = 0.8;
 const DIRECT_PR = 97;
 const scorePayMul = sc => { const p = clamp(Math.round(sc*100), 0, 100); return p <= 50 ? 0.75 : p <= 75 ? 0.75 + (p-50)/25*0.25 : 1 + (p-75)/25*0.25; };   // 목표 게임이 없는 직접 수행의 성공률(실패는 3%뿐)   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
-const directOnly = q => !!(q && (q.boss || q.ruins || q.kind === "환상체" || (q.kind||"").includes("뒤틀림") || q.abno || q.abnoFoe || q.distFoe));
+const isAbnoContract = q => !!(q && (q.kind==="환상체" || /죄종/.test(q.kind||"") || q.risk==="죄종" || q.abno || q.abnoFoe));
+const isDistContract = q => !!(q && (q.distFoe || q.distorted || /뒤틀림/.test(q.kind||"")));
+const directOnly = q => !!(q && (q.boss || q.ruins || isAbnoContract(q) || isDistContract(q)));
 const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
 const gamesFor = q => { const base = gamesFor0(q); if(!storyMG(q)) return base;
+  if(directOnly(q)) return ["story"].concat(base);
   return q.arc ? ["story"].concat(base.includes("str") || q.goal ? ["str"] : []) : ["story"].concat(base); };
-const gamesFor0 = q => q.ruins ? ["ruins"] : q.kind==="환상체" ? ["abno"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : q.attrs.filter(a=>a!=="wil");
+const gamesFor0 = q => q.ruins ? ["ruins"] : q.abnoFoe ? ["str"] : isAbnoContract(q) ? ["abno"] : isDistContract(q) || q.boss ? ["str"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : (q.attrs||[]).filter(a=>a!=="wil");
+const directGoal = q => q.abnoFoe ? (q.abnoFoe.kill?"사살":"제압") : isDistContract(q) ? "사살" : q.goal || "제압";
+// 승패가 있는 게임의 명시적인 결과만 의뢰 성패에 사용한다. 점수는 승패를 뒤집지 않는다.
+function directStageResult(results){
+  if(results.some(r=>r&&r.win===false))return false;
+  if(results.length&&results.every(r=>r&&r.win===true))return true;
+  return null;
+}
 function chooseMode(q, team){
   if(directOnly(q)) return Promise.resolve("play");
   const base = rate(team, q), games = gamesFor(q);
@@ -4520,20 +4530,22 @@ function chooseMode(q, team){
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
 async function runMinigames(q, team){
-  const games = gamesFor(q); let sum = 0, combat = null, abno = null; const dec = [];
+  const games = gamesFor(q); let sum = 0, combat = null, abno = null; const dec = []; let invalid=false;
   for(let i=0;i<games.length;i++){
     const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
     if(a==="story"){ const r = await mgStory(ctx); sum += r; q.__edge = r; }
     else if(a==="ruins"){ const r=await mgRuins(ctx);sum+=r.score;dec.push(r); }
-    else if(a==="str"){ combat = await mgCombat(ctx); sum += combat.score; dec.push(combat); }
+    else if(a==="str"){ const fightCtx={...ctx,q:{...q,goal:directGoal(q)}}; combat = await mgCombat(fightCtx); sum += combat?.score||0; dec.push(combat); }
     else if(a==="agi"){ const tr = await mgTrack(ctx); sum += tr.score; dec.push(tr); if(!combat) combat = tr; }
     else if(a==="escort"){ const r = await mgEscort(ctx); sum += r.score; dec.push(r); if(r.combat) combat = r.combat; }
     else if(a==="search"){ const r = await mgSearch(ctx); sum += r.score; dec.push(r); }
-    else if(a==="abno"){ const r = await mgAbno(ctx); sum += r.score; dec.push(r); abno = r; if(r.fought) combat = r; }
+    else if(a==="abno"){ const r = await mgAbno(ctx); sum += r?.score||0; dec.push(r); abno = r; if(r?.fought) combat = r; }
     else sum += a==="shield" ? await mgShield(ctx) : await mgClues(ctx);
+    if(dec.length){ const last=dec[dec.length-1]; if(!last||typeof last.win!=="boolean"){invalid=true;break;} if(last.win===false)break; }
   }
-  // 승패가 나는 게임(합 전투·추적)만으로 이뤄진 의뢰는 그 승패가 곧 의뢰 성패
-  return {score: games.length ? sum/games.length : 0, combat, decisive: dec.length===games.length ? dec.every(d=>d.win) : null, lostDecisive: dec.some(d=>!d.win), anyDecisive: dec.length > 0, abno};
+  delete q.__edge;
+  const decisive=invalid?null:directStageResult(dec);
+  return {score: games.length ? sum/games.length : 0, combat, decisive, lostDecisive: decisive===false, anyDecisive: dec.length>0, invalid, abno};
 }
 
 /* ================= 사건 · 특수 의뢰 전용 미니게임 =================
@@ -4809,9 +4821,9 @@ function mgOpen(title, desc, ctx, H=300){
   const tok = BGM.push(bgmFor(title, ctx.q), bg);
   return { bg, cvs, c, pos, info: bg.querySelector(".mg-info"), ctrl: bg.querySelector(".mg-ctrl"), quit: bg.querySelector(".mg-quit"), close(){ if(bg.isConnected) BGM.pop(tok); bg.remove(); } };
 }
-function mgResult(m, score, text){
-  return new Promise(res=>{ m.info.innerHTML = `<b style="color:${score>=0.7?"var(--green)":score>=0.4?"var(--yellow)":"var(--red)"}">${text} · ${Math.round(score*100)}점</b>`; m.ctrl.innerHTML=""; m.quit.textContent="계속";
-    m.quit.onclick = ()=>{ m.close(); res(score); }; setTimeout(()=>{ if(document.body.contains(m.bg)){ m.close(); res(score); } }, 2600); });
+function mgResult(m, score, text, win=null){
+  return new Promise(res=>{ let settled=false; m.info.innerHTML = `<b style="color:${win===true?"var(--green)":win===false?"var(--red)":score>=0.7?"var(--green)":score>=0.4?"var(--yellow)":"var(--red)"}">${text} · ${Math.round(score*100)}점</b>`; m.ctrl.innerHTML=""; m.quit.textContent="계속"; m.quit.disabled=false;
+    const finish=()=>{if(settled)return;settled=true;m.close();res(score);};m.quit.onclick=finish;setTimeout(finish,2600); });
 }
 const powK = (ctx, a) => clamp(teamPower(ctx.team, [a]) / Math.max(1, ctx.q.req), 0.55, 1.7);
 
@@ -5940,7 +5952,7 @@ function mgCombat(ctx){
     }
     // 쓰러뜨린 뒤 마무리: 제압할지, 숨통을 끊을지 고른다(의뢰 목표와 다르면 의뢰 실패)
     function finishMenu(){
-      phase = "finish"; downed = true; if(BOSS && !BOSS.killed){ BOSS.killed = true; bossFx.kill(BOSS.B); }
+      phase = "finish"; downed = true; m.quit.disabled=true; if(BOSS && !BOSS.killed){ BOSS.killed = true; bossFx.kill(BOSS.B); }
       m.info.innerHTML = `<div class="pk-text">${tick ? `<span style="color:#ffb35a">${tick}</span><br>` : ""}${jo(foe.name,"이")} 쓰러졌다. 의뢰 목표는 <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>이다. 어떻게 마무리할까?</div>`;
       m.ctrl.innerHTML = AB && AB.kill ? `<div class="pk-moves"><button data-fin="사살"><b>사살</b><small>알로 되돌릴 수 없는 죄종을 사살한다</small></button></div>` : AB && AB.possessed ? `<div class="pk-moves"><button data-fin="제압"><b>구두를 벗겨 낸다</b><small>발목을 잘라 구두를 벗기고 생존자를 구출한다</small></button></div>` : AB ? `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>환상체를 제압하여 알로 되돌린다</small></button></div>` : `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>상대를 생포한다</small></button><button data-fin="사살"><b>사살</b><small>상대를 사살한다</small></button></div>`;
     }
@@ -6004,9 +6016,9 @@ function mgCombat(ctx){
       else if(why==="lost"){ score = 0.15*prog; text = "모두 쓰러졌다 — 의뢰 실패"; }
       else if(why==="fuse"){ score = 0.1; text = "성냥불이 터졌다. 소녀는 재가 되어 흩어졌다. 의뢰 실패"; }
       else { score = 0.4*prog; text = "목표를 이루지 못했다 — 의뢰 실패"; }
-      if(win && score < CLEAN_WIN && !AB) text = text.replace(/ — (의뢰|제압) 성공$/, "") + " — 다만 상처가 깊다. 어떻게 마무리될지는 판정으로 정해진다";
+      if(win && score < CLEAN_WIN && !AB) text += " · 상처가 깊지만 의뢰 성공은 확정됐다";
       const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:Math.round(100*p.hp/p.max), sp:p.sp, fought: p.fought, shinUsed: !!p.shinUsed, mangPeak: p.mangPeak||0, death: p.death || null, wound: p.hp<=0 ? 3 : woundOf(p.hp,p.max)}))};
-      setTimeout(()=>{ mgResult(m, res.score, text).then(()=>resolve(res)); }, outcome ? 1500 : 600);
+      setTimeout(()=>{ mgResult(m, res.score, text, res.win).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
     m.ctrl.onchange=e=>{if(phase!=="skill")return;const me=party[act];if(e.target.dataset.basicChoice){me.basicChoice=+e.target.value;skillMenu();}else if(e.target.dataset.guardMode&&guardModes[e.target.value]){me.guardMode=e.target.value;skillMenu();}};
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
@@ -6308,7 +6320,7 @@ function mgTrack(ctx){
       G.done = true; G.win = win; G.endAt = performance.now(); ui(); m.ctrl.innerHTML = "";
       const score = win ? 0.6 + 0.4*(1 - G.turn/T) : 0.3*clamp(1 - G.d/(LOST+1), 0, 1);
       const res = {win, score: clamp(score,0,1), battle: [{f:lead, fought:true, wound: Math.min(3, G.wound), sp:0}]};
-      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, win && res.score < CLEAN_WIN ? `${text} — 시간이 걸렸다. 마무리는 판정으로 정해진다` : `${text} — 의뢰 ${win?"성공":"실패"}`).then(()=>resolve(res)); }, 1800);
+      setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, `${text} — 의뢰 ${win?"성공":"실패"}`, win).then(()=>resolve(res)); }, 1800);
       return true;
     }
     m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout) scout(); };
@@ -7979,7 +7991,7 @@ function mgAbno(ctx){
     }
     raf = requestAnimationFrame(draw);
     const say = s => { G.log.unshift(s); G.log = G.log.slice(0,4); m.info.innerHTML = `<div class="pk-text">${G.log.join("<br>")}</div>`; };
-    const end = (res, text) => { if(G.done) return; G.done = true; m.ctrl.innerHTML = ""; res = Object.assign({}, res, {fxOut:G.out}); setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, text).then(()=>resolve(res)); }, 900); };
+    const end = (res, text) => { if(G.done) return; G.done = true; m.ctrl.innerHTML = ""; res = Object.assign({}, res, {fxOut:G.out}); setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, text, res.win).then(()=>resolve(res)); }, 900); };
     const maimOf = f => { G.hurt[f.id] = true; f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.08))); };
     // 현장에서 잃는 사람(죽음·실종): 정산은 의뢰가 끝난 뒤 한다. 아무도 남지 않으면 의뢰 실패
     const killWorker = (f, why, kind="사망") => { G.dead.push({id:f.id, why, kind}); const i = ctx.team.indexOf(f); if(i>=0) ctx.team.splice(i,1); if(G.pick===f.id) G.pick = null; G.shake = 16; G.flash = 1;
@@ -8245,7 +8257,9 @@ function mgAbno(ctx){
         return end({win:true, score:1, how:"ctrl", mpLoss:G.mpLoss, erased:G.erased, last:G.last}, "알로 잠재웠다 — 통제 성공"); }
       menu(); }
     async function breach(f){
+      if(G.done||G.fighting||G.breaching)return;
       if(a.noFight) return doom(f);
+      G.breaching=true;m.quit.disabled=true;
       if(a.fx==="possess"){ const v = ctx.team.slice().sort((x,y)=>power(x,["tec"]) - power(y,["tec"]))[0];
         if(ctx.team.length < 2) return doom(v, "구두에 홀렸다", {t:`${jo(v.name,"이")} 빨간 구두를 신고 춤추기 시작했다. 아무도 멈춰 줄 사람이 없어, 스스로 도끼를 들어 발목을 잘라 냈다`, custom:"shoesSolo"});
         G.state = "out"; G.shake = 18; G.flash = 1; m.ctrl.innerHTML = "";
@@ -8254,12 +8268,14 @@ function mgAbno(ctx){
         const rest = ctx.team.filter(x=>x!==v), nm = `빨간 구두를 신은 ${v.name}`;
         const fq = Object.assign({}, q, {goal:"제압", attrs:["str"], foe:nm, abnoFoe:Object.assign({}, a, {n:nm, possessed:true, cards:[{n:"붉은 도끼",a:5,b:12},{n:"멈추지 않는 스텝",a:5,b:10},{n:"회전",a:4,b:8,def:true}], hp:1.1})});
         const r = await mgCombat({q:fq, team:rest, idx:ctx.idx, total:ctx.total});
-        m.close(); if(r.win) codexNote(a.vid, "sup");
+        G.done=true;m.close(); if(r.win) codexNote(a.vid, "sup");
         return resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, possess:{id:v.id, win:r.win}})); }
       G.state = "out"; G.shake = 18; G.flash = 1; m.ctrl.innerHTML = "";
       say(`<b style="color:#ff8a7a">${a.rule==="knight" ? "기사가 절망에 빠졌다" : `${a.noCounter ? "더 이상 참지 못했다" : "광폭 카운터가 0이 됐다"}`} — ${esc(josa(shown,"이","가"))} 폭주했다!</b>`); await new Promise(r=>setTimeout(r, 1300)); fight();
     }
     async function fight(){
+      if(G.done||G.fighting)return;
+      G.fighting=true;m.quit.disabled=true;
       if(a.rule2==="ranged" && !ctx.team.some(f=>weaponTypeOf(wGear(f))==="gun")) return doom(ctx.team.slice().sort((x,y)=>power(y,["str"]) - power(x,["str"]))[0]);
       cancelAnimationFrame(raf); m.bg.style.visibility = "hidden"; if(G.pendant) toast("펜던트를 떠올린 사수의 흉탄이 흔들린다 · 위력 약화");
       let AF = a; if(G.pendant){ AF = Object.assign({}, a, {cards: a.cards.map(c=>Object.assign({}, c, {b: Math.max(c.a+1, c.b-2)}))}); }
@@ -8268,7 +8284,7 @@ function mgAbno(ctx){
       if(a.rule2==="ranged") toast("총잡이가 멀리서 꽃을 겨눈다. 흰 털을 밟지 않고 싸운다");
       const fq = Object.assign({}, q, {goal: a.kill ? "사살" : "제압", attrs:["str"], foe: shown, abnoFoe:AF});
       const r = await mgCombat({q:fq, team:ctx.team, idx:ctx.idx, total:ctx.total});
-      m.close(); if(r.win) codexNote(a.vid, "sup");
+      G.done=true;m.close(); if(r.win) codexNote(a.vid, "sup");
       resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, rage:G.state==="rage", mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}));
     }
     m.ctrl.addEventListener("click", e=>{ const dr = e.target.closest("button[data-dr]"); if(dr && G.drink){ drink(dr.dataset.dr==="1"); return; }
@@ -8279,7 +8295,7 @@ function mgAbno(ctx){
       const mc = e.target.closest("button[data-merc]"); if(mc){ const v = mc.dataset.merc; if(v==="list") mercList(); else if(v==="cancel") menu(); else mercDo(+v); return; } if(e.target.closest("button[data-mb]")){ orderBullet(); return; }
       const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
-    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
+    m.quit.onclick = ()=>{ if(G.done||G.fighting||G.breaching) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
     const lead = a.risk==="ALEPH" ? 5300 : 0; if(lead) alephIntro(shown);
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
@@ -8293,8 +8309,8 @@ function mgAbno(ctx){
           if(killWorker(f, a.fx==="overture" ? "고요한 오케스트라의 첫 음에 머리가 터졌다" : "푸른 별의 심장으로 빨려 들어갔다", a.fx==="overture" ? "사망" : "실종")) return; }
         else if(unready) intro += `<br><span class="muted">${esc(f.name)}: 대비가 없다 — 정신력이 무너지면 위험하다</span>`; }
       intro += `<br><span class="muted">정신 방호 장비·E.G.O.가 있거나 의지가 충분하면 조우만으로 죽지 않는다. 징후를 놓치지 말 것</span>`; }
-    if(a.kill){ G.state = "rage"; say(`${esc(shown)} — ${esc(a.look)}.<br><b style="color:#ff8a7a">통제가 불가능한 죄종이므로 현장에서 사살할 것.</b>`); setTimeout(fight, 2200 + lead); }
-    else if(G.state==="rage"){ say(`${esc(shown)} — <b style="color:#ff8a7a">주변의 물건을 닥치는 대로 부수고 있다!</b> 통제가 불가능한 상태로, 곧바로 전투에 돌입한다.`); setTimeout(fight, 1800 + lead); }
+    if(a.kill){ G.state = "rage"; m.quit.disabled=true; say(`${esc(shown)} — ${esc(a.look)}.<br><b style="color:#ff8a7a">통제가 불가능한 죄종이므로 현장에서 사살할 것.</b>`); setTimeout(fight, 2200 + lead); }
+    else if(G.state==="rage"){ m.quit.disabled=true; say(`${esc(shown)} — <b style="color:#ff8a7a">주변의 물건을 닥치는 대로 부수고 있다!</b> 통제가 불가능한 상태로, 곧바로 전투에 돌입한다.`); setTimeout(fight, 1800 + lead); }
     else { const FT = FIGHT_TXT[fightType(a)]; say(`${esc(shown)} — ${esc(a.look)}. ${seen===1 ? "처음 보는 환상체다." : `이번이 ${seen}번째 조우다.`}${know(4) ? ` <span style="color:${FT[1]}">[${FT[0]}]</span>` : ""}${intro ? "<br>"+intro : ""}<br><span class="muted">적절한 행동으로 기분을 최대치까지 높이면 알로 돌아간다. 행동에 실패하면 ${jo(ctrName,"이")} 감소한다.</span>`); menu(); }
   });
 }
@@ -8404,11 +8420,14 @@ async function dispatch(qid, fids, modeArg){
   if(mustPlay && !hasGame){ toast("이 의뢰는 직접 수행만 가능하지만 실행할 전투가 없습니다."); return; }
   let mode = mustPlay ? "play" : "auto";
   if(hasGame && !mustPlay){ mode = modeArg || await chooseMode(q, team); if(!mode) return; }
+  const dispatchBefore=team.map(f=>({f,lastDispatch:f.lastDispatch,marchDay:f.marchDay}));
   marching.forEach(f=>{ f.marchDay = S.day; ac("march"); }); team.forEach(f=>f.lastDispatch = S.day);
   const namedSent = personalNomMatch(q,team);
   const base = rate(team,q); let pr = base, payMul = 1, mgLine = "", combat = null;
   let decisive = null, abnoR = null, mgScore = null;
-  if(mode==="play"){ const r = await runMinigames(q, team); combat = r.combat; abnoR = r.abno; if(abnoR && abnoR.fought) mental = false;
+  if(mode==="play"){ const r = await runMinigames(q, team); combat = r.combat; abnoR = r.abno; if(combat && (abnoR?.fought || isDistContract(q))) mental = false;
+    // 결과 전달 오류를 자동 판정으로 대체하지 않는다. 의뢰·보수·신뢰도 정산을 보류하고 재출동 가능하게 한다.
+    if(r.invalid || (mustPlay && typeof r.decisive!=="boolean")){ for(const x of dispatchBefore){x.f.lastDispatch=x.lastDispatch;x.f.marchDay=x.marchDay;} addLog("직접 수행 결과 확인 실패 — 의뢰 정산 보류"); save();render();toast("직접 수행 결과가 누락됐습니다. 자동 판정 없이 의뢰를 유지합니다.");return; }
     if(abnoR && abnoR.erased && abnoR.erased.length){ for(const id of abnoR.erased){ const f = S.fixers.find(x=>x.id===id); if(!f) continue; eraseFixer(f); if(!S || S.over) return; const i = team.indexOf(f); if(i>=0) team.splice(i,1); }
       if(!team.length && !(abnoR.dead && abnoR.dead.length)){ S.requests = S.requests.filter(x=>x.id!==qid); stageLog(`[${q.kind} 의뢰 실패]`, q.client, false); save(); render(); return; } }
     if(abnoR && !team.length){ const L = []; const lost = abnoApply(q, team, Object.assign({}, abnoR, {battle: combat && combat.battle}), L); S.requests = S.requests.filter(x=>x.id!==qid);
@@ -8419,7 +8438,7 @@ async function dispatch(qid, fids, modeArg){
        · 점수 게임만 있는 의뢰는 점수와 상관없이 97% — 직접 해낸 일이 운으로 무너지는 건 3%뿐이다(점수는 보상·평가에 쓰인다).
        · 압승(80점 이상)은 특수 전리품 확률이 늘어난다.
        · 환상체는 통제·제압 결과가 곧 성패(기믹이 많아 그대로 둔다) */
-    if(q.kind==="환상체" && r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
+    if(isAbnoContract(q) && r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
     else if(r.decisive===false || r.lostDecisive){ decisive = false; mgLine = "직접 수행 실패"; }
     else if(r.decisive===true || (r.decisive==null && r.lostDecisive===false && r.anyDecisive)){ mgScore = r.score; decisive = true;
       mgLine = r.score >= CLEAN_WIN ? `직접 수행 <b>압승</b>(${Math.round(r.score*100)}점) — 의뢰 확정 성공 · 추가 전리품 기회`
@@ -8431,7 +8450,7 @@ async function dispatch(qid, fids, modeArg){
   // 직접 수행 점수는 보수로 이어진다: 100점 ×1.25 · 75점 ×1 · 50점 이하 ×0.75 (사이는 고르게, 소수점 올림)
   if(mode==="play" && mgScore!=null){ const pm = scorePayMul(mgScore); if(pm!==1){ pay = Math.ceil(pay*pm); mgLine = (mgLine ? mgLine + " · " : "") + `보수 ×${pm.toFixed(2).replace(/0$/,"")} (${Math.round(mgScore*100)}점)`; } }
   // 합 전투를 직접 했으면 전투 승패가 곧 의뢰 성패. 아니면 성공률로 굴린다
-  const success = decisive!=null ? decisive : Math.random()*100 < pr;
+  const success = typeof decisive==="boolean" ? decisive : (mustPlay ? false : Math.random()*100 < pr);
   team.forEach(f=>{ if(f.isLeader)return; const n=success ? Math.min(4,1+(q.grade<=f.grade?1:0)+(mode==="play"?1:0)+(mgScore!=null&&mgScore>=.85?1:0)) : -Math.min(3,1+(q.grade<f.grade?1:0)+(f.hp<=f.hpMax*.35?1:0));changeFixerTrust(f,n,success?"의뢰 완수":"의뢰 실패"); });
   // 이번 주 심사 기록(사무소 · 해결사): 해낸 수, 수행 점수, 성공 비중
   { const best = Math.min(...team.map(f=>f.grade)), th = threatOf(q); S.st = S.st || {};
@@ -8458,7 +8477,7 @@ async function dispatch(qid, fids, modeArg){
     abLost = abnoApply(q, team, Object.assign({}, abnoR, {battle: combat && combat.battle}), lines);
     lines.push(abnoR.how==="ctrl" ? "환상체를 알로 잠재웠다(통제)" : abnoR.how==="sup" ? (A && A.kill ? "죄종을 사살했다" : "전투 끝에 환상체를 알로 되돌렸다(제압)") : "환상체를 처리하지 못했다"); }
   team.forEach(f=>{
-    const b = combat && combat.battle.find(x=>x.f===f), w = b && b.fought ? b.wound : combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
+    const b = combat?.battle?.find(x=>x.f===f), w = b && b.fought ? b.wound : mode==="play" || combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
     // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 1.1배
@@ -8479,11 +8498,11 @@ async function dispatch(qid, fids, modeArg){
       if(cb.shinUsed){ f.shinUses = (f.shinUses||0) + 1; lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 전투에서 신(心)을 둘렀다${cb.mangPeak ? ` · 망(望) ${cb.mangPeak}겹` : ""}</span>`);
         if(mangReady(f) && f.mangHint !== (f.mang||0)){ f.mangHint = f.mang||0; lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`); addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`); } }
       return; }
-    if(!shinOn(f)) return; const c = shinCost(f), m = mangN(f); f.mp = Math.max(1, f.mp - c); f.shinUses = (f.shinUses||0) + 1;
+    if(mode==="play" || !shinOn(f)) return; const c = shinCost(f), m = mangN(f); f.mp = Math.max(1, f.mp - c); f.shinUses = (f.shinUses||0) + 1;
     lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 신(心)${m ? ` · 망(望) ${m}` : ""}</span> — 정신력 -${c}`);
     if(mangReady(f) && f.mangHint !== (f.mang||0)){ f.mangHint = f.mang||0; lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`); addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`); } });
   // 환상체 기믹: 쇳물에 녹는 무기 · 따라붙은 요정 · 고양이의 회수
-  if(abnoR && abnoR.fought && abnoOf(q) && abnoOf(q).fx==="molten") team.forEach(f=>{ const b = combat && combat.battle.find(x=>x.f===f), g = f.gear.weapon; if(b && b.fought && isWornable(g) && g.durMax){ g.dur = Math.max(0, g.dur-1); lines.push(`${esc(f.name)}의 ${esc(g.name)}: 쇳물에 날이 녹았다 — 내구도 -1`); } });
+  if(abnoR && abnoR.fought && abnoOf(q) && abnoOf(q).fx==="molten") team.forEach(f=>{ const b = combat?.battle?.find(x=>x.f===f), g = f.gear.weapon; if(b && b.fought && isWornable(g) && g.durMax){ g.dur = Math.max(0, g.dur-1); lines.push(`${esc(f.name)}의 ${esc(g.name)}: 쇳물에 날이 녹았다 — 내구도 -1`); } });
   team.forEach(f=>{ const A = f.ab; if(!A) return;
     if(A.fairy && Math.random() < 0.3){ const v = Math.floor(f.hpMax*0.12); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 굶주린 요정이 깨물었다 — 체력 -${v}`); }
     if(A.catDebt){ f.mp = Math.max(0, f.mp - A.catDebt); lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 출동한 길목에서 고양이와 눈이 마주쳤다 — 정신력 -${A.catDebt}</span>`); delete A.catDebt; } });
@@ -9099,7 +9118,7 @@ async function twistFixer(f, opt={}){ ac("twist");
   const [base, req, threat] = REQ_BASE[threatGrade];
   removeFixer(f,"뒤틀림","목소리를 듣고 뒤틀림이 됨");
   S.requests.unshift({id:S.nextId++, kind:"뒤틀림 토벌", attrs:["wil", topAttr(f)==="wil"?"str":topAttr(f)], grade:threatGrade, threat, risk:null,
-    client:"하나 협회 (강제 배정)", text:`뒤틀림이 된 ${jo(f.name,"을")} 토벌하라.`, reward:base, req:req+3, deadline:5, loot:null, special:true, distorted:f.name});
+    client:"하나 협회 (강제 배정)", goal:"사살", foe:`뒤틀림이 된 ${f.name}`, text:`뒤틀림이 된 ${jo(f.name,"을")} 토벌하라.`, reward:base, req:req+3, deadline:5, loot:null, special:true, distorted:f.name});
   save(); render();
   await modal("뒤틀림", `${jo(esc(f.name),"은")} 목소리를 들었다.<br>사무소에 <b>'뒤틀림 토벌'</b> 의뢰가 강제로 배정되었다. 재해 등급: ${threat}. 기한 5일.<br><span class="muted">기한을 넘기면 다른 사무소가 처리하고, 대표를 제외한 모든 해결사의 정신력이 15% 줄어든다.</span>`, [{t:"확인",primary:true}]);
 }
@@ -9815,7 +9834,7 @@ const FIELD_EVENTS = [
          {t:"돌아간다", d:"출동한 사람 모두 체력 -4%(먼 길)", run:(c)=>{ c.team.forEach(f=>{ f.hp = Math.max(1, f.hp - Math.floor(f.hpMax*0.04)); }); return "먼 길을 돌아서 왔다. 발바닥이 욱신거린다."; }}]},
 ];
 async function fieldEvent(q, team, success, pay){
-  if(q.ruins || q.kind==="환상체" || q.trio || q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리" || q.kind==="지명" || q.kind==="특색 심사") return null;
+  if(q.ruins || isAbnoContract(q) || q.trio || isDistContract(q) || q.kind==="지명" || q.kind==="특색 심사") return null;
   if(!window.__forceField && Math.random() >= FIELD_P) return null;
   const pool = FIELD_EVENTS.filter(e=>e.when==="any" || (e.when==="ok") === success); const E = window.__forceField && FIELD_EVENTS.find(e=>e.id===window.__forceField) || pick(pool);
   const c = {q, team, success, pay, payMul:1, payAdd:0, best: a => team.slice().sort((x,y)=>power(y,[a])-power(x,[a]))[0]};
