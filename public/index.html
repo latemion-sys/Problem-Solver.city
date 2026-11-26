@@ -10474,6 +10474,11 @@ async function openManage(){
     return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}${x.gear && needsRepair(x.gear.weapon) ? " need-fix" : ""}">${esc(x.name)}${x.gear && needsRepair(x.gear.weapon) ? " ⚠" : ""}</button>`).join("")}</div>
     <div class="item" style="margin:8px 0;align-items:center;flex-wrap:wrap"><div><b>상담 휴식</b> <span class="muted" style="font-size:12px">무료 · 3일에 1회</span><div class="d">선택 대상: ${esc(f.name)}${f.isLeader?" (대표 제외)":""} · 체력 ${f.hp}/${f.hpMax} · 정신력 ${f.mp}/${f.mpMax}</div><div class="d">최대 체력 및 정신력 각각 10% 회복 · 사무소 전체 1명${counselRestRemaining(S)>0?" · "+counselRestRemaining(S)+"일 후 사용 가능":""}</div></div>
     <button class="primary" data-counselrest="1" ${counselRestRemaining(S)>0||!counselRestTargets(S).includes(f)?"disabled":""}>${f.isLeader?"대표 이용 불가":counselRestRemaining(S)>0?"상담 휴식 · 대기 중":!counselRestTargets(S).includes(f)?"회복할 수치 없음":"상담 휴식 · "+esc(f.name)}</button></div>
+    <h4 style="margin:14px 0 6px">유료 회복 <span class="muted" style="font-weight:400">(10당 ${won(hc)})</span></h4>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button data-heal="hpall" ${f.hp>=f.hpMax?"disabled":""}>체력 전부 (${won(Math.ceil((f.hpMax-f.hp)/10)*hc)})</button>
+      <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
+    </div>
     <div class="mg-prev"><canvas class="mgp"></canvas><div><div class="fg-seg">${STATE_TABS.map(([k,n])=>`<button class="${mview===k?"on":""}" data-mview="${k}">${n}</button>`).join("")}</div>
       ${f.grade===0?`<button style="margin-top:8px" data-forgego="1">고유 방어구 제작</button>`:""}</div></div>
     <div class="kv">
@@ -10504,11 +10509,6 @@ async function openManage(){
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
     ${reviewProgressHtml()}
-    <h4 style="margin:14px 0 6px">유료 회복 <span class="muted" style="font-weight:400">(10당 ${won(hc)})</span></h4>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button data-heal="hpall" ${f.hp>=f.hpMax?"disabled":""}>체력 전부 (${won(Math.ceil((f.hpMax-f.hp)/10)*hc)})</button>
-      <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
-    </div>
     ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}${pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>${needsRepair(g) && g.durMax <= 1 ? "" : `<button class="danger" data-discard="${i}">버리기</button>`}` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:""}
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
   };
