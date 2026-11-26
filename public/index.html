@@ -2943,7 +2943,7 @@ function makeRequest(grade, opts={}){
     else if(r < P.pW + P.pE + P.pS){ kind="수색"; attrs=["agi","tec"]; }
     else { attrs=[pick(["str","agi","tec"])]; }
   }
-  const ab = kind==="환상체" ? pickAbno(grade) : null;
+  const ab = kind==="환상체" ? pickAbno(grade, !opts.kind || !!opts.anyAbno) : null;
   if(ab) grade = abnoCanon(ABNO_BY[ab.id]);   // 환상체·죄종은 늘 같은 등급
   const [base0, req0, threat0] = REQ_BASE[grade];
   // 9급 가운데 일부는 뜬소문이 아니라 도시 괴담 — 조금 더 까다롭고 보수도 낫다(환상체·죄종은 제외: 등급 고정)
@@ -2974,7 +2974,7 @@ function makeRequest(grade, opts={}){
   else if(!opts.kind && !ab && grade <= 8 && grade >= 2 && Math.random() < SYN_P) applySyndicate(q);
   if(!opts.noAnomaly){ if(opts.distort) applyDistort(q, true); else if(!opts.kind && !ab && !q.synd) applyDistort(q, false); }
   if(!opts.kind && !ab && !q.synd && !q.distFoe && grade <= 7 && Math.random() < ASSOC_P) return Object.assign(assocRequest(grade), opts.over||{});
-  if(!opts.kind && IDX_THREATS.includes(threat) && !(S.idx && S.idx.closed) && Math.random() < IDX_P) return Object.assign(prescriptReq(q), opts.over||{});
+  if(!opts.kind && !ab && IDX_THREATS.includes(threat) && !(S.idx && S.idx.closed) && Math.random() < IDX_P) return Object.assign(prescriptReq(q), opts.over||{});
   if(!opts.noRelic) markRelic(q);
   // 신뢰도 보수는 그대로 유지한다. 65 이상 10%, 85 이상 20% 가산.
   { const t = officeTrustTier(); if(t && !q.prescript){ q.trustBonus=t; q.reward=Math.round(q.reward*(1+0.1*t)/100)*100; } }
@@ -3621,7 +3621,7 @@ const cityCount = () => { const d = cityLoad(); return SYNDICATES.filter(s=>(d.s
    · 3급 이상: 현상금 걸린 해결사, 조직의 대리인, 날개(기업)와 얽힌 일 */
 const REQ_POOL = [
  { // 9~8급
-  pW:0.05, pE:0.16, pS:0.16, kill:0.12,
+  pW:0.10, pE:0.16, pS:0.16, kill:0.12,
   str:[["가게 앞을 차지하고 손님을 위협하는 패거리를 쫓아내 달라. 벌써 사흘째 문을 못 열었다","골목 분식집 사장","동네 양아치"],["창고를 점거한 부랑자들을 내보내 달라. 맡겨 둔 물건을 꺼내러 들어갈 수가 없다","고물상 '두 바퀴'","부랑자"],
        ["골목 상인들한테 보호비를 뜯는 쥐들을 쫓아내 달라. 내일까지 돈을 못 내면 가판을 부수겠다고 했다","뒷골목 상인회","뒷골목 쥐"],["술값도 안 내고 가게 집기를 부순 손님을 제압해 달라. 주인이 직접 나섰다가 팔을 다쳤다","국밥집 주인 노씨","취객"],
        ["공방에 넘길 고철만 골라 훔쳐 가는 도둑을 잡아 달라. 이번 납품까지 놓치면 가게 문을 닫아야 한다","폐건물 관리인","좀도둑"],["세탁소 뒷문을 뜯으려는 쥐들을 쫓아내 달라. 새벽마다 자물쇠가 하나씩 망가진다","골목 세탁소 사장","뒷골목 쥐"]],
@@ -3635,7 +3635,7 @@ const REQ_POOL = [
   srch:[["사흘째 안 보이는 고양이를 골목 일대에서 찾아 달라","골목 세탁소 사장"],["놀이터에서 잃어버린 아이의 인형을 찾아 달라","골목 학원 원장"]],
   wil:[["폐창고에서 매일 같은 시각에 쇠 긁는 소리가 난다. 안에 사람이 있는지 확인해 달라","폐건물 관리인"]]},
  { // 7~6급
-  pW:0.15, pE:0.13, pS:0.14, kill:0.3,
+  pW:0.30, pE:0.13, pS:0.14, kill:0.3,
   str:[["납품 대금을 떼먹고 사무실 문을 걸어 잠근 하청업자를 끌어내 달라. 경비까지 고용했다고 한다","하청 공사 현장 반장","하청 업체 경비"],["운송로를 막고 통행료를 걷는 조직원들을 몰아내 달라. 창고 셔터 뒤에 무장한 놈들이 숨어 있다","뒷골목 상인회","조직 행동대원"],
        ["채무자가 가게를 경호원들한테 맡기고 잠적했다. 계약서에 적힌 금액을 받아 와 달라","급전 대부 사무실","채무자의 경호원"],["무너진 창고 입구를 막고 선 자들을 치우고 재고를 꺼내 달라","고물상 '두 바퀴'","조직 행동대원"]],
   str_kill:[["현상금이 걸린 강도를 찾아 사살해 달라","합법 경매장 감정사","현상금 걸린 강도"],["조직 장부를 들고 달아난 배신자를 찾아 처리해 달라. 의뢰인은 생포를 바라지 않는다","전당포 '둥근 저울'","배신한 조직원"]],
@@ -3647,7 +3647,7 @@ const REQ_POOL = [
   srch:[["폐공장에 숨겨진 장부를 찾아 달라","중고 기계상"],["사흘째 연락이 없는 수리공을 찾아 달라","의수 정비소 '손끝'"],["뒷골목 하수로 어딘가에 떨어진 열쇠를 찾아 달라","폐역 관리 사무소"]],
   wil:[["영업이 끝난 지하실에서 밤마다 낯선 노랫소리가 들린다. 내려간 직원 둘이 돌아오지 않았다","지하 노래방 주인"],["계단참에 똑같은 얼굴의 아이가 서 있다는 층이 있다. 확인해 달라","오래된 아파트 관리소"]]},
  { // 5~4급
-  pW:0.2, pE:0.13, pS:0.13, kill:0.4,
+  pW:0.40, pE:0.13, pS:0.13, kill:0.4,
   str:[["둥지 경계의 물류 도로를 가로막은 조직 간부를 제압해 달라. 날개 하청업체까지 피해를 보고 있다","둥지 하청 연구소","조직 간부"],["의뢰인을 가로채고 사무소 셋을 습격한 무허가 해결사 무리를 제압해 달라. 뒤에 조직이 있다","협회 지부 연락관","무법 해결사"],
        ["장물 경매장으로 넘어간 공방 시제품을 되찾아 달라. 무장 경비가 출입구를 막고 있다","합법 경매장 감정사","경매장 경비대장"]],
   str_kill:[["구역 주민을 사냥하듯 죽이는 자를 처리해 달라. 시신은 전부 같은 골목에서 나왔다","장례식장 야간 관리인","사람 사냥꾼"],["의뢰인을 둘이나 죽인 조직 간부를 끝내 달라","익명의 의뢰인","조직 간부"]],
@@ -3658,7 +3658,7 @@ const REQ_POOL = [
   srch:[["뒷골목 깊숙한 곳에 숨은 밀수 창고를 찾아 달라","합법 경매장 감정사"],["사라진 해결사 셋의 행방을 찾아 달라","협회 지부 연락관"]],
   wil:[["비어 있어야 할 교실에서 출석을 부르는 소리를 멈춰 달라","폐교 재건 위원회"],["폐역 대기실의 시계들이 한꺼번에 거꾸로 돌기 시작했다. 살펴보러 들어간 직원이 돌아오지 않았다","폐역 관리 사무소"]]},
  { // 3급 이상
-  pW:0.22, pE:0.12, pS:0.12, kill:0.45,
+  pW:0.44, pE:0.12, pS:0.12, kill:0.45,
   str:[["날개 공급 계약을 가로채려는 조직 대리인을 제압해 달라. 납품 시설 세 곳이 벌써 습격당했다","익명의 의뢰인","조직의 대리인"],["협회가 배정한 사무소 둘을 전멸시킨 현상금 해결사를 제압해 달라. 피해가 더 커지기 전에 끝내야 한다","협회 지부 연락관","현상금 걸린 해결사"]],
   str_kill:[["도시 악몽급 재해로 지정된 괴인을 토벌해 달라. 담당 협회 지부가 긴급 의뢰를 냈다","익명의 의뢰인","도시의 악몽급 괴인"],["둥지 하나를 피로 물들인 자를 끝내 달라","둥지 하청 연구소","피에 젖은 해결사"]],
   agi:[["폐쇄된 L사 지부에서 엔케팔린을 훔쳐 달아난 운반책을 산 채로 잡아 달라. 밀봉 용기는 절대 열지 말 것","익명의 의뢰인","person"],["뒷골목의 밤이 시작되기 직전에 사라진 아이를 찾아 달라. 새벽까지 버틸 수 있을지 모른다","작은 교회 신부","person"]],
@@ -4349,8 +4349,9 @@ function genRequestsInner(){
     for(let i=0;i<n;i++){
       const f = S.fixers[i % S.fixers.length], a = topAttr(f);
       const g = f.grade>=9 || i>=S.fixers.length ? 9 : Math.max(S.officeGrade, f.grade);
-      const q = makeRequest(g, {kind: a==="wil"?"환상체":"일반", attrs:[a]});
-      q.req = Math.max(3, power(f,[a]) - 4 - rnd(0,1));
+      const anomaly = a==="wil" || Math.random()<requestGradePool(g).pW;
+      const q = anomaly ? makeRequest(g, {kind:"환상체", attrs:["wil"], anyAbno:true}) : makeRequest(g, {kind:"일반", attrs:[a]});
+      if(!q.abno) q.req = Math.max(3, power(f,[a]) - 4 - rnd(0,1));
       S.requests.push(q);
     }
     return;
@@ -7432,13 +7433,20 @@ const abnoRiskFor = g => g >= 7 ? "죄종" : g === 6 ? "ZAYIN" : g === 5 ? pick(
    등급 폭(g) 안에서 이름(id)으로 정해지므로 늘 같은 값이 나온다. */
 const abnoHash = id => [...String(id)].reduce((h,c)=>(h*31 + c.charCodeAt(0))>>>0, 7);
 const abnoCanon = a => { const span = Math.max(0, a.g[0]-a.g[1]); return clamp(a.g[0] - (span ? abnoHash(a.id) % (span+1) : 0), 1, 9); };
-function pickAbno(g){
+function pickAbno(g, anyGrade=false){
   // 게시판에 이미 올라 있는 환상체는 겹치지 않게 고른다
   const onBoard = new Set(((S && S.requests) || []).filter(q=>q.abno).map(q=>q.abno.id));
   const at = (gg, free) => ABNOS.filter(a=>abnoCanon(a)===gg && (!free || !onBoard.has(a.id)));
-  let pool = at(g, true);
-  for(let d=1; !pool.length && d<9; d++) pool = at(g+d, true).length ? at(g+d, true) : at(g-d, true);
-  if(!pool.length) pool = at(g, false).length ? at(g, false) : ABNOS.slice();
+  // 일반 게시판의 이상 의뢰는 사무소/의뢰 급수와 무관하게 모든 개체에서 고른다.
+  let pool;
+  if(anyGrade){
+    pool = ABNOS.filter(a=>!onBoard.has(a.id));
+    if(!pool.length) pool = ABNOS.slice();
+  }else{
+    pool = at(g, true);
+    for(let d=1; !pool.length && d<9; d++) pool = at(g+d, true).length ? at(g+d, true) : at(g-d, true);
+    if(!pool.length) pool = at(g, false).length ? at(g, false) : ABNOS.slice();
+  }
   const a = pick(pool), vr = a.variant && Math.random() < 0.3;
   return {id:a.id, variant: vr || false}; }
 // 실제로 만나는 모습(아종이면 이름과 선호가 바뀐다)
@@ -15568,7 +15576,7 @@ const FINGER_NEWS=["엄지 산하 조직이 공방 거리에서 물건을 수거
 const CITY_NEWS=["붕괴된 L사 지부의 냉각 장치를 노리는 회수업자들이 늘고 있다는 소식이다.","경비 계약을 잃은 사무소들이 철거 업체로부터 단기 의뢰를 받는다고 한다.","협회 지부에 실종 신고가 여러 건 접수되었으나 원인은 알려지지 않았다.","공방 거리에서 의체 유지비가 올랐다는 이야기가 나온다. 실제 가격은 거래처에 따라 다르다.","붕괴된 시설의 출입구를 알려 주는 대가로 돈을 받는 사람들이 생겼다고 한다."];
 
 function maybeRuinsRequest(q,forcedFloor=0){
-  if(!q||!S||(!forcedFloor&&(S.day<=3||q.special||q.arc||q.hanaStar)))return q;
+  if(!q||!S||(!forcedFloor&&(S.day<=3||q.special||q.arc||q.hanaStar||q.abno)))return q;
   const floor=forcedFloor||RUINS_FLOORS[threatOf(q)];
   if(!floor||(!forcedFloor&&Math.random()>=.001))return q;
   const label=RUINS_AREAS[floor];
