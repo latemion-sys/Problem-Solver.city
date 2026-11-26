@@ -424,6 +424,7 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 @keyframes jolt-big{0%{transform:scale(1.04) translate(0,0)}10%{transform:scale(1.035) translate(-14px,6px)}22%{transform:scale(1.025) translate(12px,-8px)}36%{transform:scale(1.015) translate(-8px,5px)}52%{transform:translate(5px,-3px)}70%{transform:translate(-2px,1px)}100%{transform:none}}
 .jolt-flash{position:absolute;inset:0;pointer-events:none;opacity:.75;mix-blend-mode:screen;animation:jflash .85s ease-out forwards;z-index:5}
 @keyframes jflash{0%{opacity:.8}100%{opacity:0}}
+.fcut{position:fixed;inset:0;z-index:300;background:#030303;cursor:pointer;transition:opacity .7s}.fcut.out{opacity:0}.fcut canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .endcard{position:fixed;inset:0;z-index:125;background:#030303;overflow:hidden;cursor:pointer;transition:opacity .8s;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:"Nanum Myeongjo","Noto Serif KR",serif}
 .endcard.out{opacity:0}
 .ec-slash{position:absolute;left:-10%;right:-10%;top:50%;height:2px;background:var(--ec);box-shadow:0 0 18px var(--ec);transform:scaleX(0) rotate(-4deg);transform-origin:left center}
@@ -1654,7 +1655,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a2.2.8.6"; // 전투 키워드 개편
 const CHANGELOG = [
-  ["v.a2.2.8.6", ["인간형 적·환상체·뒤틀림 등급별 체력 +10~50 및 방어력 5~15 (죄종 제외)", "5급 이상 적 적중 키워드 부여 · 보스 고유 효과 유지", "출혈 최대 24 · 화상 최대 12", "이름이 잊혀진 자 의뢰 실패 시 의뢰 소멸 및 일반 의뢰 재개 · 누적 3회 실패 시 특수 엔딩"]],
+  ["v.a2.2.8.6", ["이름이 잊혀진 자 실패 엔딩 「이름 없이 베인 사무소」 연출 추가", "인간형 적·환상체·뒤틀림 등급별 체력 +10~50 및 방어력 5~15 (죄종 제외)", "5급 이상 적 적중 키워드 부여 · 보스 고유 효과 유지", "출혈 최대 24 · 화상 최대 12", "이름이 잊혀진 자 의뢰 실패 시 의뢰 소멸 및 일반 의뢰 재개 · 누적 3회 실패 시 특수 엔딩"]],
   ["v.a2.2.8.4", ["모든 무기 기본 공격 3종 직접 선택 · 키워드는 1번부터 순차 활성화 · 특수 기술 별도", "4주마다 하나 협회 정기 훈련: 기본 위력·코인 위력·능력치·특수 기술 성장 및 희귀 기술 16종", "엔딩 이후 20주마다 이름이 잊혀진 자 등장 · 해결 전 다른 의뢰 출동 불가 · 등장마다 코인 위력 +1", "출혈·화상·침잠·진동 최대 30, 턴 종료 시 3 감소"]],
   ["v.a2.2.7", ["해결사 최초 키워드 설정: 일반 공격 두 칸 및 특수 기술 한 칸, 해금 순서 확정 후 변경 불가", "등급에 따라 키워드 1~3개 해금 및 수치 1·3·5·7·9 적용. 출혈·화상·침잠·진동·충전·호흡 개편", "일부 7급 이상 인간 적에게 보호막 및 보호막 회복 방어 기술 추가. 전투 화면·기술 일람·공방 및 에고 설명 동기화"]],
   ["v.a2.1.5.7", ["정식 공방 무기 6종 추가: 바람계곡 공방(풍압 봉 · 송풍 창), 코오리 공방(결빙 장갑 · 서리 단검), 알라스 공방 가속 건틀릿, 묵 공방 장도", "상급 공방 무기 6종 추가: 유리아 공방(의장 장검 · 진주 세검), 휠스 인더스트리 처형 망치, 크리스탈 아틀리에 결정 단검, 스크류 아틀리에 드릴 건틀릿, 메즈틸 공방 쌍검", "새 무기마다 공방 고유의 3D 디자인(송풍 날개 · 얼음 결정 · 금상감과 진주 등)", "새 공방의 고유 무기 능력: 바람계곡 [돌풍] · 코오리 [결빙] · 유리아 [명품 마감]"]],
@@ -3237,7 +3238,7 @@ const BOSS_DEF = {
     rumor:"그게 열두 번째 일을 끝낸 날, 골목 하나가 통째로 비었대.", atk:["곤봉 찍기","뱀머리 던지기"], sig:"과업 증명",
     gim:"12가지 과업 대행"}};
 BOSS_DEF.forgotten={open:"하나 협회에서 아무 이름도 적히지 않은 의뢰서를 보냈다.",name:"이름이 잊혀진 자",title:"이름 없는 귀환자",tier:"도시의 별",pow:1,rec:0,officeMax:9,wt:"great",goal:"제압",pay:3,hpK:1.25,dmgK:1.05,kindLabel:"강제 보스 의뢰",bgm:"warn3",client:"하나 협회",reqTitle:"이름이 잊혀진 자",text:"그 자가 다시 나타났다. 의뢰가 끝날 때까지 다른 의뢰를 수행할 수 없다. 실패하면 기회를 하나 잃는다.",rumor:"누구도 그 이름을 기억하지 못한다.",atk:["잊힌 검격","이름 없는 일격"],sig:"기억의 종언",gim:"귀환할 때마다 코인 위력 +1"};
-const FORGOTTEN_END="잊혀진 이름";
+const FORGOTTEN_END="이름 없이 베인 사무소";
 function forgottenPending(){return S&&S.requests.find(q=>q.boss==="forgotten");}
 function forgottenFailures(){return clamp(Math.floor(Number(S?.forgotten?.failures)||0),0,3);}
 function forgottenChances(){return 3-forgottenFailures();}
@@ -8477,7 +8478,7 @@ async function dispatch(qid, fids, modeArg){
   stageLog(`[${q.kind} 의뢰 ${success?"성공":"실패"}]`, `${names} · ${q.client}`, success);
   addLog(`[${q.kind}] ${names}: [${requestTitle(q)}] → ${success?"성공":"실패"}${success?" (+"+won(pay)+")":""}${mode==="play"?" · 직접 수행":hasGame?" · 자동":""}`);
   await modal(`${q.kind} 결과`, `<div class="muted">${esc(q.client)} — ${esc(q.text)}</div><p>${lines.join("<br>")}</p>`, [{t:"확인",primary:true}]);
-  if(q.boss==="forgotten"&&!success&&forgottenFailures()>=3){await endingClose(FORGOTTEN_END,"세 번째 의뢰가 끝났다. 하나 협회에서 더는 의뢰서를 보내지 않았다. 누구도 그 사무소의 이름을 기억하지 못했다.","#9a9086",null,true);return;}
+  if(q.boss==="forgotten"&&!success&&forgottenFailures()>=3){await forgottenCutScene();await endingClose(FORGOTTEN_END,"세 번째 의뢰가 끝났다. 하나 협회에서 더는 의뢰서를 보내지 않았다. 누구도 그 사무소의 이름을 기억하지 못했다.","#9a9086",null,true);return;}
   for(const x of abLost){ await abnoLose(x.f, x.kind, x.why); if(!S || S.over) return; const i = team.indexOf(x.f); if(i>=0) team.splice(i,1); }
   if(success && q.relic && S && !S.over) await relicTry(q, team.filter(f=>S.fixers.includes(f)));
   team.forEach(f=>{ const L = f.life = f.life || {}, inc = k => L[k] = (L[k]||0) + 1;
@@ -9206,8 +9207,59 @@ const endCool = () => !!(S && S.lastEndDay && S.day - S.lastEndDay < 7);
 function jolt(el, col, big){
   if(!el) return; el.classList.remove("jolt", "jolt-big"); void el.offsetWidth; el.classList.add(big ? "jolt-big" : "jolt");
   const fl = document.createElement("div"); fl.className = "jolt-flash"; fl.style.background = col || "#fff"; el.appendChild(fl); setTimeout(()=>fl.remove(), 900); }
+/* 이름 없이 베인 사무소 — 일렁이는 검은 사람 형체가 대검을 들어 베고, 화면이 사선으로 갈라진다 */
+function forgottenCutScene(){
+  return new Promise(res=>{
+    const el = document.createElement("div"); el.className = "fcut";
+    el.innerHTML = `<canvas></canvas><div class="fcut-flash"></div>`; document.body.appendChild(el);
+    const cv = el.querySelector("canvas"), c = cv.getContext("2d"), off = document.createElement("canvas"), oc = off.getContext("2d"), sm = document.createElement("canvas");
+    const base = SHOP.find(i=>i.slot==="weapon" && i.wtype==="great" && !(i.look||{}).style) || SHOP.find(i=>i.wtype==="great");
+    const wpn = Object.assign({}, weaponSpecOf(base), {metal:"#121216", style:null, glow:null, add:[]});
+    const T_RISE = 1.6, T_SWING = 2.1, T_CUT = 2.55, T_SPLIT = 3.0, T_END = 5.2;
+    let W = 0, H = 0, done = false, snap = null, t0 = performance.now(), cutAt = null;
+    const fit = ()=>{ const d = Math.min(2, devicePixelRatio||1); W = innerWidth; H = innerHeight; cv.width = off.width = W*d; cv.height = off.height = H*d; c.setTransform(d,0,0,d,0,0); oc.setTransform(d,0,0,d,0,0); };
+    fit(); addEventListener("resize", fit);
+    const finish = ()=>{ if(done) return; done = true; removeEventListener("resize", fit); el.classList.add("out"); setTimeout(()=>{ el.remove(); res(); }, 700); };
+    el.onclick = ()=>{ if((performance.now()-t0)/1000 < T_CUT) t0 = performance.now() - T_CUT*1000; else finish(); };
+    const bg = g=>{ const gr = g.createRadialGradient(W/2, H*0.55, 0, W/2, H*0.55, Math.max(W,H)*0.7); gr.addColorStop(0, "#d9d4ca"); gr.addColorStop(1, "#8f8a80"); g.fillStyle = gr; g.fillRect(0,0,W,H); };
+    const figure = t=>{   // 사람 형체를 따로 그린 뒤 가로 띠마다 물결처럼 어긋나게 옮긴다
+      oc.clearRect(0,0,W,H); const h = Math.min(H*0.62, W*0.9), gy = H*0.8, x = W*0.5;
+      const k = t - T_SWING, ph = k < 0 ? 0 : Math.min(3, atkPhase(k, 1, [260,110,140,600]));
+      const o = {col:"#24242a", weapon:wpn, spr:true, t, face:-1, state:"combat", atk: k >= 0 ? {style:"swing", ph} : null};
+      if(!SPR.draw(oc, x, gy, h, o)) drawFixer(oc, x, gy, h, Object.assign({}, o, {spr:false}));
+      oc.save(); oc.globalCompositeOperation = "source-atop"; oc.fillStyle = "rgba(4,4,6,0.6)"; oc.fillRect(0,0,W,H); oc.restore();
+      const rise = clamp(t/T_RISE, 0, 1), amp = (1 - rise*0.55)*Math.min(18, W*0.02), d = cv.width/W, band = 4;
+      c.save(); c.globalAlpha = 0.25 + rise*0.75;
+      for(let y = 0; y < H; y += band){ const dx = Math.sin(y*0.045 + t*5.2)*amp + Math.sin(y*0.013 - t*2.3)*amp*0.6;
+        c.drawImage(off, 0, y*d, W*d, band*d, dx, y, W, band); }
+      c.restore();
+      sm.width = Math.max(1, W>>3); sm.height = Math.max(1, H>>3); sm.getContext("2d").drawImage(off, 0, 0, sm.width, sm.height); c.save(); c.globalAlpha = 0.22*(1-rise*0.5); c.drawImage(sm, -W*0.01, -H*0.01, W*1.02, H*1.02); c.restore();   // 형체 둘레의 검은 번짐(작게 줄였다 늘려 흐리게)
+    };
+    const cutLine = ()=>{ const a = [W*1.05, -H*0.05], b = [-W*0.05, H*1.05]; return [a, b]; };   // 오른쪽 위 → 왼쪽 아래
+    const loop = ()=>{ if(done) return; const t = window.__fcutT!=null ? window.__fcutT : (performance.now()-t0)/1000;
+      if(t < T_SPLIT){
+        bg(c); figure(t);
+        if(t >= T_SPLIT - 0.05 && !snap){ snap = document.createElement("canvas"); snap.width = cv.width; snap.height = cv.height; snap.getContext("2d").drawImage(cv, 0, 0); }
+        if(t >= T_CUT){ if(cutAt===null){ cutAt = t; jolt(el, "#000", true); }
+          const p = clamp((t - T_CUT)/0.22, 0, 1), [a, b] = cutLine(), ex = a[0] + (b[0]-a[0])*p, ey = a[1] + (b[1]-a[1])*p;
+          c.save(); c.lineCap = "round"; c.strokeStyle = "#000"; c.lineWidth = Math.max(6, W*0.008); c.shadowColor = "rgba(0,0,0,0.6)"; c.shadowBlur = 18;
+          c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(ex, ey); c.stroke(); c.restore(); }
+      } else {
+        if(!snap){ snap = document.createElement("canvas"); snap.width = cv.width; snap.height = cv.height; snap.getContext("2d").drawImage(cv, 0, 0); }
+        const p = clamp((t - T_SPLIT)/(T_END - T_SPLIT), 0, 1), e = 1 - Math.pow(1-p, 3), [a, b] = cutLine();
+        const nx = (b[1]-a[1]), ny = -(b[0]-a[0]), nl = Math.hypot(nx, ny), sx = nx/nl, sy = ny/nl, gap = e*Math.max(W,H)*0.09, slide = e*Math.max(W,H)*0.05;
+        const tx = (b[0]-a[0])/Math.hypot(b[0]-a[0], b[1]-a[1]), ty = (b[1]-a[1])/Math.hypot(b[0]-a[0], b[1]-a[1]);
+        c.fillStyle = "#030303"; c.fillRect(0,0,W,H);
+        [[1, 1], [-1, -1]].forEach(([s1, s2])=>{ c.save(); c.beginPath(); c.moveTo(a[0], a[1]); c.lineTo(b[0], b[1]);
+          if(s1>0){ c.lineTo(W*2, H*2); c.lineTo(W*2, -H); } else { c.lineTo(-W, H*2); c.lineTo(-W, -H); } c.closePath(); c.clip();
+          c.globalAlpha = 1 - p*0.9; c.drawImage(snap, 0, 0, W, H, s1*sx*gap + s2*tx*slide, s1*sy*gap + s2*ty*slide, W, H); c.restore(); });
+        if(t >= T_END){ finish(); return; } }
+      requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+}
 const ENDING_INFO = {
-  "잊혀진 이름":{no:13,en:"THE FORGOTTEN NAME",col:"#9a9086",q:"도시는 그 이름을 기억하지 못한다."},
+  "이름 없이 베인 사무소":{no:13,en:"CUT WITHOUT A NAME",col:"#9a9086",q:"도시는 그 이름을 기억하지 못한다."},
   "다음 손님":   {no:1, en:"THE NEXT CLIENT",        col:"#e8c98a", q:"도시는 오늘도 누군가의 문을 두드린다."},
   "둥지로":      {no:2, en:"INTO THE NEST",          col:"#dfe8f2", q:"뒷골목은 둥지를 꿈꾸고, 둥지는 뒷골목을 두려워한다."},
   "물려준 열쇠": {no:3, en:"THE INHERITED KEY",      col:"#d9b56a", q:"간판은 남고, 이름은 바뀐다."},
@@ -20635,7 +20687,7 @@ function fxTestPanel(){
   el.innerHTML=`<h4>새 시스템 미리보기</h4><div class="muted" style="margin-bottom:6px">인원 <select id="fxn">${[1,2,3,4,5].map(n=>`<option ${n===2?"selected":""}>${n}</option>`).join("")}</select> · 연출 중 화면 클릭 시 건너뛰기</div>
    <b>대표 장비</b><div class="g"><select id="fxw"><option value="">무기 없음</option><option value="blade">한손검</option><option value="long">양손검</option><option value="twin">쌍검</option><option value="great">대검</option><option value="blunt">둔기</option><option value="staff">봉</option><option value="fist">건틀릿</option><option value="tool">공구</option><option value="spear">창</option><option value="lance">랜스</option><option value="rapier">레이피어</option><option value="gun">총</option></select><label><input type="checkbox" id="fxa"> 방어구</label><label><input type="checkbox" id="fxc"> 장신구</label></div>
    <b>사건 · 특수 의뢰 전용 미니게임</b><div class="g"><select id="fxstory">${Object.entries(STORY_MG).map(([k,v])=>`<option value="${k}">${k} — ${v.t}</option>`).join("")}</select><button data-story="1">시험</button><button data-story="post">뒷이야기(성공)</button><button data-story="postfail">뒷이야기(실패)</button></div>
-   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><button data-mg="dist">뒤틀림 전투 시험</button><button data-mg="boss">보스 시험</button><select id="fxbs"><option value="rat">뜬소문 · 랫키어</option><option value="bark">도시 괴담 · 바르크</option><option value="theyer">도시 전설 · 테이어파이어</option><option value="deal99">도시 질병 · 99번째 거래처</option><option value="six">도시 악몽 · 여섯 번째 손가락</option><option value="twelve">도시의 별 · 12 과업의 대행자</option></select><button data-mg="bossreq">보스 의뢰 게시</button><select id="fxdt"><option>도시 질병</option><option>도시 악몽</option><option>도시의 별</option></select><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
+   <b>미니게임</b><div class="g"><button data-mg="str">전투</button><select id="fxgoal"><option>제압</option><option>사살</option></select><button data-mg="agi">추격</button><button data-mg="tec">단서 찾기</button><button data-mg="escort">호위</button><button data-mg="search">수색</button><button data-mg="shinme">신·망 전투 시험</button><button data-mg="shinfoe">신을 깨우친 적</button><button data-mg="dist">뒤틀림 전투 시험</button><button data-mg="boss">보스 시험</button><select id="fxbs"><option value="rat">뜬소문 · 랫키어</option><option value="bark">도시 괴담 · 바르크</option><option value="theyer">도시 전설 · 테이어파이어</option><option value="deal99">도시 질병 · 99번째 거래처</option><option value="six">도시 악몽 · 여섯 번째 손가락</option><option value="twelve">도시의 별 · 12 과업의 대행자</option></select><button data-mg="bossreq">보스 의뢰 게시</button><button data-mg="fcut">이름 없이 베인 사무소 연출</button><select id="fxdt"><option>도시 질병</option><option>도시 악몽</option><option>도시의 별</option></select><select id="fxgr"><option value="9">9급</option><option value="6">6급</option><option value="3">3급</option><option value="1">1급 · 도시의 별</option></select><select id="fxk"><option value="0.7">능력 낮음</option><option value="1" selected>보통</option><option value="1.4">높음</option></select></div>
    <b>특색 · 공방</b><div class="g"><button data-fxc="color">대표를 특색으로</button><button data-fxc="forge">고유 방어구 제작</button><button data-fxc="upw">고유 무기 승격</button><button data-fxc="wear">무기 수리 필요로</button><button data-fxc="ego0">대표 E.G.O. 개화</button><button data-fxc="ego1">동료 E.G.O. 개화</button><button data-fxc="tw1">동료 뒤틀림</button><button data-fxc="tw0">대표 뒤틀림(엔딩)</button><button data-fxc="omen">징조</button><button data-fxc="shin">신(心) 발현</button><button data-fxc="shop">공방</button><button data-fxc="rig">실루엣 상태 보기</button></div>
    <b>사무소 · 대표 · 의뢰 조정</b><div class="g"><select id="fxog">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}</select><button data-adj="office">사무소 등급 적용</button>
      <select id="fxlg">${[9,8,7,6,5,4,3,2,1].map(g=>`<option value="${g}">${g}급</option>`).join("")}<option value="0">특색</option></select><button data-adj="leader">대표 등급 적용</button></div>
@@ -20822,6 +20874,7 @@ function fxTestPanel(){
   el.addEventListener("click", async e=>{ const g=e.target.dataset.mg; if(!g) return; const kk=+el.querySelector("#fxk").value;
     if(g==="boss"){ const team = S.fixers.slice(0,Math.max(2,+el.querySelector("#fxn").value)).filter(Boolean); const q = bossReq(el.querySelector("#fxbs").value);
       const r = await mgCombat({q, team, idx:1, total:1}); save(); render(); toast(`보스 시험 — ${r.win ? "승리" : "패배"}`); return; }
+    if(g==="fcut"){ await forgottenCutScene(); await endingCard(FORGOTTEN_END, "#9a9086"); return; }
     if(g==="bossreq"){ const id = el.querySelector("#fxbs").value; S.requests = S.requests.filter(q=>!q.boss); S.requests.unshift(bossReq(id)); save(); render(); toast(`보스 의뢰 게시 — ${BOSS_DEF[id].reqTitle}`); return; }
     if(g==="dist"){ const team = S.fixers.slice(0,Math.max(1,+el.querySelector("#fxn").value)).filter(Boolean), th = el.querySelector("#fxdt").value;
       const gr = th==="도시의 별" ? 1 : th==="도시 악몽" ? 3 : 5;
