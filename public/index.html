@@ -4389,6 +4389,9 @@ const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 
    관리에서 신 · 망을 켜고 끌 수 있다(끄면 효과도 대가도 없다). */
 const SHIN_RATE = 1, SHIN_POW = 1, SHIN_MP = 5, MANG_MAX = 5, MANG_MP = [8, 15, 21, 26, 50], MANG_NEED = [8, 20, 35, 55, 80];
 const shinOn = f => !!(f && f.shin && f.shinOff !== true);
+// 깨우친 뒤의 상시 보정과 전투 중 신을 두르는 추가 행동은 별개다.
+const shinAwakeDamage = f => f && f.shin ? 5 : 0;
+const shinAwakeClash = f => f && f.shin ? 1 : 0;
 const mangN = f => shinOn(f) && f.mangOff !== true ? Math.min(MANG_MAX, f.mang||0) : 0;
 const shinPow = f => (shinOn(f) ? SHIN_POW : 0) + mangN(f);
 const shinCost = f => (shinOn(f) ? SHIN_MP : 0) + (mangN(f) ? MANG_MP[mangN(f)-1] : 0);
@@ -5330,7 +5333,7 @@ function equipDamage(f){
   // 개화 E.G.O.는 일반 공방 무기의 능력치 예산을 중복 합산하지 않는다.
   const eg=f.ego&&f.ego.type!=="armor"; // 개화 직후부터 피해 수치 적용. 외형 설정 여부와 무관.
   const wp=eg?({weapon:21,both:20}[f.ego.type]||20):(w&&Number(w.power)||0);
-  return 4+0.3*a+wp;
+  return 4+0.3*a+wp+shinAwakeDamage(f);
 }
 function clashCardSkill(c){
   const multi=/연속|삼연|연타/.test(c.origName||c.n), coins=c.def?1:(c.normalCoins||(multi?3:2));
@@ -5484,7 +5487,7 @@ function mgCombat(ctx){
     const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } } o.base += abnoEdge(me);
       if(me.wsp==="cloud" || me.wsp==="yuria") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1;  return o; };
     const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
-    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, bonus(me) + w.base + livePow(me) + (!sk.def?(me.resolveBoost||0):0) - (me.bDown||0) - (me.daze?CLASH_DAZE_CUT:0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0) + (!sk.def&&(me.charge||0)>=10?1:0)); };
+    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, bonus(me) + w.base + shinAwakeClash(me.f) + livePow(me) + (!sk.def?(me.resolveBoost||0):0) - (me.bDown||0) - (me.daze?CLASH_DAZE_CUT:0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0) + (!sk.def&&(me.charge||0)>=10?1:0)); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const atkCards = wt => CARDS[wt].filter(c=>!c.def), defCard = wt => CARDS[wt].find(c=>c.def) || CARDS[wt][CARDS[wt].length-1];
     const basicAtkCards=me=>egoAttackCards(me.f.ego,normalAttackCards(me.wt));
@@ -5645,7 +5648,7 @@ function mgCombat(ctx){
       { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
       if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
       if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? " · 적중 충전 +3" : ""}`); }
-      if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge)b.push(`충전 ${me.charge}/20`);if(me.poise)b.push(`호흡 ${me.poise}/50`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
+      if(shinAwakeClash(me.f))b.push(`신 깨우침: 기본 피해 +${shinAwakeDamage(me.f)} · 합 기본 위력 +${shinAwakeClash(me.f)}`);if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge)b.push(`충전 ${me.charge}/20`);if(me.poise)b.push(`호흡 ${me.poise}/50`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
       return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support();
@@ -8496,7 +8499,7 @@ async function dispatch(qid, fids, modeArg){
   await flushLoss();
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkCollapse(f); }
   await flushLoss();
-  for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f); }
+  for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f,{q,success,teamSize:team.length}); }
   if(S && !S.over) team.forEach(f=>{ if(S.fixers.includes(f)) checkOmen(f); });
   if(!S) return;
   officeStoryModule.starAfter(q, team, success);
@@ -8915,32 +8918,51 @@ function memoryShards(f, d){
   return out.concat(d.words.slice(0,2));
 }
 /* 문장(레퍼런스: 숨을 죽이고 마음을 비운 뒤, 기억 가운데 가장 무겁고 빽빽한 것을 골라 그 감정으로 몸을 채운다 → 금빛 기운 · 망(望)) */
-function shinLines(f, d){
-  const nm = josa(f.name, "은", "는");
-  return [`숨을 죽인다. 마음을 비운다. 사무소의 소음도, 빚 독촉 소리도 한 겹씩 멀어진다.`,
-          `기억을 한 장씩 넘긴다. 가벼운 것들은 흩어지게 둔다. 끝까지 가라앉지 않는 것, 가장 무겁고 빽빽한 하나만 손에 남는다.`,
-          `${d.sin}. 죄는 씻기지 않는다. 그러니 ${nm} 그것을 꼬고 엮어 한 줄의 소망으로 짓는다 — “${d.wish}”.`,
-          `엮은 소망을 붕대처럼 손목부터 감는다. 어깨를 지나 가슴께에 닿자, 꺼져 가던 심장이 그 아래서 다시 뛴다.`];
+function shinLines(f, d, ctx={}){
+  const nm=josa(f.name,"은","는"), precious=f.precious||{}, recent=(f.diary||[]).slice(-1)[0]||"";
+  const today=recent.startsWith(S.day+"일차"), q=ctx.q, p=String(precious.text||"").trim();
+  const wound=Number(f._w)||0, loss=precious.lost!=null&&S.day-precious.lost<=7;
+  let first, memory;
+  if(loss&&p){
+    first=pick(["잃어버린 것을 되찾을 방법이 있는지 수없이 생각했다. 이제는 그 질문조차 입 밖으로 나오지 않는다.","다시 돌아갈 수 없다는 사실을 받아들이기까지 얼마나 많은 밤을 보냈던가."]);
+    memory=`아직도 ‘${p}’이라는 말이 마음에 남는다. 그 이름을 떠올리자 애써 피했던 생각이 되살아났다.`;
+  }else if(q&&ctx.success===false){
+    first=pick(["의뢰는 실패로 끝났다. 돌아오는 길에 몇 번이나 그 순간을 되짚었다.","실패했다는 말이 머리에서 떠나지 않는다. 어디에서부터 잘못된 것인지 생각했다."]);
+    memory=q.kind==="환상체"?"그 존재 앞에서 내린 판단들이 떠오른다. 그때 하지 못했던 일까지 하나하나 헤아렸다.":q.kind==="뒤틀림 토벌"?"마주했던 뒤틀림과 그 앞에서 내린 선택이 머릿속을 떠나지 않는다.":"의뢰를 맡았을 때부터 돌아오기까지, 자신이 했던 선택들을 돌이켜 본다.";
+  }else if(q&&wound>=2){
+    first=pick(["몸을 움직이자 상처가 욱신거린다. 숨을 내쉬고 눈을 감았다.","겨우 돌아왔다. 아직 떨리는 손을 내려다보며 조금씩 숨을 고른다."]);
+    memory=ctx.teamSize>1?"함께 의뢰를 수행한 동료들의 얼굴이 떠오른다. 자신이 내렸던 선택을 한 번 더 생각한다.":"홀로 의뢰를 수행했던 순간들이 하나씩 떠오른다.";
+  }else if(q&&ctx.success===true){
+    first=pick(["의뢰는 끝났는데 마음은 아직 그곳에 있다. 눈을 감고 가쁜 숨을 가라앉힌다.","해야 할 일은 해냈다. 그런데도 쉽게 마음을 놓을 수 없었다."]);
+    memory=q.kind==="호위"?"호위하는 동안 내렸던 판단을 되짚는다. 지켜야 했던 것과 자신에게 남은 것이 무엇인지 생각한다.":q.kind==="수색"?"단서를 좇던 순간들이 다시 떠오른다. 찾으려 했던 것과 지금 찾고 있는 것이 달랐다.":"이번 의뢰에서 보고 겪은 일을 떠올리다가, 문득 지나온 날들의 자신을 돌아본다.";
+  }else if(today&&/동료.*(죽었다|뒤틀렸다)/.test(recent)){
+    first="오늘따라 익숙한 목소리 하나가 들리지 않는다. 한참을 그 사실만 생각했다.";
+    memory="동료와 함께했던 날들이 떠오른다. 그중 차마 외면할 수 없는 순간이 있었다.";
+  }else{
+    first=pick(["하루가 지났다. 눈을 감아도 생각이 좀처럼 멎지 않는다.","잠시 아무 말도 하지 않고 숨을 고른다. 차마 꺼내지 못했던 생각들이 하나둘 떠오른다.","지금껏 자신을 움직여 온 것이 무엇인지 생각했다. 답을 내리기까지 긴 시간이 걸렸다."]);
+    memory=p?`‘${p}’. 자신이 소중히 여겼던 것을 떠올리자 그동안 내린 선택들도 함께 떠올랐다.`:pick(["지나온 날을 되짚다가 끝내 외면하지 못한 기억에 닿았다.","잊은 줄 알았던 순간들이 다시 떠오른다. 그중 하나를 끝까지 놓을 수 없었다."]);
+  }
+  return [first,memory,pick([`${d.sin}. 이제 ${nm} 그 사실을 외면하지 않기로 했다. “${d.wish}”.`,`${d.sin}. 되돌릴 수 없다면 앞으로의 자신만이라도 바꾸고 싶었다. “${d.wish}”.`]),pick(["소망을 품은 채 다시 숨을 들이마신다. 손목에서 피어난 금빛이 어깨를 지나 가슴에 닿는다.","가슴에 남은 마음을 놓지 않는다. 손끝에서 번진 따스한 빛이 몸을 감싸고 심장이 다시 힘차게 뛰기 시작한다.","한 번 더 숨을 고른다. 금빛 기운이 팔을 타고 올라와 가슴을 감싼다. 마음속에 품은 소망이 선명해졌다."])];
 }
 const MANG_N = f => f.grade<=0 ? 3 : f.grade===1 ? 2 : 1;
-async function awakenShin(f){ ac("shin");
+async function awakenShin(f, ctx={}){ ac("shin");
   const d = SHIN[f.personality] || SHIN["침착함"];
   const name = Math.random() < 0.2 ? (SHIN_EXC[f.personality] || "운명") : givenName(f.name);
   f.shin = {name, sin: d.sin, wish: d.wish, day: S.day};
   f.mp = Math.max(f.mp, Math.round(f.mpMax*0.6));
   save();
-  await HeartFx.shin(f, shinLines(f, d), memoryShards(f, d), d, MANG_N(f));
+  await HeartFx.shin(f, shinLines(f, d, ctx), memoryShards(f, d), d, MANG_N(f));
   HeartFx.clear();
   S.records.push({day:S.day, name:f.name, what:"신(心) 발현", note:`${shinLabel(f.shin)} — 소망: ${d.wish}`}); addLog(`${f.name}: ${jo(shinLabel(f.shin),"을")} 깨우쳤다 — “${d.wish}”`);
   save(); render();
-  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 제 죄를 소망으로 엮어 몸에 감았다.<br><b style="color:#ffd27a">${esc(shinLabel(f.shin))}</b><br>“${esc(d.wish)}”<br><span class="muted">정신력이 60%까지 돌아왔다. 이후 전투력 +4, 받는 정신력 피해 -15%. 망(望) ${MANG_N(f)}개.</span>`, [{t:"확인",primary:true}]);
+  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 제 죄를 소망으로 엮어 몸에 감았다.<br><b style="color:#ffd27a">${esc(shinLabel(f.shin))}</b><br>“${esc(d.wish)}”<br><span class="muted">정신력이 60%까지 돌아왔다. 이후 기본 피해 +5, 합 기본 위력 +1. 받는 정신력 피해 -15%. 망(望) ${MANG_N(f)}개.</span>`, [{t:"확인",primary:true}]);
 }
 // 깨우칠 수 있는 때: 2급 이상 · 정신력 30% 미만(0 초과) · 아직 신이 없음 — 조건을 모두 갖춘 날에만, 하루 한 번 15%
 const shinReady = f => !!(S && f && !f.shin && f.grade <= 2 && f.mp > 0 && f.mp/Math.max(1,f.mpMax) < 0.3);
-async function checkShin(f){
+async function checkShin(f, ctx={}){
   if(!shinReady(f) || f.shinTry===S.day) return false;
   f.shinTry = S.day; if(Math.random() >= 0.15) return false;
-  await awakenShin(f); return true;
+  await awakenShin(f, ctx); return true;
 }
 // 징조를 한 번이라도 본 해결사 — 카드에 '징조'를 징조 문구와 같은 주홍빛으로 표시(뒤틀리거나 개화하면 사라진다)
 const omenSeen = f => !!f && (f.omenFirst!=null || f.omenDay!=null) && !f.riftDone && !(f.ego && !f.ego.unstable);
@@ -10403,7 +10425,7 @@ async function openManage(){
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
       ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">${esc(shinLabel(f.shin.name ? f.shin : Object.assign({name:givenName(f.name)}, f.shin)))} — “${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">· 돌아본 죄: ${esc(f.shin.sin)}</span>
-        <br><span style="font-weight:400;font-size:12px">신: 성공률 +${SHIN_RATE}% · 전투 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? ` · 다음 망까지 ${Math.max(0, MANG_NEED[f.mang||0] - (f.shinUses||0))}회` : " · 망을 모두 감았다"}</span>
+        <br><span style="font-weight:400;font-size:12px">깨우침: 기본 피해 +${shinAwakeDamage(f)} · 합 기본 위력 +${shinAwakeClash(f)} (상시)<br>신: 성공률 +${SHIN_RATE}% · 두를 때 합 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? ` · 다음 망까지 ${Math.max(0, MANG_NEED[f.mang||0] - (f.shinUses||0))}회` : " · 망을 모두 감았다"}</span>
         <br><button data-shintog="1" style="padding:2px 8px">${shinOn(f) ? "신 끄기" : "신 켜기"}</button>${(f.mang||0) ? ` <button data-mangtog="1" style="padding:2px 8px">${f.mangOff ? "망 켜기" : "망 끄기"}</button>` : ""}${mangReady(f) ? ` <button class="primary" data-mangwind="1" style="padding:2px 8px">무기에 망(望)을 감는다</button>` : ""}</b>`:""}
       <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</b>
       <span>성장</span><b class="muted">${(growOf(f), ATTRS.map(a=>`${ATTR_NAME[a]} ${f.grade>1&&growDone(f,a)>=GROW_PER ? "✓" : `${Math.min(f.gc[a]||0, growNeed(f))}/${growNeed(f)}${f.grade>1 && growDone(f,a) ? ` (${growDone(f,a)}/${GROW_PER})` : ""}`}`).join(" · "))}</b>
