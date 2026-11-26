@@ -201,6 +201,11 @@ footer{margin:18px 0 8px;text-align:center;font-size:12px;color:var(--muted);lin
 .item .d{font-size:12px;color:var(--muted)}
 .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .tabs button.on{border-color:var(--accent);color:var(--accent)}
+ .tabs button[data-rec-tab="tech"],.tabs button[data-rec-tab="combat"]{border:1px solid #87c9ed;color:#a8ddf7}
+ .tabs button[data-rec-tab="codex"]{border:1px solid #bd91e6;color:#d9b9f4}
+ button[data-nav="ach"],button[data-t="ach"],.tabs button[data-rec-tab="ach"]{border:1px solid #d6b36b;color:#f0d393}
+ .tabs button[data-rec-tab="tech"].on,.tabs button[data-rec-tab="combat"].on{background:#87c9ed20;box-shadow:inset 0 0 0 1px #87c9ed}
+ .tabs button[data-rec-tab="codex"].on{background:#bd91e620;box-shadow:inset 0 0 0 1px #bd91e6}
 /* 공방 · 고유 장비 제작 */
 .modal.modal-wide{max-width:860px}
 .sh-mk{margin:14px 0 6px;font-size:14px} .sh-mk .muted{font-weight:400;font-size:12px;margin-left:6px}
@@ -1777,12 +1782,12 @@ function bindLook(box, L, st){
 const EGO_FORM_NAME = {weapon:"무기", armor:"의복", both:"일체형"};
 const egoHasWeapon=e=>!!e&&(e.type==="weapon"||e.type==="both");
 const egoHasArmor=e=>!!e&&(e.type==="armor"||e.type==="both");
-const EGO_WORKSHOP_TIER=2, EGO_WEAPON_POWER=20, EGO_ARMOR_HP_RED=.38;
+const EGO_WORKSHOP_TIER=3, EGO_WEAPON_POWER=20, EGO_ARMOR_HP_RED=.38;
 const egoExtraDamage=e=>egoHasWeapon(e)?(e.type==="weapon"?5:2):0;
 const egoShieldBase=e=>egoHasArmor(e)?(e.type==="armor"?20:5):0;
 const egoShieldMax=e=>egoShieldBase(e)+(egoHasArmor(e)&&e.special==="shield"?10:0);
 const egoHpRed=e=>egoHasArmor(e)?EGO_ARMOR_HP_RED:0;
-function egoGearSummary(e){if(!e)return "";const parts=["상급 공방 수준"];if(egoHasWeapon(e))parts.push(`기본 피해 +${egoExtraDamage(e)}`);if(egoHasArmor(e))parts.push(`체력 피해 -${Math.round(egoHpRed(e)*100)}%`,`보호막 ${egoShieldMax(e)} (기본 ${egoShieldBase(e)}${e.special==="shield"?" + 특수 효과 10":""})`);return parts.join(" · ");}
+function egoGearSummary(e){if(!e)return "";const parts=["상급 공방 방어·피해 기준"];if(egoHasWeapon(e))parts.push(`합 평균 18 (고유 장비 수준)`,`기본 피해 +${egoExtraDamage(e)}`);if(egoHasArmor(e))parts.push(`체력 피해 -${Math.round(egoHpRed(e)*100)}%`,`보호막 ${egoShieldMax(e)} (기본 ${egoShieldBase(e)}${e.special==="shield"?" + 특수 효과 10":""})`);return parts.join(" · ");}
 const egoNameClean=v=>typeof v==="string"?v.trim().slice(0,30):"";
 const egoBudget=e=>e&&e.type==="both"?7:10;
 const egoFormLocked=e=>!!(e&&(e.formLocked||e.look));
@@ -2997,7 +3002,7 @@ const DIST_CLIENT = ["하나 협회 긴급 공고","구역 관리청","날개 �
 const DIST_EXP = [[10,"사냥꾼",2,1],[3,"익숙함",2,0],[1,"마주했음",1,0]];
 function distExp(f){ const k = f.dk||0; const r = DIST_EXP.find(x=>k >= x[0]); return r ? {n:r[1], base:r[2], cp:r[3], k} : null; }
 function distEdge(f, th){ let base = 0, cp = 0; const why = [];
-  const gb = f.grade!=null && ((f.grade <= 2 && (th==="도시 질병" || th==="도시 악몽")) || (f.grade === 3 && th==="도시 질병")) ? 1 : 0;
+  const gb = 0; // 급수 차이는 위압으로 처리, 처치 경험은 유지
   if(gb){ base += gb; why.push(`${gName(f.grade)}`); }
   const e = distExp(f); if(e){ base += e.base; cp += e.cp; why.push(`${e.n}(처치 ${e.k})`); }
   base = Math.min(3, base); return base || cp ? {base, cp, why: why.join(" · ")} : null; }
@@ -5237,7 +5242,7 @@ const relicTechOf = f => { const w = f && f.gear && f.gear.weapon; return w && w
 // 방어구 · 장신구 원본의 효과(전투에서 저절로)
 const relicFx = (f, id) => !!(f && f.gear && ["armor","acc"].some(sl=>{ const g = f.gear[sl]; return g && g.relic && g.id==="relic-"+id && (g.seal||0)===0; }));
 const RELIC_PASSIVE = {sleipnir:"전투의 첫 합에서 앞면 확률 +15%", aegis:"전투의 첫 합에서 상대 기본 위력 -3", kavacha:"전투마다 처음 받는 체력 피해를 막아 낸다", karakawa:"합에서 이기면 피해 +2",
-  bell:"정신력 피해를 절반만 받는다", scarab:"쓰러질 피해를 한 번 체력 1로 버티고 경상으로 회복한다(하루 한 번)", tyr:"상대와 쥔 이의 강함을 맞춘다(의뢰 요구치 대비 기본 합 위력 보정을 0으로, 받는 피해의 전력 보정을 1배로 고정). 근력·재주 자체의 합 위력 보정은 유지된다."};
+  bell:"정신력 피해를 절반만 받는다", scarab:"쓰러질 피해를 한 번 체력 1로 버티고 경상으로 회복한다(하루 한 번)", tyr:"상대와 쥔 이의 강함을 맞춘다(받는 피해의 전력 보정을 1배로 고정). 근력·재주 자체의 합 위력 보정은 유지된다."};
 const techFits = (id, wt) => { const T = TECHS[id]; return !!T && (!T.kinds || T.kinds.includes(wt)); };
 // 깨우침: 같은 갈래의 무기로 출동한 횟수(장비) + 등급(기량) · 능력치(능력). 조건을 갖춘 출동마다 35%로 자연스럽게
 const TECH_STAT_REQ = 28;   // 새 성장 곡선(승급 +4/+1~3)에 맞춰 낮춤
@@ -5321,6 +5326,7 @@ function foeBalanceGrade(q,AB,DF,grade){
   if(DF)return ({"도시 질병":5,"도시 악몽":3,"도시의 별":1})[DF.th]??grade;
   return clamp(Number(grade)||0,0,9);
 }
+function intimidationPenalty(f,foeGrade){const g=Number(f?.grade);return Number.isFinite(g)?3*Math.max(0,Math.min(9,Number(foeGrade)||0)-Math.max(0,g)):0;}
 function foeBalance(q,AB,DF,grade){
   if(AB&&AB.kill)return {hp:0,def:0,kw:0};
   const g=foeBalanceGrade(q,AB,DF,grade), step=clamp(Math.floor((9-g)/2),0,4);
@@ -5346,7 +5352,7 @@ function clashCardSkill(c){
   const multi=/연속|삼연|연타/.test(c.origName||c.n), coins=c.def?1:(c.normalCoins||(multi?3:2));
   return {n:c.n,base:c.a,coins,cp:c.normalCp||Math.max(1,Math.round((c.b-c.a)/coins)),def:!!c.def,cleave:!!c.cleave};
 }
-// [기본 위력, 코인 개수, 코인 위력] — 양산 무기 기준 기대 위력 12. 맨손은 기존 6 유지.
+// [기본 위력, 코인 개수, 코인 위력] — 양산 무기 기준 기대 위력 10. 맨손 8.
 const WEAPON_CLASH_PROFILES = Object.freeze({
   blade:[[5,3,2],[6,2,2],[5,2,3]],
   long:[[6,2,2],[5,3,2],[7,1,2]],
@@ -5364,7 +5370,7 @@ const WEAPON_CLASH_PROFILES = Object.freeze({
 });
 const WEAPON_COIN_RANGE=Object.freeze({blade:[2,3],long:[1,3],great:[1,2],blunt:[1,2],staff:[2,4],fist:[3,5],tool:[2,4],spear:[1,3],lance:[1,2],rapier:[2,4],gun:[1,5],twin:[3,5],none:[2,3]});
 const clashMean=sk=>sk.base+sk.coins*sk.cp/2;
-function weaponTierBonus(tier){return 4*Math.max(0,Math.min(3,Math.floor(Number(tier)||0)));}
+function weaponTierBonus(tier){return [0,3,6,8][Math.max(0,Math.min(3,Math.floor(Number(tier)||0)))];}
 function weaponClashTier(f){
   if(f&&egoHasWeapon(f.ego))return EGO_WORKSHOP_TIER;
   const w=f&&wGear(f);if(!w)return 0;
@@ -5376,11 +5382,11 @@ function normalAttackCards(kind){
   const raw=CARDS[kind]||CARDS.none, cards=raw.filter(c=>!c.def).slice(0,3), profile=WEAPON_CLASH_PROFILES[kind]||WEAPON_CLASH_PROFILES.none;
   const third={gun:"집중 사격",spear:"올려 찌르기",lance:"정면 관통",rapier:"깊은 찌르기",staff:"끝으로 찌르기",tool:"집중 타격",twin:"엇갈려 찌르기",fist:"직격",none:"몸통 치기"};
   if(cards.length<3)cards.push({n:third[kind]||"집중 공격"});
-  return cards.map((c,i)=>{const [base,coins,cp]=profile[i],a=base+(kind==="none"?0:4);return {...c,a,b:a+coins*cp,normalCoins:coins,normalCp:cp,normalRole:["강공","견제","집중"][i],normalMul:[1.1,.9,1][i]};});
+  return cards.map((c,i)=>{const [base,coins,cp]=profile[i],a=base+2;return {...c,a,b:a+coins*cp,normalCoins:coins,normalCp:cp,normalRole:["강공","견제","집중"][i],normalMul:[1.1,.9,1][i]};});
 }
 function weaponGuardCard(kind){
   const raw=CARDS[kind]||CARDS.none,c=raw.find(c=>c.def)||raw[raw.length-1];
-  const heavy=["great","blunt","lance"].includes(kind),a=(heavy?5:4)+(kind==="none"?0:4),cp=heavy?2:4;
+  const heavy=["great","blunt","lance"].includes(kind),a=(heavy?5:4)+2,cp=heavy?2:4;
   return {...c,a,b:a+cp,normalCoins:1,normalCp:cp};
 }
 // 특수 기술의 개별 위력 보너스와 예외적 동작은 유지하되, 동일 기술의 무기별 기대 위력을 균등화한다.
@@ -5403,7 +5409,7 @@ function weaponTechniqueShape(kind,T,ctx={}){
   coins=clamp(coins,1,5);cp=Math.max(1,cp);
   // 높은 연타 수에서도 기본 위력이 1 미만으로 내려가지 않도록 코인 위력을 조정한다.
   while(cp>1&&target-coins*cp/2<.5)cp--;
-  const base=Math.max(1,Math.round(target-coins*cp/2))+(kind==="none"?0:4);
+  const base=Math.max(1,Math.round(target-coins*cp/2))+2;
   return {card,sk:{...origin,n:T.n,base,coins,cp,def:!!T.def}};
 }
 function specialInterval(id){if(HANA_ARTS[id])return 0;return ["iai","charge","fanning","r_astrape","r_gyeongui","r_drepanon"].includes(id)?3:2;}
@@ -5452,7 +5458,7 @@ function mgCombat(ctx){
     foe.shinMax = 0; foe.shinLive = false; foe.mangLive = 0;
     if(!AB && !DF && !q.boss && g0 <= 2 && (q.foeShin || Math.random() < (g0 >= 2 ? 0.03 : g0 === 1 ? 0.06 : 0.2))) foe.shinMax = g0 >= 2 ? 1 : g0 === 1 ? 2 : 3;
     if(!AB&&!DF&&g0<=4)foe.skills.forEach(sk=>{sk.cp+=1;});
-    const bonus = me => relicFx(me.f,"tyr") ? 0 : clamp(Math.round((power(me.f,["str"])/Math.max(1,reqC) - 1)*5), -3, 3);   // 의뢰 요구치 대비 전력 보정(최대 ±3)
+    const intimidation = me => intimidationPenalty(me.f,foeBalanceGrade(q,AB,DF,g0));
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
     const woundOf = (hp,max=100) => hp/max>0.75 ? 0 : hp/max>0.45 ? 1 : hp/max>0.18 ? 2 : 3;
@@ -5538,14 +5544,10 @@ function mgCombat(ctx){
     /* 뒤틀림 대응은 무기가 아니라 사람에게서 온다(원작: 3급 에즈라 · 2급 한희준 · 뒤틀림 탐정 모제스).
        등급: 3급은 도시 질병급에 +1, 2급 이상은 도시 질병·악몽급에 +1. 경험: 처치 1회 +1 · 3회 +2 · 10회 +2와 코인 위력 +1. 합쳐서 기본 위력 최대 +3 */
     const antiDist = me => DF ? distEdge(me.f, DF.th) : null;
-    /* 환상체 보정: 위험 등급마다 기준 급수가 있다(ZAYIN 8급 · TETH 7급 · HE 5급 · WAW 4급 · ALEPH 2급).
-       싸우는 이의 급수가 그보다 높으면 그 차이만큼 기본 위력이 오른다(특색은 0급으로 친다). 죄종은 해당 없음 */
-    const ABNO_REF = {ZAYIN:8, TETH:7, HE:5, WAW:4, ALEPH:2};
-    const abnoEdge = me => { const ref = AB && ABNO_REF[AB.risk]; if(!ref || !me || !me.f) return 0; const g = me.f.grade==null ? 9 : me.f.grade; return Math.max(0, ref - g); };
-    const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } } o.base += abnoEdge(me);
+    const wMod = (me, sk) => { const o = {base:0, cp:0}; { const ad = antiDist(me); if(ad){ o.base += ad.base; o.cp += ad.cp; } }
       if(me.wsp==="cloud" || me.wsp==="yuria") o.base += 1; if(me.wsp==="ye" && sk.def) o.base -= 1; if(me.wsp==="meztil") o.cp += 1;  return o; };
     const livePow = me => (me.shinLive ? SHIN_POW : 0) + (me.mangLive||0);   // 전투 안에서 두른 신 +1 · 감은 망 하나당 +1
-    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, bonus(me) + w.base + weaponTierBonus(weaponClashTier(me.f)) + shinAwakeClash(me.f) + livePow(me) + (!sk.def?(me.resolveBoost||0):0) - (me.bDown||0) - (me.daze?CLASH_DAZE_CUT:0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0) + (!sk.def&&(me.charge||0)>=10?1:0)); };
+    const mySkill = (sk,withFirst=true) => { const me = party[act], w = wMod(me, sk); return clashStatSkill(sk, me.f, w.base + weaponTierBonus(weaponClashTier(me.f)) + shinAwakeClash(me.f) + livePow(me) + (!sk.def?(me.resolveBoost||0):0) - (me.bDown||0) - (me.daze?CLASH_DAZE_CUT:0), (withFirst?firstSupport():0) + w.cp - (me.cpDown||0) + (!sk.def&&(me.charge||0)>=10?1:0)); };
     const mySp = me => me.sp + (me.wsp==="allas" ? 12 : 0);
     const defCard = wt => weaponGuardCard(wt);
     const basicAtkCards=me=>egoAttackCards(me.f.ego,normalAttackCards(me.wt));
@@ -5569,7 +5571,7 @@ function mgCombat(ctx){
     function techSkill(me){const T=techOf(me),shaped=weaponTechniqueShape(me.wt,T,me),sk=shaped.sk,training=me.f.hanaTraining?.tech||0;
       sk.base+=training;sk.cp+=training;return {T,sk,card:{...shaped.card,n:T.n,def:!!T.def}};}
     const MOVES = ["기본 공격","방어","기술"];
-    const foeSk = () => Object.assign({}, foeSkill, {base: Math.max(1, foeSkill.base - (foe.daze ? CLASH_DAZE_CUT : 0) - (foe.down||0) - supportCount("great","blunt")), cp: Math.max(0, foeSkill.cp - (foe.coinDown||0))});
+    const foeSk = () => Object.assign({}, foeSkill, {headAdj:(foeSkill.headAdj||0)-intimidation(party[act]),base: Math.max(1, foeSkill.base - (foe.daze ? CLASH_DAZE_CUT : 0) - (foe.down||0) - supportCount("great","blunt")), cp: Math.max(0, foeSkill.cp - (foe.coinDown||0))});
     // 정신력 → 코인 앞면 확률: 0 이하는 50+정신력%, +15에서 65%, 그 위로는 완만하게 올라 +45에서 90%
     const spHead = sp => sp < 0 ? 50 + Math.max(-45,sp)*0.5 : sp <= 15 ? 50 + sp*0.8 : 62 + (Math.min(sp,45)-15)*23/30;
     const headP = (sp,extra=0) => clamp(spHead(sp)+extra,5,95)/100;
@@ -5691,7 +5693,7 @@ function mgCombat(ctx){
       if(me.ember) b.push(`불씨 ${me.ember}`); if(me.gaze) b.push(`시선 ${me.gaze}${me.contempt ? " · 경멸" : ""}`); { const gp = party.find(p=>p.grasp); if(gp) a.push(`${esc(gp.name)}를 움켜쥐고 있다(${gp.grasp})`); }
       if(AB && AB.fuse && foe.fuseMark) a.push(`성냥불 ${Math.max(0, AB.fuse - turn + 1)}턴 남음 → ${esc(foe.fuseMark.name)}`); if(foe.lampMark) a.push(`등불에 홀림: ${esc(foe.lampMark.name)} (${Math.max(0, 3 - turn + 1)}턴 남음)`);
       if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.frost) a.push(`냉기 ${foe.frost}/3`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push(`휘청임(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`); if(foe.coinDown) a.push(`코인 위력 감소 ${foe.coinDown}(다음 합)`);
-      { const ae = abnoEdge(me); if(ae) b.push(`환상체 보정 ${gName(me.f.grade)} vs ${AB.risk}(기준 ${ABNO_REF[AB.risk]}급) → 기본 위력 +${ae}`); }
+      { const p=intimidation(me);if(p)b.push(`위압 ${gName(me.f.grade)} → ${gName(foeBalanceGrade(q,AB,DF,g0))} 상당 적 뒷면 확률 +${p}%p`); }
       { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
       if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
       if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? " · 적중 충전 +3" : ""}`); }
@@ -5758,7 +5760,7 @@ function mgCombat(ctx){
       
       const lines = [reloading ? `${esc(me.name)}의 재장전 — ${AMMO_BY[gun.ammoType].name} ${gun.mag}/${ammoCap(gun)}발` : guarding ? `${esc(me.name)}의 ${egoHasArmor(me.f.ego)?esc(c.n):"방어"} — ${foe.name}의 ${fk.n}`
         : `${esc(me.name)}의 ${T ? `<b style="color:#9fd0ff">${c.n}</b>` : `기본 공격 — ${esc(c.n)}`} vs ${foe.name}의 ${fk.n}`];
-      if(firstLines.length) lines.push(...firstLines);
+      if(firstLines.length) lines.push(...firstLines);if(intimidation(me))lines.push(`위압 — 적 코인 뒷면 확률 +${intimidation(me)}%p`);
        clash = guarding || foeGuarding ? null : {mine:{sk, coins:sk.coins, broken:0, heads:[], p:sk.base}, foe:{sk:fk, coins:fk.coins, broken:0, heads:[], p:fk.base}, t: performance.now(), res:null};
       m.info.innerHTML = `<div class="pk-text">${lines[0]} — ${reloading && fk.def?"적도 방어 중이므로 공격 없이 재장전한다":guarding?"합 없이 방어 행동을 수행한다":foeGuarding?"적이 합 없이 방어한다":"합!"}</div>`;
       for(const e of R.ex){
@@ -11164,7 +11166,7 @@ function techniqueRecordHtml(weapon="all"){
   }).join("");
   const normalRows=Object.keys(CARDS).filter(k=>weapon==="all"||weapon===k).map(k=>`<div class="cdx on"><div class="cdx-h"><b>${esc(kindName(k))}</b><span class="badge">일반 공격</span></div><div class="cdx-g">${normalAttackCards(k).map(c=>{const v=clashCardSkill(c);return `<span>${esc(c.n)}</span><div>${c.normalRole} · 기본 ${v.base} · 코인 ${v.coins}개 × ${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 평균 ${clashMean(v).toFixed(1)} · 피해 ${c.normalMul.toFixed(2)}배</div>`;}).join("")}</div></div>`).join("");
   const guardRows='<div class="cdx on"><div class="cdx-h"><b>방어 전용 기술</b></div><div class="cdx-g"><span>방어</span><div>피해 50% 감소 · 정신력 7 회복</div><span>회피</span><div>성공률 25~75% · 일반 직접 피해 무효 및 정신력 12 회복</div><span>흘려내기</span><div>피해 35% 감소 · 성공률 45~80% · 성공 시 다음 합 적 코인 위력 -1 및 정신력 9 회복</div><span>반격</span><div>피해 25% 감소 · 일반 인간 적에게 받은 피해가 있으면 무기 피해 기준의 30% 반격 · 정신력 7 회복</div></div></div>';
-  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 전력 공격을 제외한 특수 기술은 습득 후 장착할 수 있으며, 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">특수 기술은 무기별 평균 합 위력을 기준으로 개별 효과를 반영한다. 공방 등급별 기본 위력: 양산 +0 / 정식 +4 / 상급 +8 / 고유 +12 / 개화 무기 +8. 일반 공격 평균: 양산 12 / 정식 16 / 상급 20 / 고유 24. 맨손 제외. 사용 시 정신력 -${TECH_SP_COST} · 일반 특수 기술 2턴 간격 · 발도, 돌격, 패닝 및 일부 유물 기술 3턴 간격</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">특수 기술 ${entries.length}개</p>${keywordRulesHtml()}<p class="muted">하나 협회 4주 훈련: 일반 코인 +1 (33%), 기본 능력치 +1 (50%), 일반 기본 위력 +1 (11%), 특수 기본·코인 위력 +1 (5%), 희귀 기술 16종 중 미습득 1개 (1%).</p><h4>일반 공격</h4>${normalRows}<h4>방어 기술</h4>${guardRows}<h4>특수 기술</h4>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
+  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 전력 공격을 제외한 특수 기술은 습득 후 장착할 수 있으며, 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">특수 기술은 무기별 평균 합 위력을 기준으로 개별 효과를 반영한다. 공방 등급별 기본 위력: 양산 +0 / 정식 +3 / 상급 +6 / 고유·개화 +8. 일반 공격 평균: 맨손 8 / 양산 10 / 정식 13 / 상급 16 / 고유·개화 18. 사용 시 정신력 -${TECH_SP_COST} · 일반 특수 기술 2턴 간격 · 발도, 돌격, 패닝 및 일부 유물 기술 3턴 간격</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">특수 기술 ${entries.length}개</p>${keywordRulesHtml()}<p class="muted">하나 협회 4주 훈련: 일반 코인 +1 (33%), 기본 능력치 +1 (50%), 일반 기본 위력 +1 (11%), 특수 기본·코인 위력 +1 (5%), 희귀 기술 16종 중 미습득 1개 (1%).</p><h4>일반 공격</h4>${normalRows}<h4>방어 기술</h4>${guardRows}<h4>특수 기술</h4>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
 }
 function combatRuleRecordHtml(){
   const baseRows=Object.entries(CARDS).map(([kind,cards])=>{
@@ -11174,16 +11176,16 @@ function combatRuleRecordHtml(){
     return '<div class="cdx on"><div class="cdx-h"><b>'+esc(name)+'</b></div><div class="cdx-g"><span>기본 동작</span><div>'+rows+'</div><span>피해 능력치 비중</span><div>'+Object.entries(weights).map(([k,w])=>esc(ATTR_NAME[k])+" "+Math.round(w*100)+"%").join(" · ")+'</div></div></div>';
   }).join("");
   return `${keywordRulesHtml()}<div class="cdx on"><div class="cdx-h"><b>합 위력과 코인 위력</b></div><div style="padding:10px;line-height:1.7">
-  <p><b>기본 위력 = 무기·기술의 기본값 + 내림(근력 ÷ 15) + 의뢰 요구치 대비 전력 보정 + 추가 보정 − 감소 효과</b> (최소 1)</p>
-  <p><b>의뢰 요구치 대비 전력 보정:</b> 반올림((근력 기준 전력 ÷ 의뢰 요구치 − 1) × 5), 최소 -3 · 최대 +3. 티르의 오른손 장착 시 0. 뒤틀림은 등급의 본래 요구치를 사용한다.</p>
+  <p><b>기본 위력 = 무기·기술의 기본값 + 내림(근력 ÷ 15) + 공방 등급 보정 + 추가 보정 − 감소 효과</b> (최소 1)</p>
+  <p><b>위압:</b> 직접 싸우는 해결사의 급수가 적의 수준보다 높으면 급수 차이 1마다 적 코인 뒷면 확률이 3%p 증가한다. 예: 5급 해결사 대 8급 적은 적 뒷면 59%(앞면 41%). 동급·상위 적에게는 적용되지 않는다. 특색은 0급으로 계산한다. 환상체·뒤틀림은 전투 위험도 상당 급수로 계산한다. 합의 모든 굴림과 적의 공격 재굴림에 적용되며 기존 기술 확률 보정과 합산한다. 기존 의뢰 요구치 대비 기본 합 위력 보정과 환상체·뒤틀림 급수 차이 기본 위력 보정은 폐지한다. 능력치·처치 경험·장비·신·망·훈련 등은 유지한다.</p>
   <p><b>코인 위력 = 무기·기술의 코인 위력 + 내림(재주 ÷ 15) + 추가 보정 − 감소 효과</b> (최소 0)</p>
   <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45, 의뢰 전력 보정 0이라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
   <p>양쪽 코인을 던져 위력이 낮은 쪽의 코인 1개를 제거하고 다시 던진다. 동률이면 그대로 다시 던진다. 한쪽 코인이 모두 사라지면 패배한다. 최대 24회 굴림 제한에서 코인이 더 많이 남은 쪽이 승리하며, 같으면 양측 50% 확률로 승리한다.</p>
   <p>해결사의 앞면 확률은 전투 정신력 -45에서 27.5%, 0에서 50%, +15에서 62%, +45에서 85%. 재주 10당 기존 앞면 확률 +0.25%p도 유지한다. 기술 등 추가 보정 후 5~95%로 제한한다. 적은 기본 50%이며 일부 기술은 예외다.</p>
-  <p>특수 기술은 무기별 코인 구조를 바탕으로 평균 합 위력을 조정하며 정신력 -${TECH_SP_COST}. 양산 +0 · 정식 +4 · 상급 +8 · 고유 +12 / 개화 무기 +8의 기본 위력 보정을 받는다. 일반 공격의 기준 평균은 각각 12 · 16 · 20 · 24이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 등급과 고유 기술에 따라 정해진다.</p>
+  <p>특수 기술은 무기별 코인 구조를 바탕으로 평균 합 위력을 조정하며 정신력 -${TECH_SP_COST}. 양산 +0 · 정식 +3 · 상급 +6 · 고유·개화 +8의 기본 위력 보정을 받는다. 일반 공격의 기준 평균은 맨손 8 · 양산 10 · 정식 13 · 상급 16 · 고유·개화 18이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 등급과 고유 기술에 따라 정해진다.</p>
   <p><b>방어와 투지:</b> 방어 피해 50% 감소, 회피 성공률 25~75%(민첩·정신력), 흘려내기 피해 35% 감소 및 성공률 45~80%(재주)로 다음 합 코인 위력 -1, 반격 피해 25% 감소 및 일반 인간 적에게 무기 피해 기준 30% 반격. 회피 실패 시 방어 고정 감소 미적용. 방어 행동은 정신력 7, 회피 성공 12, 흘려내기 성공 9 회복(연속 방어는 4 감소). 합 승리 투지 5, 패배 15, 방어 7~10, 적 방어 3. 투지 30 심호흡 +15 정신력, 50 혼신의 일격 기본 위력 +2, 100 사즉생 기본 위력 +3 및 음수 정신력 무시. 전투마다 0으로 시작하며 턴당 한 번 추가 행동.</p><p><b>휘청임:</b> 다음 실제 합에서 기본 위력 -${CLASH_DAZE_CUT}. 중복으로 쌓이지 않으며 합을 한 번 진행하면 소멸한다. 코인 위력 감소는 별개이며 해당 합의 각 앞면 코인에 적용된다. 기본 방어·재장전 등 합이 없는 행동으로는 소모하지 않는다. 예: 기본 6, 코인 위력 5, 앞면 2개일 때 휘청임만 받으면 14, 코인 위력 -2까지 받으면 10.</p>
   </div></div><div class="cdx on"><div class="cdx-h"><b>피해량 계산 (직접 전투)</b></div><div style="padding:10px;line-height:1.7">
-  <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 상급 공방 기준 공격력 20에 무기형 +5, 일체형 +2의 기본 피해를 더한다. 개화 의복은 체력 피해 38% 감소, 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
+  <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 합 평균 18, 상급 공방 기준 공격력 20에 무기형 +5, 일체형 +2의 기본 피해를 더한다. 개화 의복은 체력 피해 38% 감소, 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
   <p><b>② 코인 보정 피해 = 반올림(무기 피해 기준 × 잔존 계수 × 앞면 계수)</b> (최소 1). 잔존 계수 = 0.55 + 0.45 × (남은 코인 수 ÷ 원래 코인 수). 앞면 계수 = 0.9 + 0.2 × (공격 재굴림의 앞면 수 ÷ 남은 코인 수).</p>
   <p><b>③ 실제 피해:</b> 코인 보정 피해에 일반 공격 역할별(강공 1.10배, 견제 0.90배, 집중 1.00배) 또는 특수 기술별 피해 배율, 방어 기술 반격 계수, 장기전 계수(13턴부터 턴마다 +10%)를 곱한다. 이후 상대 방어(통상 50% 감소), 무기·유물·상태·탄환·동료 지원·적 내성 및 특수 기믹을 적용한다. 합 위력 그 자체가 피해량으로 더해지지는 않는다.</p>
   <p><b>예시:</b> 무기 피해 기준 20, 코인 2개 중 1개 남아 앞면이면 20 × 0.775 × 1.1 = 17.05 → 17 피해. 피해 배율 1.25인 전력 공격이면 17 × 1.25 → 21. 다른 보정 없이 적이 일반 방어하면 11 피해.</p>
@@ -11193,7 +11195,7 @@ function combatRuleRecordHtml(){
 }
 function recordReferenceTabs(active){
   const cx=codexRecordData();
-  return `<button class="${active==="tech"?"on":""}" data-rec-tab="tech">기술 일람</button><button class="${active==="combat"?"on":""}" data-rec-tab="combat">전투 규칙</button><button class="${active==="codex"?"on":""}" data-rec-tab="codex">환상체 도감 ${cx.met.length}/${cx.entries.length}</button><button class="${active==="city"?"on":""}" data-rec-tab="city">도시 일람 ${cityCount()}/${SYNDICATES.length+CITY_FIXERS.length}</button>`;
+  return `<button class="${active==="tech"?"on":""}" data-rec-tab="tech">기술 일람</button><button class="${active==="combat"?"on":""}" data-rec-tab="combat">전투 규칙</button><button class="${active==="codex"?"on":""}" data-rec-tab="codex">환상체 도감 ${cx.met.length}/${cx.entries.length}</button><button class="${active==="city"?"on":""}" data-rec-tab="city">도시 일람 ${cityCount()}/${SYNDICATES.length+CITY_FIXERS.length}</button><button data-rec-tab="ach">업적</button>`;
 }
 function recordReferenceHtml(tab){
   if(tab==="tech")return techniqueRecordHtml();
@@ -11203,12 +11205,14 @@ function recordReferenceHtml(tab){
   return "";
 }
 function bindRecordTabs(root,peopleHtml){
-  const view=root.querySelector("#record-tab-view");
+  const view=root.querySelector("#record-tab-view");view.dataset.currentTab=root.querySelector("[data-rec-tab].on")?.dataset.recTab||"tech";
   root.addEventListener("click",e=>{
     const btn=e.target.closest("[data-rec-tab]");
     if(btn){
       root.querySelectorAll("[data-rec-tab]").forEach(b=>b.classList.toggle("on",b===btn));
       const tab=btn.dataset.recTab;
+      if(tab==="ach"){root.querySelectorAll("[data-rec-tab]").forEach(b=>b.classList.toggle("on",b.dataset.recTab===(view.dataset.currentTab||"tech")));openAchievements();return;}
+      view.dataset.currentTab=tab;
       view.innerHTML=tab==="people"?peopleHtml:tab==="surroundings"?surroundingsHtml():recordReferenceHtml(tab);
       return;
     }
