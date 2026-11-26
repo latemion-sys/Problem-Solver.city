@@ -5443,9 +5443,7 @@ function mgCombat(ctx){
        대표 행동자가 싸우고 동료는 무기별 효과로 지원한다. 적은 등급에 따라 동료를 견제한다. 대표 행동자가 쓰러지면 다음 사람이 나선다. */
     const skillOf = clashCardSkill;
     foe.skills = foe.cards.map(c=>skillOf(c));
-    /* 등급 보정: 권장 인원이 뒤에서 거드는 만큼 상대도 기본 위력이 붙는다(4급 이상 의뢰는 +1~2, 3·2급은 체력·피해가 이미 커서 +1, 1급 이상 +2). 무기 숙련 감점(-1)은 그대로 둔다 */
-    { const rec = (PARTY[q.grade!=null ? q.grade : 9]||[1])[0], sOff = g0 >= 4 ? Math.min(2, rec - 1) : g0 >= 2 ? 1 : 2, fOff = DF ? 0 : AB ? Math.min(2, sOff) : sOff;   // 뒤틀림은 이미 체력·카드가 따로 세다
-      foe.off = fOff; if(fOff) foe.skills.forEach(k=>{ k.base = Math.max(1, k.base + fOff); }); }
+    // 인간 적의 무기 등급 및 환상체·뒤틀림·죄종의 고유 카드에 권장 인원 기반 기본 위력을 중복 가산하지 않는다.
     const fg = q.grade!=null ? q.grade : 9, augMul = foe.aug ? Object.values(foe.aug.mul).reduce((a,b)=>a+b,0)/Object.values(foe.aug.mul).length : 1;
     // 전투 길이: 상대가 쓰러지기까지 맞아야 하는 횟수(명중)를 정하고, 우리 대표가 한 번 칠 때의 평균 위력을 곱해 체력으로 삼는다
     const CT = combatTier(q, AB, DF);
@@ -5462,7 +5460,7 @@ function mgCombat(ctx){
     // 신(心)을 깨우친 인간 적: 2급 이상 가운데 아주 일부. 첫 턴에 신을 두르고, 그 뒤 망을 한 겹씩 감는다(추가 행동)
     foe.shinMax = 0; foe.shinLive = false; foe.mangLive = 0;
     if(!AB && !DF && !q.boss && g0 <= 2 && (q.foeShin || Math.random() < (g0 >= 2 ? 0.03 : g0 === 1 ? 0.06 : 0.2))) foe.shinMax = g0 >= 2 ? 1 : g0 === 1 ? 2 : 3;
-    if(!AB&&!DF&&g0<=4)foe.skills.forEach(sk=>{sk.cp+=1;});
+    // 4급 이상 인간 적의 일괄 코인 위력 +1은 폐지한다. 개별 기술과 보스 보정은 유지한다.
     const intimidation = me => intimidationPenalty(me.f,foeBalanceGrade(q,AB,DF,g0));
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
@@ -5601,7 +5599,7 @@ function mgCombat(ctx){
     function rollFoeSkill(t){ const df = foe.skills.filter(c=>c.def), at = foe.skills.filter(c=>!c.def);
       if(BOSS) return BOSS.roll(t, at, df);
       if(foe.barrierSkill&&foe.shield<=Math.floor(foe.shieldMax*.4)&&t%3===0)return {...foe.barrierSkill};
-      /* 인간 적: 강한 기술은 3~6턴 사이 무작위로 온다. 환상체·뒤틀림은 기존 3턴 주기 강공 그대로. */
+      /* 인간 적: 강한 기술은 3~6턴 사이 무작위로 온다. 환상체·뒤틀림은 3턴 주기 강공 기본 +1, 죄종은 고유 카드만 사용한다. */
       /* 인간 적의 강한 기술: 8~9급은 쓰지 않는다. 7~4급은 세 갈래 중 하나만 정해 3~6턴마다,
          3급 이상은 둘을 정해 하나는 3턴마다 꼭, 나머지 하나는 4턴 이후 무작위 턴(그 뒤 3~6턴 간격)에 쓴다. */
       if(!AB && !DF && at.length){
@@ -5611,7 +5609,7 @@ function mgCombat(ctx){
           else { if(t % 3 === 0) return foeHeavy(at, foe.hvKinds[0]);
             if(foe.nextHv2==null) foe.nextHv2 = rnd(4,7);
             if(t >= foe.nextHv2){ foe.nextHv2 = t + rnd(3,6); return foeHeavy(at, foe.hvKinds[1]); } } } }
-      else if(t % 3 === 0 && at.length){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a); return Object.assign({}, hv, {n:`${hv.n}(강공)`, base: hv.base + 3, heavy:true}); }
+      else if(t % 3 === 0 && at.length && !(AB&&AB.kill)){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a); return Object.assign({}, hv, {n:`${hv.n}(강공)`, base: hv.base + 1, heavy:true}); }
       if(!at.length) return pick(df);
       // 인간 적: 턴 시작에 한 번만 상황을 판단한다. 새 기술·상태는 만들지 않는다.
       if(!AB && !DF){
@@ -5644,7 +5642,7 @@ function mgCombat(ctx){
     const passiveCut = me => { const P = foe.passive && FOE_PASSIVE[foe.passive]; if(!P) return 0; return P.all || P.kinds.includes(me.wt) ? P.cut : 0; };
     function foeHeavy(at, kind0){ const hv = at.reduce((a,b)=>(b.base + b.coins*b.cp) > (a.base + a.coins*a.cp) ? b : a), N = foe.name;
       const kind = kind0 || pick(["rush","cripple","status"]);
-      if(kind==="rush") return Object.assign({}, hv, {n:`${hv.n}(몰아치기)`, coins:3, headAdj:-10, heavy:"rush",
+      if(kind==="rush") return Object.assign({}, hv, {n:`${hv.n}(몰아치기)`, coins:3, cp:Math.min(hv.cp,Math.max(1,Math.ceil(hv.coins*hv.cp/3))), headAdj:-10, heavy:"rush",
         tell: pick([`${N}의 호흡이 짧아졌다. 쉬지 않고 몰아칠 기세다`, `${jo(N,"이")} 무기를 고쳐 쥐고 발을 구른다`, `${jo(N,"이")} 몸을 낮추고 거리를 좁혀 온다`]), hint:"연달아 몰아치는 공격이 온다. 대신 손이 거칠다."});
       if(kind==="cripple") return Object.assign({}, hv, {n:`${hv.n}(무력화)`, headAdj:-10, heavy:"cripple",
         tell: pick([`${N}의 눈이 손목과 관절을 훑는다`, `${jo(N,"이")} 무기 끝을 낮게 겨눈다. 쥔 손을 노린다`]), hint:"맞으면 손이 무뎌진다."});
@@ -5881,7 +5879,7 @@ function mgCombat(ctx){
         // 서로 공격하지 않는다. 최소 피해 보정, 출혈·화상·피격 효과, 공격 연출도 발생하지 않는다.
         total = 0;
       }
-      else { let dmg = Math.round(P*(relicFx(me.f,"tyr") ? 1 : clamp(Math.pow(reqC/Math.max(1,power(me.f,["str"])),0.22),0.85,1.25))*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*longK()*(me.f.tired && !accFx(me.f,"calm") ? TIRED_DMG : 1));
+      else { let dmg = Math.round(P*(relicFx(me.f,"tyr") ? 1 : clamp(Math.pow(reqC/Math.max(1,power(me.f,["str"])),0.22),0.85,1))*(1-redHP(me.f))*(wSk.def ? 0.6 : 1)*longK()*(me.f.tired && !accFx(me.f,"calm") ? TIRED_DMG : 1));
         const evadeOK=guarding&&!reloading&&mode==="evade"&&!(AB&&AB.enrage&&foe.enraged)&&Math.random()<clamp(0.35+(Number(me.f.stats.agi)||0)*0.005+me.sp*0.002,0.25,0.75);
         const parryOK=guarding&&!reloading&&mode==="parry"&&Math.random()<clamp(0.45+(Number(me.f.stats.tec)||0)*0.004,0.45,0.8);
         if(sk.def) dmg = Math.round(dmg*(guarding?({guard:0.5,evade:1,parry:0.65,counter:0.75}[mode]||0.5):0.5)); dmg = Math.max(1, dmg);
@@ -11194,14 +11192,14 @@ function combatRuleRecordHtml(){
   <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45, 의뢰 전력 보정 0이라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
   <p>양쪽 코인을 던져 위력이 낮은 쪽의 코인 1개를 제거하고 다시 던진다. 동률이면 그대로 다시 던진다. 한쪽 코인이 모두 사라지면 패배한다. 최대 24회 굴림 제한에서 코인이 더 많이 남은 쪽이 승리하며, 같으면 양측 50% 확률로 승리한다.</p>
   <p>해결사의 앞면 확률은 전투 정신력 -45에서 27.5%, 0에서 50%, +15에서 62%, +45에서 85%. 재주 10당 기존 앞면 확률 +0.25%p도 유지한다. 기술 등 추가 보정 후 5~95%로 제한한다. 적은 기본 50%이며 일부 기술은 예외다.</p>
-  <p>특수 기술은 무기별 코인 구조를 바탕으로 평균 합 위력을 조정하며 정신력 -${TECH_SP_COST}. 양산 +0 · 정식 +3 · 상급 +6 · 고유·개화 +8의 기본 위력 보정을 받는다. 일반 공격의 기준 평균은 맨손 8 · 양산 10 · 정식 13 · 상급 16 · 고유·개화 18이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 등급과 고유 기술에 따라 정해진다.</p>
+  <p>특수 기술은 무기별 코인 구조를 바탕으로 평균 합 위력을 조정하며 정신력 -${TECH_SP_COST}. 양산 +0 · 정식 +3 · 상급 +6 · 고유·개화 +8의 기본 위력 보정을 받는다. 일반 공격의 기준 평균은 맨손 8 · 양산 10 · 정식 13 · 상급 16 · 고유·개화 18이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
   <p><b>방어와 투지:</b> 방어 피해 50% 감소, 회피 성공률 25~75%(민첩·정신력), 흘려내기 피해 35% 감소 및 성공률 45~80%(재주)로 다음 합 코인 위력 -1, 반격 피해 25% 감소 및 일반 인간 적에게 무기 피해 기준 30% 반격. 회피 실패 시 방어 고정 감소 미적용. 방어 행동은 정신력 7, 회피 성공 12, 흘려내기 성공 9 회복(연속 방어는 4 감소). 합 승리 투지 5, 패배 15, 방어 7~10, 적 방어 3. 투지 30 심호흡 +15 정신력, 50 혼신의 일격 기본 위력 +2, 100 사즉생 기본 위력 +3 및 음수 정신력 무시. 전투마다 0으로 시작하며 턴당 한 번 추가 행동.</p><p><b>휘청임:</b> 다음 실제 합에서 기본 위력 -${CLASH_DAZE_CUT}. 중복으로 쌓이지 않으며 합을 한 번 진행하면 소멸한다. 코인 위력 감소는 별개이며 해당 합의 각 앞면 코인에 적용된다. 기본 방어·재장전 등 합이 없는 행동으로는 소모하지 않는다. 예: 기본 6, 코인 위력 5, 앞면 2개일 때 휘청임만 받으면 14, 코인 위력 -2까지 받으면 10.</p>
   </div></div><div class="cdx on"><div class="cdx-h"><b>피해량 계산 (직접 전투)</b></div><div style="padding:10px;line-height:1.7">
   <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 합 평균 18, 상급 공방 기준 공격력 20에 무기형 +5, 일체형 +2의 기본 피해를 더한다. 개화 의복은 체력 피해 38% 감소, 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
   <p><b>② 코인 보정 피해 = 반올림(무기 피해 기준 × 잔존 계수 × 앞면 계수)</b> (최소 1). 잔존 계수 = 0.55 + 0.45 × (남은 코인 수 ÷ 원래 코인 수). 앞면 계수 = 0.9 + 0.2 × (공격 재굴림의 앞면 수 ÷ 남은 코인 수).</p>
   <p><b>③ 실제 피해:</b> 코인 보정 피해에 일반 공격 역할별(강공 1.10배, 견제 0.90배, 집중 1.00배) 또는 특수 기술별 피해 배율, 방어 기술 반격 계수, 장기전 계수(13턴부터 턴마다 +10%)를 곱한다. 이후 상대 방어(통상 50% 감소), 무기·유물·상태·탄환·동료 지원·적 내성 및 특수 기믹을 적용한다. 합 위력 그 자체가 피해량으로 더해지지는 않는다.</p>
   <p><b>예시:</b> 무기 피해 기준 20, 코인 2개 중 1개 남아 앞면이면 20 × 0.775 × 1.1 = 17.05 → 17 피해. 피해 배율 1.25인 전력 공격이면 17 × 1.25 → 21. 다른 보정 없이 적이 일반 방어하면 11 피해.</p>
-  <p><b>받는 피해:</b> 적의 등급별 피해 기준에도 같은 코인 계수를 적용한 뒤 의뢰 요구치 대비 전력(0.85~1.25배, 티르의 오른손 장착 시 1배), 방어구·피로·장기전 등을 반영한다. 기본 방어와 재장전은 합 없이 받는 피해를 절반으로 줄이고 민첩 10당 고정 피해 2를 추가 감소시킨다. 다른 방어 방식은 위의 개별 규칙을 따른다. 특수 기술·보호막·내성·상태 효과에 따라 달라질 수 있다.</p>
+  <p><b>받는 피해:</b> 적의 등급별 피해 기준에도 같은 코인 계수를 적용한 뒤 의뢰 요구치 대비 전력(0.85~1배, 티르의 오른손 장착 시 1배), 방어구·피로·장기전 등을 반영한다. 기본 방어와 재장전은 합 없이 받는 피해를 절반으로 줄이고 민첩 10당 고정 피해 2를 추가 감소시킨다. 다른 방어 방식은 위의 개별 규칙을 따른다. 특수 기술·보호막·내성·상태 효과에 따라 달라질 수 있다.</p>
   <p>일반 공격 세 칸에서 직접 동작을 선택하며, 강공·견제·집중은 무기마다 서로 다른 기본 위력과 코인 수를 갖는다. 모든 무기는 기본 동작 세 가지를 보유한다. 습득한 특수 기술과 방어 전용 칸은 별도이며 신·망은 다섯 번째 칸이다. 방어·회피·흘려내기·반격은 합 없이 행동하며, 습득한 방어형 특수 기술은 기존 합·반격 규칙을 따른다. 자동 수행 성공률 및 의뢰 종료 시 부상·정신력 정산은 이 직접 전투 산식과 별개다.</p>
   </div></div><h4>무기별 기본 위력 일람 (능력치·기술·장비 효과 적용 전)</h4>${baseRows}`;
 }
