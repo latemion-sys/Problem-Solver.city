@@ -1667,6 +1667,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · 다인 출동", ["교대와 3인 이상 엄호를 전투당 1회 지원. 후열에는 실제로 입은 피해와 강행군 비용을 반영."]],
   ["미리보기 · 환상체 현장 선택", ["환상체 배회 징후에 개체별 능력치 판정과 안전 선택을 추가. 최대 성공률 95%. 실패 시 최대 체력·정신력 각각 5% 차감. 일부 개체의 성공 보상으로 선택 기프트 추가."]],
   ["미리보기 · ALEPH 현장 선택", ["ALEPH 5종에 현장 장면, 행동별 결과 안내, 선봉 선택 및 철수 적용. 전투 징후는 지정 카드를 내면 대응되며 놓치면 추가 피해가 발생."]],
   ["미리보기 · 고요한 오케스트라", ["현장에서 통제·제압 준비·철수를 선택. 악장 마지막 턴과 피날레의 대응을 예고하며, 놓치면 전열과 후열에 공연 피해가 발생."]],
@@ -4591,7 +4592,13 @@ function genRequestsInner(){
 // 의뢰 등급별 [권장 인원, 최대 인원]
 const PARTY = {9:[1,3],8:[1,3],7:[2,3],6:[2,3],5:[2,3],4:[3,3],3:[3,4],2:[3,4],1:[4,4]};
 const partyMax = q => q.kind==="특색 심사" ? 1 : (["도시 악몽","도시의 별"].includes(threatOf(q)) ? 4 : 3);
-const partyRec = q => q.kind==="특색 심사" ? 1 : q.boss ? 2 : Math.min(partyMax(q), (PARTY[q.grade]||[1])[0]);
+function partyRec(q){
+  if(q.kind==="특색 심사") return 1;
+  const abno = q.abnoFoe || abnoOf(q);
+  const large = ["도시 악몽","도시의 별"].includes(threatOf(q)) || (abno && !abno.noFight);
+  const standard = (PARTY[q.grade]||[1])[0];
+  return Math.min(partyMax(q),large ? Math.max(3,standard) : q.boss ? 2 : Math.min(2,standard));
+}
 function gearList(f){ return bodyItems(f).concat(augItems(f), [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.ab && f.ab.coatOff && S && S.day <= f.ab.coatOff ? null : f.gear.armor, f.gear.acc].filter(Boolean)); }
 // 표시 전용: 기존 의뢰 판정에 적용되는 장비별 능력치 보정만 합산한다.
 function equipmentStatBonus(f){
@@ -5746,7 +5753,7 @@ function mgCombat(ctx){
     // 우리 쪽은 전투 중 체력 숫자 대신 부상 단계로만 본다: 안정 → 경상 → 중상 → 치명상 → 쓰러짐(안에서는 버틸 수 있는 양을 깎는다)
     const WOUND = ["안정","경상","중상","치명상"], WOUND_COL = ["#7fd08a","#e0d27f","#e0a35f","#d65a4f"];
     const woundOf = (hp,max=100) => hp/max>0.75 ? 0 : hp/max>0.45 ? 1 : hp/max>0.18 ? 2 : 3;
-    party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); if(p.sp2==="mind") p.sp = Math.max(0, p.sp); p.shield = egoShieldMax(p.f.ego); });
+    party.forEach(p=>{ p.sp = clamp(Math.round((p.f.mp/Math.max(1,p.f.mpMax) - 0.5)*30), -15, 15); if(p.sp2==="mind") p.sp = Math.max(0, p.sp); p.spStart = p.sp; p.shield = egoShieldMax(p.f.ego); });
     foe.burn = 0; foe.bleed = 0; foe.rupture = 0; foe.tremor = 0; foe.daze = 0; foe.brand = false; let tick = "";
     foe.shieldMax=!AB&&!DF&&!q.boss&&g0<=7&&Math.random()<(g0<=3?0.45:g0<=5?0.35:0.25)?Math.min(24,8+2*(7-g0)):0;foe.shield=foe.shieldMax;
     if(foe.shieldMax){const d=foe.skills.find(c=>c.def);if(d)foe.barrierSkill={...d,n:"보호막 전개",barrier:true};}
@@ -5783,6 +5790,29 @@ function mgCombat(ctx){
     if(AB && AB.fx==="erl"){ const ch = party.slice().sort((x,y)=>total(x.f)-total(y.f))[0]; foe.erlChild = ch; AXN.push(`<span style="color:#b9c4d8">마왕이 ${esc(jo(ch.name,"을"))} 아이로 삼아 부른다 — 세 번째 턴이 끝날 때까지 쓰러뜨리지 못하면 품에 안고 데려간다</span>`); }   // E.G.O. 특수 공격이 새기는 상태(화상·출혈·파열)
     const SPN = id => { const x = EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor).find(e=>e.id===id); return x ? x.n : id; };
     const support = ()=> party.filter((p,i)=>i!==act && p.hp>0);
+    let swapped = false, cover = null;
+    function teamAction(button){
+      if(phase!=="skill") return;
+      const member = support().find(p=>String(p.f.id)===(button.teamSwap ?? button.teamCover));
+      if(!member) return;
+      if(button.teamSwap!==undefined && !swapped){
+        swapped = true;
+        act = party.indexOf(member);
+        suppressPlan = null;
+        tick = `${esc(member.name)} · 선봉 교대`;
+      }else if(button.teamCover!==undefined && !cover && support().length>=2){
+        cover = {from:member,to:party[act],used:false};
+        tick = `${esc(member.name)} · ${esc(party[act].name)} 엄호 준비`;
+      }else return;
+      skillMenu();
+    }
+    function coverDamage(member, damage, notes){
+      if(!cover || cover.used || cover.to!==member || cover.from.hp<=0 || damage<=0) return damage;
+      cover.used = true;
+      const reduced = Math.round(damage*0.7);
+      notes.push(`${esc(cover.from.name)}의 엄호 — 직접 피해 ${damage} → ${reduced}`);
+      return reduced;
+    }
     // 생존 동료의 무기별 지원. 첫 실제 합에서만 탄환 및 첫 합 지원을 소모한다.
     const supportKind=p=>weaponTypeOf(wGear(p.f))||"none";
     const supportGun=p=>supportKind(p)==="gun"&&(!p.f.ego||p.f.ego.type==="armor")?ammoMagazine(p.f.gear.weapon):null;
@@ -6062,6 +6092,13 @@ function mgCombat(ctx){
       m.ctrl.innerHTML = `<div class="pk-moves">${deck.hand.map(card=>{const i=card.sk===0?0:card.sk===6?1:2;return '<div style="display:flex;flex-direction:column;gap:4px">'+(card.sk===1?'<button data-sk="1" data-card="'+card.id+'"><b>'+(AB?'방어(가드)':'가드')+'</b><small>보호막 +8 (최대 30) · 정신력 +3 · 합 없음</small></button>':attackButton(ak[i],i,card))+'<button data-hold="'+card.id+'" '+(card.id===deck.held?'disabled':'')+'>'+(deck.carry?.id===card.id?'보관 취소':'다음 턴 보관')+'</button></div>';}).join("")}
                 <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def)||!techReady(me)||(tk.T.hana&&me.sp<-33)?"disabled":""}><b>특수 기술 · ${esc(tk.T.n)}</b><small>${!techReady(me)?`<span style="color:#ffb35a">재사용까지 ${techWait(me)}턴</span><br>`:tk.T.hana&&me.sp<-33?`<span style="color:#ffb35a">정신력 소모 불가</span><br>`:""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · 피해 기준 ${techniqueShown} · ${esc(tk.T.d)} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(tsk).toFixed(1)} · 정신력 -${techCost(tk.T)} · ${techCD(me)?`사용 간격 ${techCD(me)}턴`:"재사용 제한 없음"}</small></button></div>`;
 
+      if(sup.length || cover){
+        m.ctrl.insertAdjacentHTML("beforeend", `<div class="fg-seg" style="flex:1 1 100%">
+          ${swapped?"":sup.map(p=>`<button data-team-swap="${p.f.id}">${esc(p.name)}와 교대</button>`).join("")}
+          ${!cover && sup.length>=2 ? sup.map(p=>`<button data-team-cover="${p.f.id}">${esc(p.name)}의 엄호 · 다음 직접 피해 -30%</button>`).join("") : ""}
+          ${cover ? `<span class="muted">${cover.used?"엄호 사용 완료":cover.from.hp<=0?"엄호 인원 전투 불능":`${esc(cover.to.name)} 엄호 대기`}</span>` : ""}
+        </div>`);
+      }
       { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"),tech=mv&&mv.querySelector(".pk-tech"); if(tech)tech.insertAdjacentHTML("beforebegin",sb); } }
       { const ob = BOSS && BOSS.offerBtn(); if(ob){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", ob); } } if(BOSS) bossFx.hud(BOSS.hud(), BOSS.B);
       m.ctrl.insertAdjacentHTML("beforeend", `<div style="flex:1 1 100%;display:flex;gap:5px;flex-wrap:wrap"><span class="muted">투지 ${me.resolve}/100 · 추가 행동(턴당 1회)</span>${[["breath","심호흡",30],["strike","혼신의 일격",50],["last","사즉생",100]].map(([id,n,cost])=>`<button data-resolve="${id}" ${me.resolve<cost||me.resolveTurn===turn||me.resolveBoost?"disabled":""}>${n} (${cost})</button>`).join("")}</div>${ammoGun?`<div style="flex:1 1 100%">${ammunition}${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}">재장전 · ${a.name} (${ammoStock(ammoGun,a.id)}발)</button>`).join("")}</div>`:""}`);
@@ -6250,6 +6287,7 @@ function mgCombat(ctx){
           if(reduced<dmg) tNote.push(`약공 합 패배 — 직접 공격 피해 ${dmg} → ${reduced}`);
           dmg = reduced;
         }
+        if(!fk.def) dmg = coverDamage(me,dmg,tNote);
         const landed=!evadeOK&&!egoEvaded;if(landed){const factor=(sk.def&&!guarding?(T&&T.id==="brace"?.25:T&&T.id==="counter"?1:.5):1)*(1-redHP(me.f));if(foe.keywordPower){const k=fk.heavy==="status"&&fk.stk&&fk.stk!=="rupture"?fk.stk:foe.keywordId;const n=abPenalty(AB,foe.keywordPower);const before=me[k]||0;keywordAdd(me,k,n);hvNote.push(`${KEYWORD_NAMES[k]} +${me[k]-before} (보유 ${me[k]})`);}dmg+=keywordImpact(me,keywordSnapshot(me),factor,hvNote);}dmg=keywordShield(me,armorFinalDamage(me.f,abPenalty(AB,dmg)),egoNote);
         if(dmg > 0 && relicFx(me.f,"kavacha") && !me.kavUsed){ me.kavUsed = true; dmg = 0; rNote.push("카바차 — 금 비늘이 칼날을 그대로 튕겨 냈다"); }
         if(dmg >= me.hp && me.hp > 0 && relicFx(me.f,"scarab") && me.f.scarabDay !== S.day){ me.f.scarabDay = S.day; dmg = Math.max(0, me.hp - 1); me.scarabNow = true; }
@@ -6347,6 +6385,11 @@ function mgCombat(ctx){
       if(party.every(p=>p.hp<=0)) return finish("lost");
       if(party[act].hp<=0) act = party.findIndex(p=>p.hp>0);
       turn++; { const fs = foeShinStep(); if(fs) tick = [tick, fs].filter(Boolean).join(" · "); } { const sg = foeSignSpawn(); if(sg) tick = [tick, sg].filter(Boolean).join("<br>"); } pickFoeSkill(); skillMenu(); }
+    const battleResults = () => party.map(p=>({
+      f:p.f, hp:Math.floor(100*p.hp/p.max), sp:p.sp, spStart:p.spStart,
+      frontline:!!p.frontline, fought:p.fought, shinUsed:!!p.shinUsed, mangPeak:p.mangPeak||0,
+      death:p.death||null, wound:p.hp<=0?3:woundOf(p.hp,p.max)
+    }));
     function finish(why){
       if(done) return; done = true;
       const rest = party.reduce((s,p)=>s+p.hp,0)/party.reduce((s,p)=>s+p.max,0), prog = 1 - foe.hp/foe.max;
@@ -6357,23 +6400,25 @@ function mgCombat(ctx){
       else if(why==="fuse"){ score = 0.1; text = "성냥불이 터졌다. 소녀는 재가 되어 흩어졌다. 의뢰 실패"; }
       else { score = 0.4*prog; text = "목표를 이루지 못했다 — 의뢰 실패"; }
       if(win && score < CLEAN_WIN && !AB) text += " · 상처가 깊지만 의뢰 성공은 확정됐다";
-      const res = {win, score: clamp(score,0,1), outcome, battle: party.map(p=>({f:p.f, hp:Math.round(100*p.hp/p.max), sp:p.sp, fought: p.fought, shinUsed: !!p.shinUsed, mangPeak: p.mangPeak||0, death: p.death || null, wound: p.hp<=0 ? 3 : woundOf(p.hp,p.max)}))};
+      const res = {win, score: clamp(score,0,1), outcome, battle: battleResults()};
       setTimeout(()=>{ mgResult(m, res.score, text, res.win).then(()=>resolve(res)); }, outcome ? 1500 : 600);
     }
     m.ctrl.onchange=e=>{if(phase!=="skill")return;const me=party[act];if(e.target.dataset.basicChoice){me.basicChoice=+e.target.value;skillMenu();}else if(e.target.dataset.guardMode&&guardModes[e.target.value]){me.guardMode=e.target.value;skillMenu();}};
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
 
-      if(b.dataset.boss && BOSS){ if(phase==="skill"){ const t2 = b.dataset.boss==="yes" ? BOSS.accept() : BOSS.refuse(); tick = [t2].concat(tick ? [tick] : []).join("<br>"); skillMenu(); } }
+      if(b.disabled) return;
+      if(b.dataset.teamSwap!==undefined || b.dataset.teamCover!==undefined) teamAction(b.dataset);
+      else if(b.dataset.boss && BOSS){ if(phase==="skill"){ const t2 = b.dataset.boss==="yes" ? BOSS.accept() : BOSS.refuse(); tick = [t2].concat(tick ? [tick] : []).join("<br>"); skillMenu(); } }
       else if(b.dataset.hold!==undefined&&phase==="skill"){const d=handOf(party[act]),c=d.hand.find(c=>c.id===Number(b.dataset.hold));if(c&&c.id!==d.held){d.carry=d.carry?.id===c.id?null:c;skillMenu();}}
       else if(b.dataset.resolve){if(phase==="skill")resolveAction(b.dataset.resolve);}
       else if(b.dataset.sk==="4"){ if(phase==="skill") shinAct(); }
-      else if(b.dataset.sk!==undefined && phase==="skill"){ const si=+b.dataset.sk,me=party[act],d=handOf(me);if(isBasic(si)||si===1){const i=d.hand.findIndex(c=>c.id===Number(b.dataset.card)&&c.sk===si);if(i<0)return;const [c]=d.hand.splice(i,1);if(d.carry?.id===c.id)d.carry=null;d.discard.push(c);}me.fought = true; resolveClash(si,b.dataset.ammoType); }
+      else if(b.dataset.sk!==undefined && phase==="skill"){ const si=+b.dataset.sk,me=party[act],d=handOf(me);if(isBasic(si)||si===1){const i=d.hand.findIndex(c=>c.id===Number(b.dataset.card)&&c.sk===si);if(i<0)return;const [c]=d.hand.splice(i,1);if(d.carry?.id===c.id)d.carry=null;d.discard.push(c);}me.frontline = me.fought = true; resolveClash(si,b.dataset.ammoType); }
       else if(b.dataset.fin && phase==="finish"){ outcome = b.dataset.fin; m.ctrl.innerHTML = ""; finish(); }
       else if(b.dataset.lamp && phase==="lamp"){ const mk = foe.lampPick;
         if(b.dataset.lamp==="out"){ party.splice(party.indexOf(mk), 1); act = 0; tick = `${esc(jo(mk.name,"을"))} 어둠 밖으로 빼냈다. 남은 이들이 싸운다.`; }
         else { foe.lampMark = mk; tick = `${esc(jo(mk.name,"을"))} 그대로 두었다 — 3턴 안에 쓰러뜨려야 한다.`; }
         skillMenu(); } };
-    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, outcome:null, battle: party.map(p=>({f:p.f, hp:Math.round(100*p.hp/p.max), sp:p.sp, fought:p.fought, wound: p.hp<=0 ? 3 : woundOf(p.hp,p.max)}))}); };
+    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, outcome:null, battle: battleResults()}); };
     /* ---- 연출: 포켓몬식 구도(적은 오른쪽 위 먼 발판, 우리는 왼쪽 아래 가까운 발판) ---- */
     const W = 720, H = 380;
     const POS = { foe:{x:528, gy:182, h:116, face:-1, z:0.62}, me:{x:178, gy:352, h:176, face:1, z:0.3} };
@@ -8929,7 +8974,9 @@ function mgEscort(ctx){
       const sc = win ? clamp(0.5 + G.safe/200, 0, 1) : 0.15;
       setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, sc, win ? (G.safe>=70 ? "무사히 데려다주었다" : "다치게 했지만 데려다주었다") : "의뢰인을 지키지 못했다").then(()=>{
         const last = G.fights[G.fights.length-1];
-        if(last){ G.fights.forEach(fr=>fr.battle.forEach(b=>{ const o = last.battle.find(x=>x.f===b.f); if(o && b.wound > o.wound) o.wound = b.wound; if(o && b.fought) o.fought = true; })); }
+        if(last){ G.fights.forEach(fr=>fr.battle.forEach(b=>{ const o = last.battle.find(x=>x.f===b.f); if(o && b.wound > o.wound) o.wound = b.wound; if(o && b.fought) o.fought = true; if(o && b.frontline) o.frontline = true;
+          if(o && Number.isFinite(b.hp)) o.hp = Math.min(o.hp,b.hp);
+          if(o && b.spStart-b.sp > o.spStart-o.sp){ o.spStart=b.spStart; o.sp=b.sp; } })); }
         resolve({win, score: sc, combat: last || null}); }); }, 700); };
     async function ambush(why){
       G.log.push(why); ui();
@@ -9075,19 +9122,25 @@ async function dispatch(qid, fids, modeArg){
     lines.push(abnoR.retreat ? "현장에서 철수했다. 의뢰 보수는 없다." : abnoR.how==="ctrl" ? "환상체를 알로 잠재웠다(통제)" : abnoR.how==="sup" ? (A && A.kill ? "죄종을 사살했다" : "전투 끝에 환상체를 알로 되돌렸다(제압)") : "환상체를 처리하지 못했다"); }
   team.forEach(f=>{
     if(abnoR?.retreat){ f._w=0; return; }
-    const b = combat?.battle?.find(x=>x.f===f), w = b && b.fought ? b.wound : mode==="play" || combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
+    const b = combat?.battle?.find(x=>x.f===f), realBattle = Number.isFinite(b?.hp);
+    const w = b && (b.fought || realBattle) ? b.wound : mode==="play" || combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
-    const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
+    const march = marching.includes(f);
     // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 1.1배
-    const pct = damagePercent(f,q,success,w,mental,march,!!(abnoR && abnoR.doom));
+    let pct = damagePercent(f,q,success,w,mental,march,!!(abnoR && abnoR.doom));
+    // 직접 전투의 부상 정산은 실제로 입은 피해를 넘기지 않는다. 강행군 비용은 별도다.
+    if(realBattle && !march) pct = Math.min(pct,Math.max(0,100-b.hp));
+    if(combat?.battle?.some(x=>Number.isFinite(x.hp)) && !b && !march) pct = 0;
     const main = armorFinalDamage(f,Math.floor((mental ? f.mpMax : f.hpMax) * pct/100));
-    const spPct = b && b.fought && b.sp < 0 ? abPenalty(q.abnoFoe|| (q.kind==='환상체'?abnoOf(q):null),Math.floor(-b.sp*0.4)) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
+    const spDrop = realBattle ? Math.max(0,(b.spStart ?? b.sp)-b.sp) : 0;
+    const spiritLoss = realBattle ? (b.frontline ? Math.min(Math.max(0,-b.sp),spDrop) : spDrop) : b?.fought ? Math.max(0,-b.sp) : 0;
+    const spPct = abPenalty(q.abnoFoe|| (q.kind==='환상체'?abnoOf(q):null),Math.floor(spiritLoss*0.4));     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
     let dH = mental ? 0 : main, dM = mental ? main : 0;
     if(spPct) dM += armorFinalDamage(f,Math.floor(f.mpMax * spPct/100));
     const bl = f.ab && f.ab.bless && S.day <= f.ab.bless.until; if(bl){ dH = Math.floor(dH/2); dM = Math.floor(dM/2); }
     if(dH > 0 && f.hp <= f.hpMax*0.2 && accFx(f,"bandage")){ dH = 0; f.gear.acc = null; lines.push(`<span style="color:#9fe8b0">${esc(f.name)}: 간이 보존 붕대가 상처를 붙잡았다 — 체력이 깎이지 않았다(붕대는 삭아 없어졌다)</span>`); }
     f.hp = clamp(f.hp-dH, 0, f.hpMax); f.mp = clamp(f.mp-dM, 0, f.mpMax); f._w = w;
-    lines.push(`${esc(f.name)}: ${march ? `<b style="color:#e8b07a">강행군</b> — ` : ""}${W_NAME[w]} — ${mental?"정신력":"체력"} -${pct}%(${main})${spPct?` · 정신력 -${spPct}%`:""} → 체력 -${dH}, 정신력 -${dM}${bl ? " (기사의 축복 — 절반)" : ""}${b && b.fought ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
+    lines.push(`${esc(f.name)}: ${march ? `<b style="color:#e8b07a">강행군</b> — ` : ""}${W_NAME[w]} — ${mental?"정신력":"체력"} -${pct}%(${main})${spPct?` · 정신력 -${spPct}%`:""} → 체력 -${dH}, 정신력 -${dM}${bl ? " (기사의 축복 — 절반)" : ""}${b && (realBattle ? b.frontline : b.fought) ? " (직접 싸움)" : combat ? " (거듦)" : ""}`);
   });
   team.forEach(f=>{ const k = weaponTypeOf(wGear(f)) || "none"; f.wuse = f.wuse || {}; f.wuse[k] = (f.wuse[k]||0) + 1; });
   // 신(心) · 망(望)을 쓴 대가: 정신력. 신을 쓴 횟수가 쌓이면 무기에 망을 감을 수 있다
@@ -17561,6 +17614,7 @@ function updateCard(qid){
       : gamesFor(q).some(g=>["str","agi","escort","search","ruins","abno"].includes(g)) ? `직접 수행 <b style="color:var(--green)">목표 달성 시 성공</b> <span class="muted">(전투·추격·호위 등 목표를 놓치면 실패)</span>`
       : `직접 수행 성공률 <b style="color:var(--green)">${DIRECT_PR}%</b> <span class="muted">(점수는 보상·평가에 반영)</span>`)}
     ${q.personalNom?`<div style="color:${personalNomMatch(q,team)?"#9fe8b0":"#e7a07c"}">${esc(q.personalNom.name)} ${personalNomMatch(q,team)?"지명 출동 +25%":"미출동 -15%"} · 예상 보수 ${won(personalNomPay(q,personalNomMatch(q,team),auto&&gamesFor(q).length?0.8:1))}</div>`:""}
+    ${!auto && gamesFor(q).some(g=>["str","escort","abno","ruins"].includes(g))?'<div class="muted">직접 전투에서는 실제로 입은 피해에 따라 정산한다. 아래 수치는 부상 시 최대 범위다.</div>':""}
     <div style="margin-top:5px">${m.profiles.map(p=>`<div>${esc(p.name)}${p.status?` (${p.status})`:""}: 예상 ${m.stat} 손실 <b>성공 ${p.success}</b> / 실패 ${p.fail[0]}~${p.fail[1]}</div>`).join("")}</div>
     ${spec.length?`<div class="muted">전문 분야: ${spec.join(" · ")} (팀 합산 최대 +9%p)</div>`:""}
     <div class="muted">실제 부상 단계·현장에서 겪는 일·전투 중 정신력 손실에 따라 추가 손실이 발생할 수 있다.</div>`;
