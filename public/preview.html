@@ -21417,10 +21417,8 @@ function drawRumors(now, L){
 }
 
 /* ================= 연출 테스트 패널 (#fxtest) ================= */
-/* 미리보기 사이트에서만 보이는 "새 시스템 미리보기" 버튼 — 본 사이트(workers.dev 등)에서는 숨긴다 */
-const IS_PROD = !/\/preview\.html$/i.test(location.pathname) && (/workers\.dev$/i.test(location.hostname) || /problem-?solver/i.test(location.hostname));
 function previewButton(){
-  if(IS_PROD || document.getElementById("pvbtn")) return;
+  if(document.getElementById("pvbtn")) return;
   const b = document.createElement("button"); b.id = "pvbtn"; b.className = "pvbtn"; b.textContent = location.hash==="#fxtest" ? "미리보기 패널 접기" : "새 시스템 미리보기";
   b.onclick = ()=>{ if(location.hash!=="#fxtest"){ location.hash = "#fxtest"; location.reload(); return; }
     const p = document.querySelector(".fxtest"); if(p){ p.classList.toggle("hide"); b.textContent = p.classList.contains("hide") ? "미리보기 패널 펼치기" : "미리보기 패널 접기"; } };
