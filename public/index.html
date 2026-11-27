@@ -1660,7 +1660,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.4.6";
 const CHANGELOG = [
-  ["v.a3.1.4.6", ["2급 이상 해결사마다 2주에 한 번 5% 확률로 신(心) 깨우침 사건 발생. 정신력 제한 폐지, 기존 발현 연출 유지.", "신을 사용한 횟수가 5회 쌓일 때마다 10% 확률로 망(望) 한 겹 해금. 관리에서 무기에 감을 수 있으며 최대 5겹 유지."]],
+  ["v.a3.1.4.6", ["특정 등급 이상 해결사마다 2주에 한 번 5% 확률로 신(心) 깨우침 사건 발생. 기존 발현 연출 유지.", "신을 사용한 횟수가 N회 쌓일 때마다 10% 확률로 망(望) 한 겹 해금. 관리에서 무기에 감을 수 있으며 최대 5겹 유지."]],
   ["v.a3.1.4.2", ["환상체 도감의 네 번째 조우 해금에 배회 징후와 실제 전투 대응법 추가. 기존 브라우저별 조우·통제·제압·기프트 해금 유지."]],
   ["v.a3.1.4.1", ["교대형 환상체의 실제 전열 교대와 카드 판정 연결. 빨간 구두 빙의 전투, 실밥 터진 테디의 원종 반전, 고요한 오케스트라 4악장과 피날레 구현."]],
   ["v.a3.1.4", ["죄종 제외 현재 등록된 환상체 56종: 배회 징후는 실제 행동·담당자·직전 행동과 상태로 판정. 별도 징후 대응 버튼 제거.", "전투 징후는 실제 공격·가드·기술 및 합·피해·담당자·상태를 판정. 다음 턴 징후 간접 예고 및 필요한 기본 카드 제한 보장. 기존 전투 덱과 관리·폭주·보상 규칙 유지."]],
@@ -9321,7 +9321,7 @@ async function awakenShin(f, ctx={}){ ac("shin");
   HeartFx.clear();
   S.records.push({day:S.day, name:f.name, what:"신(心) 발현", note:`${shinLabel(f.shin)} — 소망: ${d.wish}`}); addLog(`${f.name}: ${jo(shinLabel(f.shin),"을")} 깨우쳤다 — “${d.wish}”`);
   save(); render();
-  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 마음을 힘으로 바꾸는 법을 깨우쳤다.<br><b style="color:#ffd27a">${esc(shinLabel(f.shin))}</b><br>“${esc(d.wish)}”<br><span class="muted">정신력이 60%까지 돌아왔다. 이후 기본 피해 +5, 합 기본 위력 +1. 받는 정신력 피해 -15%. 신을 5회 사용할 때마다 10% 확률로 망(望)을 한 겹 익힐 수 있다.</span>`, [{t:"확인",primary:true}]);
+  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 마음을 힘으로 바꾸는 법을 깨우쳤다.<br><b style="color:#ffd27a">${esc(shinLabel(f.shin))}</b><br>“${esc(d.wish)}”<br><span class="muted">정신력이 60%까지 돌아왔다. 이후 기본 피해 +5, 합 기본 위력 +1. 받는 정신력 피해 -15%. 신을 사용하다 보면 일정 확률로 망(望)을 한 겹 익힐 수 있다.</span>`, [{t:"확인",primary:true}]);
 }
 // 14일차 정산을 마친 뒤, 2급 이상 소속 해결사 각각 한 번만 판정한다.
 const shinReady = f => !!(S && f && !f.shin && f.grade <= 2 && f.hp > 0);
@@ -10797,7 +10797,7 @@ async function openManage(){
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
       ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">${esc(shinLabel(f.shin.name ? f.shin : Object.assign({name:givenName(f.name)}, f.shin)))} — “${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">· 돌아본 죄: ${esc(f.shin.sin)}</span>
-        <br><span style="font-weight:400;font-size:12px">깨우침: 기본 피해 +${shinAwakeDamage(f)} · 합 기본 위력 +${shinAwakeClash(f)} (상시)<br>신: 성공률 +${SHIN_RATE}% · 두를 때 합 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 고정 피해 +${f.mang} · 턴 종료 정신력 -${3*f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? ` · 다음 습득 판정까지 ${MANG_STEP-((f.shinUses||0)%MANG_STEP)}회 (10%)${mangPending(f)?` · 감을 수 있는 망 ${mangPending(f)}겹`:""}` : " · 망을 모두 감았다"}</span>
+        <br><span style="font-weight:400;font-size:12px">깨우침: 기본 피해 +${shinAwakeDamage(f)} · 합 기본 위력 +${shinAwakeClash(f)} (상시)<br>신: 성공률 +${SHIN_RATE}% · 두를 때 합 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 고정 피해 +${f.mang} · 턴 종료 정신력 -${3*f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? (mangPending(f)?` · 감을 수 있는 망 ${mangPending(f)}겹`:"") : " · 망을 모두 감았다"}</span>
         <br><button data-shintog="1" style="padding:2px 8px">${shinOn(f) ? "신 끄기" : "신 켜기"}</button>${(f.mang||0) ? ` <button data-mangtog="1" style="padding:2px 8px">${f.mangOff ? "망 켜기" : "망 끄기"}</button>` : ""}${mangReady(f) ? ` <button class="primary" data-mangwind="1" style="padding:2px 8px">무기에 망(望)을 감는다</button>` : ""}</b>`:""}
       <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</b>
       <span>성장</span><b class="muted">${(growOf(f), ATTRS.map(a=>`${ATTR_NAME[a]} ${f.grade>1&&growDone(f,a)>=GROW_PER ? "✓" : `${Math.min(f.gc[a]||0, growNeed(f))}/${growNeed(f)}${f.grade>1 && growDone(f,a) ? ` (${growDone(f,a)}/${GROW_PER})` : ""}`}`).join(" · "))}</b>
