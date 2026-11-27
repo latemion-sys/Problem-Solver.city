@@ -1667,6 +1667,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · 고등급 승급", ["3급부터 해결사와 사무소 심사에 고위험 의뢰 실적을 추가. 사무소 실적은 3인 이상이 출동한 의뢰로 쌓인다."]],
   ["미리보기 · 방문객 대화", ["츠바이·시·리우·세븐·디에치와 검지의 대화를 국내 설정 자료를 참고해 다시 작성."]],
   ["미리보기 · 사무소의 손님", ["협회·주변 사무소·콩콩이파·검지 사건을 대화와 선택으로 진행. 기존 미완료 사건 의뢰는 대화로 전환."]],
   ["미리보기 · 협회와 검지", ["츠바이·시·리우·세븐·디에치 협회 사건, 주변 사무소 계약, 검지 지령 추가."]],
@@ -4517,6 +4518,32 @@ const EARLY_DL_DAYS = 14, EARLY_DL_MAX = 7;
    사무소: 6급까지는 2주, 5·4급은 3주에 한 번꼴. 3급 이상은 협회 승급 심사 의뢰를 EXAM_NEED_OFFICE건 해내야 심사를 받는다(간격 3주).
    해결사: 6급까지는 매주, 5·4급은 3주에 한 번꼴. 3급 이상은 승급 심사 의뢰를 EXAM_NEED_FIXER건 해낸 상태에서 기존 조건을 채워야 한다. */
 const OFFICE_GAP = t => t >= 6 ? 14 : 21, FIXER_GAP = t => t >= 6 ? 7 : 21, EXAM_NEED_OFFICE = 3, EXAM_NEED_FIXER = 2;
+const PROMOTION_MERIT = {
+  3:{threat:"도시 악몽 이상", fixer:3, office:4},
+  2:{threat:"도시 악몽 이상", fixer:5, office:6},
+  1:{threat:"도시의 별", fixer:7, office:9}
+};
+function promotionMerit(holder, target, type){
+  const rule = PROMOTION_MERIT[target];
+  if(!rule) return null;
+  const need = rule[type], count = clamp(Math.floor(Number(holder.promoMerit)||0), 0, need);
+  const prefix = type==="office" ? "3인 이상 출동 · " : "본인 출동 · ";
+  return {need, count, label:`${prefix}${rule.threat} ${count}/${need}건`};
+}
+function recordPromotionMerit(q, team, lines){
+  if(q.promoExam || q.kind==="특색 심사") return;
+  const threat = threatOf(q);
+  if(threat!=="도시의 별" && threat!=="도시 악몽") return;
+  const record = (holder, target, type, name) => {
+    if(target===1 && threat!=="도시의 별") return;
+    const merit = promotionMerit(holder, target, type);
+    if(!merit || merit.count>=merit.need) return;
+    holder.promoMerit = merit.count + 1;
+    lines.push(`${esc(name)} ${gName(target)} 승급 실적 ${holder.promoMerit}/${merit.need}건`);
+  };
+  if(team.length>=3) record(S, S.officeGrade-1, "office", S.officeName);
+  team.forEach(f=>record(f, f.grade-1, "fixer", f.name));
+}
 const examWanted = () => (S.officeGrade - 1 <= 3 && S.officeGrade > 1 && (S.examOk||0) < EXAM_NEED_OFFICE) || S.fixers.some(f=>f.grade >= 2 && f.grade - 1 <= 3 && (f.examOk||0) < EXAM_NEED_FIXER);
 // 승급 심사는 환상체·죄종·뒤틀림 관련 의뢰와 분리한다.
 function promoExamExcluded(q){
@@ -9302,6 +9329,7 @@ async function dispatch(qid, fids, modeArg){
     if(e1 && (!e0 || e0.n!==e1.n)) lines.push(`<span style="color:#c9b0ff">${esc(f.name)}: 뒤틀림 경험 — <b>${e1.n}</b>(처치 ${f.dk}) · 이제 뒤틀림을 상대로 기본 위력 +${e1.base}${e1.cp ? `, 코인 위력 +${e1.cp}` : ""}</span>`); });
   idxOnDispatch(q, team, success); synAfter(q, team, success, lines); distAfter(q, team, success, lines); assocAfter(q, team, success, lines); assocObsTick(q, team, success); prescriptAfter(q, success, lines); arcAfter(q, success, lines); arcClueTick(q, team, success, lines); storyPost(q, success); hanaStarAfter(q, success, lines); bossAfter(q, success, lines); if(q.boss) bsAfter(q, success, team); officeStoryModule.after(q, team, success, lines);
   if(success){
+    recordPromotionMerit(q, team, lines);
     if(q.ruins) ruinsReward(q,lines);
     if(q.scarJob) S.scarJobDone = S.day;
     S.money += pay; S.todayIncome += pay;
@@ -11097,10 +11125,26 @@ function officeReviewStatus(w, officeGrade, fixers){
   if(!n || (w.sc||0)/n<0.5)why.push("이번 주 평균 수행 점수 0.50 필요");
   return {ok:why.length===0,way:why.length===0?"roster":"hold",target,roster,n,completed:ok,why:why[0]||"소속 해결사 급수·실적 기준 달성"};
 }
+function promotionReview(holder, target, type){
+  const office = type==="office";
+  const gap = office ? OFFICE_GAP(target) : FIXER_GAP(target);
+  const last = office ? holder.officePromoDay : holder.promoDay;
+  const gapLeft = gap - (S.day - (last||0));
+  const merit = promotionMerit(holder, target, type);
+  const exams = holder.examOk||0, examNeed = office ? EXAM_NEED_OFFICE : EXAM_NEED_FIXER;
+  const examLabel = merit ? `승급 심사 의뢰 ${exams}/${examNeed}건` : "";
+  const hold = [];
+  if(merit && exams<examNeed) hold.push(examLabel);
+  if(merit && merit.count<merit.need) hold.push(merit.label);
+  if(gapLeft>0) hold.push(`지난 승급 뒤 ${gap/7}주가 지나야 한다(${Math.ceil(gapLeft/7)}주 남음)`);
+  return {merit, examLabel, hold};
+}
 function reviewProgressHtml(){
   const W=S.wk||{};
   const r=officeReviewStatus(W,S.officeGrade,S.fixers), fx=S.fixers, repGrade=leader()?.grade ?? 9;
   const {n, completed:ok}=r;
+  const officeReview=S.officeGrade>1 ? promotionReview(S, r.target, "office") : null;
+  const officeReady=r.ok && !officeReview?.hold.length;
   const rate=n ? (ok/n*100).toFixed(1)+"%" : "—", score=n ? ((W.sc||0)/n).toFixed(2) : "—";
   return `<h4 style="margin:14px 0 6px">이번 주 등급 심사 <span class="muted" style="font-size:12px;font-weight:400">(${S.day}일차 · 다음 심사까지 ${7-((S.day-1)%7)}일)</span></h4>
   <div class="kv"><span>사무소 해결 의뢰</span><b>${ok}/${OFFICE_DIRECT_NEED}건 · 5건이면 의뢰 실적 조건 충족</b>
@@ -11108,10 +11152,14 @@ function reviewProgressHtml(){
   <span>해결 수 미달 시</span><b>${S.officeGrade<=1?'최고 급수 사무소 · 추가 승급 없음':`${gName(r.target)} 이상 해결사 ${r.roster}/${OFFICE_ROSTER_NEED}명 · 성공 ${ok}/${OFFICE_FALLBACK_OK}건`}</b>
   <span>보조 실적</span><b>성공률 ${rate}(70% 이상) · 수행 점수 ${score}(0.50 이상)</b>
   ${S.officeGrade>1 ? `<span>승급 간격</span><b>${(()=>{ const tg=S.officeGrade-1, left=OFFICE_GAP(tg)-(S.day-(S.officePromoDay||0)); return `${gName(tg)} 사무소 승급은 지난 승급 뒤 ${OFFICE_GAP(tg)/7}주 · ${left>0 ? `${Math.ceil(left/7)}주 남음` : "충족"}`; })()}</b>` : ""}
-  ${S.officeGrade>1 && S.officeGrade-1<=3 ? `<span>승급 심사 의뢰</span><b>${S.examOk||0}/${EXAM_NEED_OFFICE}건</b>` : ""}
-  <span>사무소 판정</span><b style="color:${r.ok?'#9fe8b0':'#e7a07c'}">${r.ok ? (r.way==='count'?'의뢰 해결 수 충족':'인원 급수·보조 실적 충족') : r.why}</b></div>
+  ${officeReview?.merit ? `<span>하나 협회</span><b>${officeReview.examLabel}</b>
+  <span>${gName(r.target)} 승급 실적</span><b>${officeReview.merit.label}</b>` : ""}
+  <span>사무소 판정</span><b style="color:${officeReady?'#9fe8b0':'#e7a07c'}">${officeReady ? "현재 승급 조건 충족" : esc(r.ok ? officeReview.hold.join(" · ") : r.why)}</b></div>
   <div style="font-size:12px;line-height:1.8;margin:8px 0">${fx.map(f=>{const w=f.wk||{n:0,ok:0,hi:0,sc:0}, t=reviewOf(w,f.grade);
-    return `<div>${esc(f.name)} (${gName(f.grade)}): ${f.grade<=1?`의뢰 성공 ${t.completed}건 · ${f.grade===0?'특색':'1급'} (일반 승급 심사 대상 아님)`:`성공 ${t.completed}/${REVIEW_NEED(f.grade)}건 · 상위 실적 ${t.hi}/${Math.ceil(REVIEW_NEED(f.grade)/2)}건 · 점수 ${w.n?((w.sc||0)/w.n).toFixed(2):'—'} · ${t.ok?'승급 준비 완료':esc(t.why[0]||'누적 승급 실적 없음')}`}</div>`;}).join("")}</div>`;
+    const p=f.grade>1 ? promotionReview(f, f.grade-1, "fixer") : null;
+    const status=t.why[0] || p?.hold[0];
+    return `<div>${esc(f.name)} (${gName(f.grade)}): ${f.grade<=1?`의뢰 성공 ${t.completed}건 · ${f.grade===0?'특색':'1급'} (일반 승급 심사 대상 아님)`:`성공 ${t.completed}/${REVIEW_NEED(f.grade)}건 · 상위 실적 ${t.hi}/${Math.ceil(REVIEW_NEED(f.grade)/2)}건 · 점수 ${w.n?((w.sc||0)/w.n).toFixed(2):'—'} · ${status ? esc(status) : '승급 준비 완료'}`}
+      ${p?.merit ? `<br><span class="muted">${gName(f.grade-1)} 승급 · ${p.examLabel} · ${p.merit.label}</span>` : ""}</div>`;}).join("")}</div>`;
 }
 /* 사무소가 5급이 되면 더 큰 건물로 옮겨야 한다(100만 안). 빚이 남아 있으면 흉터 수금이 먼저라, 빚을 다 갚은 뒤 첫 심사 때 옮긴다. 모자라면 있는 만큼 내고 나머지는 정산 때마다 떼 간다.
    옮긴 뒤로는 14일마다 월세와 뒷골목의 밤 처리 비용으로 그때 가진 돈의 20%가 빠져나간다(소수점 버림). */
@@ -11160,24 +11208,20 @@ function officeFees(ended){ S.money=Math.max(0,Number(S.money)||0); let h = "";
 async function review(){
   const lines = [], wait = []; ac("review"); if(S.wk && S.wk.n >= 10 && S.wk.ok===S.wk.n) ac("cleanWeek");
   S.fixers.forEach(f=>{
-    if(f.grade>=2){ const R = reviewOf(f.wk, f.grade), tg = f.grade - 1, gapLeft = FIXER_GAP(tg) - (S.day - (f.promoDay||0)), examLack = tg <= 3 && (f.examOk||0) < EXAM_NEED_FIXER;
-      if(R.ok && gapLeft > 0) R.why.unshift(`지난 승급 뒤 ${FIXER_GAP(tg)/7}주가 지나야 한다(${Math.ceil(gapLeft/7)}주 남음)`);
-      if(examLack) R.why.unshift(`승급 심사 의뢰 ${f.examOk||0}/${EXAM_NEED_FIXER}건`);
-      if(R.ok && gapLeft <= 0 && !examLack){ ac("promo"); f.promoDay = S.day; f.examOk = 0; f.wk = {n:0, ok:0, hi:0, sc:0}; const oldWage=syncGradeWage(f); f.grade--; const newWage=syncGradeWage(f); f.hpMax+=10; f.mpMax+=10; f.hp+=10; f.mp+=10; const up = promoStats(f);
+    if(f.grade>=2){ const R = reviewOf(f.wk, f.grade), p = promotionReview(f, f.grade-1, "fixer");
+      if(R.ok && !p.hold.length){ ac("promo"); f.promoDay = S.day; f.examOk = 0; f.promoMerit = 0; f.wk = {n:0, ok:0, hi:0, sc:0}; const oldWage=syncGradeWage(f); f.grade--; const newWage=syncGradeWage(f); f.hpMax+=10; f.mpMax+=10; f.hp+=10; f.mp+=10; const up = promoStats(f);
         lines.push(`${esc(f.name)}: ${gName(f.grade+1)} → <b>${gName(f.grade)}</b> <span class="muted">· ${up.join(" · ")}</span>${!f.isLeader&&newWage>oldWage?`<br><span style="color:#e8c98a">주급 ${won(oldWage)} → ${won(newWage)} (다음 주부터)</span>`:""}`);
         S.records.push({day:S.day,name:f.name,what:"승급",note:gName(f.grade)}); }
-      else if((f.wk && f.wk.n) || examLack) wait.push(`${esc(f.name)}: 보류 — ${R.why[0]}`); }
+      else if(f.wk?.n || p.merit) wait.push(`${esc(f.name)}: 보류 — ${esc([R.why[0], ...p.hold].filter(Boolean).join(" · "))}`); }
     // 보류 또는 일반 승급 대상이 아닌 해결사의 개인 실적은 다음 심사로 이월한다.
   });
   // 사무소: 대표 급수가 목표 급수에 먼저 도달해야 심사가 가능하다. 이후 의뢰 5건 또는 직원·주간 성과로 판정.
   let off = "";
   if(S.officeGrade>1){
-    const R=officeReviewStatus(S.wk,S.officeGrade,S.fixers), tg=S.officeGrade-1, gapLeft=OFFICE_GAP(tg)-(S.day-(S.officePromoDay||0)), examLack=tg<=3 && (S.examOk||0)<EXAM_NEED_OFFICE;
-    if(R.ok && examLack){ R.ok=false; R.why=`승급 심사 의뢰 ${S.examOk||0}/${EXAM_NEED_OFFICE}건 — ${gName(tg)} 사무소부터는 협회 승급 심사 의뢰를 해내야 한다`; }
-    else if(R.ok && gapLeft>0){ R.ok=false; R.why=`지난 승급 뒤 ${OFFICE_GAP(tg)/7}주가 지나야 한다(${Math.ceil(gapLeft/7)}주 남음)`; }
-    if(R.ok){ S.officePromoDay=S.day; S.examOk=0; S.officeGrade--; off=`<p style="color:var(--accent)">사무소가 <b>${gName(S.officeGrade)} 사무소</b>로 승급했다. <span class="muted">(${R.way==='count'?'의뢰 해결 건수 우선':'소속 해결사 등급·보조 조건'} 충족)</span></p>`;
+    const R=officeReviewStatus(S.wk,S.officeGrade,S.fixers), p=promotionReview(S,R.target,"office");
+    if(R.ok && !p.hold.length){ S.officePromoDay=S.day; S.examOk=0; S.promoMerit=0; S.officeGrade--; off=`<p style="color:var(--accent)">사무소가 <b>${gName(S.officeGrade)} 사무소</b>로 승급했다. <span class="muted">(${R.way==='count'?'의뢰 해결 건수 우선':'소속 해결사 등급·보조 조건'} 충족)</span></p>`;
       S.records.push({day:S.day,name:S.officeName,what:"사무소 승급",note:gName(S.officeGrade)}); }
-    else off=`<p class="muted">사무소 승급 보류 — ${esc(R.why)}.</p>`;
+    else off=`<p class="muted">사무소 승급 보류 — ${esc([R.ok ? "" : R.why, ...p.hold].filter(Boolean).join(" · "))}.</p>`;
   }
   S.wk = {n:0, ok:0, hi:0, sc:0};
   playFx("심사", "하나 협회 등급 심사", lines.length?"결과가 나왔다.":"변동 없음", true);
