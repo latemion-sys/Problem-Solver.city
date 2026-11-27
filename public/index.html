@@ -1658,8 +1658,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a2.3.7";
+const VERSION = "v.a2.3.9.1";
 const CHANGELOG = [
+  ["v.a2.3.9.1", ["HE · WAW · ALEPH 환상체 관리 부담 완화: 체력·정신력 피해와 수치형 고유 기믹 불이익 30% 감소(정수 감소량 올림), 조우 시 폭주 확률 및 광폭 카운터 감소량 완화", "전투 피해·징후·재앙·의뢰 정산·지속 피해 완화. 보상 및 죄종·ZAYIN·TETH 유지"]],
   ["v.a2.3.7", ["보스 의뢰마다 동료 한 명의 과거에서 시작하는 이야기 추가: 발단 → 고조 → 고백(선택) → 도발 → 결말, 단계마다 며칠과 의뢰 하나씩 쌓인 뒤 진행", "랫키어(쥐 출신 동료) · 바르크(철쇄 수금원 출신) · 테이어파이어(공방 시험 상대 출신) · 99번째 거래처(거래처를 다녀온 동료) · 여섯 번째 손가락(고개를 숙이지 않고 떠난 동료) · 12 과업의 대행자(빈 골목의 생존자)", "고백 장면은 동료 성격에 따라 대사가 달라지고, 대표의 대답과 보스전 동행 여부에 따라 신뢰와 결말 장면이 달라짐", "실패하면 놓친 밤 장면, 다시 나타날 때 재도발 장면"]],
   ["v.a2.3.3",["환상체 의뢰 등장 제한 해제: 사무소·의뢰 급수와 관계없이 모든 위험 등급 등장 가능, 수락 여부는 플레이어 선택","환상체 의뢰 기본 등장 확률 재조정: 8~9급 10% 유지 · 6~7급 30%→20% · 4~5급 40%→25% · 1~3급 44%→30%","초반 3일에도 모든 위험 등급의 환상체 등장 가능. 환상체 고유 급수·요구치 유지, 게시판 중복 방지 우선 및 지령·폐지부 탐사로의 변경 방지","의뢰 급수와 사무소 등급에 맞춘 의뢰인 및 협회 담당 과 선정, 기관·개인·익명 의뢰인의 환상체·뒤틀림 의뢰 서술 개편","합 평균 기준 재조정: 맨손 8 · 양산 10 · 정식 13 · 상급 16 · 고유·개화 18, 공방 기본 위력 보정 0·3·6·8","위압 적용: 해결사가 적보다 높은 급수일 때 급수 차이 1마다 적 코인 뒷면 확률 +3%p. 기존 요구치·급수 차이 기반 합 위력 보정 폐지","신(心) 깨우침 연출 및 의뢰 상황별 대사 개편, 깨우침 이후 기본 피해 +5 및 합 기본 위력 +1 상시 적용","기술 일람·전투 규칙·환상체 도감·업적 버튼 색상 및 업적 이동 방식 개선"]],
   ["v.a2.3.1", ["무기 12종과 맨손의 일반 공격 및 특수 기술 코인 수·코인 위력·기본 위력 개편", "동일 공방 등급의 기본 평균 합 위력 균등화(정신력 0, 앞면 50% 기준): 양산 12 · 정식 16 · 상급 20 · 고유 24", "전투 화면과 기술 일람에 새 위력·코인 구성 표시", "개화 E.G.O. 장비 상급 공방 기준 재설정: 무기형 기본 피해 +5, 의복형 보호막 20, 일체형 기본 피해 +2 및 보호막 5. 보호막 특수 효과 선택 시 10 추가"]],
@@ -4580,6 +4581,11 @@ const shareMul = n => n<=1 ? 1 : 1/(0.7*n);
 /* 출동 미리보기와 실전 정산은 같은 피해 계산을 사용한다.
    전투 중 정신력 추가 피해·환상체 즉사 기믹 등은 별도로 발생한다. */
 const LOSS_PCT = {ok:[10,15,20,25],fail:[35,43,52,60]};
+// v.a2.3.9.1: 고위험 환상체 전용. 정수 감소량을 올림해 차감하고, 확률은 비례 조정한다.
+function abHigh(a){return ["HE","WAW","ALEPH"].includes(typeof a==="string"?a:a&&a.risk);}
+function abPenalty(a,n){return abHigh(a)&&n>0?Math.max(0,n-Math.ceil(n*3/10)):n;}
+function abRate(a,n){return abHigh(a)?n*0.7:n;}
+function abCap(a,current,target){return current-abPenalty(a,Math.max(0,current-target));}
 function damagePercent(f,q,success,wound,mental,march,doom=false){
   const red=mental ? redMP(f) : redHP(f), w=wound===1&&accFx(f,"lining")?0:Math.max(0,Math.min(3,wound));
   const gentle=q.kind==="환상체" && abnoOf(q) && abnoOf(q).gentle;
@@ -4589,7 +4595,7 @@ function damagePercent(f,q,success,wound,mental,march,doom=false){
   if(f.tired&&!accFx(f,"calm")) pct=Math.floor(pct*TIRED_DMG);
   if(!mental&&accFx(f,"inject")) pct=Math.floor(pct*(f.injLack?1.12:0.88));
   if(fullBody(f) && pct>0) pct += mental ? -1 : 1;
-  return Math.max(0,pct);
+  return abPenalty(q.abnoFoe|| (q.kind==='환상체' ? abnoOf(q) : null),Math.max(0,pct));
 }
 function estimate(team,q){
   const mental=isMental(q), profiles=team.map(f=>{
@@ -5862,14 +5868,14 @@ function mgCombat(ctx){
       if(!force && !(turn - foe.signLast >= 2 || Math.random() < 0.55)) return ""; foe.sign = true; foe.signLast = turn;
       return `<b style="color:#ffb35a">징후 — ${esc(FSG.t)}</b>`; }
     function foeSignMiss(){ if(!FSG || !foe.sign || foe.hp<=0) return ""; foe.sign = false;
-      const sp = Math.round((FSG.sp||0)*RISK_SIGN), hp = Math.round((FSG.hp||0)*RISK_SIGN);
+      const sp = abPenalty(AB,Math.round((FSG.sp||0)*RISK_SIGN)), hp = abPenalty(AB,Math.round((FSG.hp||0)*RISK_SIGN));
       party.forEach(p=>{ if(p.hp<=0) return; const fb = fullBody(p.f); if(sp) p.sp = clamp(p.sp - Math.max(0, sp - (fb?1:0)), -45, 45); if(hp) p.hp = Math.max(0, p.hp - Math.max(1, Math.round(hp*(1-redHP(p.f)*0.5))) - (fb?1:0)); });
       return `<b style="color:#ff8a7a">징후를 놓쳤다 — ${esc(FSG.missT)}</b>${sp ? ` (모두 정신력 -${sp})` : ""}${hp ? ` (모두 체력 -${hp})` : ""}`; }
     function foeSignBtn(){ if(!FSG || !foe.sign || foe.hp<=0) return "";
       return `<button data-sk="5" class="pk-sign"><b>${esc(FSG.btn)}</b><small>징후 대응 — 추가 행동 · 턴을 쓰지 않는다${FSG.d ? " · "+esc(FSG.d) : ""}<br><span style="color:#ff8a7a">놓치면 턴이 끝날 때 ${[FSG.sp ? "모두 정신력 피해" : "", FSG.hp ? "모두 체력 피해" : ""].filter(Boolean).join(" · ")}</span></small></button>`; }
     function foeSignAct(){ if(!FSG || !foe.sign) return; const me = party[act]; foe.sign = false;
-      if(FSG.cost) me.hp = Math.max(1, me.hp - FSG.cost); me.sp = clamp(me.sp + 2, -45, 45);
-      tick = [`<span style="color:#8fd6a0">${esc(jo(me.name,"이"))} ${esc(FSG.btn)} — ${esc(FSG.okT)}</span>${FSG.cost ? ` (체력 -${FSG.cost})` : ""}`].concat(tick ? [tick] : []).join("<br>"); skillMenu(); }
+      if(FSG.cost) me.hp = Math.max(1, me.hp - abPenalty(AB,FSG.cost)); me.sp = clamp(me.sp + 2, -45, 45);
+      tick = [`<span style="color:#8fd6a0">${esc(jo(me.name,"이"))} ${esc(FSG.btn)} — ${esc(FSG.okT)}</span>${FSG.cost ? ` (체력 -${abPenalty(AB,FSG.cost)})` : ""}`].concat(tick ? [tick] : []).join("<br>"); skillMenu(); }
     function shinAct(){ const me = party[act], f = me.f; if(!f.shin || f.shinOff === true || me.extraTurn === turn) return;
       const wrap = me.shinLive; if(wrap && me.mangLive >= mangCap(f)) return;
       const c = wrap ? MANG_MP[me.mangLive] : SHIN_MP; if(f.mp <= c) return;
@@ -6042,11 +6048,11 @@ function mgCombat(ctx){
         if(W==="crystal" && R.left){ dmg += R.left*2; wNote.push(`쌍 팔시온 — 남은 코인 ${R.left}개(+${R.left*2})`); }
         if(AB && AB.movement && (isBasic(si)?0:si) !== foe.allow){ dmg = 0; abNote.push("이번 악장에는 닿지 않았다 — 소리에 묻혔다"); }
         if(AB && AB.immune && !(me.f.grade <= 1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))){ dmg = Math.max(1, Math.round(dmg*0.05)); ammoEffective=0; abNote.push("칼날이 미끄러진다 — 거의 통하지 않았다"); }
-        if(AB && AB.fx==="spiral"){ if(me.contempt) dmg = Math.round(dmg*0.7); else { me.gaze = (me.gaze||0) + 1; dmg = Math.round(dmg*(1 + 0.1*me.gaze)); abNote.push(`시선 ${me.gaze}(피해 +${me.gaze*10}%)`);
-            if(me.gaze >= 7){ me.contempt = true; me.hp = Math.max(1, me.hp - 15); abNote.push(`<b style="color:#ff8a7a">나선이 ${esc(me.name)}의 시선마저 경멸했다 — 출혈, 이후 피해 -30%</b>`); } }
+        if(AB && AB.fx==="spiral"){ if(me.contempt) dmg = Math.round(dmg*(1-abRate(AB,0.3))); else { me.gaze = (me.gaze||0) + 1; dmg = Math.round(dmg*(1 + 0.1*me.gaze)); abNote.push(`시선 ${me.gaze}(피해 +${me.gaze*10}%)`);
+            if(me.gaze >= 7){ me.contempt = true; me.hp = Math.max(1, me.hp - abPenalty(AB,15)); abNote.push(`<b style="color:#ff8a7a">나선이 ${esc(me.name)}의 시선마저 경멸했다 — 출혈, 이후 피해 -30%</b>`); } }
           party.forEach(p=>{ if(p.grasp){ p.grasp = 0; abNote.push(`${esc(p.name)}를 쥔 손아귀가 풀렸다`); } }); }
-        if(AB && AB.fx==="jade"){ if(turn <= 2){ dmg = Math.max(1, Math.round(dmg*0.5)); abNote.push("꿈속이다 — 칼끝이 반만 닿았다"); } else { dmg = Math.round(dmg*1.2); abNote.push("옥에 금이 갔다(피해 +20%)"); } }
-        if(AB && AB.fx==="whale" && (foe.shell||0) < 3){ foe.shell = (foe.shell||0) + 1; dmg = Math.max(1, dmg - 3); abNote.push(foe.shell >= 3 ? "껍데기가 깨져 나갔다" : `껍데기가 칼날을 튕겼다(-3, ${foe.shell}/3)`); }
+        if(AB && AB.fx==="jade"){ if(turn <= 2){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.5)))); abNote.push("꿈속이다 — 칼끝이 반만 닿았다"); } else { dmg = Math.round(dmg*1.2); abNote.push("옥에 금이 갔다(피해 +20%)"); } }
+        if(AB && AB.fx==="whale" && (foe.shell||0) < 3){ foe.shell = (foe.shell||0) + 1; dmg = Math.max(1, dmg - abPenalty(AB,3)); abNote.push(foe.shell >= 3 ? "껍데기가 깨져 나갔다" : `껍데기가 칼날을 튕겼다(-${abPenalty(AB,3)}, ${foe.shell}/3)`); }
         if(me.burden){ dmg = Math.max(1, Math.round(dmg*0.6)); me.burden = false; abNote.push(`<span style="color:#e8d27a">짊어진 탑 탓에 칼끝이 무뎠지만, 그래도 이겨 쳤다. 거인에게 탑을 되돌려 주었다</span>`); }
         // 탄환의 추가 피해는 마지막에 한 번만 더하며, 기술·고유 무기 배율로 증폭되지 않는다.
         // 적이 방어하거나 특수 면역 상태라면 탄환에도 동일한 제약이 걸린다.
@@ -6059,7 +6065,7 @@ function mgCombat(ctx){
         if(dmg>0){const blocked=AB&&AB.immune&&!(me.f.grade<=1&&((me.f.gear.weapon&&me.f.gear.weapon.unique&&!needsRepair(me.f.gear.weapon))||(me.f.ego&&me.f.ego.type!=="armor")));if(!blocked){const factor=fk.def&&!wSk.def&&!(T&&["mordhau","crush","r_claiomh"].includes(T.id))?.5:1;const hadPoise=(me.poise||0)>=10;const rareDest=T&&T.hana?hanaApply(T,me,foe,tNote):null;onWeaponKeyword(me,si,tNote);dmg+=hanaTriggerMarks(me,foe,factor,tNote);if(hadPoise&&keywordSpend(me,"poise")){dmg+=Math.round(5*factor);tNote.push("호흡 10 소모 — 공격 피해 +5(방어 적용)");}if(rareDest)hanaMark(T,rareDest,tNote);if(me.sp2!=="rupture"&&foe.rupture>0){dmg+=foe.rupture;tNote.push("파열 추가 피해 "+foe.rupture);foe.rupture--;}const ks=keywordSnapshot(foe), extra=keywordImpact(foe,ks,factor,tNote);dmg=foeDefenseDamage(foe,dmg+extra-ks.burn,tNote)+ks.burn;if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}else{dmg=foeDefenseDamage(foe,dmg,tNote);}dmg=keywordShield(foe,dmg,tNote);}
         if(me.drepHeal){me.drepHeal=false;const h=Math.round(Math.min(foe.hp,Math.max(0,dmg))*.3);me.hp=Math.min(me.max,me.hp+h);if(h)tNote.push(`거둔 만큼 되찾았다(체력 +${h})`);}
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
-        if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = Math.round(foe.max*0.25); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
+        if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = abPenalty(AB,Math.round(foe.max*0.25)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
         if(AB && AB.enrage && !foe.enraged && foe.hp > 0 && dmg > 0){ foe.enraged = true; const add = 0;
           foe.cards = [{n:"큰 부리로 물기",a:6,b:14},{n:"집어삼키기",a:7,b:12},{n:"붉은 깃 세우기",a:5,b:9,def:true}]; foe.skills = foe.cards.map(c=>skillOf(c));
           abNote.push(`<b style="color:#ff8a7a">맞은 새가 붉게 변했다. 가슴의 커다란 부리가 열렸다. 이제 물리면 쓰러진다</b>`); } }
@@ -6090,14 +6096,14 @@ function mgCombat(ctx){
         if((guarding && mode!=="evade") || (T && T.def)){ dmg=Math.max(0,dmg-statGuardMinus(me.f)-((si===1||(T&&T.def))?egoGuardCut(me.f.ego):0)); }
          if(dmg>0 && !(AB && AB.enrage && foe.enraged))dmg=Math.max(0,dmg+supportIncoming());
         if(evadeOK){dmg=0;tNote.push("회피 성공 — 직접 공격 무효");} if(parryOK){foe.coinDown=Math.max(foe.coinDown||0,1);tNote.push("흘려내기 성공 — 다음 합 상대 코인 위력 -1");}
-        const landed=!evadeOK&&!egoEvaded;if(landed){const factor=(sk.def?(guarding?({guard:.5,evade:1,parry:.65,counter:.75}[mode]||.5):T&&T.id==="brace"?.25:T&&T.id==="counter"?1:.5):1)*(1-redHP(me.f));if(foe.keywordPower){const k=fk.heavy==="status"&&fk.stk&&fk.stk!=="rupture"?fk.stk:foe.keywordId;const n=foe.keywordPower;const before=me[k]||0;keywordAdd(me,k,n);hvNote.push(`${KEYWORD_NAMES[k]} +${me[k]-before} (보유 ${me[k]})`);}dmg+=keywordImpact(me,keywordSnapshot(me),factor,hvNote);}dmg=keywordShield(me,dmg,egoNote);
+        const landed=!evadeOK&&!egoEvaded;if(landed){const factor=(sk.def?(guarding?({guard:.5,evade:1,parry:.65,counter:.75}[mode]||.5):T&&T.id==="brace"?.25:T&&T.id==="counter"?1:.5):1)*(1-redHP(me.f));if(foe.keywordPower){const k=fk.heavy==="status"&&fk.stk&&fk.stk!=="rupture"?fk.stk:foe.keywordId;const n=abPenalty(AB,foe.keywordPower);const before=me[k]||0;keywordAdd(me,k,n);hvNote.push(`${KEYWORD_NAMES[k]} +${me[k]-before} (보유 ${me[k]})`);}dmg+=keywordImpact(me,keywordSnapshot(me),factor,hvNote);}dmg=keywordShield(me,abPenalty(AB,dmg),egoNote);
         if(dmg > 0 && relicFx(me.f,"kavacha") && !me.kavUsed){ me.kavUsed = true; dmg = 0; rNote.push("카바차 — 금 비늘이 칼날을 그대로 튕겨 냈다"); }
         if(dmg >= me.hp && me.hp > 0 && relicFx(me.f,"scarab") && me.f.scarabDay !== S.day){ me.f.scarabDay = S.day; dmg = Math.max(0, me.hp - 1); me.scarabNow = true; }
         if(me.sp2==="endure" && !me.endured && dmg >= me.hp){ dmg = Math.max(0, me.hp - 1); me.endured = true; egoNote.push("인내 — 쓰러질 공격을 버텼다"); }
         if(me.sp2==="thorns" && dmg>0){ const th = keywordShield(foe,Math.max(1,Math.round(dmg*0.2)),egoNote); foe.hp = Math.max(0, foe.hp - th); egoNote.push(`가시 — ${foe.name}에게 ${th} 되돌려 줌`); }
         if(dmg > 0 && me.hp <= 20 && accFx(me.f,"bandage")){ dmg = 0; me.f.gear.acc = null; egoNote.push("간이 보존 붕대 — 상처를 그대로 붙잡았다(붕대는 삭아 없어졌다)"); }
-        if(dmg > 0 && fullBody(me.f)) dmg += 1;
-        if(dmg > 0 && me.rupture > 0){ dmg += me.rupture; hvNote.push(`파열 — 상처가 터졌다(+${me.rupture})`); me.rupture--; }
+        if(dmg > 0 && fullBody(me.f)) dmg += abPenalty(AB,1);
+        if(dmg > 0 && me.rupture > 0){ dmg += abPenalty(AB,me.rupture); hvNote.push(`파열 — 상처가 터졌다(+${me.rupture})`); me.rupture--; }
         
         if(dmg>0&&foe.keywordPower&&fk.heavy==="status"&&fk.stk==="rupture"){me.rupture=Math.min(9,(me.rupture||0)+fk.stn);hvNote.push(`파열 +${fk.stn}`);}
         if(dmg > 0 && fk.heavy==="cripple"){ me.cpDown = 1; hvNote.push(`손목을 맞았다 — 다음 합 코인 위력 -1`); }
@@ -6106,7 +6112,7 @@ function mgCombat(ctx){
         const w0 = woundOf(me.hp,me.max); me.hp = Math.max(0, me.hp - dmg); total = dmg;
         if(me.scarabNow){ me.scarabNow = false; me.hp = Math.max(me.hp, Math.round(me.max*0.74)); rNote.push("태양 스카라베 — 쓰러질 상처를 1로 버티고, 가슴의 원반이 동틀 녘처럼 데워 경상까지 되돌렸다"); } me.woundUp = woundOf(me.hp,me.max) > w0 || me.hp<=0; st.crit = false; if(dmg>0) attack("foe", dmg, fk);
         if(si===1&&me.hp>0){const rec=guardRecover(me,mode==="evade"&&evadeOK?12:mode==="parry"&&parryOK?9:7);gainResolve(me,evadeOK||parryOK?10:7);tNote.push(`방어 행동 — 정신력 +${rec} · 투지 ${me.resolve}/100`);if(mode==="counter"&&dmg>0&&!AB&&!DF&&!BOSS){let ret=Math.max(1,Math.round(equipDamage(me.f)*0.3));const ks=keywordSnapshot(foe),ex=keywordImpact(foe,ks,1,tNote);ret=foeDefenseDamage(foe,ret+ex-ks.burn,tNote)+ks.burn;ret=keywordShield(foe,ret,tNote);foe.hp=Math.max(0,foe.hp-ret);tNote.push(`반격 — ${ret} 피해`);}}
-        if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(1, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
+        if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(0, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       if(BOSS) bNote.push(...BOSS.after({won, guarding, foeGuarding, reloading, T, fk, me}));
       await wait(900);
       clash = null;
@@ -6133,8 +6139,8 @@ function mgCombat(ctx){
       m.ctrl.innerHTML = AB && AB.kill ? `<div class="pk-moves"><button data-fin="사살"><b>사살</b><small>알로 되돌릴 수 없는 죄종을 사살한다</small></button></div>` : AB && AB.possessed ? `<div class="pk-moves"><button data-fin="제압"><b>구두를 벗겨 낸다</b><small>발목을 잘라 구두를 벗기고 생존자를 구출한다</small></button></div>` : AB ? `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>환상체를 제압하여 알로 되돌린다</small></button></div>` : `<div class="pk-moves"><button data-fin="제압"><b>제압</b><small>상대를 생포한다</small></button><button data-fin="사살"><b>사살</b><small>상대를 사살한다</small></button></div>`;
     }
     function revive(){ if(!(AB && (AB.fx==="bari" || AB.fx==="whale")) || foe.revived) return false; foe.revived = true;
-      if(AB.fx==="bari"){ foe.hp = Math.round(foe.max*0.5); foe.reviveNote = `<b style="color:#ffd0e0">뼈살이 · 살살이 · 피살이 — 쓰러진 몸에 꽃이 피어 다시 일어섰다</b>`; }
-      else { foe.hp = Math.round(foe.max*0.25); const p = party[act]; if(p && p.hp > 0) p.hp = Math.max(0, p.hp - 25); foe.reviveNote = `<b style="color:#ff8a7a">죽은 듯 떠 있던 고래가 되살아나 꼬리로 내리쳤다${p ? `(${esc(p.name)} -25)` : ""}</b>`; }
+      if(AB.fx==="bari"){ foe.hp = abPenalty(AB,Math.round(foe.max*0.5)); foe.reviveNote = `<b style="color:#ffd0e0">뼈살이 · 살살이 · 피살이 — 쓰러진 몸에 꽃이 피어 다시 일어섰다</b>`; }
+      else { foe.hp = abPenalty(AB,Math.round(foe.max*0.25)); const p = party[act]; if(p && p.hp > 0) p.hp = Math.max(0, p.hp - abPenalty(AB,25)); foe.reviveNote = `<b style="color:#ff8a7a">죽은 듯 떠 있던 고래가 되살아나 꼬리로 내리쳤다${p ? `(${esc(p.name)} -${abPenalty(AB,25)})` : ""}</b>`; }
       return true; }
     function next(){
       if(foe.hp<=0 && !revive()) return finishMenu();
@@ -6152,28 +6158,28 @@ function mgCombat(ctx){
       const tk = tick ? [tick] : []; { const sm = foeSignMiss(); if(sm) tk.push(sm); } if(BOSS) tk.push(...BOSS.turnEnd());
       party.forEach(p=>{ if(p.hp<=0) return; if(p.sp2==="regen" && p.hp < p.max){ p.hp = Math.min(p.max, p.hp + 6); tk.push(`재생 — ${esc(p.name)}의 상처가 아문다`); } p.shield = egoShieldMax(p.f.ego); });
       if(AB && AB.aoe && turn % AB.aoe === 0 && foe.hp > 0){ const hung = [];
-        party.forEach(p=>{ if(p.hp<=0) return; let d = Math.max(4, Math.round(26*(1-redHP(p.f)))); if(isBlessed(p)) d = Math.round(d*0.5); p.hp = Math.max(0, p.hp - d); if(p.hp<=0){ p.death = "hanged"; hung.push(p.name); } });
+        party.forEach(p=>{ if(p.hp<=0) return; let d = Math.max(4, Math.round(26*(1-redHP(p.f)))); if(isBlessed(p)) d = Math.round(d*0.5); p.hp = Math.max(0, p.hp - abPenalty(AB,d)); if(p.hp<=0){ p.death = "hanged"; hung.push(p.name); } });
         tk.push(`<b style="color:#e8d27a">심판 — 저울이 기울었다. 모두가 깊은 상처를 입었다</b>${hung.length ? ` · <b style="color:#ff8a7a">${hung.map(esc).join(", ")}: 교수대에 매달렸다</b>` : ""}`); }
       if(foe.lampMark && turn >= 3 && foe.hp > 0 && foe.lampMark.hp > 0){ foe.lampMark.hp = 0; foe.lampMark.death = "beheaded"; tk.push(`<b style="color:#ff8a7a">등불에 홀린 ${esc(jo(foe.lampMark.name,"이"))} 어둠 속 큰 새의 입으로 걸어 들어갔다</b>`); foe.lampMark = null; }
       party.forEach(p=>{ if(p.ember && p.hp > 0) p.ember++; });
-      if(AB && AB.fx==="knives") party.forEach(p=>{ if(p.hp<=0) return; const k2 = (p.f.life && p.f.life.kill) || 0, d = Math.min(12, 2 + k2); p.hp = Math.max(0, p.hp - d); });
+      if(AB && AB.fx==="knives") party.forEach(p=>{ if(p.hp<=0) return; const k2 = (p.f.life && p.f.life.kill) || 0, d = Math.min(12, 2 + k2); p.hp = Math.max(0, p.hp - abPenalty(AB,d)); });
       if(AB && AB.fx==="knives") tk.push("발밑의 칼날이 모두를 베었다");
       if(foe.reviveNote){ tk.push(foe.reviveNote); foe.reviveNote = null; }
-      if(AB && AB.fx==="coat" && foe.hp > 0){ party.forEach(p=>{ if(p.hp<=0) return; const coat = !!p.f.gear.armor && !(p.f.ab && p.f.ab.coatOff && S.day <= p.f.ab.coatOff), d = (1 + turn)*(coat ? 2 : 1); p.hp = Math.max(0, p.hp - d); }); tk.push(`<span style="color:#ffb35a">햇살이 뜨거워진다 — 외투를 걸친 이는 갑절로 탔다</span>`); }
-      if(AB && AB.fx==="frost" && foe.hp > 0){ party.forEach(p=>{ if(p.hp > 0) p.hp = Math.max(0, p.hp - 3); }); tk.push("냉기가 모두를 할퀴었다(-3)"); }
+      if(AB && AB.fx==="coat" && foe.hp > 0){ party.forEach(p=>{ if(p.hp<=0) return; const coat = !!p.f.gear.armor && !(p.f.ab && p.f.ab.coatOff && S.day <= p.f.ab.coatOff), d = (1 + turn)*(coat ? 2 : 1); p.hp = Math.max(0, p.hp - abPenalty(AB,d)); }); tk.push(`<span style="color:#ffb35a">햇살이 뜨거워진다 — 외투를 걸친 이는 갑절로 탔다</span>`); }
+      if(AB && AB.fx==="frost" && foe.hp > 0){ party.forEach(p=>{ if(p.hp > 0) p.hp = Math.max(0, p.hp - abPenalty(AB,3)); }); tk.push(`냉기가 모두를 할퀴었다(-${abPenalty(AB,3)})`); }
       if(AB && AB.fx==="tower" && foe.hp > 0){ const b = party.find(p=>p.burden && p.hp > 0);
-        if(b){ b.hp = Math.max(0, b.hp - 8); tk.push(`<span style="color:#e8d27a">탑을 짊어진 ${esc(b.name)}의 어깨가 짓눌린다(-8)</span>`); }
+        if(b){ b.hp = Math.max(0, b.hp - abPenalty(AB,8)); tk.push(`<span style="color:#e8d27a">탑을 짊어진 ${esc(b.name)}의 어깨가 짓눌린다(-${abPenalty(AB,8)})</span>`); }
         else if(turn % 2 === 0){ const t = party.filter(p=>p.hp > 0).sort((x,y)=>y.hp-x.hp)[0]; if(t){ t.burden = true; tk.push(`<span style="color:#e8d27a">"잠깐만 들어 주겠소." 작은 거인이 ${esc(t.name)}에게 탑을 떠넘겼다</span>`); } } }
       if(AB && AB.fx==="nails" && foe.hp > 0){ const k5 = ((turn - 1) % 5) + 1;
         if(k5 < 5) tk.push(`<span style="color:#ff8a7a">${["엄지","검지","중지","약지"][k5-1]}가 접혔다(${k5}/5)</span>`);
-        else { party.forEach(p=>{ if(p.hp<=0) return; const d = Math.max(8, Math.round(32*(1-redHP(p.f)))); p.hp = Math.max(0, p.hp - d); }); tk.push(`<b style="color:#ff8a7a">새끼손가락까지 접혔다 — 주먹이 내리쳤다. 모두가 깊은 상처를 입었다</b>`); } }
+        else { party.forEach(p=>{ if(p.hp<=0) return; const d = Math.max(8, Math.round(32*(1-redHP(p.f)))); p.hp = Math.max(0, p.hp - abPenalty(AB,d)); }); tk.push(`<b style="color:#ff8a7a">새끼손가락까지 접혔다 — 주먹이 내리쳤다. 모두가 깊은 상처를 입었다</b>`); } }
       if(AB && AB.fx==="erl" && foe.erlChild && foe.hp > 0 && turn >= 3 && foe.erlChild.hp > 0){ foe.erlChild.hp = 0; foe.erlChild.death = "erl"; tk.push(`<b style="color:#ff8a7a">마왕이 ${esc(jo(foe.erlChild.name,"을"))} 품에 안고 안개 속으로 데려갔다</b>`); foe.erlChild = null; }
       if(AB && AB.fx==="spiral" && foe.hp > 0){ const gp = party.find(p=>p.grasp && p.hp > 0);
-        if(gp){ gp.grasp--; if(gp.grasp <= 0){ const d = 50; gp.hp = Math.max(0, gp.hp - d); foe.hp = Math.min(foe.max, foe.hp + Math.round(foe.max*0.15)); tk.push(`<b style="color:#ff8a7a">나선이 ${esc(gp.name)}를 짓눌렀다(-${d}) — 흘린 피로 나선이 아물었다</b>`); } }
+        if(gp){ gp.grasp--; if(gp.grasp <= 0){ const d = abPenalty(AB,50); gp.hp = Math.max(0, gp.hp - d); foe.hp = Math.min(foe.max, foe.hp + abPenalty(AB,Math.round(foe.max*0.15))); tk.push(`<b style="color:#ff8a7a">나선이 ${esc(gp.name)}를 짓눌렀다(-${d}) — 흘린 피로 나선이 아물었다</b>`); } }
         else if(turn % 2 === 0){ const pool = party.filter((p,i)=>p.hp > 0 && i!==act), t = pool.length ? pick(pool) : party[act]; if(t && t.hp > 0){ t.grasp = 2; tk.push(`<span style="color:#ff8a7a">검은 돌손이 ${esc(t.name)}를 움켜쥐었다 — 두 턴 안에 합을 이겨 풀어내지 못하면 짓눌린다</span>`); } } }
       if(foe.clock != null && turn >= foe.clock && foe.hp > 0){ tick = tk.concat([`<b style="color:#e8d27a">4턴이 지나자 징벌 새가 날개를 접고 스스로 알로 돌아갔다</b>`]).join(" · "); m.info.innerHTML = `<div class="pk-text">${tick}</div>`; outcome = goal; return finish("egg"); }
       if(AB && AB.fuse && turn >= AB.fuse && foe.hp > 0){
-        party.forEach(p=>{ if(p===foe.fuseMark && p.hp > 0) p.hp = Math.max(0, p.hp - 80); });
+        party.forEach(p=>{ if(p===foe.fuseMark && p.hp > 0) p.hp = Math.max(0, p.hp - abPenalty(AB,80)); });
         tick = tk.concat([`<b style="color:#ff8a7a">성냥불이 터졌다. 소녀가 ${esc(jo(foe.fuseMark.name,"을"))} 끌어안고 폭발했다</b>`]).join(" · "); m.info.innerHTML = `<div class="pk-text">${tick}</div>`; return finish("fuse"); }
       keywordDecay(foe);party.forEach(keywordDecay);hanaMarkDecay(foe);party.forEach(hanaMarkDecay);tick = tk.join(" · ");
       party.forEach(p=>{ if(!p.shinLive || p.hp<=0) return;
@@ -7729,11 +7735,11 @@ function abnoMeetFx(a, team, G){
   if(a.fx==="tower"){ const k = team.slice().sort((x,y)=>total(y)-total(x))[0]; G.atlas = k.id; out.push(`<span class="muted">탑을 짊어진 작은 거인이 ${esc(k.name)}의 어깨를 가늠하듯 바라본다.</span>`); }
   if(a.fx==="erl"){ const k = team.slice().sort((x,y)=>total(x)-total(y))[0]; G.child = k.id; out.push(`<span style="color:#b9c4d8">안개 속에서 다정한 목소리가 ${esc(jo(k.name,"을"))} 부른다 — "얘야, 이리 오렴."</span>`); }
   if(a.fx==="pair"){ if(team.length >= 2){ const two = team.slice().sort(()=>Math.random()-0.5).slice(0,2); G.pair = two.map(x=>x.id); G.out.pair = G.pair.slice(); out.push(`<span style="color:#9ad0ff">푸른 새와 붉은 새가 ${esc(two[0].name)}·${esc(jo(two[1].name,"을"))} 한 쌍으로 묶었다 — 둘이 번갈아 나서야 날개가 맞는다.</span>`); }
-    else { G.ctr = Math.max(1, G.ctr - 1); out.push(`<span style="color:#ff8a7a">혼자 왔다 — 짝 없는 날개라 새들이 불안해한다(카운터 -1).</span>`); } }
-  if(a.fx==="whale" && codexSeen(a.vid) >= 2){ G.ctr = Math.max(1, G.ctr - 1); out.push(`<span style="color:#ff8a7a">이름을 아는 사람이 왔다 — 이름을 불린 듯 고래가 눈을 떴다(카운터 -1).</span>`); }
+    else { G.ctr = Math.max(1, G.ctr - abRate(a,1)); out.push(`<span style="color:#ff8a7a">혼자 왔다 — 짝 없는 날개라 새들이 불안해한다(카운터 -${abRate(a,1)}).</span>`); } }
+  if(a.fx==="whale" && codexSeen(a.vid) >= 2){ G.ctr = Math.max(1, G.ctr - abRate(a,1)); out.push(`<span style="color:#ff8a7a">이름을 아는 사람이 왔다 — 이름을 불린 듯 고래가 눈을 떴다(카운터 -${abRate(a,1)}).</span>`); }
   if(a.fx==="nails"){ out.push(`<span class="muted">다섯 못 가운데 하나가 솟을 때마다 그 손가락의 법이 걸린다.</span>`); }
   if(a.fx==="echoMind"){ const w = team.slice().sort((x,y)=>power(x,["wil"])-power(y,["wil"]))[0]; w.ab = w.ab || {}; w.ab.echo = day + 3; out.push(`<span style="color:#9ab8d8">${esc(w.name)}의 머릿속에 낮은 울림이 남았다(3일).</span>`); }
-  if(a.fx==="scorch" || a.fx==="coat"){ team.forEach(x=>{ x.ab = x.ab || {}; x.ab.scorch = day + 2; }); out.push(`<span style="color:#ffb35a">올려다본 모두의 살갗이 그을렸다(2일).</span>`); }
+  if(a.fx==="scorch" || a.fx==="coat"){ team.forEach(x=>{ x.ab = x.ab || {}; x.ab.scorchHigh = abHigh(a); x.ab.scorch = day + abPenalty(a,2); }); out.push(`<span style="color:#ffb35a">올려다본 모두의 살갗이 그을렸다(${abPenalty(a,2)}일).</span>`); }
   return out.join("<br>");
 }
 // 인식에서 삭제: 죽음과 달리 기록도, 동료의 기억도 남지 않는다
@@ -7755,24 +7761,24 @@ function abnoNightFx(){
     if(A.catSplit){ const v = Math.ceil(A.catSplit.left / A.catSplit.days); f.mp = Math.max(0, f.mp - v); A.catSplit.left -= v; A.catSplit.days--; lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 어디선가 고양이 울음이 들렸다 — 정신력 -${v}</span>`); if(A.catSplit.days<=0 || A.catSplit.left<=0) delete A.catSplit; }
     if(A.fairy){ if(day <= A.fairy){ const v = Math.floor(f.hpMax*0.05); f.hp = Math.min(f.hpMax, f.hp + v); lines.push(`${esc(f.name)}: 작은 요정이 상처를 돌봤다 — 체력 +${v}`); } if(day >= A.fairy) delete A.fairy; }
     if(A.echo){ if(day <= A.echo){ const v = Math.floor(f.mpMax*0.04); f.mp = Math.max(1, f.mp - v); lines.push(`${esc(f.name)}: 머릿속 울림 — 정신력 -${v}`); } if(day >= A.echo) delete A.echo; }
-    if(A.scorch){ if(day <= A.scorch){ const v = Math.floor(f.hpMax*0.03); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 그을린 살갗이 쓰라리다 — 체력 -${v}`); } if(day >= A.scorch) delete A.scorch; }
+    if(A.scorch){ if(day <= A.scorch){ const v = abPenalty(A.scorchHigh?'ALEPH':null,Math.floor(f.hpMax*0.03)); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 그을린 살갗이 쓰라리다 — 체력 -${v}`); } if(day >= A.scorch) delete A.scorch; }
     if(A.mark && day > A.mark.until) delete A.mark;
     if(A.feast){ if(day <= A.feast){ const v = Math.floor(f.hpMax*0.06); f.hp = Math.min(f.hpMax, f.hp + v); lines.push(`${esc(f.name)}: 요정들이 상처를 돌봤다 — 체력 +${v}`); } if(day >= A.feast){ delete A.feast; lines.push(`${esc(f.name)}: 요정들이 흥미를 잃고 떠났다`); } }
     if(A.flame && A.flame.lv >= 2){ const v = Math.floor(f.hpMax*0.02*(A.flame.lv-1)); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 짙은 용기의 불꽃이 몸을 태운다 — 체력 -${v}`); }
     if(A.prick){ if(A.prick.n > 0){ const v = Math.floor(f.mpMax*0.06); f.mp = Math.min(f.mpMax, f.mp + v); A.prick.n--; lines.push(`${esc(f.name)}: 가시에 찔린 자리가 달콤하게 저린다 — 정신력 +${v}`); }
-      else { const v = Math.floor(f.mpMax*0.15); f.mp = Math.max(1, f.mp - v); delete A.prick; lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 쾌감이 끊겼다. 금단 — 정신력 -${v}</span>`); } }
+      else { const v = abPenalty("HE", Math.floor(f.mpMax*0.15)); f.mp = Math.max(1, f.mp - v); delete A.prick; lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 쾌감이 끊겼다. 금단 — 정신력 -${v}</span>`); } }
     if(A.solitude){ const v = Math.floor(f.mpMax*0.08); f.mp = Math.max(1, f.mp - v); A.solitude.n--; lines.push(`<span style="color:#9ab8d8">${esc(f.name)}: 아무도 없는 방에 혼자 있는 것 같다 — 고독, 정신력 -${v}</span>`); if(A.solitude.n <= 0) delete A.solitude; }
     if(A.bless && day >= A.bless.until){ delete A.bless; lines.push(`${esc(f.name)}: 기사의 축복이 걷혔다`); }
     if(A.coatOff && day >= A.coatOff){ delete A.coatOff; lines.push(`${esc(f.name)}: 다시 외투를 걸칠 수 있게 되었다`); }
     if(A.seed){ A.seed.n--; if(A.seed.n > 0){ const v = Math.floor(f.hpMax*0.04); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 몸속의 씨앗이 자란다 — 체력 -${v}</span>`); }
       else { const v = Math.floor(f.hpMax*0.12); f.hp = Math.max(1, f.hp - v); delete A.seed; sprouts.push(f); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 어깨를 뚫고 싹이 텄다 — 체력 -${v}. 떨어진 열매가 사무소 근처에 뿌리를 내렸다</b>`); } }
-    if(A.erl){ if(day <= A.erl){ const v = Math.floor(f.mpMax*0.05); f.mp = Math.max(1, f.mp - v); lines.push(`${esc(f.name)}: 밤새 다정한 목소리가 불렀다 — 정신력 -${v}`); } if(day >= A.erl) delete A.erl; }
-    if(A.kin){ if(day <= A.kin){ const h = Math.floor(f.hpMax*0.05), v = Math.floor(f.mpMax*0.05); f.hp = Math.min(f.hpMax, f.hp + h); f.mp = Math.max(1, f.mp - v); lines.push(`${esc(f.name)}: 아비가 흘린 피를 받아 마셨다 — 체력 +${h}, 굶주린 꿈에 시달렸다 — 정신력 -${v}`); } if(day >= A.kin) delete A.kin; }
+    if(A.erl){ if(day <= A.erl){ const v = abPenalty("HE", Math.floor(f.mpMax*0.05)); f.mp = Math.max(1, f.mp - v); lines.push(`${esc(f.name)}: 밤새 다정한 목소리가 불렀다 — 정신력 -${v}`); } if(day >= A.erl) delete A.erl; }
+    if(A.kin){ if(day <= A.kin){ const h = Math.floor(f.hpMax*0.05), v = abPenalty('WAW',Math.floor(f.mpMax*0.05)); f.hp = Math.min(f.hpMax, f.hp + h); f.mp = Math.max(1, f.mp - v); lines.push(`${esc(f.name)}: 아비가 흘린 피를 받아 마셨다 — 체력 +${h}, 굶주린 꿈에 시달렸다 — 정신력 -${v}`); } if(day >= A.kin) delete A.kin; }
     if(A.jade){ A.jade.n--; if(A.jade.n > 0){ const v = Math.floor(f.mpMax*0.06); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: 품속의 푸른 옥이 단꿈을 보여 주었다 — 정신력 +${v}`); }
-      else { const v = Math.floor(f.mpMax*0.25); f.mp = Math.max(0, f.mp - v); delete A.jade; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 아침에 눈을 뜨니 옥이 사라졌다. 넋이 빠졌다 — 정신력 -${v}</b>`); } }
+      else { const v = abPenalty("WAW", Math.floor(f.mpMax*0.25)); f.mp = Math.max(0, f.mp - v); delete A.jade; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 아침에 눈을 뜨니 옥이 사라졌다. 넋이 빠졌다 — 정신력 -${v}</b>`); } }
     if(A.wing){ const mate = S.fixers.find(x=>x.id===A.wing.mate);
       if(!mate || day > A.wing.until) delete A.wing;
-      else if((f.lastDispatch===day) !== (mate.lastDispatch===day)){ const v = Math.floor(f.mpMax*0.08); f.mp = Math.max(1, f.mp - v); lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 짝 없이 하루를 보냈다. 한쪽 날개가 저린다 — 정신력 -${v}</span>`); }
+      else if((f.lastDispatch===day) !== (mate.lastDispatch===day)){ const v = abPenalty("HE", Math.floor(f.mpMax*0.08)); f.mp = Math.max(1, f.mp - v); lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 짝 없이 하루를 보냈다. 한쪽 날개가 저린다 — 정신력 -${v}</span>`); }
       else if(f.lastDispatch===day){ const v = Math.floor(f.mpMax*0.04); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`${esc(f.name)}: ${esc(mate.name)}와 함께 날았다 — 정신력 +${v}`); } }
   });
   // 싹이 튼 씨앗: 새 기생 사과가 사무소 근처에 열린다
@@ -7785,35 +7791,35 @@ function abnoApply(q, team, R, lines){
   const A = abnoOf(q), name = A ? A.n : "환상체", lost = [], who = id => S.fixers.find(x=>x.id===id);
   Object.entries(R.mpLoss||{}).forEach(([id,v])=>{ const f = who(+id) || team.find(x=>x.id==id); if(f && v) lines.push(`${esc(f.name)}: 틀린 행동으로 정신력 -${v}`); });
   const D = R.doom;
-  if(D){ if(D.mind) team.forEach(f=>{ const v = Math.floor(f.mpMax*D.mind); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: ${esc(name)}${A && A.gentle ? "의 곁을 떠나며 조금 허전해졌다" : "의 재앙"} — 정신력 -${v}`); });
-    if(D.maim){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || pick(team); if(f){ f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.08))); lines.push(`${esc(f.name)}: 삼켜졌다가 겨우 끌려 나왔다 — 체력 ${f.hp}`); } }
+  if(D){ if(D.mind) team.forEach(f=>{ const v = abPenalty(A, Math.floor(f.mpMax*D.mind)); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: ${esc(name)}${A && A.gentle ? "의 곁을 떠나며 조금 허전해졌다" : "의 재앙"} — 정신력 -${v}`); });
+    if(D.maim){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || pick(team); if(f){ f.hp = abCap(A,f.hp,Math.max(1,Math.floor(f.hpMax*0.08))); lines.push(`${esc(f.name)}: 삼켜졌다가 겨우 끌려 나왔다 — 체력 ${f.hp}`); } }
     if(D.custom==="button"){ const k = pick(["mp","hp","board"]);
       if(k==="mp"){ team.forEach(f=>{ f.mp = Math.min(f.mp, 1); }); lines.push(`<b style="color:#ff8a7a">일어나선 안 될 일이 일어났다. 그 자리에 있던 모두의 정신이 텅 비었다(정신력 1)</b>`); }
       else if(k==="hp"){ team.forEach(f=>{ f.hp = Math.min(f.hp, 1); }); lines.push(`<b style="color:#ff8a7a">일어나선 안 될 일이 일어났다. 그 자리에 있던 모두가 피투성이로 쓰러졌다(체력 1)</b>`); }
       else { const n = (S.requests||[]).length; S.requests = (S.requests||[]).filter(x=>x.id===q.id); lines.push(`<b style="color:#ff8a7a">일어나선 안 될 일이 일어났다. 사무소 게시판의 의뢰 ${Math.max(0,n-1)}건이 처음부터 없었던 것이 되었다</b>`); } }
-    if(D.custom==="solitude"){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || pick(team); if(f){ f.ab = f.ab || {}; f.ab.solitude = {n:2}; f.unavailUntil = Math.max(f.unavailUntil||0, S.day+1); lines.push(`<span style="color:#9ab8d8">${esc(f.name)}: 고독이 들러붙었다 — 이틀 밤 동안 정신력이 깎이고, 내일은 출동하지 못한다</span>`); } }
-    if(D.custom==="orchestra"){ team.forEach(f=>{ const v = Math.floor(f.mpMax*0.35); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: 악장이 이어졌다 — 정신력 -${v}`); });
+    if(D.custom==="solitude"){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || pick(team); if(f){ f.ab = f.ab || {}; f.ab.solitude = {n:2}; f.unavailUntil = Math.max(f.unavailUntil||0, S.day+abPenalty(A,1)); lines.push(`<span style="color:#9ab8d8">${esc(f.name)}: 고독이 들러붙었다 — 이틀 밤 동안 정신력이 깎이고, 내일은 출동하지 못한다</span>`); } }
+    if(D.custom==="orchestra"){ team.forEach(f=>{ const v = abPenalty(A, Math.floor(f.mpMax*0.35)); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: 악장이 이어졌다 — 정신력 -${v}`); });
       team.forEach(f=>{ if(f.mp < f.mpMax*0.5){ f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 마지막 음이 끝나는 순간 머리가 터졌다</b>`); } }); }
-    if(D.custom==="bluestar"){ team.forEach(f=>{ const v = Math.floor(f.mpMax*0.3); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: 별의 맥박 — 정신력 -${v}`); });
+    if(D.custom==="bluestar"){ team.forEach(f=>{ const v = abPenalty(A, Math.floor(f.mpMax*0.3)); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: 별의 맥박 — 정신력 -${v}`); });
       team.forEach(f=>{ if(f.mp<=0 || power(f,["wil"]) < q.req*0.6){ lost.push({f, kind:"실종", why:"푸른 별의 심장으로 끌려 들어갔다"}); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 하늘로 떠올라 푸른 별의 심장으로 끌려 들어갔다</b>`); } }); }
-    if(D.custom==="jadeDream"){ team.forEach(f=>{ f.unavailUntil = Math.max(f.unavailUntil||0, S.day + 1); }); lines.push(`<span style="color:#9ad0ff">꿈에서 덜 깬 일행은 내일 하루를 자며 보낸다(출동 불가)</span>`); }
-    if(D.custom==="frostAll"){ team.forEach(f=>{ f.unavailUntil = Math.max(f.unavailUntil||0, S.day + 1); const v = Math.floor(f.hpMax*0.1); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 얼어붙은 몸을 녹이느라 내일은 출동하지 못한다 — 동상, 체력 -${v}</span>`); }); }
-    if(D.custom==="shoesSolo"){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || team[0]; if(f){ f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.08))); f.stats.agi = Math.max(1, f.stats.agi - 3); syncStatVitals(f); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 춤을 멈추려 스스로 발목을 잘라 냈다 — 체력 ${f.hp} · 민첩 -3(영구)</b>`); } } }
+    if(D.custom==="jadeDream"){ team.forEach(f=>{ f.unavailUntil = Math.max(f.unavailUntil||0, S.day + abPenalty(A,1)); }); lines.push(`<span style="color:#9ad0ff">꿈에서 덜 깬 일행은 내일 하루를 자며 보낸다(출동 불가)</span>`); }
+    if(D.custom==="frostAll"){ team.forEach(f=>{ f.unavailUntil = Math.max(f.unavailUntil||0, S.day + abPenalty(A,1)); const v = abPenalty(A, Math.floor(f.hpMax*0.1)); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 얼어붙은 몸을 녹이느라 내일은 출동하지 못한다 — 동상, 체력 -${v}</span>`); }); }
+    if(D.custom==="shoesSolo"){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || team[0]; if(f){ f.hp = abCap(A,f.hp,Math.max(1,Math.floor(f.hpMax*0.08))); f.stats.agi = Math.max(1, f.stats.agi - abPenalty(A,3)); syncStatVitals(f); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 춤을 멈추려 스스로 발목을 잘라 냈다 — 체력 ${f.hp} · 민첩 -${abPenalty(A,3)}(영구)</b>`); } } }
   (R.dead||[]).forEach(d=>{ const f = who(d.id); if(!f) return; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: ${esc(d.why)}</b>`); lost.push({f, kind:d.kind||"사망", why:d.why}); });
-  if(R.possess){ const f = who(R.possess.id); if(f){ if(R.possess.win){ f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.1))); f.stats.agi = Math.max(1, f.stats.agi - 3); syncStatVitals(f); lines.push(`<span style="color:#ffb35a">${esc(f.name)}: 동료들이 발목째 빨간 구두를 벗겨 냈다 — 목숨은 건졌다. 체력 ${f.hp} · 민첩 -3(영구)</span>`); }
+  if(R.possess){ const f = who(R.possess.id); if(f){ if(R.possess.win){ f.hp = abCap(A,f.hp,Math.max(1,Math.floor(f.hpMax*0.1))); f.stats.agi = Math.max(1, f.stats.agi - abPenalty(A,3)); syncStatVitals(f); lines.push(`<span style="color:#ffb35a">${esc(f.name)}: 동료들이 발목째 빨간 구두를 벗겨 냈다 — 목숨은 건졌다. 체력 ${f.hp} · 민첩 -${abPenalty(A,3)}(영구)</span>`); }
     else { lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 빨간 구두를 신은 채 춤추며 골목 너머로 사라졌다</b>`); lost.push({f, kind:"실종", why:"빨간 구두를 신고 춤추며 사라졌다"}); } } }
   (R.battle||[]).forEach(b=>{ if(!b.death || !S.fixers.includes(b.f)) return; b.f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(b.f.name)}: ${b.death==="hanged" ? "심판받아 교수대에 매달렸다" : b.death==="erl" ? "마왕의 품에 안긴 채 숨을 거두었다" : "등불을 따라가 큰 새에게 머리를 잃었다"}</b>`); });
   if(R.skin) S.skinVisit = {name:R.skin.name, day:S.day + 2};
   const X = R.fxOut || {}, day = S.day, mark = (id, k, v) => { const f = who(id); if(f){ f.ab = f.ab || {}; f.ab[k] = v; } return f; };
   (X.seed||[]).forEach(id=>{ const f = mark(id, "seed", {n:3}); if(f) lines.push(`<span style="color:#ff8a7a">${esc(f.name)}: 삼킨 씨앗이 몸속에서 뿌리를 내린다 — 사흘 밤 동안 체력을 빨아 먹고 자란다</span>`); });
-  (X.frozen||[]).forEach(id=>{ const f = who(id); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + 1); const v = Math.floor(f.hpMax*0.06); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 얼어붙었던 몸을 녹이느라 내일은 출동하지 못한다 — 동상, 체력 -${v}</span>`); } });
+  (X.frozen||[]).forEach(id=>{ const f = who(id); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + abPenalty(A,1)); const v = abPenalty(A, Math.floor(f.hpMax*0.06)); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 얼어붙었던 몸을 녹이느라 내일은 출동하지 못한다 — 동상, 체력 -${v}</span>`); } });
   if(X.bari!=null){ team.forEach(f=>{ if(S.fixers.includes(f)){ const v = f.hpMax - f.hp; f.hp = f.hpMax; if(v) lines.push(`${esc(f.name)}: 세 꽃으로 뼈를 잇고 살을 붙이고 피를 돌렸다 — 체력 +${v}`); } });
-    const f = who(X.bari); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + 3); lines.push(`<span style="color:#ffd0e0">${esc(f.name)}: 꽃값을 치르러 서천 꽃밭에 남았다 — 사흘 동안 물 긷고 불 땐다(출동 불가)</span>`); } }
-  if(X.erl!=null){ const f = mark(X.erl, "erl", day + 2); if(f) lines.push(`<span style="color:#b9c4d8">${esc(f.name)}: 귓가에 아직 다정한 목소리가 남았다 — 이틀 밤 동안 정신력이 깎인다</span>`); }
-  if(X.dreamers) X.dreamers.forEach(id=>{ const f = who(id); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + 1); const v = Math.floor(f.mpMax*0.15); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 붉은 누각의 꿈에서 깨어나지 못했다 — 내일 하루를 자며 보낸다(정신력 +${v})</span>`); } });
-  if(X.bearer!=null){ const f = who(X.bearer); if(f){ const v = Math.floor(f.hpMax*0.1); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 탑을 내려놓았다. 어깨가 한동안 펴지지 않는다 — 체력 -${v}`); } }
-  if(X.pair){ const [p1, p2] = X.pair.map(who); if(p1 && p2){ p1.ab = p1.ab || {}; p2.ab = p2.ab || {}; p1.ab.wing = {mate:p2.id, until:day + 3}; p2.ab.wing = {mate:p1.id, until:day + 3}; lines.push(`<span style="color:#9ad0ff">${esc(p1.name)} · ${esc(p2.name)}: 비익조의 한 쌍이 되었다 — 사흘 동안 함께 나가지 않으면 밤마다 둘 다 정신력을 잃는다</span>`); } }
-  if(X.kin!=null){ const f = mark(X.kin, "kin", day + 2); if(f) lines.push(`<span style="color:#ffb0a0">${esc(f.name)}: 늙은 기사의 자식이 되었다 — 이틀 밤 동안 피를 받아 몸이 낫지만 꿈에 시달린다</span>`); }
+    const f = who(X.bari); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + abPenalty(A,3)); lines.push(`<span style="color:#ffd0e0">${esc(f.name)}: 꽃값을 치르러 서천 꽃밭에 남았다 — 사흘 동안 물 긷고 불 땐다(출동 불가)</span>`); } }
+  if(X.erl!=null){ const f = mark(X.erl, "erl", day + abPenalty(A,2)); if(f) lines.push(`<span style="color:#b9c4d8">${esc(f.name)}: 귓가에 아직 다정한 목소리가 남았다 — 이틀 밤 동안 정신력이 깎인다</span>`); }
+  if(X.dreamers) X.dreamers.forEach(id=>{ const f = who(id); if(f){ f.unavailUntil = Math.max(f.unavailUntil||0, day + abPenalty(A,1)); const v = Math.floor(f.mpMax*0.15); f.mp = Math.min(f.mpMax, f.mp + v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 붉은 누각의 꿈에서 깨어나지 못했다 — 내일 하루를 자며 보낸다(정신력 +${v})</span>`); } });
+  if(X.bearer!=null){ const f = who(X.bearer); if(f){ const v = abPenalty(A, Math.floor(f.hpMax*0.1)); f.hp = Math.max(1, f.hp - v); lines.push(`${esc(f.name)}: 탑을 내려놓았다. 어깨가 한동안 펴지지 않는다 — 체력 -${v}`); } }
+  if(X.pair){ const [p1, p2] = X.pair.map(who); if(p1 && p2){ p1.ab = p1.ab || {}; p2.ab = p2.ab || {}; p1.ab.wing = {mate:p2.id, until:day + abPenalty(A,3)}; p2.ab.wing = {mate:p1.id, until:day + abPenalty(A,3)}; lines.push(`<span style="color:#9ad0ff">${esc(p1.name)} · ${esc(p2.name)}: 비익조의 한 쌍이 되었다 — 사흘 동안 함께 나가지 않으면 밤마다 둘 다 정신력을 잃는다</span>`); } }
+  if(X.kin!=null){ const f = mark(X.kin, "kin", day + abPenalty(A,2)); if(f) lines.push(`<span style="color:#ffb0a0">${esc(f.name)}: 늙은 기사의 자식이 되었다 — 이틀 밤 동안 피를 받아 몸이 낫지만 꿈에 시달린다</span>`); }
   if(R.how==="sup"){ const RC = abRec(); RC.sup++; abRecSave(RC); }   // 붉은 두건의 용병이 늑대 냄새를 맡는다
   return lost;
 }
@@ -8110,13 +8116,14 @@ function mgAbno(ctx){
     const shown = know(1) ? a.n : "정체불명의 환상체", riskTxt = know(2) ? a.risk + (a.sin ? ` · ${a.sin}` : "") : "???";
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
     const m = mgOpen(`${a.risk==="죄종"?"죄종 조우":"환상체 의뢰"} · 관측`, a.risk==="죄종" ? "죄종은 환상체처럼 알로 되돌릴 수 없으므로 발견 즉시 사살해야 한다." : "현장에 도착하면 먼저 환상체의 상태를 확인한다. 배회 중인 개체는 적절한 행동으로 진정시켜 알로 되돌릴 수 있지만, 이미 날뛰고 있거나 폭주한 개체는 전투를 통해 제압해야 한다.", ctx, 300);
-    const rampP = a.noFight ? 0 : ({죄종:0.25, ZAYIN:0.2, TETH:0.4, HE:0.5, WAW:0.6, ALEPH:0.8}[a.risk] || 0.25);   // 날뜀으로 마주칠 확률: ZAYIN 20 · TETH 40 · HE 50 · WAW 60 · ALEPH 80%
+    const rampP = a.noFight ? 0 : abRate(a,({죄종:0.25, ZAYIN:0.2, TETH:0.4, HE:0.5, WAW:0.6, ALEPH:0.8}[a.risk] || 0.25));   // 날뜀으로 마주칠 확률: ZAYIN 20 · TETH 40 · HE 50 · WAW 60 · ALEPH 80%
     const G = {mood:20, ctr:a.ctr, max:a.ctr, state: q.__state || (Math.random() < rampP ? "rage" : "calm"), log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, blessed:null, embers:0, tongue:0, sac:0, dead:[], gaze:{},
       bench:[], out:{}, heat:{}, coatAsked:{}, frost:{}, flowers:[], lure:0, dream:0, floor:0, babel:null, nailSeq:null, nailPos:0, order:null};
+    const ctrStep=abHigh(a)?0.7:1, ctrDown=(n=1)=>{G.ctr=Math.round((G.ctr-n*ctrStep)*10)/10;};
     const NAILS = ["엄지","검지","중지","약지","새끼"];
     const nextNail = () => { if(!G.nailSeq || G.nailPos >= 5){ G.nailSeq = [0,1,2,3,4].sort(()=>Math.random()-0.5); G.nailPos = 0; } G.nail = G.nailSeq[G.nailPos++]; G.order = G.nail===1 ? pick(["str","agi","tec","wil"]) : null; };
     if(a.fx==="nails") nextNail();
-    if(a.fx==="mercenary"){ const cut = Math.floor(abRec().sup/5); if(cut){ G.ctr = Math.max(1, G.ctr - cut); } }
+    if(a.fx==="mercenary"){ const cut = Math.floor(abRec().sup/5); if(cut){ G.ctr = Math.max(1, G.ctr - cut*ctrStep); } }
     const W = 720, H = 300, t0 = performance.now(); let raf;
     // 오래 남는 기믹: 기사의 축복을 받은 이는 행동할 수 없다 · 용기의 불꽃을 지닌 이가 재주 행동을 하면 목이 떨어진다
     const blessedF = f => f.ab && f.ab.bless && S.day <= f.ab.bless.until, flameOf = f => f.ab && f.ab.flame ? f.ab.flame.lv : 0;
@@ -8165,20 +8172,20 @@ function mgAbno(ctx){
       { const stx = statusTxt(); if(stx){ c.fillStyle = "#ffb35a"; c.fillText(stx.length > 70 ? stx.slice(0,70)+"…" : stx, 18, 86); } }
       c.fillStyle = "#a8a0a8"; c.textAlign = "right"; c.fillText("기분", 502, 30); c.fillText(ctrName, 502, 52); c.textAlign = "left";
       c.fillStyle = "#26222a"; c.fillRect(510, 21, 190, 10); c.fillStyle = G.mood >= 70 ? "#8fd6a0" : G.mood >= 35 ? "#e0c64a" : "#d6493f"; c.fillRect(510, 21, 190*clamp(G.mood/100,0,1), 10);
-      for(let i=0;i<G.max;i++){ c.fillStyle = i < G.ctr ? (a.noCounter ? "#9ab8d8" : "#e8d27a") : "#2e2a30"; c.beginPath(); c.arc(518 + i*20, 47, 6, 0, 7); c.fill(); }
+      for(let i=0;i<G.max;i++){ c.fillStyle = i < G.ctr ? (a.noCounter ? "#9ab8d8" : "#e8d27a") : "#2e2a30"; c.beginPath(); c.arc(518 + i*20, 47, 6, 0, 7); c.fill(); } if(abHigh(a)){c.fillStyle='#e8d27a';c.fillText(String(Math.max(0,G.ctr).toFixed(1)),510,68);}
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    const say = s => { G.log.unshift(s); G.log = G.log.slice(0,4); m.info.innerHTML = `<div class="pk-text">${G.log.join("<br>")}</div>`; };
+    const say = s => { G.log.unshift(abHigh(a)?String(s).replace(/(카운터|실수 허용) -1/g,'$1 -0.7').replace(/카운터가 감소했다\(-1\)/g,'카운터가 감소했다(-0.7)').replace(/카운터가 1 더 감소했다/g,'카운터가 0.7 더 감소했다'):s); G.log = G.log.slice(0,4); m.info.innerHTML = `<div class="pk-text">${G.log.join("<br>")}</div>`; };
     const end = (res, text) => { if(G.done) return; G.done = true; m.ctrl.innerHTML = ""; res = Object.assign({}, res, {fxOut:G.out}); setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, text, res.win).then(()=>resolve(res)); }, 900); };
-    const maimOf = f => { G.hurt[f.id] = true; f.hp = Math.min(f.hp, Math.max(1, Math.floor(f.hpMax*0.08))); };
+    const maimOf = f => { G.hurt[f.id] = true; f.hp = abCap(a,f.hp,Math.max(1, Math.floor(f.hpMax*0.08))); };
     // 현장에서 잃는 사람(죽음·실종): 정산은 의뢰가 끝난 뒤 한다. 아무도 남지 않으면 의뢰 실패
     const killWorker = (f, why, kind="사망") => { G.dead.push({id:f.id, why, kind}); const i = ctx.team.indexOf(f); if(i>=0) ctx.team.splice(i,1); if(G.pick===f.id) G.pick = null; G.shake = 16; G.flash = 1;
       if(!ctx.team.length){ end({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin}, "아무도 남지 않았다"); return true; } return false; };
     // 표시와 실제 판정은 같은 함수를 사용한다. 기존 전용 기프트 보정도 함께 표시한다.
     const prefP = (k, f, lv) => { f=f||workerFor(k); const g=f.gear&&f.gear.acc;
       const selfG=g&&g.selfUp&&g.gift&&String(g.gift.abno).split("~")[0]===a.id?g.selfUp:0;
-      return workChance(lv||a.pref[k],power(f,[k]),selfG); };
+      const p=workChance(lv||a.pref[k],power(f,[k]),selfG); return abHigh(a)?1-abRate(a,1-p):p; };
     const tagOf = f => benched(f) ? ` · ${a.fx==="frost" ? "얼어붙음" : a.fx==="tower" ? "탑을 짊어짐" : a.fx==="jade" ? "꿈에 빠짐" : a.fx==="erl" ? "정신을 놓음" : "행동 불가"}` : blessedF(f) ? " · 축복(행동 불가)" : flameOf(f) ? ` · ${["푸른","주황","붉은"][flameOf(f)-1]} 불꽃` : "";
     // 고유 기믹: 징후 → 대응(추가 행동) · 놓치면 카운터 -1
     const SG = signOf(a); G.signLast = 0; const sgChk = () => typeof SG.chk==="function" ? SG.chk(G) : SG.chk, sgBtn = () => typeof SG.btn==="function" ? SG.btn(G) : SG.btn;
@@ -8187,24 +8194,24 @@ function mgAbno(ctx){
       const T = freeT().length ? freeT() : ctx.team, f = SG.target ? pick(T) : null;
       G.sign = {f: f ? f.id : null}; G.signLast = G.turn; G.sign.txt = SG.t(G, f);
       say(`<b style="color:#ffb35a">징후 — ${esc(G.sign.txt)}</b>`); }
-    function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; G.ctr--; G.shake = 6;
+    function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; ctrDown(); G.shake = 6;
       if(SG.missFx && SG.missFx.embers) G.embers = (G.embers||0) + SG.missFx.embers;
-      if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = Math.max(1, Math.floor(x.hpMax*0.1)); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 -10%)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
-      let dmgT = ""; if(SG.missDmg){ const D = SG.missDmg, parts = []; ctx.team.forEach(x=>{ if(D.mp){ const v = Math.floor(x.mpMax*D.mp); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; } if(D.hp){ const v = Math.max(1, Math.floor(x.hpMax*D.hp*(1 - redHP(x)*0.5))); x.hp = Math.max(1, x.hp - v); } });
+      if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*0.1))); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 -10%)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
+      let dmgT = ""; if(SG.missDmg){ const D = SG.missDmg, parts = []; ctx.team.forEach(x=>{ if(D.mp){ const v = abPenalty(a, Math.floor(x.mpMax*D.mp)); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; } if(D.hp){ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*D.hp*(1 - redHP(x)*0.5)))); x.hp = Math.max(1, x.hp - v); } });
         if(D.mp) parts.push(`모두 정신력 -${Math.round(D.mp*100)}%`); if(D.hp) parts.push(`모두 체력 -${Math.round(D.hp*100)}%`); dmgT = ` · <b style="color:#ff8a7a">${esc(D.t)} (${parts.join(" · ")})</b>`; }
       say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1${dmgT}`);
       if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
     function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil"); G.sign = null;
       const out = [];
-      if(SG.cost && SG.cost.hp){ const v = Math.max(1, Math.floor(f.hpMax*SG.cost.hp)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
-      const ratio = sgChk() ? power(f,[sgChk()]) / Math.max(1, q.req) : 1, ok = !sgChk() || Math.random() < clamp(0.35 + 0.5*ratio, 0.15, 0.95);
+      if(SG.cost && SG.cost.hp){ const v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*SG.cost.hp))); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
+      const ratio = sgChk() ? power(f,[sgChk()]) / Math.max(1, q.req) : 1, ok = !sgChk() || Math.random() < 1-abRate(a,1-clamp(0.35 + 0.5*ratio, 0.15, 0.95));
       const E = ok ? SG.ok : (SG.bad || {});
       if(E.mood){ G.mood = Math.min(100, G.mood + E.mood); out.push(`기분 +${E.mood}`); }
       if(E.hp){ const v = Math.floor(f.hpMax*E.hp); f.hp = Math.min(f.hpMax, f.hp + v); out.push(`체력 +${v}`); }
       if(E.mp && ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.min(f.mpMax, f.mp + v); out.push(`정신력 +${v}`); }
-      if(E.mp && !ok){ const v = Math.floor(f.mpMax*E.mp); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; out.push(`정신력 -${v}`); }
+      if(E.mp && !ok){ const v = abPenalty(a, Math.floor(f.mpMax*E.mp)); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; out.push(`정신력 -${v}`); }
       if(E.frost && G.frost && G.frost[f.id]){ G.frost[f.id] = Math.max(0, G.frost[f.id] + E.frost); out.push(`서리 ${G.frost[f.id]}/3`); }
-      if(E.hurt && !ok){ const v = Math.max(1, Math.floor(f.hpMax*E.hurt)); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
+      if(E.hurt && !ok){ const v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*E.hurt))); f.hp = Math.max(1, f.hp - v); out.push(`체력 -${v}`); }
       if(E.embers && G.embers){ G.embers = Math.max(0, G.embers + E.embers); out.push(`불씨 ${G.embers}`); }
       if(E.dream && G.dream){ G.dream = Math.max(0, G.dream + E.dream); out.push(`꿈 ${G.dream}/3`); }
       if(E.sac && G.sac){ G.sac = Math.max(0, G.sac + E.sac); out.push(`물주머니 ${G.sac}/3`); }
@@ -8221,7 +8228,7 @@ function mgAbno(ctx){
       menuBase(); signBtn(); }
     function menuBase(){
       const chips = `<div class="pk-who"><span class="muted">행동할 해결사</span><button class="${G.pick==null?"on":""}" data-pk="auto">자동(관련 능력치가 높은 해결사)</button>${ctx.team.map(f=>`<button class="${G.pick===f.id?"on":""}" data-pk="${f.id}">${esc(f.name)}${tagOf(f)}</button>`).join("")}</div>`;
-      const merc = a.fx==="mercenary" && G.ctr > 0 ? `<button data-merc="list"><b>하청을 맡긴다</b><small>게시판의 물리 의뢰 하나를 보수의 40%를 떼고 대신 처리해 준다<br><span style="color:#ff8a7a">그 대가로 광폭 카운터 -1</span></small></button>` : "";
+      const merc = a.fx==="mercenary" && G.ctr > 0 ? `<button data-merc="list"><b>하청을 맡긴다</b><small>게시판의 물리 의뢰 하나를 보수의 ${abHigh(a)?28:40}%를 떼고 대신 처리해 준다<br><span style="color:#ff8a7a">그 대가로 광폭 카운터 -${ctrStep}</span></small></button>` : "";
       const mb = a.fx==="bullet" && !G.bullet ? `<button data-mb="1"><b>마탄을 의뢰한다</b><small>자금의 10%(${won(bulletCost())}) · 다음 전투가 시작될 때 적을 꿰뚫는다<br>지금까지 의뢰한 마탄: ${abRec().frei}발</small></button>` : "";
       if(a.rule==="watch"){ const f = workerFor("wil"); m.ctrl.innerHTML = chips + `<div class="pk-moves"><button data-watch="1"><b>손대지 않고 지켜본다</b><small>버튼에 손대지 않고 지켜보는 것만 가능하다. 의지가 부족하면 버튼을 누르고 싶은 충동을 억누르기 어렵다<br>${esc(f.name)} · 의지 ${power(f,["wil"])}${tagOf(f)}</small></button></div>`; return; }
       const ntc = a.fx==="nails" && G.nail!=null ? `<div class="muted" style="font-size:12px;margin:4px 0">솟은 못 — <b style="color:#ffb35a">${NAILS[G.nail]}</b> · ${["가장 높은 등급이 먼저 나서야 한다","지령: <b>"+(G.order ? ATTR_NAME[G.order] : "")+" 행동</b>","틀리면 모두가 갚는다","최고가 아니면 졸작이다","누군가 엿듣는다 — 반응이 보이지 않는다"][G.nail]}</div>` : a.fx==="tower" && G.babel!=null ? `<div class="muted" style="font-size:12px;margin:4px 0">말이 갈라졌다 — 고른 사람 대신 <b>${esc((ctx.team.find(f=>f.id===G.babel)||{}).name||"")}</b>${jo((ctx.team.find(f=>f.id===G.babel)||{}).name||"","이").slice(-1)} 나선다</div>` : "";
@@ -8232,11 +8239,11 @@ function mgAbno(ctx){
     function mercList(){ const cand = (S.requests||[]).filter(r=>r.id!==q.id && r.kind==="일반" && r.attrs[0]==="str" && r.boss!=="forgotten" && forgottenAllowed(r));
       if(!cand.length){ say("게시판에 맡길 만한 물리 의뢰가 없다."); return menu(); }
       m.ctrl.innerHTML = `<div class="pk-moves">${cand.slice(0,4).map(r=>`<button data-merc="${r.id}"><b>${threatOf(r)} · ${esc(r.text.length>24 ? r.text.slice(0,24)+"…" : r.text)}</b><small>받을 몫 ${won(Math.round(r.reward*0.6/100)*100)}</small></button>`).join("")}<button data-merc="cancel"><b>그만둔다</b></button></div>`; }
-    function mercDo(id){ const r = (S.requests||[]).find(x=>x.id===id); if(!r||r.boss==="forgotten"||!forgottenAllowed(r)) return menu(); const pay = Math.round(r.reward*0.6/100)*100;
+    function mercDo(id){ const r = (S.requests||[]).find(x=>x.id===id); if(!r||r.boss==="forgotten"||!forgottenAllowed(r)) return menu(); const pay = Math.round(r.reward*(1-abRate(a,0.4))/100)*100;
       S.money += pay; S.todayIncome = (S.todayIncome||0) + pay; S.requests = S.requests.filter(x=>x!==r); addLog(`붉은 두건의 용병 하청: ${r.text} (+${won(pay)})`);
-      G.ctr--; say(`<span style="color:#ff9a8a">용병이 갈고리를 챙겨 나갔다가 돌아왔다 — ${esc(r.text)} · +${won(pay)}</span> · <span style="color:#ff8a7a">광폭 카운터 -1</span>`);
+      ctrDown(); say(`<span style="color:#ff9a8a">용병이 갈고리를 챙겨 나갔다가 돌아왔다 — ${esc(r.text)} · +${won(pay)}</span> · <span style="color:#ff8a7a">광폭 카운터 -1</span>`);
       if(G.ctr <= 0) return breach(ctx.team[0]); menu(); }
-    const bulletCost = () => Math.max(500, Math.round((S.money||0)*0.1/100)*100);
+    const bulletCost = () => Math.max(abPenalty(a,500), Math.round((S.money||0)*abRate(a,0.1)/100)*100);
     function orderBullet(){ const c = bulletCost(); if((S.money||0) < c){ toast("자금이 모자라다"); return; }
       S.money -= c; const RC = abRec(); RC.frei++; abRecSave(RC); S.bullets = (S.bullets||[]).concat([{n: RC.frei}]); G.bullet = true;
       say(`사수가 탄환 한 발을 만들어 장전했다. 자금 -${won(c)}. <span class="muted">지금까지 의뢰한 마탄 ${abRec().frei}발째. 다음 전투가 시작될 때 날아간다.</span>`); menu(); }
@@ -8246,7 +8253,7 @@ function mgAbno(ctx){
       grantAbnoGift(a,"ctrl",q,f,AB_GIFT_RATE.action,say);
       if(Math.random() < p){ say(line + `<span style="color:#ff8a7a">손가락이 저도 모르게 버튼을 눌렀다</span>`); return doom(f); }
       const gain = Math.round(24 * clamp(0.6 + 0.4*ratio, 0.6, 1.2)); G.mood = Math.min(100, G.mood + gain); line += `<span style="color:#8fd6a0">${esc(a.like)}</span> (기분 +${gain})`;
-      if(Math.random() < p*1.5){ G.ctr--; line += ` · <span style="color:#ff8a7a">누르고 싶은 충동을 겨우 참았다 — ${ctrName} -1</span>`; }
+      if(Math.random() < p*1.5){ ctrDown(); line += ` · <span style="color:#ff8a7a">누르고 싶은 충동을 겨우 참았다 — ${ctrName} -1</span>`; }
       say(line);
       if(G.ctr > 0 && G.mood >= 100){ G.state = "egg"; G.flash = 1; codexNote(a.vid, "ctrl"); say(`<b style="color:#e8d27a">아무도 손대지 않았다. ${esc(josa(shown,"이","가"))} 스스로 알로 잠들었다.</b>`);
         return end({win:true, score:1, how:"ctrl", mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, last:G.last}, "알로 잠재웠다 — 통제 성공"); }
@@ -8259,7 +8266,7 @@ function mgAbno(ctx){
       G.soda = {f, kind, bad}; }
     function drinkSoda(yes){ const {f, kind, bad} = G.soda; G.soda = null;
       if(!yes){ G.mood = Math.max(0, G.mood - 4); say(`${esc(jo(f.name,"이"))} 캔을 돌려주었다. (기분 -4)`); return menu(); }
-      if(bad){ const v = Math.floor(f.mpMax*0.03); f.mp = Math.max(0, f.mp - v); say(`<span style="color:#e0c64a">${esc(jo(f.name,"이"))} 캔을 비운 뒤 잠깐 졸았다. 멀리서 파도 소리와 갈매기 울음소리가 들려오는 듯했으나 이내 사라졌다.</span> (정신력 -${v})`); return menu(); }
+      if(bad){ const v = abPenalty(a, Math.floor(f.mpMax*0.03)); f.mp = Math.max(0, f.mp - v); say(`<span style="color:#e0c64a">${esc(jo(f.name,"이"))} 캔을 비운 뒤 잠깐 졸았다. 멀리서 파도 소리와 갈매기 울음소리가 들려오는 듯했으나 이내 사라졌다.</span> (정신력 -${v})`); return menu(); }
       const h = kind!=="오리지널" ? Math.floor(f.hpMax*(kind==="체리" ? 0.15 : 0.1)) : 0, v = kind!=="체리" ? Math.floor(f.mpMax*(kind==="오리지널" ? 0.15 : 0.1)) : 0;
       f.hp = Math.min(f.hpMax, f.hp + h); f.mp = Math.min(f.mpMax, f.mp + v);
       say(`<span style="color:#8fd6a0">톡 쏘는 ${kind}맛.</span> ${esc(f.name)}${h ? ` 체력 +${h}` : ""}${v ? ` 정신력 +${v}` : ""}`); menu(); }
@@ -8282,11 +8289,11 @@ function mgAbno(ctx){
       if(a.fx==="flame" && power(f,["str"]) < q.req*0.5){ say(line + `<b style="color:#ff8a7a">용기가 모자란 이가 다가서자 갑옷이 검을 뽑았다</b>`);
         if(killWorker(f, "부서져 가는 갑옷에게 다가갔다가 베였다(근력 부족)")) return; return menu(); }
       // 즉시 재앙 규칙
-      if(a.rule==="teddy" && prev===f.id && freeT().length > 1 && a.gentle){ G.ctr--; say(line + `<span style="color:#e0c64a">같은 사람이 연달아 다가왔다 — 곰 인형이 ${esc(jo(f.name,"을"))} 꼭 끌어안았다가 놓아주었다</span> · ${ctrName} -1`);
+      if(a.rule==="teddy" && prev===f.id && freeT().length > 1 && a.gentle){ ctrDown(); say(line + `<span style="color:#e0c64a">같은 사람이 연달아 다가왔다 — 곰 인형이 ${esc(jo(f.name,"을"))} 꼭 끌어안았다가 놓아주었다</span> · ${ctrName} -1`);
         if(G.ctr <= 0) return breach(f); return menu(); }
       if(a.rule==="teddy" && prev===f.id && freeT().length > 1){
         if(a.noFight){ say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다</span>`); return doom(f); }
-        maimOf(f); G.ctr--; say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다 — ${esc(jo(f.name,"을"))} 꼭 끌어안았다(중상)</span> · ${ctrName} -1`);
+        maimOf(f); ctrDown(); say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다 — ${esc(jo(f.name,"을"))} 꼭 끌어안았다(중상)</span> · ${ctrName} -1`);
         if(G.ctr <= 0) return breach(f); return menu(); }
       if(a.rule==="killWork" && k===a.killK){ say(line + `<span style="color:#ff8a7a">${esc(a.dislike)}</span>`); return doom(f); }
       const slip = Math.random() >= sp;
@@ -8298,24 +8305,24 @@ function mgAbno(ctx){
         let gain = Math.round(WORK_GAIN[lv] * clamp(0.55 + 0.45*ratio, 0.5, 1.3)); const gx = [];
         if(a.fx==="pair" && G.pair && G.pair.includes(f.id) && prev!=null && prev!==f.id && G.pair.includes(prev)){ gain = Math.round(gain*1.5); gx.push(`<span style="color:#9ad0ff">두 날개가 맞았다</span>`); }
         if(a.fx==="kin" && G.child===f.id){ gain = Math.round(gain*1.5); gx.push(`<span style="color:#ffb0a0">자식이 다가오자 아비가 웃었다</span>`); }
-        if(nailNow===4){ gain = Math.round(gain*0.5); }
+        if(nailNow===4){ gain = gain-abPenalty(a,Math.floor(gain*0.5)); }
         if(a.fx==="bari" && k!==["str","agi","wil"][G.flowers.length]) gain = 0;   // 차례가 어긋난 꽃은 시들 뿐이다
         G.mood = Math.min(a.fx==="bari" ? 88 : 100, G.mood + gain);
         line += nailNow===4 ? `<span class="muted">반응을 알 수 없다 — 누군가 엿듣고 있다</span> (기분 +?)` : `<span style="color:${lie ? "#ff8a7a" : "#8fd6a0"}">${esc(likeT)}</span> (기분 +${gain})`;
         if(gx.length) line += " · " + gx.join(" · ");
-        if(nailNow===3 && lv!=="최고" && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">약지의 못이 결과물을 졸작으로 평가했다(카운터 -1)</span>`; }
+        if(nailNow===3 && lv!=="최고" && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">약지의 못이 결과물을 졸작으로 평가했다(카운터 -1)</span>`; }
         if(a.fx==="jade"){ const v = Math.floor(f.mpMax*0.05); f.mp = Math.min(f.mpMax, f.mp + v); G.dream++; line += ` · <span style="color:#9ad0ff">옥이 꿈을 보여 주었다(정신력 +${v}, 꿈 ${G.dream}/3)</span>`;
-          if(G.dream >= 3 && freeT().length <= 1){ G.dream = 0; const v2 = Math.floor(f.mpMax*0.12); f.mp = Math.max(0, f.mp - v2); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; if(G.ctr > 0) G.ctr--; line += ` · <b style="color:#ff8a7a">누각 문턱에서 억지로 깨어났다(정신력 -${v2}, 카운터 -1)</b>`; }
+          if(G.dream >= 3 && freeT().length <= 1){ G.dream = 0; const v2 = abPenalty(a, Math.floor(f.mpMax*0.12)); f.mp = Math.max(0, f.mp - v2); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; if(G.ctr > 0) ctrDown(); line += ` · <b style="color:#ff8a7a">누각 문턱에서 억지로 깨어났다(정신력 -${v2}, 카운터 -1)</b>`; }
           else if(G.dream >= 3){ G.dream = 0; G.bench.push(f.id); (G.out.dreamers = G.out.dreamers || []).push(f.id); line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 붉은 누각 속으로 걸어 들어갔다 — 더는 행동할 수 없다</b>`; } }
         if(a.fx==="tower"){ G.floor++; line += ` · 계단을 한 층 올랐다(${G.floor}층)`; }
         if(a.fx==="bari"){ const need = ["str","agi","wil"][G.flowers.length];
           if(k===need){ G.flowers.push(k); G.mood = Math.min(100, G.mood + 8); line += ` · <span style="color:#ffd0e0">${["뼈살이꽃","살살이꽃","피살이꽃"][G.flowers.length-1]}을 얻었다</span>`;
             if(G.flowers.length >= 3){ G.mood = 100; G.out.bari = f.id; line += ` · <b style="color:#e8d27a">뼈가 이어지고, 살이 붙고, 피가 돌았다</b>`; } }
-          else if(G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">순서를 잘못 지켜 꽃이 시들었다. 이번에 꺾어야 할 꽃은 ${["뼈살이꽃","살살이꽃","피살이꽃"][G.flowers.length]}이다(카운터 -1)</span>`; } }
-        if(a.rule==="goodDrops" && lv==="최고"){ G.ctr--; line += ` · <span style="color:#ff8a7a">너무 좋은 결과를 얻어 오히려 카운터가 감소했다(-1)</span>`; }
-        if(a.rule==="onlyBest" && lv!=="최고"){ G.ctr--; line += ` · <span style="color:#ff8a7a">최고 등급의 결과를 얻지 못해 카운터가 감소했다(-1)</span>`; }
+          else if(G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">순서를 잘못 지켜 꽃이 시들었다. 이번에 꺾어야 할 꽃은 ${["뼈살이꽃","살살이꽃","피살이꽃"][G.flowers.length]}이다(카운터 -1)</span>`; } }
+        if(a.rule==="goodDrops" && lv==="최고"){ ctrDown(); line += ` · <span style="color:#ff8a7a">너무 좋은 결과를 얻어 오히려 카운터가 감소했다(-1)</span>`; }
+        if(a.rule==="onlyBest" && lv!=="최고"){ ctrDown(); line += ` · <span style="color:#ff8a7a">최고 등급의 결과를 얻지 못해 카운터가 감소했다(-1)</span>`; }
         if(a.rule==="goodRaises" && lv==="최고" && G.ctr < G.max){ G.ctr++; line += " · 카운터 +1"; }
-        if(a.rule==="quickDrops" && ratio >= 1.3){ G.ctr--; line += ` · <span style="color:#ff8a7a">너무 빨리 끝났다 — 카운터 -1</span>`; }
+        if(a.rule==="quickDrops" && ratio >= 1.3){ ctrDown(); line += ` · <span style="color:#ff8a7a">너무 빨리 끝났다 — 카운터 -1</span>`; }
         if(a.rule==="heal" && lv==="최고"){ const v = Math.floor(f.mpMax*0.06); f.mp = Math.min(f.mpMax, f.mp + v); line += ` · ${esc(f.name)} 정신력 +${v}`; }
         if(a.rule==="healHp"){ const v = Math.floor(f.hpMax*0.05); f.hp = Math.min(f.hpMax, f.hp + v); line += ` · 요정의 보살핌 체력 +${v}`; }
         if(a.fx==="flame" && k==="wil"){ f.ab = f.ab || {}; const lv0 = flameOf(f), lv1 = Math.min(3, lv0 + 1); if(lv1 > lv0){ f.ab.flame = {lv:lv1}; G.flameGiven = true; line += ` · <span style="color:${["#7fb0ff","#ffb35a","#ff6a5a"][lv1-1]}">${esc(f.name)}에게 깃든 용기의 불꽃이 ${["푸르게","주황빛으로","붉게"][lv1-1]}타오른다(민첩 +${lv1*2})</span>`; } }
@@ -8326,30 +8333,30 @@ function mgAbno(ctx){
       } else {
         if(lv==="보통"){ G.shake = 3; line += `<span class="muted">${nailNow===4 ? "반응을 알 수 없다" : "별다른 반응을 보이지 않아 기분 수치도 변하지 않았다"}</span>`; }
         else {
-        G.ctr--; G.shake = 10; G.flash = 1;
-        const pct = a.gentle ? 2 : Math.round(({죄종:6, ZAYIN:8, TETH:10, HE:12, WAW:15, ALEPH:18}[a.risk] || 8) * (1 - redMP(f)*0.5)), loss = Math.floor(f.mpMax*pct/100);
+        ctrDown(); G.shake = 10; G.flash = 1;
+        const pct = a.gentle ? 2 : Math.round(({죄종:6, ZAYIN:8, TETH:10, HE:12, WAW:15, ALEPH:18}[a.risk] || 8) * (1 - redMP(f)*0.5)), loss = abPenalty(a,Math.floor(f.mpMax*pct/100));
         f.mp = Math.max(0, f.mp - loss); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + loss;
         line += `${nailNow===4 ? `<span class="muted">반응을 알 수 없다</span>` : `<span style="color:${lie ? "#8fd6a0" : "#ff8a7a"}">${esc(dislikeT)}</span>`} · ${ctrName} -1 · ${esc(f.name)} 정신력 -${pct}%(${loss})`;
         if(a.fx==="jade"){ const v2 = Math.min(f.mp, loss); f.mp -= v2; G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; line += ` · <span style="color:#ff8a7a">옥을 잃어버린 듯 한동안 넋을 놓았다(정신력 추가 -${v2})</span>`; }
-        if(a.fx==="kin"){ const v = Math.max(1, Math.floor(f.hpMax*0.06)); f.hp = Math.max(1, f.hp - v); line += ` · 피를 빨렸다(체력 -${v})`;
-          if(G.child===f.id && G.ctr > 0){ G.ctr--; line += ` · <b style="color:#ff8a7a">자식이 부모에게 적대적인 행동을 보였다. 금기를 어겨 카운터가 1 더 감소했다</b>`; } }
-        if(nailNow===2){ ctx.team.forEach(x=>{ const v = Math.floor(x.mpMax*0.05); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; }); line += ` · <span style="color:#ff8a7a">중지의 못 — 형제가 다쳤으니 모두가 갚는다(일행 정신력 -5%)</span>`; }
-        if(a.rule==="flesh"){ const v = Math.max(1, Math.floor(f.hpMax*0.06)); f.hp = Math.max(1, f.hp - v); line += ` · <span style="color:#ff8a7a">${esc(f.name)}의 살 1g을 달아 갔다(체력 -${v})</span>`; }
+        if(a.fx==="kin"){ const v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*0.06))); f.hp = Math.max(1, f.hp - v); line += ` · 피를 빨렸다(체력 -${v})`;
+          if(G.child===f.id && G.ctr > 0){ ctrDown(); line += ` · <b style="color:#ff8a7a">자식이 부모에게 적대적인 행동을 보였다. 금기를 어겨 카운터가 1 더 감소했다</b>`; } }
+        if(nailNow===2){ ctx.team.forEach(x=>{ const v = abPenalty(a, Math.floor(x.mpMax*0.05)); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; }); line += ` · <span style="color:#ff8a7a">중지의 못 — 형제가 다쳤으니 모두가 갚는다(일행 정신력 -5%)</span>`; }
+        if(a.rule==="flesh"){ const v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*0.06))); f.hp = Math.max(1, f.hp - v); line += ` · <span style="color:#ff8a7a">${esc(f.name)}의 살 1g을 달아 갔다(체력 -${v})</span>`; }
         if(a.rule==="badMaim"){ maimOf(f); line += ` · <span style="color:#ff8a7a">${esc(f.name)} 중상</span>`; }
-        if(a.hurt){ const v = Math.min(f.hp - 1, Math.round(f.hpMax*a.hurt*(1 - redHP(f)*0.5))); if(v > 0){ f.hp -= v; G.hurt[f.id] = true; } line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 크게 다쳤다(체력 -${Math.max(0,v)}${f.hp <= 1 ? " · 쓰러지기 직전" : ""})</b>`; }
+        if(a.hurt){ const v = abPenalty(a,Math.min(f.hp - 1, Math.round(f.hpMax*a.hurt*(1 - redHP(f)*0.5)))); if(v > 0){ f.hp -= v; G.hurt[f.id] = true; } line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 크게 다쳤다(체력 -${Math.max(0,v)}${f.hp <= 1 ? " · 쓰러지기 직전" : ""})</b>`; }
         if(a.rule==="badKill") G.killNow = f;
         if(a.rule==="tongue"){ G.tongue++; line += ` · 혀에 맞았다(${G.tongue})`; }
-        if(a.rule==="sac"){ G.sac++; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = Math.max(1, Math.floor(x.hpMax*0.1)); x.hp = Math.max(1, x.hp - v); }); line += ` · <b style="color:#ff8a7a">물주머니가 터졌다 — 잘린 목으로 피 섞인 물을 뿜어 일행 모두가 젖었다(체력 -10%)</b>`; } else line += ` · 배 속 물주머니가 차오른다(${G.sac}/3)`; }
-        if(a.rule==="ember"){ G.embers++; if(G.embers >= 2 && G.ctr > 0){ G.ctr--; line += " · 불씨가 번져 카운터 -1"; } }
+        if(a.rule==="sac"){ G.sac++; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*0.1))); x.hp = Math.max(1, x.hp - v); }); line += ` · <b style="color:#ff8a7a">물주머니가 터졌다 — 잘린 목으로 피 섞인 물을 뿜어 일행 모두가 젖었다(체력 -10%)</b>`; } else line += ` · 배 속 물주머니가 차오른다(${G.sac}/3)`; }
+        if(a.rule==="ember"){ G.embers++; if(G.embers >= 2 && G.ctr > 0){ ctrDown(); line += " · 불씨가 번져 카운터 -1"; } }
       }
       }
-      if(a.high && power(f,[a.high]) >= q.req*1.3 && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">행동에 나선 해결사의 ${ATTR_NAME[a.high]} 능력치가 지나치게 높다 — 카운터 -1</span>`; }
-      if(a.fx==="thorns" && redHP(f) < 0.2){ const v = Math.max(1, Math.floor(f.hpMax*0.05)); f.hp = Math.max(1, f.hp - v); line += ` · 방어구가 가시를 막지 못해 상처를 입었다(체력 -${v})`; }
+      if(a.high && power(f,[a.high]) >= q.req*1.3 && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">행동에 나선 해결사의 ${ATTR_NAME[a.high]} 능력치가 지나치게 높다 — 카운터 -1</span>`; }
+      if(a.fx==="thorns" && redHP(f) < 0.2){ const v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*0.05))); f.hp = Math.max(1, f.hp - v); line += ` · 방어구가 가시를 막지 못해 상처를 입었다(체력 -${v})`; }
       if(a.fx==="protege"){ if(right && lv==="최고" && G.protege==null){ G.protege = f.id; line += ` · <span style="color:#9ad0ff">기수가 ${esc(jo(f.name,"을"))} 지켜야 할 사람으로 삼았다</span>`; }
-        else if(!right && G.protege===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">지키던 이가 다쳤다 — 카운터 -1</span>`; } }
-      if(a.fx==="target" && G.target===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">의뢰서의 사냥감이 제 발로 왔다 — 카운터 -1</span>`; }
+        else if(!right && G.protege===f.id && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">지키던 이가 다쳤다 — 카운터 -1</span>`; } }
+      if(a.fx==="target" && G.target===f.id && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">의뢰서의 사냥감이 제 발로 왔다 — 카운터 -1</span>`; }
       if(a.fx==="kin" && G.child==null){ G.child = f.id; G.out.kin = f.id; line += ` · <span style="color:#ffb0a0">늙은 기사가 ${esc(jo(f.name,"을"))} 자식으로 삼았다</span>`; }
-      if(a.fx==="whale" && k==="agi" && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">피하려 하자 고래가 다시 앞을 막아섰다 — 카운터 -1</span>`; }
+      if(a.fx==="whale" && k==="agi" && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">피하려 하자 고래가 다시 앞을 막아섰다 — 카운터 -1</span>`; }
       if(a.fx==="frost"){ if(k==="wil"){ G.frost[f.id] = Math.max(0, (G.frost[f.id]||0) - 1); line += ` · 기도에 서리가 한 겹 녹았다(${G.frost[f.id]}/3)`; }
         else { G.frost[f.id] = (G.frost[f.id]||0) + 1; line += ` · 서리가 쌓였다(${G.frost[f.id]}/3)`;
           if(G.frost[f.id] >= 3){ G.bench.push(f.id); (G.out.frozen = G.out.frozen || []).push(f.id); line += ` · <b style="color:#9ad0ff">${esc(jo(f.name,"이"))} 무릎 꿇은 채 얼어붙었다</b>`; } } }
@@ -8357,23 +8364,23 @@ function mgAbno(ctx){
         if(ch){ if(k==="wil" && right && f.id!==G.child){ G.lure = Math.max(0, G.lure - 2); line += ` · <span style="color:#9ad0ff">"얘야, 그건 안개란다." 부름이 옅어졌다(${G.lure}/4)</span>`; }
           else if(k==="wil" && right && freeT().length===1){ G.lure = Math.max(0, G.lure - 1); line += ` · <span style="color:#9ad0ff">귀를 막고 버텼다. 부름이 조금 옅어졌다(${G.lure}/4)</span>`; }
           else { G.lure += f.id===G.child ? 2 : 1; line += ` · <span style="color:#b9c4d8">${f.id===G.child ? "아이가 직접 다가가자 " : ""}부름이 짙어졌다(${Math.min(4,G.lure)}/4)</span>`; }
-          if(G.lure >= 4){ G.lure = 0; G.child = null; ch.mp = Math.min(ch.mp, Math.floor(ch.mpMax*0.05)); ch.hp = Math.min(ch.hp, Math.max(1, Math.floor(ch.hpMax*0.15))); if(freeT().length > 1) G.bench.push(ch.id); G.out.erl = ch.id; if(G.ctr > 0) G.ctr--;
+          if(G.lure >= 4){ G.lure = 0; G.child = null; ch.mp = abCap(a,ch.mp,Math.floor(ch.mpMax*0.05)); ch.hp = abCap(a,ch.hp,Math.max(1, Math.floor(ch.hpMax*0.15))); if(freeT().length > 1) G.bench.push(ch.id); G.out.erl = ch.id; if(G.ctr > 0) ctrDown();
             line += ` · <b style="color:#ff8a7a">마왕이 ${esc(jo(ch.name,"을"))} 품에 안았다 — 정신을 놓고 쓰러졌다, 카운터 -1</b>`; } } }
-      if(a.fx==="pair" && G.pair && G.pair.includes(f.id) && prev===f.id && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">한쪽 날개만 퍼덕였다 — 카운터 -1</span>`; }
-      if(a.fx==="tower" && G.bearer!=null && G.bearer!==f.id){ const b2 = ctx.team.find(x=>x.id===G.bearer); if(b2){ const v = Math.max(1, Math.floor(b2.hpMax*0.05)); b2.hp = Math.max(1, b2.hp - v); line += ` · ${esc(b2.name)}의 어깨가 짓눌린다(체력 -${v})`; } }
+      if(a.fx==="pair" && G.pair && G.pair.includes(f.id) && prev===f.id && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">한쪽 날개만 퍼덕였다 — 카운터 -1</span>`; }
+      if(a.fx==="tower" && G.bearer!=null && G.bearer!==f.id){ const b2 = ctx.team.find(x=>x.id===G.bearer); if(b2){ const v = abPenalty(a, Math.max(1, Math.floor(b2.hpMax*0.05))); b2.hp = Math.max(1, b2.hp - v); line += ` · ${esc(b2.name)}의 어깨가 짓눌린다(체력 -${v})`; } }
       if(a.fx==="coat" && hasCoat(f)){ G.heat[f.id] = (G.heat[f.id]||0) + 1; line += ` · <span style="color:#ffb35a">외투 속이 따뜻해진다(${G.heat[f.id]})</span>`; }
-      if(nailNow===0){ const T2 = freeT().length ? freeT() : ctx.team, top = Math.min(...T2.map(x=>x.grade)); if(f.grade > top && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">엄지의 못 앞에서 윗사람보다 먼저 나서는 실수를 범했다(카운터 -1)</span>`; } }
-      if(nailNow===1){ if(k===orderNow){ G.mood = Math.min(100, G.mood + 15); line += ` · <span style="color:#8fd6a0">검지의 못 — 지령을 따랐다(기분 +15)</span>`; } else if(G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">검지의 못이 내린 지령을 어겼다(카운터 -1)</span>`; } }
+      if(nailNow===0){ const T2 = freeT().length ? freeT() : ctx.team, top = Math.min(...T2.map(x=>x.grade)); if(f.grade > top && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">엄지의 못 앞에서 윗사람보다 먼저 나서는 실수를 범했다(카운터 -1)</span>`; } }
+      if(nailNow===1){ if(k===orderNow){ G.mood = Math.min(100, G.mood + 15); line += ` · <span style="color:#8fd6a0">검지의 못 — 지령을 따랐다(기분 +15)</span>`; } else if(G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">검지의 못이 내린 지령을 어겼다(카운터 -1)</span>`; } }
       if(a.fx==="nails") nextNail();
       if(a.fx==="tower" && G.floor >= 3){ const fr = freeT(); if(fr.length > 1) G.babel = pick(fr).id; }
-      if(a.low && power(f,[a.low]) < q.req && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">행동에 나선 해결사의 ${ATTR_NAME[a.low]} 능력치가 부족하다 — 카운터 -1</span>`; }
+      if(a.low && power(f,[a.low]) < q.req && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">행동에 나선 해결사의 ${ATTR_NAME[a.low]} 능력치가 부족하다 — 카운터 -1</span>`; }
       if(a.rule==="knight" && !G.blessed && freeT().length > 1){ G.blessed = f.id; f.ab = f.ab || {}; f.ab.bless = {until: S.day + 1}; line += ` · <span style="color:#9ad0ff">기사가 처음 다가온 ${esc(f.name)}에게 축복을 내렸다 — 다음 날까지 받는 피해 절반, 통제 행동 불가</span>`; }
-      if(a.fx==="spiral"){ G.gaze[f.id] = (G.gaze[f.id]||0) + 1; if(G.gaze[f.id] >= 3 && G.ctr > 0){ G.gaze[f.id] = 0; G.ctr--; const v = Math.floor(f.mpMax*0.15); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; line += ` · <b style="color:#ff8a7a">눈을 떼지 못한 ${esc(f.name)}의 시선을 나선이 경멸했다 — 정신력 -${v}, 카운터 -1</b>`; } else line += ` · 시선 ${G.gaze[f.id]}/3`; }
-      if(a.fx==="knives"){ const k2 = (f.life && f.life.kill) || 0, v = Math.max(1, Math.floor(f.hpMax*Math.min(0.15, 0.03 + 0.01*k2))); f.hp = Math.max(1, f.hp - v); line += ` · 맨발로 칼날을 밟았다(체력 -${v}${k2 ? ` · 업 ${k2}` : ""})`; }
-      if(a.rule==="sameWave"){ if(G.lastK===k && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">같은 물결을 두 번 탔다 — 날치가 물결을 읽었다, 카운터 -1</span>`; } G.lastK = k; }
-      if(a.rule==="panic" && f.mp < f.mpMax*0.25 && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">무너지기 직전인 이를 벌하려 든다 — 카운터 -1</span>`; }
-      if(a.rule==="wallLook"){ if(k==="tec" && G.ctr > 0){ G.ctr--; line += ` · <span style="color:#ff8a7a">등 뒤로 시선이 느껴진다 — 카운터 -1</span>`; }
-        if(power(f,["tec"]) < q.req*0.5){ const v = Math.floor(f.mpMax*0.3); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 돌아서다 그녀와 눈이 마주쳤다 — 정신력 -${v}</b>`; } }
+      if(a.fx==="spiral"){ G.gaze[f.id] = (G.gaze[f.id]||0) + 1; if(G.gaze[f.id] >= 3 && G.ctr > 0){ G.gaze[f.id] = 0; ctrDown(); const v = abPenalty(a, Math.floor(f.mpMax*0.15)); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; line += ` · <b style="color:#ff8a7a">눈을 떼지 못한 ${esc(f.name)}의 시선을 나선이 경멸했다 — 정신력 -${v}, 카운터 -1</b>`; } else line += ` · 시선 ${G.gaze[f.id]}/3`; }
+      if(a.fx==="knives"){ const k2 = (f.life && f.life.kill) || 0, v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*Math.min(0.15, 0.03 + 0.01*k2)))); f.hp = Math.max(1, f.hp - v); line += ` · 맨발로 칼날을 밟았다(체력 -${v}${k2 ? ` · 업 ${k2}` : ""})`; }
+      if(a.rule==="sameWave"){ if(G.lastK===k && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">같은 물결을 두 번 탔다 — 날치가 물결을 읽었다, 카운터 -1</span>`; } G.lastK = k; }
+      if(a.rule==="panic" && f.mp < f.mpMax*0.25 && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">무너지기 직전인 이를 벌하려 든다 — 카운터 -1</span>`; }
+      if(a.rule==="wallLook"){ if(k==="tec" && G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">등 뒤로 시선이 느껴진다 — 카운터 -1</span>`; }
+        if(power(f,["tec"]) < q.req*0.5){ const v = abPenalty(a, Math.floor(f.mpMax*0.3)); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 돌아서다 그녀와 눈이 마주쳤다 — 정신력 -${v}</b>`; } }
       say(line);
       if(G.killNow){ const v = G.killNow; G.killNow = null; G.skin = {name:v.name}; say(`<b style="color:#ff8a7a">그것이 ${esc(v.name)}의 목소리로 웃었다. ${esc(jo(v.name,"은"))} 그 자리에서 숨졌고, 가죽이 없었다.</b>`);
         if(killWorker(v, "아무것도 없는 것에게 가죽을 빼앗겼다")) return; }
@@ -8401,7 +8408,7 @@ function mgAbno(ctx){
     function offerCoat(f){ G.coatAsked[f.id] = true; say(`햇살이 ${esc(f.name)}의 외투 깃을 다정하게 데운다. 단추를 풀고 싶어진다.`);
       offer([{v:"off", t:"외투를 벗는다", d:"태양이 기뻐한다(기분 +25) · 이틀 동안 방어구가 소용없다"},{v:"keep", t:"외투를 여민다", d:"카운터 -1 · 땀이 흐른다(정신력 -8%)"}], v=>{
         if(v==="off"){ f.ab = f.ab || {}; f.ab.coatOff = S.day + 1; G.mood = Math.min(100, G.mood + 25); say(`<span style="color:#ffb35a">${esc(jo(f.name,"이"))} 외투를 벗었다. 해님이 이겼다.</span> (기분 +25 · 이틀 동안 방어구 무효)`); }
-        else { G.ctr--; const v2 = Math.floor(f.mpMax*0.08); f.mp = Math.max(0, f.mp - v2); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; say(`<span style="color:#ff8a7a">${esc(jo(f.name,"이"))} 외투를 더 꼭 여몄다. 해가 더 뜨거워졌다</span> · 카운터 -1 · 정신력 -${v2}`); }
+        else { ctrDown(); const v2 = abPenalty(a, Math.floor(f.mpMax*0.08)); f.mp = Math.max(0, f.mp - v2); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; say(`<span style="color:#ff8a7a">${esc(jo(f.name,"이"))} 외투를 더 꼭 여몄다. 해가 더 뜨거워졌다</span> · 카운터 -1 · 정신력 -${v2}`); }
         if(!settle(f)) menu(); }); }
     function offerAtlas(f){ G.atlasAsked = true; const ok = power(f,["tec"]) >= q.req;
       say(`작은 거인이 ${esc(f.name)}에게 말을 건다. "잠깐만 들어 주겠소. 어깨를 고쳐 메고 오리다."`);
@@ -8409,11 +8416,11 @@ function mgAbno(ctx){
       offer([...(solo ? [] : [{v:"bear", t:"대신 짊어진다", d:"거인이 숨을 돌린다(기분 +30) · 탑에 묶여 더는 행동하지 못하고, 행동이 오갈 때마다 체력이 깎인다"}]),
              {v:"trick", t:"꾀를 낸다", d:`"먼저 시범을 보여 주시오" — 재주 ${power(f,["tec"])} / 요구치 ${q.req}${ok ? "" : " · 들통나면 탑이 어깨에 떨어진다"}`},
              {v:"no", t:"거절한다", d:"카운터 -1"}], v=>{
-        if(solo && v==="trick" && !ok){ G.ctr--; f.hp = Math.max(1, Math.floor(f.hp*0.4)); say(`<b style="color:#ff8a7a">꾀가 들통났다. 무너지는 탑을 간신히 밀어내고 굴렀다</b> · 카운터 -1 · 크게 다쳤다`); }
-        else if(v==="bear" || (v==="trick" && !ok)){ G.bearer = f.id; G.bench.push(f.id); G.out.bearer = f.id; G.mood = Math.min(100, G.mood + (v==="bear" ? 30 : 0)); if(v==="trick") G.ctr--;
+        if(solo && v==="trick" && !ok){ ctrDown(); f.hp = abCap(a,f.hp,Math.max(1, Math.floor(f.hp*0.4))); say(`<b style="color:#ff8a7a">꾀가 들통났다. 무너지는 탑을 간신히 밀어내고 굴렀다</b> · 카운터 -1 · 크게 다쳤다`); }
+        else if(v==="bear" || (v==="trick" && !ok)){ G.bearer = f.id; G.bench.push(f.id); G.out.bearer = f.id; G.mood = Math.min(100, G.mood + (v==="bear" ? 30 : 0)); if(v==="trick") ctrDown();
           say(v==="bear" ? `<span style="color:#e8d27a">${esc(jo(f.name,"이"))} 탑을 받아 짊어졌다. 거인이 처음으로 허리를 폈다.</span> (기분 +30)` : `<b style="color:#ff8a7a">꾀가 들통났다. 탑이 ${esc(f.name)}의 어깨에 떨어졌다</b> · 카운터 -1`); }
         else if(v==="trick"){ G.mood = Math.min(100, G.mood + 12); say(`<span style="color:#8fd6a0">거인이 시범을 보이려 탑을 다시 받아 들었다. 그대로 돌아섰다.</span> (기분 +12)`); }
-        else { G.ctr--; say(`<span style="color:#ff8a7a">거인이 고개를 떨군다. 탑이 조금 더 기울었다</span> · 카운터 -1`); }
+        else { ctrDown(); say(`<span style="color:#ff8a7a">거인이 고개를 떨군다. 탑이 조금 더 기울었다</span> · 카운터 -1`); }
         if(!freeT().length) return doom(f, "모두 움직일 수 없다");
         if(!settle(f)) menu(); }); }
     // 검은 탄산: 맞는 행동마다 탄산수 한 잔. 의지가 모자라면 잔 속이 잘 안 보인다
@@ -8428,7 +8435,7 @@ function mgAbno(ctx){
       if(!yes){ say(`${esc(jo(f.name,"이"))} 잔을 내려놓았다.`); return menu(); }
       G.mood = Math.min(100, G.mood + 12);
       if(kind==="clear"){ const h = Math.floor(f.hpMax*0.06), v = Math.floor(f.mpMax*0.06); f.hp = Math.min(f.hpMax, f.hp + h); f.mp = Math.min(f.mpMax, f.mp + v); say(`<span style="color:#8fd6a0">톡 쏘고 시원하다.</span> ${esc(f.name)} 체력 +${h} · 정신력 +${v} (기분 +12)`); }
-      else if(kind==="yellow"){ const v = Math.floor(f.mpMax*0.07); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; say(`<span style="color:#ff8a7a">끈적한 것이 목에 걸렸다.</span> ${esc(f.name)} 정신력 -${v} (기분 +12)`); }
+      else if(kind==="yellow"){ const v = abPenalty(a, Math.floor(f.mpMax*0.07)); f.mp = Math.max(0, f.mp - v); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v; say(`<span style="color:#ff8a7a">끈적한 것이 목에 걸렸다.</span> ${esc(f.name)} 정신력 -${v} (기분 +12)`); }
       else { G.erased = (G.erased||[]).concat([f.id]); const i = ctx.team.indexOf(f); if(i>=0) ctx.team.splice(i,1); if(G.pick===f.id) G.pick = null;
         say(`<b style="color:#ff8a7a">잔을 비운 순간, 그 자리에 아무도 없었다.</b> <span class="muted">…누가 마셨더라?</span>`);
         if(!ctx.team.length){ return end({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased}, "아무도 남지 않았다"); } }
@@ -8479,7 +8486,7 @@ function mgAbno(ctx){
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
     // 완화: 조우하는 순간에는 정신력만 15% 깎이고 아무도 죽지 않는다. 이후의 위험은 징후(대응하지 않으면 모두 정신력 -10%)로 이어진다
-    if(a.fx==="overture" || a.fx==="pulse"){ const out = []; ctx.team.forEach(f=>{ const v = Math.floor(f.mp*0.15); f.mp = Math.max(1, f.mp - v); out.push(`${esc(f.name)} 정신력 -${v}`); });
+    if(a.fx==="overture" || a.fx==="pulse"){ const out = []; ctx.team.forEach(f=>{ const v = abPenalty(a, Math.floor(f.mp*0.15)); f.mp = Math.max(1, f.mp - v); out.push(`${esc(f.name)} 정신력 -${v}`); });
       intro = (intro ? intro+"<br>" : "") + `<span style="color:#9ab8d8">${a.fx==="overture" ? "첫 음이 울렸다" : "푸른 맥박이 울렸다"} — ${out.join(" · ")}</span>`;
       // 즉사는 대비가 하나도 없을 때만: 정신 방호(장비·E.G.O.)가 전혀 없고, 의지도 요구치의 60%에 못 미치고, 정신력까지 무너진 이
       for(const f of ctx.team.slice()){ const unready = redMP(f) <= 0 && !f.ego && power(f,["wil"]) < q.req*0.6;
@@ -8662,7 +8669,7 @@ async function dispatch(qid, fids, modeArg){
     // 재앙을 맞았으면 재앙 피해가 곧 실패 피해 · 순한 환상체는 실패해도 거의 다치지 않는다 · 강행군은 결과와 상관없이 최소 감소량의 1.1배
     const pct = damagePercent(f,q,success,w,mental,march,!!(abnoR && abnoR.doom));
     const main = Math.floor((mental ? f.mpMax : f.hpMax) * pct/100);
-    const spPct = b && b.fought && b.sp < 0 ? Math.floor(-b.sp*0.4) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
+    const spPct = b && b.fought && b.sp < 0 ? abPenalty(q.abnoFoe|| (q.kind==='환상체'?abnoOf(q):null),Math.floor(-b.sp*0.4)) : 0;     // 전투 끝에 정신력(SP)이 무너져 있었으면 정신력도 정수 %만큼 깎인다
     let dH = mental ? 0 : main, dM = mental ? main : 0;
     if(spPct) dM += Math.floor(f.mpMax * spPct/100);
     const bl = f.ab && f.ab.bless && S.day <= f.ab.bless.until; if(bl){ dH = Math.floor(dH/2); dM = Math.floor(dM/2); }
