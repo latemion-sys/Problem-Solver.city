@@ -5869,13 +5869,13 @@ function mgCombat(ctx){
     const RISK_SIGN = {ZAYIN:1, TETH:1.4, HE:1.8, WAW:2.4, ALEPH:3}[AB && AB.risk] || 1;
     function foeSignSpawn(force){ if(!FSG || foe.sign || foe.hp<=0 || outcome) return "";
       if(!BGMK||(!force&&!signScheduled(turn))) return ""; foe.sign = true; foe.signLast = turn; 
-      return `<b style="color:#ffb35a">징후 — ${esc(FSG.t)}</b>`; }
+      return `<b style="color:#ffb35a">징후 — ${esc(battleSignTell(turn))}</b>`; }
     function foeSignMiss(){ if(!FSG || !foe.sign || foe.hp<=0) return ""; foe.sign = false;
       const sp = abPenalty(AB,Math.round((FSG.sp||0)*RISK_SIGN)), hp = abPenalty(AB,Math.round((FSG.hp||0)*RISK_SIGN));
       party.forEach(p=>{ if(p.hp<=0) return; const fb = fullBody(p.f); if(sp) p.sp = clamp(p.sp - Math.max(0, sp - (fb?1:0)), -45, 45); if(hp) p.hp = Math.max(0, p.hp - Math.max(1, Math.round(hp*(1-redHP(p.f)*0.5))) - (fb?1:0)); });
       return `<b style="color:#ff8a7a">징후를 놓쳤다 — ${esc(FSG.missT)}</b>${sp ? ` (모두 정신력 -${sp})` : ""}${hp ? ` (모두 체력 -${hp})` : ""}`; }
-    function foeSignAction(si,me,won,total,def){const guard=si===1||(si===2&&def),hit=!!won&&total>0&&!guard&&si!==3;
-      const data={si,me,hit,guard,last:lastAbMove,total,foe,party,turn,isBasic,techReady};lastAbMove={si,me};
+    function foeSignAction(si,me,won,total,def,before=me){const guard=si===1||(si===2&&def),hit=!!won&&total>0&&!guard&&si!==3;
+      const data={si,me,hit,guard,last:lastAbMove,total,foe,party,turn,isBasic,techReady,before};lastAbMove={si,me};
       if(!BGMK||!foe.sign||foe.hp<=0||!BGMK.check(data))return "";
       foe.sign=false;if(FSG.cost)me.hp=Math.max(1,me.hp-abPenalty(AB,FSG.cost));BGMK.apply(data);
       return `<span style="color:#8fd6a0">징후 파훼 — ${esc(FSG.okT)}</span>`;
@@ -5930,9 +5930,10 @@ function mgCombat(ctx){
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si){
+      const current=party[act], signBefore={hp:current.hp,max:current.max,contempt:current.contempt};
       if(si===2 && !techReady(party[act])) return;
       if(si===2&&techOf(party[act]).hana&&party[act].sp<-27){toast("희귀 기술을 사용하려면 전투 정신력 18을 지불할 수 있어야 합니다.");return;}
-      if(si===1 && foeSkill.def){ const barrier=barrierAct();const me=party[act];me.fought=true;me.guardStreak++;me.shield=Math.min(30,(me.shield||0)+8);const rec=guardRecover(me,3);gainResolve(me,3); const signText=foeSignAction(si,me,false,0,true); tick = `${esc(jo(party[act].name,"과"))} ${esc(foe.name)} 모두 방어 태세를 굳혔다 — 합 없음 · 정신력 +${rec}${barrier?" · "+barrier:""}${signText?" · "+signText:""}`; return next(); } // 둘 다 막으면 지나간다
+      if(si===1 && foeSkill.def){ const barrier=barrierAct();const me=party[act];me.fought=true;me.guardStreak++;me.shield=Math.min(30,(me.shield||0)+8);const rec=guardRecover(me,3);gainResolve(me,3); const signText=foeSignAction(si,me,false,0,true,signBefore); tick = `${esc(jo(party[act].name,"과"))} ${esc(foe.name)} 모두 방어 태세를 굳혔다 — 합 없음 · 정신력 +${rec}${barrier?" · "+barrier:""}${signText?" · "+signText:""}`; return next(); } // 둘 다 막으면 지나간다
       const me = party[act], gun=(!me.f.ego||me.f.ego.type==="armor")?ammoMagazine(me.f.gear.weapon):null;
       const reloading=si===3, tk = si===2 ? techSkill(me) : null, T = tk ? tk.T : null;
       if(reloading && (!gun || !AMMO_BY[arguments[1]] || ammoStock(gun,arguments[1])<=0))return;
@@ -6137,7 +6138,7 @@ function mgCombat(ctx){
       if(rNote.length) lines.push(`<span style="color:#d8b45a">유물</span> ${rNote.join(" · ")}`);
       if(T){const cost=techCost(T);if(!T.hana)me.sp = clamp(me.sp - cost, -45, 45); tNote.push(`기술 사용(정신력 -${cost} → ${me.sp>=0?"+":""}${me.sp})`); }
       if(tNote.length) lines.push(`<span style="color:#9fd0ff">기술</span> ${tNote.join(" · ")}`);
-      {const signText=foeSignAction(si,me,won,total,!!sk.def);if(signText)lines.push(signText);}
+      {const signText=foeSignAction(si,me,won,total,!!sk.def,signBefore);if(signText)lines.push(signText);}
       S2.log = lines.concat(S2.log).slice(0,4);
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       await wait(900);
@@ -7709,13 +7710,13 @@ const AB_BATTLE_ACTION = Object.freeze({
   knight:{card:1,tell:"기사가 검을 치켜든다. 갑옷의 틈을 감추며 자세를 굳혀야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
   littlered:{card:1,tell:"용병이 총열을 들어 올린다. 직전까지 공격하던 사람이라면 몸을 낮춰 사격을 견딜 틈이다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&(!last||last.si!==1)),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,2);}},
   moth:{card:7,tell:"나방의 날개 뿌리가 드러난다. 힘을 실어 한 번에 불씨를 털어낼 틈이다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&si===7),apply:({me,foe,party})=>{party.forEach(p=>p.ember=Math.max(0,(p.ember||0)-2));}},
-  spiral:{card:null,tell:"나선이 직전 동작을 쫓는다. 다른 공격으로 시선을 비틀거나 경멸받고 있다면 몸을 지켜 시선을 거둘 틈이다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>((guard&&me.contempt)||(hit&&!me.contempt&&(!last||last.si!==si))),apply:({me,foe,party})=>{me.gaze=Math.max(0,(me.gaze||0)-1);}},
-  brokenlance:{card:7,tell:"기수가 상처를 찾아 창을 낮춘다. 몸이 온전하다면 정면으로 받아치고, 깊이 다쳤다면 몸을 굳혀 버텨야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>((hit&&me.hp>=me.max*.5)||(guard&&me.hp<me.max*.5)),apply:({me,foe,party})=>{foe.down=Math.max(foe.down||0,2);}},
+  spiral:{card:null,tell:"나선이 직전 동작을 쫓는다. 다른 공격으로 시선을 비틀거나 경멸받고 있다면 몸을 지켜 시선을 거둘 틈이다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady,before=me})=>((guard&&before.contempt)||(hit&&!before.contempt&&(!last||last.si!==si))),apply:({me,foe,party})=>{me.gaze=Math.max(0,(me.gaze||0)-1);}},
+  brokenlance:{card:7,tell:"기수가 상처를 찾아 창을 낮춘다. 몸이 온전하다면 정면으로 받아치고, 깊이 다쳤다면 몸을 굳혀 버텨야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady,before=me})=>((hit&&before.hp>=before.max*.5)||(guard&&before.hp<before.max*.5)),apply:({me,foe,party})=>{foe.down=Math.max(foe.down||0,2);}},
   onegram:{card:null,tell:"저울 접시가 흔들린다. 너무 가볍지도 무겁지도 않은 공격으로 균형을 맞출 틈이다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&total>=Math.max(1,foe.baseDamage*.35)&&total<=foe.baseDamage*1.5),apply:({me,foe,party})=>{foe.down=Math.max(foe.down||0,1);}},
   bluereception:{card:1,tell:"접수원이 이름을 읽고 갈고리를 들어 올린다. 호명된 사람은 자리를 지키며 갈고리를 막아내야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,2);}},
   ashfly:{card:1,tell:"재가 가라앉는다. 무기를 거두고 몸을 지키면 다시 불이 일어나지 않을 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard),apply:({me,foe,party})=>{me.burn=0;foe.down=Math.max(foe.down||0,1);}},
   dosan:{card:1,tell:"사살을 많이 한 사람의 발밑에서 칼끝이 솟는다. 자세를 낮추고 다가올 칼날을 막아야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard),apply:({me,foe,party})=>{me.shield=Math.min(30,(me.shield||0)+4);}},
-  bloodtear:{card:null,tell:"아비가 상처 깊은 사람의 피를 좇는다. 피가 충분하면 공격으로 밀어내고, 부족하면 상처를 감싸 버텨야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>((hit&&me.hp>me.max*.4)||(guard&&me.hp<=me.max*.4)),apply:({me,foe,party})=>{foe.bleed=Math.min(9,(foe.bleed||0)+2);}},
+  bloodtear:{card:null,tell:"아비가 상처 깊은 사람의 피를 좇는다. 피가 충분하면 공격으로 밀어내고, 부족하면 상처를 감싸 버텨야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady,before=me})=>((hit&&before.hp>before.max*.4)||(guard&&before.hp<=before.max*.4)),apply:({me,foe,party})=>{foe.bleed=Math.min(9,(foe.bleed||0)+2);}},
   nails:{card:null,tell:"손가락 하나가 법을 집행하려는 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(turn%5===1?hit&&(me.f.grade===Math.min(...party.filter(p=>p.hp>0).map(p=>p.f.grade))||si===7):turn%5===2?hit&&si===7:turn%5===3?guard:turn%5===4?si===2&&(hit||guard):guard||hit&&si===0),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
   orchestra:{card:null,tell:"지휘봉이 마지막 음을 준비한다. 무기를 거두고 몸을 굳혀야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(foe.allow===4?guard:hit&&[si===7,si===2||si===6,si===0,si===6][foe.allow]),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
   bluestar:{card:1,tell:"푸른 맥박에 발끝이 들린다. 호흡을 가다듬고 자세를 바로 세워 버텨야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&me.sp>=0),apply:({me,foe,party})=>{party.filter(p=>p.hp>0).forEach(p=>p.sp=clamp(p.sp+2,-45,45));}},
