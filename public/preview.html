@@ -911,6 +911,13 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .vn-logp p{margin:0 0 8px}.vn-logp b{color:#e8c98a;margin-right:4px}
 @media (max-width:640px){ .vn-box{padding:24px 16px 24px;min-height:116px}.vn-text{font-size:15px}.vn-opt{font-size:14px;padding:11px 13px} }
 @media (max-height:500px) and (orientation:landscape){ .vn-box{min-height:84px;padding:18px 16px 18px;margin-bottom:6px}.vn-text{font-size:14px;line-height:1.6}.vn-opt{padding:7px 12px;font-size:13px}.vn-ch{gap:5px} }
+.aleph-scene{flex:1 1 100%;padding:10px 12px;border-inline-start:2px solid #bd9a62}
+.aleph-scene p{margin:6px 0 0;line-height:1.55}
+.aleph-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:8px;width:100%}
+.aleph-choices>div{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line,#494440);border-radius:8px;padding:8px}
+.aleph-choices button{width:100%}
+.aleph-choices summary{cursor:pointer}
+.aleph-choices p{margin:6px 0 0}
 </style>
 </head>
 <body>
@@ -1660,6 +1667,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · ALEPH 현장 선택", ["ALEPH 5종에 현장 장면, 행동별 결과 안내, 선봉 선택 및 철수 적용. 전투 징후는 지정 카드를 내면 대응되며 놓치면 추가 피해가 발생."]],
   ["미리보기 · 고요한 오케스트라", ["현장에서 통제·제압 준비·철수를 선택. 악장 마지막 턴과 피날레의 대응을 예고하며, 놓치면 전열과 후열에 공연 피해가 발생."]],
   ["미리보기 · 약공과 대검", ["약공으로 합에서 패배하면 직접 공격 피해 10% 감소. 대검 기본 공격은 기본 위력 +2, 코인 위력 -2로 최대 합 위력 유지."]],
   ["미리보기 · E.G.O.", ["개화 즉시 해당 칸에 장착하고 기존 장비는 보관함으로 이동. 장착 칸에는 일반 장비를 구매·장착할 수 없음."]],
@@ -5943,7 +5951,7 @@ function mgCombat(ctx){
       return `<button data-sk="4" class="pk-shin" ${no?"disabled":""}><b>무기에 망(望)을 감는다</b><small>추가 행동 — 턴을 쓰지 않는다 · 망 ${me.mangLive} → ${me.mangLive+1} · 위력 +1 · 고정 피해 +1 · 매 턴 정신력 추가 -3 · 사용 정신력 -${c}${used?"<br>이번 턴에는 이미 썼다":f.mp<=c?"<br>정신력이 모자라다":""}</small></button>`; }
     // 환상체 고유 기믹: 현재 전투원의 행동으로 대응 · 놓치면 턴 종료 시 피해
     const FSG = AB && !AB.kill && (!AB.possessed || AB.id==="redshoes") ? ((signOf(AB)||{}).rage || null) : null; const BGMK=FSG&&AB_BATTLE_ACTION[AB.id]; foe.signLast = 0; let lastAbMove=null;
-    const orchestra = AB?.id==="orchestra";
+    const orchestra = AB?.id==="orchestra", aleph = AB?.risk==="ALEPH";
     const signScheduled=t=>!!BGMK&&(AB.movement?(orchestra ? [4,8,12,16,17].includes((t-1)%17+1) : orchestraStage(t)===4):t%3===2);
 
     // 표시, 손패 보정, 실제 판정이 하나의 대응 카드를 공유한다.
@@ -5966,9 +5974,9 @@ function mgCombat(ctx){
     function battleSignTell(t,me=party[act],sign=true){
       const card=battleResponseCard(t,me,sign);
       if(card===null)return "";
-      if(orchestra && sign){
-        const finale = orchestraStage(t)===4;
-        return `${responseLabel(card)} 카드 사용. 놓치면 전원 정신력 최대 -${finale?20:8}${finale?" · 체력 최대 -8":""}. 알맞은 카드를 내면 합에서 져도 공연 피해는 막는다.`;
+      if(aleph && sign){
+        const {sp,hp} = signMissDamage(t);
+        return `${responseLabel(card)} 카드 사용. 놓치면 전원 ${[sp&&`정신력 최대 -${sp}`,hp&&`체력 최대 -${hp}`].filter(Boolean).join(" · ")}. 알맞은 카드를 내면 합에서 져도 징후 피해는 막는다.`;
       }
       return card===1?"방어(가드) 카드를 사용한다.":responseLabel(card)+" 카드를 사용해 공격을 적중시킨다(합 승리 및 피해 발생).";
     }
@@ -5976,15 +5984,18 @@ function mgCombat(ctx){
     function foeSignSpawn(force){ if(!FSG || foe.sign || foe.hp<=0 || outcome) return "";
       if(!BGMK||(!force&&!signScheduled(turn))) return ""; foe.sign = true; foe.signLast = turn;
       return ""; }
+    function signMissDamage(t){
+      if(orchestra) return orchestraStage(t)===4 ? {sp:20,hp:8} : {sp:8,hp:0};
+      const miss = value=>value ? abPenalty(AB,Math.round(value*RISK_SIGN))+(aleph?2:0) : 0;
+      return {sp:miss(FSG?.sp),hp:miss(FSG?.hp)};
+    }
     function foeSignMiss(){ if(!FSG || !foe.sign || foe.hp<=0) return ""; foe.sign = false;
-      const finale = orchestra && orchestraStage(turn)===4;
-      const sp = orchestra ? (finale?20:8) : abPenalty(AB,Math.round((FSG.sp||0)*RISK_SIGN));
-      const hp = orchestra ? (finale?8:0) : abPenalty(AB,Math.round((FSG.hp||0)*RISK_SIGN));
+      const {sp,hp} = signMissDamage(turn);
       party.forEach(p=>{ if(p.hp<=0) return; const fb = fullBody(p.f); if(sp) p.sp = clamp(p.sp - Math.max(0, sp - (fb?1:0)), -45, 45); if(hp) p.hp = Math.max(0, p.hp - Math.max(1, Math.round(hp*(1-redHP(p.f)*0.5))) - (fb?1:0)); });
       return `<b style="color:#ff8a7a">징후를 놓쳤다 — ${esc(FSG.missT)}</b>${sp ? ` (모두 정신력 -${sp})` : ""}${hp ? ` (모두 체력 -${hp})` : ""}`; }
     function foeSignAction(si,me,won,total,def,before=me){const guard=si===1||(si===2&&def),hit=!!won&&total>0&&!guard&&si!==3;
       const data={si,me,hit,guard,last:lastAbMove,total,foe,party,turn,isBasic,techReady,before};lastAbMove={si,me};
-      if(!BGMK||!foe.sign||foe.hp<=0||si!==before.requiredCard||(si!==1&&!hit&&!orchestra))return "";
+      if(!BGMK||!foe.sign||foe.hp<=0||si!==before.requiredCard||(si!==1&&!hit&&!aleph))return "";
       foe.sign=false;if(FSG.cost)me.hp=Math.max(1,me.hp-abPenalty(AB,FSG.cost));BGMK.apply(data);
       return `<span style="color:#8fd6a0">징후 파훼 — ${esc(FSG.okT)}</span>`;
     }
@@ -7519,7 +7530,7 @@ const ABNOS = [
   {id:"orchestra", n:"고요한 오케스트라", risk:"ALEPH", canon:"L", code:"T-01-31", g:[1,0], fx:"overture", movement:true, form:"팔다리 없는 마네킹이 받침대에 세운 막대에 꽂혀 지휘자의 연미복을 입고 있다. 머리에는 8분음표 무늬가 박혀 있다. 공연이 시작되면 지휘봉을 쥔 두 손과 그림자 연주자들이 나타난다", look:"연미복을 걸친 팔다리 없는 마네킹이 막대 위에서 텅 빈 객석을 향해 서 있다",
    rumor:"구 시민회관에서 아무 소리도 나지 않는 공연이 열린다. 무대엔 연미복을 입은 마네킹 하나가 막대에 꽂혀 서 있고, 머리에 음표 무늬가 박혀 있다. 객석의 관객은 모두 숨져 있었다. 처리해 달라", pref:{str:"나쁨", agi:"보통", tec:"좋음", wil:"나쁨"}, ctr:2, rule:"goodDrops",
 
-   escape:"마주치면 첫 음이 들려 정신력이 15% 깎인다. 정신 방호도, 의지도 없이 정신력이 절반 아래로 무너진 이만 머리가 터진다. 공연 사이의 침묵을 지켜야 한다 — 징후를 놓치면 모두의 정신력이 깎인다. 행동 결과가 나빠도, 지나치게 좋아도 카운터가 준다. 다하면 공연이 시작된다. 악장마다 공격·방어·기술 가운데 하나만 지휘자에게 닿는다",
+   escape:"첫 음은 현재 정신력의 15%를 기준으로 피해를 준다. 이후 현장에서 대응 방식을 고른다. 공연 사이의 침묵을 지켜야 한다 — 징후를 놓치면 모두의 정신력이 깎인다. 행동 결과가 나빠도, 지나치게 좋아도 카운터가 준다. 다하면 공연이 시작된다. 악장마다 공격·방어·기술 가운데 하나만 지휘자에게 닿는다",
    story:"옛 시민회관에 지휘자가 있었다. 그는 틀린 음을 바로잡는 것이 지휘자의 일이라고 여기지 않았다. 지휘대에 오른 지 오 분이면 악단 전체가 그의 손끝을 따랐다.\n어느 밤, 연주자가 하나도 오지 않았다. 객석만 가득 찼다. 지휘자는 지휘봉을 들었다. 연주자는 객석에서 모으면 된다.\n첫 악장은 침착하고 느렸다. 무대엔 아무도 없었는데 객석 모두가 첫 음을 들었다. 버티지 못한 머리들이 먼저 고개를 떨궜다.\n다음 악장부터는 유쾌하고 빨랐다. 사람들은 왜 왔는지 잊었고, 열광이 광기로 넘어가자 옆 사람을 할퀴었다. 악장이 바뀔 때마다 하나씩 일어나 무대로 올라갔다.\n연주자가 다 모이자, 아무도 들을 수 없지만 모두가 듣는 음악이 시작되었다. 부서진 것들에게서 가장 아름다운 연주가 시작된다는 것을, 지휘자는 처음부터 알았다.\n마지막 마디가 남았다. 그것은 듣는 음악이 아니다. 당신을 꿰뚫는 음악이다.",
    like:"지휘봉이 조용히 내려간다", dislike:"어딘가에서 첫 음이 울릴 듯하다",
    cards:[{n:"제1악장",a:5,b:12},{n:"제2악장",a:6,b:11},{n:"제3악장",a:5,b:14},{n:"정적",a:6,b:9,def:true}], hp:1.6,
@@ -7527,7 +7538,7 @@ const ABNOS = [
   {id:"bluestar", n:"푸른 별", risk:"ALEPH", canon:"L", code:"O-03-93", g:[1,0], fx:"pulse", form:"하늘에 떠서 맥박치는 커다란 푸른 심장. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다", look:"하늘 높이 푸른 심장 같은 별이 떠서 맥박치듯 울린다",
    rumor:"도심 하늘에 맥박치는 커다란 푸른 별이 떴다. 그 아래로 빨려 들어간 사람들의 다리가 삐죽 튀어나와 있다. 그 소리를 들은 사람들이 하나둘 별을 향해 걸어갔다. 처리해 달라", pref:{str:"나쁨", agi:"좋음", tec:"나쁨", wil:"보통"}, ctr:2, low:"wil", lowStrict:true,
    cards:[{n:"푸른 맥박",a:5,b:12},{n:"끌어당기는 빛",a:6,b:13},{n:"별의 찬송",a:4,b:16},{n:"맥박치는 껍질",a:6,b:9,def:true}],
-   escape:"마주치면 맥박이 들려 정신력이 15% 깎인다. 정신 방호도, 의지도 없이 정신력이 바닥난 이만 별에 흡수된다. 맥박이 커질 때 마음을 다잡아야 한다 — 징후를 놓치면 모두의 정신력이 깎인다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘로 떠올라 맥박을 울리며 날뛴다 — 싸워서 떨어뜨려야 한다",
+   escape:"첫 맥박은 현재 정신력의 15%를 기준으로 피해를 준다. 이후 현장에서 대응 방식을 고른다. 맥박이 커질 때 마음을 다잡아야 한다 — 징후를 놓치면 모두의 정신력이 깎인다. 신중(의지)이 높지 않은 이가 행동하면 카운터가 준다. 다하면 하늘로 떠올라 맥박을 울리며 날뛴다 — 싸워서 떨어뜨려야 한다",
    story:"절망이 가장 깊던 해, 구역 하늘에 푸른 별이 떴다. 사람들은 푸른 별 앞에 먼저 무릎을 꿇고 그것을 신이라 불렀다.\n모임이 생겼다. 그들은 서로를 죄인이라 불렀고, 죄인을 받아 주는 곳은 저 별뿐이라 믿었다. 별에 닿는 것은 죽음이 아니라 있어야 할 곳으로 돌아가는 일이라고. 구역은 모임을 금했다. 이 도시에서 신성한 것은 없어야 했다.\n금지는 오래가지 않았다. 별 가까이에선 반기는 노래와 함성이 들렸고, 맥박이 울릴 때마다 마음 약한 이부터 발끝이 땅에서 떨어졌다. 가족들은 그들을 침대에 묶었다. 묶인 이들은 밤새 창문 쪽으로 몸을 틀었다.\n이제 별 아래로 다리들이 매달려 흔들린다. 모임 사람들은 그것을 환영의 손짓이라 부른다. 모두가 돌아가고 나면 이 구역엔 별만 남을 것이다.\n— 뒷면 부록 —\n곧 별이 되어서 만나자.",
    like:"맥박이 느려진다", dislike:"푸른 빛이 맥박친다",
    gifts:{a:{n:"별 안대", mpRed:0.15, bonus:{wil:4}}, b:{n:"별의 소리", bonus:{agi:7,wil:2}}}},
@@ -8352,12 +8363,19 @@ function alephIntro(name){
     raf = requestAnimationFrame(draw);
   });
 }
+const ALEPH_ENCOUNTERS = {
+  orchestra:{scene:"빈 객석을 지나자 지휘봉이 허공에서 멈춘다. 소리는 없는데, 모두 같은 박자에 숨을 멈췄다.",control:"지휘봉이 내려가기를 기다린다",risk:"침묵을 지켜 통제를 시도한다. 행동을 그르치면 광폭 카운터가 줄어든다."},
+  bluestar:{scene:"푸른 심장이 한 번 뛸 때마다 바닥의 먼지가 하늘로 떠오른다. 동료의 발뒤꿈치도 조금 들렸다.",control:"서로의 손을 잡고 버틴다",risk:"정신력이 절반 이상인 해결사의 의지 행동으로 맥박에 대응할 수 있다. 첫 맥박으로 입은 정신력 피해는 남는다."},
+  nothing:{scene:"복도 끝에서 동료의 목소리가 들린다. 방금까지 옆에 있던 사람이 쓰는 인삿말을, 누군가 반 박자 늦게 되풀이한다.",control:"부르는 소리에 답하지 않는다",risk:"통제 행동에 실패하면 행동한 해결사가 사망할 수 있다. 민첩이 높은 인원을 골라 접근한다."},
+  sun:{scene:"그늘의 끝이 조금씩 뒤로 밀린다. 외투의 단추에 손을 대자, 열기가 손끝으로 전해진다.",control:"외투 깃을 여미고 다가간다",risk:"접근에 실패하면 큰 화상을 입을 수 있다. 계속 접근하면 외투를 벗을지 선택하게 된다."},
+  eternity:{scene:"계단이 허공으로 이어진다. 아래에서는 작은 거인이 탑을 고쳐 메고, 일행의 어깨를 하나씩 살핀다.",control:"탑을 내려놓을 자리를 살핀다",risk:"재주가 높은 해결사가 대응에 유리하다. 탑을 대신 짊어지면 그 해결사는 행동할 수 없다."}
+};
 function mgAbno(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, a = abnoOf(q); if(!a){ resolve({win:false, score:0}); return; }
     const seen = codexMeet(a.vid), know = n => seen >= n;
     const shown = know(1) ? a.n : "정체불명의 환상체", riskTxt = know(2) ? a.risk + (a.sin ? ` · ${a.sin}` : "") : "???";
-    const orchestra = a.id==="orchestra";
+    const aleph = a.risk==="ALEPH";
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
     const m = mgOpen(`${a.risk==="죄종"?"죄종 조우":"환상체 의뢰"} · 관측`, a.risk==="죄종" ? "죄종은 환상체처럼 알로 되돌릴 수 없으므로 발견 즉시 사살해야 한다." : "현장에 도착하면 먼저 환상체의 상태를 확인한다. 배회 중인 개체는 적절한 행동으로 진정시켜 알로 되돌릴 수 있지만, 이미 날뛰고 있거나 폭주한 개체는 전투를 통해 제압해야 한다.", ctx, 300);
     const rampP = a.noFight ? 0 : abRate(a,({죄종:0.25, ZAYIN:0.2, TETH:0.4, HE:0.5, WAW:0.6, ALEPH:0.8}[a.risk] || 0.25));   // 날뜀으로 마주칠 확률: ZAYIN 20 · TETH 40 · HE 35 · WAW 42 · ALEPH 56%
@@ -8467,7 +8485,7 @@ function mgAbno(ctx){
       return false; }
     function menu(){ if(G.signDue || (q.__signNow && !G.signForced)){ const fc = q.__signNow && !G.signForced; G.signDue = false; G.signForced = true; signSpawn(fc); }
       menuBase();
-      if(orchestra) m.ctrl.insertAdjacentHTML("beforeend", '<button data-orchestra-retreat="1">철수한다</button>');
+      if(aleph) m.ctrl.insertAdjacentHTML("beforeend", '<button data-aleph-retreat="1">철수한다</button>');
       if(G.sign)m.ctrl.insertAdjacentHTML('afterbegin', '<div class="muted" style="flex:1 1 100%;color:#ffb35a">징후: '+esc(G.sign.txt)+'</div>'); }
     function menuBase(){
       const chips = `<div class="pk-who"><span class="muted">행동할 해결사</span><button class="${G.pick==null?"on":""}" data-pk="auto">자동(관련 능력치가 높은 해결사)</button>${ctx.team.map(f=>`<button class="${G.pick===f.id?"on":""}" data-pk="${f.id}">${esc(f.name)}${tagOf(f)}</button>`).join("")}</div>`;
@@ -8641,7 +8659,10 @@ function mgAbno(ctx){
       menu();
     }
     const hasCoat = f => !!f.gear.armor && !(f.ab && f.ab.coatOff && S.day <= f.ab.coatOff);
-    function offer(buttons, fn){ G.offerFn = fn; m.ctrl.innerHTML = `<div class="pk-moves">${buttons.map(b=>`<button data-of="${b.v}"><b>${b.t}</b><small>${b.d||""}</small></button>`).join("")}</div>`; }
+    function offer(buttons, fn, narrative=""){
+      G.offerFn = fn;
+      m.ctrl.innerHTML = narrative ? narrative+`<div class="aleph-choices">${buttons.map(b=>`<div><button data-of="${b.v}"><b>${b.t}</b></button><details ${b.warn?"open":""}><summary>예상 결과</summary><p>${b.d}</p></details></div>`).join("")}</div>` : `<div class="pk-moves">${buttons.map(b=>`<button data-of="${b.v}"><b>${b.t}</b><small>${b.d||""}</small></button>`).join("")}</div>`;
+    }
     function settle(f){ if(G.ctr > 0 && G.mood >= 100){ G.state = "egg"; G.flash = 1; codexNote(a.vid, "ctrl"); say(`<b style="color:#e8d27a">${esc(josa(shown,"이","가"))} 스스로 알로 잠들었다.</b>`);
         end({win:true, score:1, how:"ctrl", mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, last:G.last}, "알로 잠재웠다 — 통제 성공"); return true; }
       if(G.ctr <= 0){ breach(f); return true; } return false; }
@@ -8720,47 +8741,44 @@ function mgAbno(ctx){
       resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, rage:G.state==="rage", mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}));
     }
     m.ctrl.addEventListener("click", e=>{ const dr = e.target.closest("button[data-dr]"); if(dr && G.drink){ drink(dr.dataset.dr==="1"); return; }
-      if(e.target.closest("button[data-orchestra-retreat]")){ retreatOrchestra(); return; }
+      if(e.target.closest("button[data-aleph-retreat]")){ retreatAleph(); return; }
       const of = e.target.closest("button[data-of]"); if(of && G.offerFn){ const fn = G.offerFn; G.offerFn = null; fn(of.dataset.of); return; }
       const sd = e.target.closest("button[data-sd]"); if(sd && G.soda){ drinkSoda(sd.dataset.sd==="1"); return; }
       if(e.target.closest("button[data-watch]")){ watch(); return; }
       const mc = e.target.closest("button[data-merc]"); if(mc){ const v = mc.dataset.merc; if(v==="list") mercList(); else if(v==="cancel") menu(); else mercDo(+v); return; } if(e.target.closest("button[data-mb]")){ orderBullet(); return; }
       const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
-    function retreatOrchestra(){
+    function retreatAleph(){
       if(G.done||G.fighting||G.breaching) return;
       end({win:false, score:0, retreat:true, mpLoss:G.mpLoss, dead:G.dead}, "현장에서 철수했다. 입은 피해는 남고 보수는 받지 않는다.");
     }
-    m.quit.onclick = ()=>{ if(orchestra) return retreatOrchestra(); if(G.done||G.fighting||G.breaching) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
+    m.quit.onclick = ()=>{ if(aleph) return retreatAleph(); if(G.done||G.fighting||G.breaching) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
     const lead = a.risk==="ALEPH" ? 5300 : 0; if(lead) alephIntro(shown);
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
-    // 완화: 조우하는 순간에는 정신력만 15% 깎이고 아무도 죽지 않는다. 이후의 위험은 징후(대응하지 않으면 모두 정신력 -10%)로 이어진다
+    // 첫 음과 맥박은 정신력 피해만 준다. 이후에는 현장에서 행동을 고른다.
     if(a.fx==="overture" || a.fx==="pulse"){ const out = []; ctx.team.forEach(f=>{ const v = abPenalty(a, Math.floor(f.mp*0.15)); f.mp = Math.max(1, f.mp - v); out.push(`${esc(f.name)} 정신력 -${v}`); });
       intro = (intro ? intro+"<br>" : "") + `<span style="color:#9ab8d8">${a.fx==="overture" ? "첫 음이 울렸다" : "푸른 맥박이 울렸다"} — ${out.join(" · ")}</span>`;
-      // 즉사는 대비가 하나도 없을 때만: 정신 방호(장비·E.G.O.)가 전혀 없고, 의지도 요구치의 60%에 못 미치고, 정신력까지 무너진 이
-      for(const f of ctx.team.slice()){ const unready = redMP(f) <= 0 && !f.ego && power(f,["wil"]) < q.req*0.6;
-        const broken = a.fx==="overture" ? f.mp < f.mpMax*0.5 : f.mp <= f.mpMax*0.25;
-        if(!orchestra && unready && broken && abRiskRoll(a)){ intro += `<br><b style="color:#ff8a7a">${a.fx==="overture" ? `아무 대비도 없던 ${esc(f.name)}의 머리가 터졌다` : `아무 대비도 없던 ${esc(f.name)}가 떠올라 별의 심장으로 빨려 들어갔다`}</b>`;
-          if(killWorker(f, a.fx==="overture" ? "고요한 오케스트라의 첫 음에 머리가 터졌다" : "푸른 별의 심장으로 빨려 들어갔다", a.fx==="overture" ? "사망" : "실종")) return; }
-        else if(unready) intro += `<br><span class="muted">${esc(f.name)}: 대비가 없다 — 정신력이 무너지면 위험하다</span>`; }
-      if(!orchestra) intro += `<br><span class="muted">정신 방호 장비·E.G.O.가 있거나 의지가 충분하면 조우만으로 죽지 않는다. 징후를 놓치지 말 것</span>`; }
-    if(orchestra){
-      say(`${esc(shown)} · ALEPH<br>${intro}<br>${G.state==="rage"?"공연이 이미 시작됐다. 제압을 준비하거나 철수할 수 있다.":"지휘자가 침묵 속에 서 있다. 선호 행동을 골라 통제하거나 제압을 준비할 수 있다."}`);
-      offer([
-        ...(G.state==="calm"?[{v:"control",t:"통제 시도",d:"관측 단서에 따라 행동한다. 실패가 쌓이면 폭주한다."}]:[]),
-        {v:"suppress",t:"제압 준비",d:"선봉을 고른다. 각 악장의 마지막 턴과 피날레에 대응 카드가 예고된다."},
-        {v:"retreat",t:"철수",d:"입은 피해는 남고 이번 의뢰 보수는 받지 못한다."}
-      ], v=>{
+    }
+    if(aleph){
+      const scene = ALEPH_ENCOUNTERS[a.id];
+      say(`${esc(shown)} · ALEPH<br>${intro}`);
+      const narrative = `<div class="aleph-scene"><b>${esc(shown)}</b><p>${esc(scene?.scene||a.look)}</p><p>${G.state==="rage"?"폭주 상태로 통제할 수 없다.":"아직 배회 중이다. 접근 방식을 고를 수 있다."}</p></div>`;
+      const choices = [
+        ...(G.state==="calm"?[{v:"control",warn:a.id==="nothing",t:scene?.control||"조심스럽게 접근한다",d:scene?.risk||"단서에 따라 통제한다. 실패가 쌓이면 폭주한다."}]:[]),
+        ...(!a.noFight?[{v:"suppress",t:"선봉을 정해 제압한다",d:"선봉을 고르고 전투에 들어간다. 전투 중에는 예고된 대응 카드로 징후 피해를 막을 수 있다."}]:[]),
+        {v:"retreat",t:"길을 되짚어 철수한다",d:"지금까지 입은 피해가 남고 의뢰 보수는 받지 못한다."}
+      ];
+      offer(choices, v=>{
         if(v==="control") return menu();
-        if(v==="retreat") return retreatOrchestra();
+        if(v==="retreat") return retreatAleph();
         offer(ctx.team.map(f=>({v:String(f.id),t:esc(f.name),d:`체력 ${f.hp}/${f.hpMax} · 정신력 ${f.mp}/${f.mpMax}`}))
           .concat({v:"retreat",t:"철수",d:"전투를 시작하지 않고 돌아간다."}), id=>{
-            if(id==="retreat") return retreatOrchestra();
+            if(id==="retreat") return retreatAleph();
             const lead=ctx.team.find(f=>String(f.id)===id);
             if(lead) fight(lead);
           });
-      });
+      }, narrative);
       return;
     }
     if(a.kill){ G.state = "rage"; m.quit.disabled=true; say(`${esc(shown)} — ${esc(a.look)}.<br><b style="color:#ff8a7a">통제가 불가능한 죄종이므로 현장에서 사살할 것.</b>`); setTimeout(fight, 2200 + lead); }
@@ -17851,8 +17869,8 @@ const AB_CODEX_BATTLE = Object.freeze({
   orchestra: "제1악장 강공, 제2악장 보통 공격, 제3악장 약공, 제4악장 보통 공격을 적중시킨다. 피날레에는 방어(가드)를 사용한다. 악장의 마지막 턴에는 지정 카드를 내는 것만으로 공연 피해를 막을 수 있다. 17턴 주기가 반복된다.",
   bluestar: "방어(가드) 카드를 사용한다.",
   nothing: "방어(가드) 카드를 사용한다.",
-  sun: "약공 카드를 사용해 공격을 적중시킨다.",
-  eternity: "강공 카드를 사용해 공격을 적중시킨다.",
+  sun: "약공 카드를 사용해 징후 피해를 막는다.",
+  eternity: "강공 카드를 사용해 징후 피해를 막는다.",
 });
 
 function codexMechanicText(e){
