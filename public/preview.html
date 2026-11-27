@@ -1660,6 +1660,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · 공방 무기 목록", ["참격·관통·타격 대표 무기와 특수 무기(총기)를 한눈에 표시. 기존 상품은 전체 목록에서 구매 가능."]],
   ["미리보기 · 약공과 대검", ["약공으로 합에서 패배하면 직접 공격 피해 10% 감소. 대검 기본 공격은 기본 위력 +2, 코인 위력 -2로 최대 합 위력 유지."]],
   ["미리보기 · E.G.O.", ["개화 즉시 해당 칸에 장착하고 기존 장비는 보관함으로 이동. 장착 칸에는 일반 장비를 구매·장착할 수 없음."]],
   ["미리보기", ["약공·보통 공격·강공의 정신력 소모를 0으로 조정. 특수 기술 비용과 공격 수치는 유지."]],
@@ -11061,10 +11062,35 @@ const STATE_TABS = [["idle","평상"],["combat","전투"]];
 const stateOpts = k => ({state:k});
 function fixerLook(f){ const lg = leadGear(f); return {weapon: lg.spec, armor: lg.armorSpec, acc: lg.acc ? lg.accColor : null}; }
 
+const SHOP_WEAPON_GROUPS = [
+  ["slash", ["blade","twin"]],
+  ["pierce", ["spear","rapier"]],
+  ["impact", ["great","fist"]]
+];
+function shopWeaponGroups(items){
+  const weapons = items.filter(i=>i.slot==="weapon").sort((a,b)=>a.price-b.price);
+  const groups = SHOP_WEAPON_GROUPS.map(([category, preferred])=>{
+    const candidates = weapons.filter(i=>!gunKind(i) && WEAPON_KINDS[i.wtype].cat===category);
+    const selected = preferred.map(kind=>candidates.find(i=>combatSubtype(i.wtype,i)===kind)).filter(Boolean);
+    for(const item of candidates){
+      if(selected.length===2) break;
+      if(!selected.some(i=>i.wtype===item.wtype)) selected.push(item);
+    }
+    return {name:CAT_NAME[category], items:selected};
+  });
+  groups.push({name:"특수 무기 · 총기", items:weapons.filter(gunKind)});
+  groups.push({name:"방어구", items:items.filter(i=>i.slot==="armor")});
+  return groups.filter(group=>group.items.length);
+}
+function shopWeaponClashText(item){
+  const bonus = weaponTierBonus(item.tier);
+  return normalAttackCards(item.wtype,item).map(c=>`${c.normalRole} ${c.a+bonus}~${c.b+bonus} · ${c.normalCoins}코인`).join(" / ");
+}
+
 async function openShop(startTab){
   const tierMax = S.officeGrade<=3?2 : S.officeGrade<=6?1 : 0;
   const colors = () => S.fixers.filter(x=>x.grade===0);
-  let who = S.fixers[0]?.id, tab = startTab!=null ? startTab : 0, expansionBusy = false;
+  let who = S.fixers[0]?.id, tab = startTab!=null ? startTab : 0, expansionBusy = false, allGear = false;
   const uniqs = () => S.fixers.filter(x=>x.grade===0 || (x.gear.weapon && x.gear.weapon.unique));
   const lockMsg = t => t===1 ? (tierMax<1 ? "6급 사무소부터 거래할 수 있다." : "") : t===2 ? (tierMax<2 ? "3급 사무소부터 거래할 수 있다." : "") : t===3 ? (uniqs().length ? "" : "고유 무기를 받거나 특색이 된 해결사가 생기면 열린다.") : "";
   const draw = () => {
@@ -11105,16 +11131,20 @@ async function openShop(startTab){
             <div style="display:flex;gap:6px;flex-wrap:wrap">${w && w.unique ? `<button data-forge="${x.id}" data-slot="weapon" data-mode="retouch">무기 손질</button>` : ""}${x.grade===0 ? `<button class="primary" data-forge="${x.id}" data-slot="armor">${u.armor?"방어구 다시 만들기":"방어구 제작"}</button>` : ""}</div></div>`; }).join("")}</div>`
           : `<p class="muted">${lockMsg(3)}</p>`}`;
     }
-    const items = SHOP.filter(i=>i.tier===tab && i.slot!=="acc"), locked = !!lockMsg(tab), makers = [...new Set(items.map(i=>i.maker))];
+    const items = SHOP.filter(i=>i.tier===tab && i.slot!=="acc"), locked = !!lockMsg(tab);
+    const groups = allGear
+      ? [...new Set(items.map(i=>i.maker))].map(maker=>({name:maker, description:MAKERS[maker], items:items.filter(i=>i.maker===maker)}))
+      : shopWeaponGroups(items);
     return `<div class="field"><label>장착할 사람</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>
     ${tabs}
     <p class="muted" style="font-size:12px">${["보통 7급 의뢰까지 쓸 만한 양산품. 무기 내구도 3~6.","원작 세계관의 공방 제품. 보통 4급 의뢰까지 쓸 만하다. 무기 내구도 7~12. 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다.","원작 세계관의 상급 공방·인더스트리·아틀리에 제품. 1급 의뢰까지 쓸 만하다. 무기 내구도 13~20. 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다."][tab]}<br>무기는 출동할 때마다 내구도가 1씩 닳고, 절반 이하가 되면 고쳐야 쓸 수 있다. 고칠 때마다 최대 내구도가 1 줄고, 다 닳으면 부서진다.</p>
     ${locked?`<p class="muted">${lockMsg(tab)}</p>`:""}
-    ${makers.map(mk=>`<h4 class="sh-mk">${esc(mk)} <span class="muted">${esc(MAKERS[mk]||"")}</span></h4>
-      <div class="list">${items.filter(i=>i.maker===mk).map(i=>{ const cur=f&&f.gear[i.slot], occupied=egoOccupies(f,i.slot);
+    <div class="fg-seg" aria-label="공방 목록"><button type="button" data-gear-list="featured" class="${!allGear?"on":""}" aria-pressed="${!allGear}">대표 목록</button><button type="button" data-gear-list="all" class="${allGear?"on":""}" aria-pressed="${allGear}">전체 목록</button></div>
+    ${groups.map(group=>`<h4 class="sh-mk">${esc(group.name)} ${group.description?`<span class="muted">${esc(group.description)}</span>`:""}</h4>
+      <div class="list">${group.items.map(i=>{ const cur=f&&f.gear[i.slot], occupied=egoOccupies(f,i.slot);
         return `<div class="item sh-item">${i.slot==="weapon"?`<canvas class="wicon" data-icon="${i.id}"></canvas>`:`<div class="wicon sh-slot">${{armor:"방어구",acc:"장신구"}[i.slot]}</div>`}
         <div style="flex:1"><b>${esc(i.name)}</b> <span class="badge">${i.slot==="weapon" ? WEAPON_KINDS[i.wtype].n+" · "+WEAPON_KINDS[i.wtype].vars[i.look.v||0] : {armor:"방어구",acc:"장신구"}[i.slot]}</span>
-          <div class="d">${gearDesc(i)}${i.slot==="weapon" ? ` · 내구도 ${DUR_RANGE[i.tier].join("~")}` : ""}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
+          <div class="d">${!allGear&&i.slot==="weapon" ? shopWeaponClashText(i) : gearDesc(i)+(i.slot==="weapon" ? ` · 내구도 ${DUR_RANGE[i.tier].join("~")}` : "")}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
         <button class="primary" data-buy="${i.id}" ${locked||!f||occupied||S.money<i.price||(cur&&cur.unique)?"disabled":""}>${occupied?"E.G.O. 장착 중":cur&&cur.unique?"고유 장비 착용 중":"구매·장착"}</button></div>`;}).join("")}</div>`).join("")}
     <p class="muted" style="font-size:12px">원래 끼고 있던 장비는 보관함으로 옮겨진다. 공방 이름과 특징만 원작에서 따왔고, 물건과 수치는 이 게임을 위해 만든 것이다.</p>`;
   };
@@ -11124,6 +11154,12 @@ async function openShop(startTab){
     root.addEventListener("change", e=>{ if(e.target.id==="who"){ who=+e.target.value; paint(box); } });
     root.addEventListener("click", async e=>{
       const d = e.target.closest("button")?.dataset || {};
+      if(d.gearList){
+        allGear = d.gearList==="all";
+        paint(box);
+        box.querySelector(`[data-gear-list="${d.gearList}"]`)?.focus();
+        return;
+      }
       if(d.tab!==undefined){ tab=+d.tab; }
       else if(d.officeExpand){
         if(expansionBusy) return;
