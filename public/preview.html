@@ -1667,6 +1667,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · 의뢰 현장", ["사무소·협회·검지 의뢰의 장면과 행동을 수정. 검지의 신발장 지령은 통로에서 직접 수행한다."]],
   ["미리보기 · 협회와 검지", ["츠바이·시·리우·세븐·디에치 협회 사건, 주변 사무소 계약, 검지 지령 추가."]],
   ["미리보기 · 사무소 주변 사건", ["이웃 사무소 공동 계약, 츠바이 야간 호위, 콩콩이파 통행료 조사. 계약 결과에 따라 후속 연락이 달라진다."]],
   ["미리보기 · 다인 출동", ["교대와 3인 이상 엄호를 전투당 1회 지원. 후열에는 실제로 입은 피해와 강행군 비용을 반영."]],
@@ -2703,9 +2704,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   const cityCases = {
     sharedContract:{
       day:10,title:"반으로 접힌 의뢰서",client:"주변 사무소",kind:"호위",attrs:["str","agi"],
-      intro:["이웃 사무소 사람이 의뢰서를 반으로 접어 가져왔다. 종이가 접힌 곳에 시장 동문과 서문이 갈라져 있었다.","“한쪽에 보낼 사람이 모자랍니다. 동문을 맡아 주시면 그쪽 몫은 따로 계산하죠.”"],
+      intro:["이웃 사무소 사람이 접수대에 인수증 두 장을 놓았다. 동문 쪽에는 서명이 없었다.", "“서문은 우리 둘이 갑니다. 동문 짐은 아직 손 안 댔어요. 맡으시면 그쪽 보수는 전부 드리죠.”"],
       accept:"동문을 맡는다",decline:"의뢰서를 돌려준다",
-      task:"시장 동문에서 짐수레를 받아 보관소까지 호위한다.",scene:["서문 쪽에서는 이웃 사무소가 짐을 받는다.","동문에서 인수증을 확인하고 수레가 보관소에 들어갈 때까지 동행한다."],
+      task:"동문에서 수레를 인수하기 전에 보관소 도장을 확인한다.",scene:["서문 쪽에서는 이웃 사무소가 짐을 받는다.","동문에서 인수증을 확인하고 수레가 보관소에 들어갈 때까지 동행한다."],
       success:"이웃 사무소 사람이 반으로 접었던 의뢰서를 펴고 양쪽 수령 도장을 확인했다. 며칠 뒤, 이번에는 자기 쪽에서 건널목을 맡겠다는 연락이 왔다.",
       failure:"동문 수레가 도착하지 않았다. 서문 짐은 보관소에 들어갔지만, 다음 계약서에는 이 사무소 이름이 빠졌다.",
       expired:"수레는 다른 호위 인력을 구해 떠났다. 이웃 사무소가 빈 인수증을 돌려보냈다.",
@@ -2723,9 +2724,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     emptyRoster:{
       day:17,assoc:"zwei",title:"빈 당번표",client:"츠바이 협회",kind:"호위",attrs:["str","agi"],
-      intro:["점심때 츠바이 직원이 왔다. 책상 위에 출근표 한 장을 놓았다. 야간 칸 하나가 비어 있었다.","“저녁 여덟 시입니다. 시장 뒷문에서 사람 셋을 받아 검문소까지만 데려다주시면 됩니다.”","“돌아오는 길은요?”","“그건 계약서에 없습니다.”"],
+      intro:["츠바이 직원의 장갑에 시장 입구 빗장이 걸려 찢어진 자국이 있었다. 그는 지도를 펴고 검문소까지만 손가락으로 짚었다.", "“시장 사람 셋입니다. 보호 계약은 검문소에서 끝납니다. 거기서 순찰조에 넘겨 주세요.”", "“셋 중에 계약서에 없는 사람이 섞여 있으면요?”", "“인계표와 대조하고, 다르면 제게 먼저 연락하십시오.”"],
       accept:"야간 호위를 맡는다",decline:"다른 사무소를 찾아보라고 한다",
-      task:"시장 뒷문에 모인 사람 셋을 검문소까지 호위한다.",scene:["가게 문이 닫히고 세 사람이 시장 뒷문으로 나온다.","검문소 직원에게 세 사람을 넘기고 인계표를 받는다."],
+      task:"시장 뒤편에서 인계표에 적힌 세 사람을 확인하고 검문소 순찰조에 넘긴다.",scene:["가게 문이 닫히고 세 사람이 시장 뒷문으로 나온다.","검문소 직원에게 세 사람을 넘기고 인계표를 받는다."],
       success:"츠바이 직원이 인계표에 적힌 이름 셋을 확인했다. 빈 칸이 하나 더 생겼다며 다음 계약서를 꺼냈다.",
       failure:"검문소는 도착 인원을 다시 셌다. 츠바이 직원은 미도착 인원부터 확인하러 갔다.",
       expired:"여덟 시가 지나 츠바이에서 다른 호위 인력을 불렀다. 당번표에서 이 사무소 이름이 지워졌다.",
@@ -2743,9 +2744,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     tollReceipt:{
       day:24,title:"가판대 밑 영수증",client:"장터 상인회",kind:"수색",attrs:["agi","tec"],
-      intro:["상인이 가판대에서 쓰는 동전통을 들고 왔다. 밑바닥에서 기름 먹은 종이 한 장을 꺼냈다.","“콩콩이파 애가 돈을 받고 두고 갔어요. 제 이름은 의뢰서에서 빼 주실 수 있습니까?”"],
+      intro:["국숫집 주인이 동전통 바닥에서 영수증 한 장을 꺼냈다. 종이에는 받은 돈과 창고 번호만 찍혀 있었다.", "“콩콩이파는 누가 냈는지 알아요. 이걸 댁에 가져온 것까지 알게 되면, 내일은 가게 못 엽니다.”"],
       accept:"이름을 빼고 영수증을 조사한다",decline:"영수증을 돌려준다",
-      task:"영수증의 숫자와 장터 출납 기록을 대조해 콩콩이파가 돈을 받는 장소를 찾는다.",scene:["종이에는 금액 밑에 같은 숫자가 세 번 적혀 있다.","상인 이름을 묻지 않고, 같은 숫자가 찍힌 출납표를 찾는다."],
+      task:"영수증에 찍힌 번호가 장터에서 무엇을 가리키는지 확인한다. 의뢰인 이름은 기록에 남기지 않는다.",scene:["종이에는 금액 밑에 같은 숫자가 세 번 적혀 있다.","상인 이름을 묻지 않고, 같은 숫자가 찍힌 출납표를 찾는다."],
       success:"숫자는 날짜가 아니라 창고 번호였다. 상인회가 다음 수금일에 빈 창고를 살펴 달라고 했다.",
       failure:"비에 젖은 장부에서는 같은 숫자를 찾지 못했다. 상인은 영수증을 동전통 밑에 다시 밀어 넣었다.",
       expired:"다음 장이 서자 종이의 번호가 바뀌었다. 영수증 한 장으로는 돈이 어디로 갔는지 알 수 없었다.",
@@ -2763,9 +2764,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     missingPage:{
       day:31,assoc:"seven",client:"세븐 협회",title:"일곱째 장이 빠진 장부",
-      intro:["세븐 직원이 인쇄소 주문서 두 장을 나란히 놓았다. 주문 번호는 같은데 받을 주소가 달랐다.","“제본소에 도착한 쪽만 알아봐 주세요. 누가 지웠는지는 그다음에 묻겠습니다.”"],
+      intro:["세븐 직원은 장부 사본을 펴 놓고 한 장을 뒤집었다. 남은 먹지가 다음 장 뒷면에 눌려 있었다.", "“일곱째 장이 없어진 날부터 제본소에서 물건을 못 받았다고 합니다. 양쪽이 내놓은 사본은 여기 있습니다. 실제로 받은 곳을 찾아 주세요.”"],
       accept:"주문서를 대조한다",decline:"주문서를 돌려준다",
-      task:"인쇄소와 제본소의 접수부를 대조해 누락된 장부가 어디로 갔는지 확인한다.",scene:["인쇄소 접수부에는 두 주소가 한 줄에 적혀 있다.","제본소 수령증의 날짜와 도장을 확인한다."],
+      task:"사본의 주소만으로 결론을 내리지 않고 제본소가 실제로 받은 장부를 확인한다.",scene:["인쇄소 접수부에는 두 주소가 한 줄에 적혀 있다.","제본소 수령증의 날짜와 도장을 확인한다."],
       success:"세븐 직원은 제본소 수령증을 보고 주소 하나에 줄을 그었다. 사무소 이름은 보고서의 조사 협조란에 적혔다.",
       failure:"접수부 두 장에 찍힌 도장이 같았다. 세븐은 확인이 끝날 때까지 보고서를 접어 두기로 했다.",
       expired:"제본소가 월말 장부를 창고로 옮겼다. 세븐은 자료 요청을 다시 넣었다.",
@@ -2773,9 +2774,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     closedLedger:{
       day:38,assoc:"dieci",client:"디에치 협회",title:"반납표의 마지막 줄",
-      intro:["디에치 직원이 천으로 싼 대출 기록을 놓고 갔다. 마지막 줄의 책 제목만 칼로 도려내져 있었다.","“제목은 다른 사본에도 있습니다. 저희한테 필요한 건 반납 도장입니다.”"],
+      intro:["디에치 직원이 대출표를 내밀었다. 제목이 적힌 칸이 도려내져 있었다.", "“제목은 압니다. 이 책이 제때 돌아왔는지가 문제예요. 도장이 남아 있다면 사본을 떠 주세요. 원본은 서가에 두시고요.”"],
       accept:"반납 기록을 확인한다",decline:"기록을 받지 않는다",
-      task:"옛 자료실의 반납철에서 대출 기록과 짝을 이루는 반납 도장을 확인한다.",scene:["자료실 책상 밑에 연도별 반납철이 묶여 있다.","대출 날짜가 적힌 표를 찾아 같은 장서 번호가 있는지 확인한다."],
+      task:"자료실에서 대출 날짜에 해당하는 반납철을 찾아 장서 번호와 반납 도장을 대조한다.",scene:["자료실 책상 밑에 연도별 반납철이 묶여 있다.","대출 날짜가 적힌 표를 찾아 같은 장서 번호가 있는지 확인한다."],
       success:"디에치 직원은 대출 기록과 반납철을 한데 묶었다. 빈 칸 옆에는 확인한 날짜만 적었다.",
       failure:"자료실에 남은 반납철은 그해 겨울분뿐이었다. 대출 기록은 천에 다시 싸였다.",
       expired:"자료실이 문을 닫고 반납철을 다른 서고로 보냈다.",
@@ -2783,9 +2784,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     freightGate:{
       day:45,assoc:"liu",client:"리우 협회",title:"운송로의 철문",
-      intro:["리우 직원이 지도에 연필로 선을 그었다. 운송로 가운데에서 선이 끊겼다.","“저희는 앞쪽 교차로에 갑니다. 사무소에서는 저 철문 앞을 비워 주세요. 그쪽이 열리면 수레가 움직입니다.”"],
+      intro:["리우 연락원이 지도에 놓였던 찻잔을 치웠다. 찻잔 밑에 철문 하나가 그려져 있었다.", "“교차로에서 저희가 길을 냅니다. 철문에서 수레가 멈추면 뒤에 있는 짐까지 전부 줄을 서게 돼요. 그 문을 열어 주십시오.”"],
       accept:"철문 앞을 맡는다",decline:"이 구간은 맡기 어렵다고 한다",
-      task:"운송로 철문을 막고 있는 사설 경비를 제압해 수레가 지나갈 길을 연다.",scene:["리우 인원은 앞쪽 교차로로 향했다.","철문 앞 사설 경비는 수레를 돌려보내려 한다."],foe:"운송로 사설 경비",
+      task:"리우가 교차로를 확보할 때까지 기다렸다가 철문을 막은 경비를 제압한다.",scene:["리우 인원은 앞쪽 교차로로 향했다.","철문 앞 사설 경비는 수레를 돌려보내려 한다."],foe:"운송로 사설 경비",
       success:"철문이 열리자 교차로 쪽에서 수레가 들어왔다. 리우 직원은 지도의 끊겼던 선을 이었다.",
       failure:"철문이 닫힌 채로 남았다. 리우는 수레들을 교차로 뒤쪽으로 돌렸다.",
       expired:"운송 인력이 철수하면서 철문 쪽 작전도 접혔다.",
@@ -2793,9 +2794,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     sealedRoom:{
       day:52,assoc:"shi",client:"시 협회",title:"접수하지 않은 봉투",
-      intro:["마감 직전에 사람이 왔다. 문 앞에서 접수부가 닫히는 것부터 확인했다.","“이름과 방 번호는 안에 있습니다. 대상이 방을 비우면 일은 끝난 겁니다. 찾아다니지 마십시오.”"],
+      intro:["접수부를 덮을 때까지 손님은 서 있었다. 명함 대신 봉투 하나를 탁자 밑으로 건넸다.", "“그 방에 들어온 사람을 전부 치우라는 계약이 아닙니다. 안에 든 이름 하나입니다. 방을 나가면 그날 일은 접으세요.”"],
       accept:"봉투를 받는다",decline:"봉투를 그대로 돌려준다",
-      task:"봉투에 명시된 의뢰 대상만 처리한다. 지정된 방에서 벗어난 대상은 추적하지 않는다.",scene:["문패가 없는 방문 앞에서 봉투 속 번호를 다시 확인한다.","옆방 사람들은 계약 대상이 아니다."],foe:"봉투에 명시된 해결사",
+      task:"봉투 속 인상착의와 방 번호를 확인한 뒤 지정된 대상만 처리한다.",scene:["문패가 없는 방문 앞에서 봉투 속 번호를 다시 확인한다.","옆방 사람들은 계약 대상이 아니다."],foe:"봉투에 명시된 해결사",
       success:"접수대에 빈 봉투가 놓였다. 발신인은 이번에도 이름을 적지 않았다.",
       failure:"봉투 속 방 번호에 줄이 그어져 돌아왔다. 더는 계약이 유효하지 않았다.",
       expired:"방에는 아무도 없었다. 짐을 옮겨 간 자리에 먼지만 남았다.",
@@ -2803,9 +2804,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     borrowedCart:{
       day:36,title:"수레 한 대의 품삯",client:"주변 사무소",kind:"호위",attrs:["str","agi"],
-      intro:["이웃 사무소가 빌려 간 수레를 돌려주러 왔다. 손잡이에 낮 장터 표찰이 그대로 매달려 있었다.","“품삯은 따로 챙겼습니다. 내일은 저희 쪽 사람이 빠져서 그런데, 같은 길로 한 번만 더 가 주실 수 있습니까?”"],
+      intro:["이웃 사무소 사람이 수레를 돌려주러 왔다. 어제는 멀쩡하던 바퀴살 하나가 새것이었다.", "“부러뜨린 건 갈아 끼웠습니다. 장터에 받아 놓고 못 가져온 짐이 있는데, 운반 몫을 드리면 한 번 다녀와 주시겠습니까?”"],
       accept:"수레를 한 번 더 호위한다",decline:"수레만 돌려받는다",
-      task:"이웃 사무소의 빈 수레를 인수해 낮 장터의 물품을 받아 돌아온다.",scene:["장터 표찰을 보여 주자 상인이 맡겨 둔 물품을 꺼냈다.","돌아오는 길에 수레를 뺏기지 않도록 지킨다."],
+      task:"수레의 장터 표찰을 확인하고 맡겨 둔 물품을 받아 돌아온다.",scene:["장터 표찰을 보여 주자 상인이 맡겨 둔 물품을 꺼냈다.","돌아오는 길에 수레를 뺏기지 않도록 지킨다."],
       success:"이웃 사무소가 수레 손잡이에서 장터 표찰을 떼었다. 빌린 날짜 옆에 반납 도장을 찍었다.",
       failure:"수레는 비어 돌아왔다. 이웃 사무소는 남은 품삯으로 손잡이부터 수리했다.",
       expired:"낮 장터가 문을 닫았다. 이웃은 수레를 빈 채로 돌려달라고 했다.",
@@ -2813,10 +2814,10 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     },
     indexSeal:{
       day:59,prescript:true,title:"접힌 흰 봉투",client:"검지의 사도 — 흰 봉투",kind:"일반",attrs:["tec"],
-      intro:["문을 열자 방바닥에 흰 봉투가 떨어졌다. 접힌 자리에 검지의 인장이 찍혀 있었다.","「오늘부터 이틀 안에, 세 번째로 마주친 빈 신발장의 문을 열고 가장 낮은 칸을 닫아라.」"],
+      intro:["바닥을 쓸던 동료가 종이 한 장을 집었다. 접힌 모서리가 문틈 너비만큼 구겨져 있었다. 검지의 인장이 찍혀 있었다.", "「이틀 안에 장터 뒤 통로를 처음부터 끝까지 걸어라. 안에 신발이 한 짝도 없는 장을 세어, 세 번째 장의 맨 아래 칸만 닫아라.」", "동료가 봉투 안쪽을 한 번 더 확인했다. 이유도, 의뢰인 이름도 적혀 있지 않았다."],
       accept:"지령을 따른다",decline:"지령을 거절한다",
-      task:"오늘부터 이틀 안에, 세 번째로 마주친 빈 신발장의 문을 열고 가장 낮은 칸을 닫아라.",scene:["첫 신발장에는 짝이 맞지 않는 신발이 남아 있었다. 빈 장만 세어야 한다.","세 번째 빈 신발장이 보이자 가장 낮은 칸에 손을 댄다."],
-      success:"아침에 어제의 봉투가 문틈에 다시 꽂혔다. 인장 아래에 날짜 하나가 더 적혀 있었다.",
+      task:"장터 뒤 통로에서 비어 있는 신발장만 세고, 세 번째 장의 맨 아래 칸만 닫아라.",scene:["첫 신발장에는 짝이 맞지 않는 신발이 남아 있었다. 빈 장만 세어야 한다.","세 번째 빈 신발장이 보이자 가장 낮은 칸에 손을 댄다."],
+      success:"돌아오는 길에 신발장 아래 칸이 닫혀 있는 것을 한 번 더 봤다. 다음 날, 그 일을 두고 묻는 사람은 없었다.",
       failure:"다음 날 문틈에는 아무것도 없었다. 출근한 동료들이 하나씩 뒤를 돌아봤다.",
       expired:"이틀이 지났다. 빈 신발장 문은 열린 채였다.",
       refused:"종이를 접어 다시 봉투에 넣었다. 퇴근할 때까지 봉투를 가지러 오는 사람은 없었다."
@@ -4937,12 +4938,12 @@ const scorePayMul = sc => { const p = clamp(Math.round(sc*100), 0, 100); return 
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
 const isAbnoContract = q => !!(q && (q.kind==="환상체" || /죄종/.test(q.kind||"") || q.risk==="죄종" || q.abno || q.abnoFoe));
 const isDistContract = q => !!(q && (q.distFoe || q.distorted || /뒤틀림/.test(q.kind||"")));
-const directOnly = q => !!(q && (q.boss || q.ruins || isAbnoContract(q) || isDistContract(q)));
-const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
+const directOnly = q => !!(q && (CITY_FIELD_CASES.has(q.officeStoryId) || q.boss || q.ruins || isAbnoContract(q) || isDistContract(q)));
+const MG_NAME = {cityCase:"현장 선택",story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
 const gamesFor = q => { const base = gamesFor0(q); if(!storyMG(q)) return base;
   if(directOnly(q)) return ["story"].concat(base);
   return q.arc ? ["story"].concat(base.includes("str") || q.goal ? ["str"] : []) : ["story"].concat(base); };
-const gamesFor0 = q => q.ruins ? ["ruins"] : q.abnoFoe ? ["str"] : isAbnoContract(q) ? ["abno"] : isDistContract(q) || q.boss ? ["str"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : (q.attrs||[]).filter(a=>a!=="wil");
+const gamesFor0 = q => CITY_FIELD_CASES.has(q.officeStoryId) ? ["cityCase", ...(q.kind==="호위"?["escort"]:q.goal?["str"]:[])] : q.ruins ? ["ruins"] : q.abnoFoe ? ["str"] : isAbnoContract(q) ? ["abno"] : isDistContract(q) || q.boss ? ["str"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : (q.attrs||[]).filter(a=>a!=="wil");
 const directGoal = q => q.abnoFoe ? (q.abnoFoe.kill?"사살":"제압") : isDistContract(q) ? "사살" : q.goal || "제압";
 // 승패가 있는 게임의 명시적인 결과만 의뢰 성패에 사용한다. 점수는 승패를 뒤집지 않는다.
 function directStageResult(results){
@@ -4960,11 +4961,45 @@ function chooseMode(q, team){
       <span>자동 진행</span><b>팀 전력으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
+async function playCityCase(q){
+  const field = {
+    sharedContract:["동문에 수레가 둘 서 있다. 하나에는 우리 쪽 인수증과 같은 도장이 찍혀 있다.","도장이 맞는 수레를 받는다","먼저 움직인 수레를 따라간다"],
+    crossingCover:["건널목에 빈 수레 두 대가 왔다. 약속한 사무소의 인수증은 한쪽에만 있다.","인수증이 있는 쪽에 넘긴다","먼저 다가온 사람에게 넘긴다"],
+    emptyRoster:["뒷문에 네 사람이 나왔다. 한 사람은 옆 가게에서 일하다 인계 줄에 섞였다.","인계표와 대조해 계약 인원을 확인한다","눈앞에 선 세 사람부터 데려간다"],
+    returnWatch:["검문소 직원 둘이 교대 명단을 들고 있다. 한 장에는 이미 출발한 낮 근무조가 적혀 있다.","야간 교대 명단을 확인한다","먼저 내민 명단을 받는다"],
+    tollReceipt:["출납표에 같은 번호가 두 번 나온다. 한쪽 칸은 창고 보관료이고, 다른 쪽은 가판대 자리값이다.","수금액과 창고 보관 기록을 대조한다","가판대 명단을 보고 상인 이름을 묻는다"],
+    markedStorehouse:["수금일에 창고 앞에 두 사람이 들렀다. 하나는 빈 통을 돌려줬고, 다른 하나는 계산표를 확인한 뒤 봉투를 받아 갔다.","봉투를 받은 사람과 시간을 적는다","먼저 온 사람을 수금원으로 적는다"],
+    missingPage:["인쇄소 사본 두 장에 주소가 다르게 찍혔다. 제본소 수령증에는 한 주소와 함께 장부의 무게가 적혀 있다.","수령증의 주소와 장부 무게를 대조한다","인쇄소에서 나중에 적은 주소를 채택한다"],
+    closedLedger:["반납철에 제목이 같은 책이 둘 있다. 장서 번호와 도장은 한쪽만 대출표와 일치한다.","번호와 도장이 맞는 칸만 베낀다","책 제목이 같은 첫 줄을 베낀다"],
+    freightGate:["교차로 쪽에서 리우가 멈춤 신호를 보냈다. 아군 수레가 철문 앞을 가로질러 지나고 있다.","수레가 빠지고 통과 신호가 오면 나선다","지금 철문 앞으로 들어간다"],
+    sealedRoom:["지정된 방에 둘이 있다. 봉투의 인상착의에 맞는 사람은 문에서 먼 자리에 앉아 있다.","대상이 혼자 남을 때까지 기다린다","문에 가까운 사람에게 먼저 다가간다"],
+    borrowedCart:["상인이 수레 두 대 분량의 짐을 내놓았다. 빌린 수레에 달린 표찰과 짝이 맞는 꾸러미에는 매듭이 두 번 묶여 있다.","표찰과 맞는 꾸러미를 싣는다","먼저 놓인 꾸러미를 싣는다"]
+  }[q.officeStoryId];
+  if(q.officeStoryId==="indexSeal"){
+    const doors = [true,false,true,true,false,true];
+    let empty = 0;
+    for(let i=0;i<doors.length;i++){
+      if(doors[i]) empty++;
+      const choice = await modal("장터 뒤 통로",`<p>통로의 ${i+1}번째 신발장이다. ${doors[i]?"안에는 신발이 한 짝도 없다.":"한 짝이 구석에 남아 있다."}</p>`,
+        [{t:"그대로 지나간다",v:"pass"},{t:"맨 아래 칸을 닫는다",v:"shut"}]);
+      if(choice==="shut") return doors[i] && empty===3;
+      if(choice!=="pass") return false;
+    }
+    return false;
+  }
+  const [scene, right, wrong] = field;
+  const options = [{t:right,v:"right"},{t:wrong,v:"wrong"}];
+  if(q.id%2===0) options.reverse();
+  const choice = await modal(requestTitle(q),`<p>${esc(scene)}</p>`,options);
+  return choice==="right";
+}
+const CITY_FIELD_CASES = new Set(["sharedContract","crossingCover","emptyRoster","returnWatch","tollReceipt","markedStorehouse","missingPage","closedLedger","freightGate","sealedRoom","borrowedCart","indexSeal"]);
 async function runMinigames(q, team){
   const games = gamesFor(q); let sum = 0, combat = null, abno = null; const dec = []; let invalid=false;
   for(let i=0;i<games.length;i++){
     const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
-    if(a==="story"){ const r = await mgStory(ctx); sum += r; q.__edge = r; }
+    if(a==="cityCase"){ const win=await playCityCase(q); sum+=win?1:0; dec.push({win}); }
+    else if(a==="story"){ const r = await mgStory(ctx); sum += r; q.__edge = r; }
     else if(a==="ruins"){ const r=await mgRuins(ctx);sum+=r.score;dec.push(r); }
     else if(a==="str"){ const fightCtx={...ctx,q:{...q,goal:directGoal(q)}}; combat = await mgCombat(fightCtx); sum += combat?.score||0; dec.push(combat); }
     else if(a==="agi"){ const tr = await mgTrack(ctx); sum += tr.score; dec.push(tr); if(!combat) combat = tr; }
