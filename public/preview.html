@@ -1660,6 +1660,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · 고요한 오케스트라", ["현장에서 통제·제압 준비·철수를 선택. 악장 마지막 턴과 피날레의 대응을 예고하며, 놓치면 전열과 후열에 공연 피해가 발생."]],
   ["미리보기 · 약공과 대검", ["약공으로 합에서 패배하면 직접 공격 피해 10% 감소. 대검 기본 공격은 기본 위력 +2, 코인 위력 -2로 최대 합 위력 유지."]],
   ["미리보기 · E.G.O.", ["개화 즉시 해당 칸에 장착하고 기존 장비는 보관함으로 이동. 장착 칸에는 일반 장비를 구매·장착할 수 없음."]],
   ["미리보기", ["약공·보통 공격·강공의 정신력 소모를 0으로 조정. 특수 기술 비용과 공격 수치는 유지."]],
@@ -5942,7 +5943,8 @@ function mgCombat(ctx){
       return `<button data-sk="4" class="pk-shin" ${no?"disabled":""}><b>무기에 망(望)을 감는다</b><small>추가 행동 — 턴을 쓰지 않는다 · 망 ${me.mangLive} → ${me.mangLive+1} · 위력 +1 · 고정 피해 +1 · 매 턴 정신력 추가 -3 · 사용 정신력 -${c}${used?"<br>이번 턴에는 이미 썼다":f.mp<=c?"<br>정신력이 모자라다":""}</small></button>`; }
     // 환상체 고유 기믹: 현재 전투원의 행동으로 대응 · 놓치면 턴 종료 시 피해
     const FSG = AB && !AB.kill && (!AB.possessed || AB.id==="redshoes") ? ((signOf(AB)||{}).rage || null) : null; const BGMK=FSG&&AB_BATTLE_ACTION[AB.id]; foe.signLast = 0; let lastAbMove=null;
-    const signScheduled=t=>!!BGMK&&(AB.movement?orchestraStage(t)===4:t%3===2);
+    const orchestra = AB?.id==="orchestra";
+    const signScheduled=t=>!!BGMK&&(AB.movement?(orchestra ? [4,8,12,16,17].includes((t-1)%17+1) : orchestraStage(t)===4):t%3===2);
 
     // 표시, 손패 보정, 실제 판정이 하나의 대응 카드를 공유한다.
     function battleResponseCard(t,me,sign=true){
@@ -5964,6 +5966,10 @@ function mgCombat(ctx){
     function battleSignTell(t,me=party[act],sign=true){
       const card=battleResponseCard(t,me,sign);
       if(card===null)return "";
+      if(orchestra && sign){
+        const finale = orchestraStage(t)===4;
+        return `${responseLabel(card)} 카드 사용. 놓치면 전원 정신력 최대 -${finale?20:8}${finale?" · 체력 최대 -8":""}. 알맞은 카드를 내면 합에서 져도 공연 피해는 막는다.`;
+      }
       return card===1?"방어(가드) 카드를 사용한다.":responseLabel(card)+" 카드를 사용해 공격을 적중시킨다(합 승리 및 피해 발생).";
     }
     const RISK_SIGN = {ZAYIN:1, TETH:1.4, HE:1.8, WAW:2.4, ALEPH:3}[AB && AB.risk] || 1;
@@ -5971,12 +5977,14 @@ function mgCombat(ctx){
       if(!BGMK||(!force&&!signScheduled(turn))) return ""; foe.sign = true; foe.signLast = turn;
       return ""; }
     function foeSignMiss(){ if(!FSG || !foe.sign || foe.hp<=0) return ""; foe.sign = false;
-      const sp = abPenalty(AB,Math.round((FSG.sp||0)*RISK_SIGN)), hp = abPenalty(AB,Math.round((FSG.hp||0)*RISK_SIGN));
+      const finale = orchestra && orchestraStage(turn)===4;
+      const sp = orchestra ? (finale?20:8) : abPenalty(AB,Math.round((FSG.sp||0)*RISK_SIGN));
+      const hp = orchestra ? (finale?8:0) : abPenalty(AB,Math.round((FSG.hp||0)*RISK_SIGN));
       party.forEach(p=>{ if(p.hp<=0) return; const fb = fullBody(p.f); if(sp) p.sp = clamp(p.sp - Math.max(0, sp - (fb?1:0)), -45, 45); if(hp) p.hp = Math.max(0, p.hp - Math.max(1, Math.round(hp*(1-redHP(p.f)*0.5))) - (fb?1:0)); });
       return `<b style="color:#ff8a7a">징후를 놓쳤다 — ${esc(FSG.missT)}</b>${sp ? ` (모두 정신력 -${sp})` : ""}${hp ? ` (모두 체력 -${hp})` : ""}`; }
     function foeSignAction(si,me,won,total,def,before=me){const guard=si===1||(si===2&&def),hit=!!won&&total>0&&!guard&&si!==3;
       const data={si,me,hit,guard,last:lastAbMove,total,foe,party,turn,isBasic,techReady,before};lastAbMove={si,me};
-      if(!BGMK||!foe.sign||foe.hp<=0||si!==before.requiredCard||(si!==1&&!hit))return "";
+      if(!BGMK||!foe.sign||foe.hp<=0||si!==before.requiredCard||(si!==1&&!hit&&!orchestra))return "";
       foe.sign=false;if(FSG.cost)me.hp=Math.max(1,me.hp-abPenalty(AB,FSG.cost));BGMK.apply(data);
       return `<span style="color:#8fd6a0">징후 파훼 — ${esc(FSG.okT)}</span>`;
     }
@@ -6017,6 +6025,7 @@ function mgCombat(ctx){
       let hint="";
       if(foe.sign&&BGMK)hint="현재 징후 파훼: "+battleSignTell(turn,me);
       else if(AB.enrage&&!foe.enraged)hint="대응: 방어(가드) 카드를 사용하고 4턴까지 공격하지 않는다.";
+      else if(orchestra && signScheduled(turn+1))hint="다음 턴 악장 마감 예고: "+battleSignTell(turn+1,me);
       else if(AB.movement)hint="현재 악장 대응: "+battleSignTell(turn,me,false);
       else if(signScheduled(turn+1))hint="다음 턴 징후 예고: "+battleSignTell(turn+1,me);
       return hint?`<br><b style="color:#ffcf82">${esc(hint)}</b>`:"";
@@ -8348,6 +8357,7 @@ function mgAbno(ctx){
     const q = ctx.q, a = abnoOf(q); if(!a){ resolve({win:false, score:0}); return; }
     const seen = codexMeet(a.vid), know = n => seen >= n;
     const shown = know(1) ? a.n : "정체불명의 환상체", riskTxt = know(2) ? a.risk + (a.sin ? ` · ${a.sin}` : "") : "???";
+    const orchestra = a.id==="orchestra";
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
     const m = mgOpen(`${a.risk==="죄종"?"죄종 조우":"환상체 의뢰"} · 관측`, a.risk==="죄종" ? "죄종은 환상체처럼 알로 되돌릴 수 없으므로 발견 즉시 사살해야 한다." : "현장에 도착하면 먼저 환상체의 상태를 확인한다. 배회 중인 개체는 적절한 행동으로 진정시켜 알로 되돌릴 수 있지만, 이미 날뛰고 있거나 폭주한 개체는 전투를 통해 제압해야 한다.", ctx, 300);
     const rampP = a.noFight ? 0 : abRate(a,({죄종:0.25, ZAYIN:0.2, TETH:0.4, HE:0.5, WAW:0.6, ALEPH:0.8}[a.risk] || 0.25));   // 날뜀으로 마주칠 확률: ZAYIN 20 · TETH 40 · HE 35 · WAW 42 · ALEPH 56%
@@ -8456,7 +8466,9 @@ function mgAbno(ctx){
       say(`<span style="color:#8fd6a0">징후 파훼 · ${esc(f.name)} — ${esc(SG.okT)}</span>${out.length ? " ("+out.join(" · ")+")" : ""}`);
       return false; }
     function menu(){ if(G.signDue || (q.__signNow && !G.signForced)){ const fc = q.__signNow && !G.signForced; G.signDue = false; G.signForced = true; signSpawn(fc); }
-      menuBase(); if(G.sign)m.ctrl.insertAdjacentHTML('afterbegin', '<div class="muted" style="flex:1 1 100%;color:#ffb35a">징후: '+esc(G.sign.txt)+'</div>'); }
+      menuBase();
+      if(orchestra) m.ctrl.insertAdjacentHTML("beforeend", '<button data-orchestra-retreat="1">철수한다</button>');
+      if(G.sign)m.ctrl.insertAdjacentHTML('afterbegin', '<div class="muted" style="flex:1 1 100%;color:#ffb35a">징후: '+esc(G.sign.txt)+'</div>'); }
     function menuBase(){
       const chips = `<div class="pk-who"><span class="muted">행동할 해결사</span><button class="${G.pick==null?"on":""}" data-pk="auto">자동(관련 능력치가 높은 해결사)</button>${ctx.team.map(f=>`<button class="${G.pick===f.id?"on":""}" data-pk="${f.id}">${esc(f.name)}${tagOf(f)}</button>`).join("")}</div>`;
       const merc = a.fx==="mercenary" && G.ctr > 0 ? `<button data-merc="list"><b>하청을 맡긴다</b><small>게시판의 물리 의뢰 하나를 보수의 ${abHigh(a)?28:40}%를 떼고 대신 처리해 준다<br><span style="color:#ff8a7a">그 대가로 광폭 카운터 -${ctrStep}</span></small></button>` : "";
@@ -8692,7 +8704,7 @@ function mgAbno(ctx){
       G.state = "out"; G.shake = 18; G.flash = 1; m.ctrl.innerHTML = "";
       say(`<b style="color:#ff8a7a">${a.rule==="knight" ? "기사가 절망에 빠졌다" : `${a.noCounter ? "더 이상 참지 못했다" : "광폭 카운터가 0이 됐다"}`} — ${esc(josa(shown,"이","가"))} 폭주했다!</b>`); await new Promise(r=>setTimeout(r, 1300)); fight();
     }
-    async function fight(){
+    async function fight(lead){
       if(G.done||G.fighting)return;
       G.fighting=true;m.quit.disabled=true;
       if(a.rule2==="ranged" && !ctx.team.some(f=>weaponTypeOf(wGear(f))==="gun")) return doom(ctx.team.slice().sort((x,y)=>power(y,["str"]) - power(x,["str"]))[0]);
@@ -8702,18 +8714,24 @@ function mgAbno(ctx){
       if(a.rule==="ember") AF = Object.assign({}, AF, {emberStart: Math.max(1, G.embers)});
       if(a.rule2==="ranged") toast("총잡이가 멀리서 꽃을 겨눈다. 흰 털을 밟지 않고 싸운다");
       const fq = Object.assign({}, q, {goal: a.kill ? "사살" : "제압", attrs:["str"], foe: shown, abnoFoe:AF});
-      const r = await mgCombat({q:fq, team:ctx.team, idx:ctx.idx, total:ctx.total});
+      const team = lead ? [lead,...ctx.team.filter(f=>f!==lead)] : ctx.team;
+      const r = await mgCombat({q:fq, team, idx:ctx.idx, total:ctx.total});
       G.done=true;m.close(); if(r.win) codexNote(a.vid, "sup");
       resolve(Object.assign({}, r, {how: r.win ? "sup" : null, fought:true, rage:G.state==="rage", mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}));
     }
     m.ctrl.addEventListener("click", e=>{ const dr = e.target.closest("button[data-dr]"); if(dr && G.drink){ drink(dr.dataset.dr==="1"); return; }
+      if(e.target.closest("button[data-orchestra-retreat]")){ retreatOrchestra(); return; }
       const of = e.target.closest("button[data-of]"); if(of && G.offerFn){ const fn = G.offerFn; G.offerFn = null; fn(of.dataset.of); return; }
       const sd = e.target.closest("button[data-sd]"); if(sd && G.soda){ drinkSoda(sd.dataset.sd==="1"); return; }
       if(e.target.closest("button[data-watch]")){ watch(); return; }
       const mc = e.target.closest("button[data-merc]"); if(mc){ const v = mc.dataset.merc; if(v==="list") mercList(); else if(v==="cancel") menu(); else mercDo(+v); return; } if(e.target.closest("button[data-mb]")){ orderBullet(); return; }
       const pk = e.target.closest("button[data-pk]"); if(pk){ G.pick = pk.dataset.pk==="auto" ? null : (ctx.team.find(f=>String(f.id)===pk.dataset.pk)||{}).id; menu(); return; }
       const b = e.target.closest("button[data-w]"); if(b) work(b.dataset.w); });
-    m.quit.onclick = ()=>{ if(G.done||G.fighting||G.breaching) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
+    function retreatOrchestra(){
+      if(G.done||G.fighting||G.breaching) return;
+      end({win:false, score:0, retreat:true, mpLoss:G.mpLoss, dead:G.dead}, "현장에서 철수했다. 입은 피해는 남고 보수는 받지 않는다.");
+    }
+    m.quit.onclick = ()=>{ if(orchestra) return retreatOrchestra(); if(G.done||G.fighting||G.breaching) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, mpLoss:G.mpLoss, erased:G.erased, dead:G.dead, skin:G.skin, fxOut:G.out}); };
     const lead = a.risk==="ALEPH" ? 5300 : 0; if(lead) alephIntro(shown);
     let intro = abnoMeetFx(a, ctx.team, G);
     // 조우하는 순간: 고요한 오케스트라의 첫 음 · 푸른 별의 맥박
@@ -8723,10 +8741,28 @@ function mgAbno(ctx){
       // 즉사는 대비가 하나도 없을 때만: 정신 방호(장비·E.G.O.)가 전혀 없고, 의지도 요구치의 60%에 못 미치고, 정신력까지 무너진 이
       for(const f of ctx.team.slice()){ const unready = redMP(f) <= 0 && !f.ego && power(f,["wil"]) < q.req*0.6;
         const broken = a.fx==="overture" ? f.mp < f.mpMax*0.5 : f.mp <= f.mpMax*0.25;
-        if(unready && broken && abRiskRoll(a)){ intro += `<br><b style="color:#ff8a7a">${a.fx==="overture" ? `아무 대비도 없던 ${esc(f.name)}의 머리가 터졌다` : `아무 대비도 없던 ${esc(f.name)}가 떠올라 별의 심장으로 빨려 들어갔다`}</b>`;
+        if(!orchestra && unready && broken && abRiskRoll(a)){ intro += `<br><b style="color:#ff8a7a">${a.fx==="overture" ? `아무 대비도 없던 ${esc(f.name)}의 머리가 터졌다` : `아무 대비도 없던 ${esc(f.name)}가 떠올라 별의 심장으로 빨려 들어갔다`}</b>`;
           if(killWorker(f, a.fx==="overture" ? "고요한 오케스트라의 첫 음에 머리가 터졌다" : "푸른 별의 심장으로 빨려 들어갔다", a.fx==="overture" ? "사망" : "실종")) return; }
         else if(unready) intro += `<br><span class="muted">${esc(f.name)}: 대비가 없다 — 정신력이 무너지면 위험하다</span>`; }
-      intro += `<br><span class="muted">정신 방호 장비·E.G.O.가 있거나 의지가 충분하면 조우만으로 죽지 않는다. 징후를 놓치지 말 것</span>`; }
+      if(!orchestra) intro += `<br><span class="muted">정신 방호 장비·E.G.O.가 있거나 의지가 충분하면 조우만으로 죽지 않는다. 징후를 놓치지 말 것</span>`; }
+    if(orchestra){
+      say(`${esc(shown)} · ALEPH<br>${intro}<br>${G.state==="rage"?"공연이 이미 시작됐다. 제압을 준비하거나 철수할 수 있다.":"지휘자가 침묵 속에 서 있다. 선호 행동을 골라 통제하거나 제압을 준비할 수 있다."}`);
+      offer([
+        ...(G.state==="calm"?[{v:"control",t:"통제 시도",d:"관측 단서에 따라 행동한다. 실패가 쌓이면 폭주한다."}]:[]),
+        {v:"suppress",t:"제압 준비",d:"선봉을 고른다. 각 악장의 마지막 턴과 피날레에 대응 카드가 예고된다."},
+        {v:"retreat",t:"철수",d:"입은 피해는 남고 이번 의뢰 보수는 받지 못한다."}
+      ], v=>{
+        if(v==="control") return menu();
+        if(v==="retreat") return retreatOrchestra();
+        offer(ctx.team.map(f=>({v:String(f.id),t:esc(f.name),d:`체력 ${f.hp}/${f.hpMax} · 정신력 ${f.mp}/${f.mpMax}`}))
+          .concat({v:"retreat",t:"철수",d:"전투를 시작하지 않고 돌아간다."}), id=>{
+            if(id==="retreat") return retreatOrchestra();
+            const lead=ctx.team.find(f=>String(f.id)===id);
+            if(lead) fight(lead);
+          });
+      });
+      return;
+    }
     if(a.kill){ G.state = "rage"; m.quit.disabled=true; say(`${esc(shown)} — ${esc(a.look)}.<br><b style="color:#ff8a7a">통제가 불가능한 죄종이므로 현장에서 사살할 것.</b>`); setTimeout(fight, 2200 + lead); }
     else if(G.state==="rage"){ m.quit.disabled=true; say(`${esc(shown)} — <b style="color:#ff8a7a">주변의 물건을 닥치는 대로 부수고 있다!</b> 통제가 불가능한 상태로, 곧바로 전투에 돌입한다.`); setTimeout(fight, 1800 + lead); }
     else { const FT = FIGHT_TXT[fightType(a)]; say(`${esc(shown)} — ${esc(a.look)}. ${seen===1 ? "처음 보는 환상체다." : `이번이 ${seen}번째 조우다.`}${know(4) ? ` <span style="color:${FT[1]}">[${FT[0]}]</span>` : ""}${intro ? "<br>"+intro : ""}<br><span class="muted">적절한 행동으로 기분을 최대치까지 높이면 알로 돌아간다. 행동에 실패하면 ${jo(ctrName,"이")} 감소한다.</span>`); menu(); }
@@ -8893,8 +8929,9 @@ async function dispatch(qid, fids, modeArg){
   let abLost = [];
   if(abnoR){ const A = abnoOf(q);
     abLost = abnoApply(q, team, Object.assign({}, abnoR, {battle: combat && combat.battle}), lines);
-    lines.push(abnoR.how==="ctrl" ? "환상체를 알로 잠재웠다(통제)" : abnoR.how==="sup" ? (A && A.kill ? "죄종을 사살했다" : "전투 끝에 환상체를 알로 되돌렸다(제압)") : "환상체를 처리하지 못했다"); }
+    lines.push(abnoR.retreat ? "현장에서 철수했다. 의뢰 보수는 없다." : abnoR.how==="ctrl" ? "환상체를 알로 잠재웠다(통제)" : abnoR.how==="sup" ? (A && A.kill ? "죄종을 사살했다" : "전투 끝에 환상체를 알로 되돌렸다(제압)") : "환상체를 처리하지 못했다"); }
   team.forEach(f=>{
+    if(abnoR?.retreat){ f._w=0; return; }
     const b = combat?.battle?.find(x=>x.f===f), w = b && b.fought ? b.wound : mode==="play" || combat ? 0 : (success ? 0 : autoWound(f));   // 자동 진행: 성공 = 안정, 실패 = 등급별 부상
     // 감소량은 항상 최대치의 정수 %: 방어구로 줄어든 비율의 소수점은 버린다(16.8% → 16%), 깎이는 양도 소수점을 버린다
     const red = mental ? redMP(f) : redHP(f), march = marching.includes(f);
@@ -17811,7 +17848,7 @@ const AB_CODEX_BATTLE = Object.freeze({
   dosan: "방어(가드) 카드를 사용한다.",
   bloodtear: "현재 체력이 최대치의 40% 이하이면 방어(가드), 그 외에는 보통 공격을 적중시킨다.",
   nails: "징후 턴의 5로 나눈 나머지가 0·3이면 방어(가드), 1·2이면 강공, 4이면 보통 공격을 사용한다.",
-  orchestra: "제1악장 강공, 제2악장 보통 공격, 제3악장 약공, 제4악장 보통 공격을 적중시킨다. 피날레에는 방어(가드)를 사용한다. 17턴 주기가 반복된다.",
+  orchestra: "제1악장 강공, 제2악장 보통 공격, 제3악장 약공, 제4악장 보통 공격을 적중시킨다. 피날레에는 방어(가드)를 사용한다. 악장의 마지막 턴에는 지정 카드를 내는 것만으로 공연 피해를 막을 수 있다. 17턴 주기가 반복된다.",
   bluestar: "방어(가드) 카드를 사용한다.",
   nothing: "방어(가드) 카드를 사용한다.",
   sun: "약공 카드를 사용해 공격을 적중시킨다.",
