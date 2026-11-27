@@ -10226,8 +10226,13 @@ function randomColorTitle(f){
   if(!valid.length) throw new Error("사용 가능한 특색 칭호가 없다");
   if(!f || f.isLeader) return pick(pick(valid).titles);
   const scores=colorNounScores(f,COLOR_NOUNS,COLOR_PERSONAL_NOUNS,COLOR_MISSION_NOUNS);
-  const best=Math.max(...valid.map(x=>scores[x.n]));
-  return pick(pick(valid.filter(x=>Math.abs(scores[x.n]-best)<1e-9)).titles);
+  // 성격 또는 실제 행적에 맞는 명칭만 후보로 두고, 양쪽 점수가 높을수록 등장 확률을 높인다.
+  const eligible=valid.filter(x=>scores[x.n]>0);
+  if(!eligible.length) return pick(pick(valid).titles);
+  const weights=eligible.map(x=>Math.pow(scores[x.n],3));
+  let roll=Math.random()*weights.reduce((a,b)=>a+b,0);
+  for(let i=0;i<eligible.length;i++){roll-=weights[i];if(roll<0)return pick(eligible[i].titles);}
+  return pick(eligible[eligible.length-1].titles);
 }
 
 /* ================= 특색 심사 ================= */
