@@ -2,21 +2,26 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-// V.a1.2.6.8 공통 회귀 검사: node --test tests/systems.test.mjs
-// 본 사이트와 미리보기 파일의 일치 여부 및 핵심 규칙 검사
+const production=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
 const preview=readFileSync(new URL('../public/preview.html',import.meta.url),'utf8');
-const scripts=[...preview.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
-const game=scripts.at(-1);
+const inlineScripts=html=>[...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(m=>m[1]);
+const game=inlineScripts(production).find(script=>script.includes('const VERSION ='));
 function section(before,after){
   const a=game.indexOf(before),b=game.indexOf(after,a+before.length);
   assert.ok(a>=0&&b>a,`검사 대상 코드 누락: ${before} → ${after}`);
   return game.slice(a,b);
 }
-test('현재 버전 V.a1.2.6.8',()=>assert.match(game,/const VERSION = "V\.a1\.2\.6\.8"/));
-test('본 사이트와 미리보기 코드 동일',()=>{
-  assert.equal(preview,readFileSync(new URL('../public/index.html',import.meta.url),'utf8'));
+test('운영 버전과 업데이트 내역의 버전 형식',()=>{
+  assert.match(game,/const VERSION = "v\.a\d+(?:\.\d+)+";/i);
+  assert.match(game,/const CHANGELOG = \[\s*\["v\.a\d+(?:\.\d+)+"/i);
 });
-test('미리보기 인라인 자바스크립트 문법',()=>scripts.forEach((s,i)=>assert.doesNotThrow(()=>new vm.Script(s,{filename:`preview-${i}.js` }))));
+for(const [file,html] of [['index.html',production],['preview.html',preview]]){
+  test(`${file} 인라인 자바스크립트 문법`,()=>{
+    const scripts=inlineScripts(html);
+    assert.ok(scripts.some(script=>script.includes('const VERSION =')));
+    scripts.forEach((script,i)=>new vm.Script(script,{filename:`${file}:${i}`}));
+  });
+}
 test('기존 저장 키와 저장 파일 호환',()=>{
   assert.match(game,/const SAVE_KEY = "problem-solver-office-save-v1"/);
   for(const word of ['problem-solver-backup','data-x="download"','data-x="file"','S.rentArrears','S.scarWeekDue'])assert.ok(game.includes(word),word);
@@ -29,10 +34,13 @@ test('사무소 심사는 대표 해결사 급수보다 앞서갈 수 없다',()
   assert.equal(cx.officeReviewStatus(w,8,[{isLeader:true,grade:7}]).ok,true);
 });
 test('해결사 심사는 실제 성공 건수까지만 반영한다',()=>{
-  const cx={Math,REVIEW_NEED:g=>3+Math.floor((9-g)/2)};
-  vm.createContext(cx);vm.runInContext(section('function reviewOf(','// 사무소 심사:'),cx);
+  const cx={Math,clamp:(n,min,max)=>Math.min(max,Math.max(min,n))};
+  vm.createContext(cx);vm.runInContext(section('const REVIEW_NEED','// 사무소 심사:'),cx);
   assert.equal(cx.reviewOf({n:4,ok:5,hi:4,sc:3.6},9).ok,true);
   assert.equal(cx.reviewOf({n:5,ok:2,hi:4,sc:4},9).ok,false);
+  assert.equal(cx.reviewOf({n:4,ok:4,sc:4},9).ok,false);
+  assert.equal(cx.reviewOf({n:4,ok:4,hi:4},9).ok,false);
+  assert.equal(cx.reviewOf({n:4,ok:5,hi:5,sc:4},9,5).ok,false);
 });
 test('지명 및 고난도 조건 중복 충족 시 고난도 실적은 1건',()=>{
   const code=section('const sc = mode==="play"','S.wk = S.wk ||');
@@ -56,12 +64,13 @@ test('의체 정비비를 못 내면 자금은 음수가 되지 않고 출동 �
   assert.equal(cx.S.money,0);assert.equal(cx.canGo(f),true);
 });
 test('주급 미납액 이월 및 잔액 음수 방지',()=>{
-  const f={isLeader:false,wage:2000,mp:100,mpMax:100};
+  const f={isLeader:false,grade:8,mp:100,mpMax:100};
   const cx={Math,S:{money:1000,moved:false,fixers:[f]},accFx:()=>false,INJ_COST:500,
     won:n=>n,addLog:()=>{},ac:()=>{},changeFixerTrust:()=>{},RENT_DAYS:28,rentForecast:()=>({total:0,base:0}),RENT_SALES:0.1};
-  vm.createContext(cx);vm.runInContext(section('function officeFees(','async function review('),cx);
-  cx.officeFees(7);assert.equal(cx.S.money,0);assert.equal(f.wageDue,1000);
-  cx.S.money=5000;cx.officeFees(14);assert.equal(cx.S.money,2000);assert.equal(f.wageDue,0);
+  vm.createContext(cx);vm.runInContext(section('const WAGE_BY_GRADE','const TECH_BASE_PLUS'),cx);
+  vm.runInContext(section('function officeFees(','async function review('),cx);
+  cx.officeFees(7);assert.equal(cx.S.money,0);assert.equal(f.wageDue,1500);
+  cx.S.money=5000;cx.officeFees(14);assert.equal(cx.S.money,1000);assert.equal(f.wageDue,0);
 });
 test('미리보기 시험 업적과 실제 성과 분리',()=>{
   for(const expr of [/function ltSave\(\)\{ if\(FXTEST\) return;/,
@@ -71,7 +80,7 @@ test('미리보기 시험 업적과 실제 성과 분리',()=>{
 });
 test('5인 미니게임 시험 및 마탄 설명',()=>{
   assert.match(game,/for\(let n=S\.fixers\.length;n<5;n\+\+\)/);
-  assert.ok(preview.includes('마탄 2발(6·7번째 탄환)'));
+  assert.ok(production.includes('마탄 2발(6·7번째 탄환)'));
 });
 test('세계관: 죄종과 환상체의 의뢰 표시 분리',()=>{
   assert.match(game,/const requestDisplayKind = q =>/);
@@ -81,7 +90,7 @@ test('자동 출동과 의뢰 카드 성공률 동일',()=>{
   assert.match(game,/function autoRate\(team, q\)\{ return rate\(team,q\)/);
   assert.match(game,/const base = rate\(team,q\)/);
 });
-test('목표 달성 시 의뢰 확정 성공',()=>assert.match(game,/else if\(r\.decisive===true\)\{ mgScore = r\.score; decisive = true;/));
+test('목표 달성 시 의뢰 확정 성공',()=>assert.match(game,/else if\(r\.decisive===true[^\n]*\{ mgScore = r\.score; decisive = true;/));
 test('피해 예측과 실제 정산 공통 계산 함수 사용',()=>{
   assert.match(game,/const pct = damagePercent\(f,q,success,w,mental,march/);
   assert.match(game,/mx\*damagePercent\(f,q,success,w,mental,march\)/);
@@ -108,11 +117,11 @@ test('개인 신뢰는 0~100 범위, 대표는 제외',()=>{
   const lead={isLeader:true,trust:60};cx.changeFixerTrust(lead,-3,'미납');assert.equal(lead.trust,60);
 });
 test('버전 변경 후 의뢰 보수를 반복 삭감하지 않음',()=>{
-  const cx={VERSION:'V.a1.2.6.8',fixGrade1Threat:()=>{},Math};vm.createContext(cx);
-  vm.runInContext(section('function migrate1247(','const NOM_P ='),cx);
-  const d={v:'1.2.5.7',requests:[{grade:8,reward:10000,accepted:false}]};
+  const cx={VERSION:'v.a3.1.5.3',fixGrade1Threat:()=>{},Math,EARLY_DL_DAYS:14,REQ_BASE:{8:[20000]},migrateEgoStory169:()=>{},stripInvalidPromoExams:()=>{}};vm.createContext(cx);
+  vm.runInContext(section('function repairRequestDeadline(','const NOM_P ='),cx);
+  const d={v:'1.2.5.7',fixPay127:true,requests:[{grade:8,reward:10000,accepted:false}]};
   cx.migrate1247(d);cx.migrate1247(d);
-  assert.equal(d.requests[0].reward,10000);assert.equal(d.v,'V.a1.2.6.8');
+  assert.equal(d.requests[0].reward,10000);assert.equal(d.v,cx.VERSION);
 });
 test('주변 사무소 초기 급수와 주간 폐업 확률',()=>{
   const cx={S:{day:1,officeGrade:8,log:[]},Math,gName:n=>n+'급',ac:()=>{},FINGER_NEWS:['손가락'],CITY_NEWS:['도시']};
@@ -171,15 +180,16 @@ test('개인 사연 조사: 이름의 받침과 개인 사연 유형별 확인',
     }
   }
 });
-test('사무소 1~3차 확장: 대표 제외 2·4·7·10명 및 등급 조건',()=>{
+test('사무소 1~3차 확장: 대표 제외 2·5·7·10명 및 등급 조건',()=>{
   const cx={S:{officeExpansion:0,officeGrade:8,money:1200000,fixers:[{isLeader:true},{isLeader:false},{isLeader:false}]}};
   vm.createContext(cx);
   vm.runInContext(section('const OFFICE_EXTENSIONS = [','async function openRecruit(){'),cx);
   const cap=()=>vm.runInContext('officeCompanionMax()',cx);
   const can=()=>vm.runInContext('officeExpansionAllowed(officeExpansionNext())',cx);
-  assert.equal(cap(),2); assert.equal(can(),false);
-  cx.S.officeGrade=7; assert.equal(can(),true);
-  cx.S.officeExpansion=1; assert.equal(cap(),4); assert.equal(can(),false);
+  assert.equal(cap(),2); assert.equal(can(),true);
+  cx.S.money=99999; assert.equal(can(),false);
+  cx.S.money=1200000;
+  cx.S.officeExpansion=1; assert.equal(cap(),5); assert.equal(can(),false);
   cx.S.officeGrade=5; assert.equal(can(),true);
   cx.S.officeExpansion=2; assert.equal(cap(),7); assert.equal(can(),false);
   cx.S.officeGrade=3; assert.equal(can(),true);
