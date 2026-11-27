@@ -2882,6 +2882,16 @@ const officeStoryModule = (function buildOfficeStoryModule(){
    기존 단골 보수 효과는 사무소 신뢰도 단계에 따라 동일하게 10%/20%로 산정한다. */
 /* 1.2.4.7: 이미 수락한 계약 금액은 변경하지 않는다. 이전 버전 미수락 의뢰만 10% 조정. */
 function migrateEgoStory169(d){if(!d||!Array.isArray(d.requests))return;const pairs=[["현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다고 한다","현상금이 걸린 강도를 찾아 사살해 달라"],["현상금이 걸린 강도를 처리해 달라. 살려 둘 필요는 없다","현상금이 걸린 강도를 찾아 사살해 달라"],["가게 뒤 창고에 불 지른 놈을 찾아 끝내 달라. 두 번은 없다","가게 뒤 창고에 불 지른 놈을 이번에 확실히 처리해 달라"],["골목 아이들을 노리는 쥐를 처리해 달라. 살려 둘 필요는 없다","골목 아이들을 노리는 쥐를 처리해 달라. 사살로 마무리해 달라"],["살려 둘 필요는 없다고 했다.","사살로 계약해 달라고 했다."],["조사반은 넷이었고, 돌아온 사람은 없다.","조사반 네 명 모두 실종 처리됐다."],["다른 단서는 없었다.","사진 한 장이 수색의 출발점이었다."],["보낸 사람 이름은 없었다.","봉투의 발신인 칸은 비어 있었다."],["들어간 다섯 명 중 돌아온 사람은 없다.","투입된 다섯 명은 전원 실종 처리됐다."],["이번 작전에 협상은 없다.","이번 작전은 사살을 전제로 한다."],["돈은 빠져나갔는데, 물건이 나간 흔적은 없었다.","출금 내역만 남고 출고란은 비어 있었다."],["아직 다친 손님은 없어요.","다행히 손님들은 피했어요."]];const edit=t=>typeof t==="string"?pairs.reduce((v,[a,b])=>v.split(a).join(b),t):t;for(const q of d.requests){q.text=edit(q.text);if(typeof q.sourceText==="string")q.sourceText=edit(q.sourceText);if(Array.isArray(q.story))q.story=q.story.map(edit);}}
+// 예전 현장 사건이 날짜를 남은 일수로 저장한 의뢰를 복구한다.
+function repairRequestDeadline(q){
+  if(q.deadline == null) return;
+  if(q.deadline > EARLY_DL_DAYS) q.deadline = 2;
+  else if(!Number.isInteger(q.deadline) || q.deadline < 1) q.deadline = 1;
+}
+function requestDeadlineText(q){
+  if(q.deadline == null) return "기한 없음";
+  return q.deadline === 1 ? "오늘 마감" : `남은 기한 ${q.deadline}일`;
+}
 function migrate1247(d){
   if(!d || !Array.isArray(d.requests)) return d;
   // 1.2.4.7에서 이미 10% 조정한 보수를 버전 갱신 때문에 다시 인하하지 않는다.
@@ -2889,7 +2899,7 @@ function migrate1247(d){
   const vn = v => (String(v||"").match(/\d+/g)||[]).map(Number), vlt = (a,b)=>{ for(let i=0;i<Math.max(a.length,b.length);i++){ const x=a[i]||0, y=b[i]||0; if(x!==y) return x<y; } return false; };
   const old = !d.v || vlt(vn(d.v), [1,2,4,7]);
   d.requests = d.requests.filter(q=>Number(q.grade) !== 0);
-  d.requests.forEach(fixGrade1Threat);
+  d.requests.forEach(q=>{ fixGrade1Threat(q); repairRequestDeadline(q); });
   if(old){
     // 이미 수락한 계약의 금액은 보존하고, 아직 수락하지 않은 의뢰만 기존 보수에서 10% 인하한다.
     // 신뢰도에 따른 가산은 이미 보수에 반영되어 있으므로 제거하거나 이중으로 계산하지 않는다.
@@ -4341,9 +4351,9 @@ function requestGradePool(grade){
   return pool;
 }
 
-/* 마감 기한: 처음 2주(EARLY_DL_DAYS)는 사무소 인원에 맞춰 넉넉하게 — 하루에 마감되는 의뢰가 해결사 수를 넘지 않도록 2일부터 차례로 늘린다.
+/* 마감 기한: 처음 2주(EARLY_DL_DAYS)는 사무소 인원에 맞춰 넉넉하게 — 원래 기한을 유지하면서 2~7일 사이에 마감이 되도록 분산한다.
    그 뒤로는 본격적으로 1~3일. 새로 올라오는 의뢰에만 적용한다. */
-const EARLY_DL_DAYS = 14;
+const EARLY_DL_DAYS = 14, EARLY_DL_MAX = 7;
 /* 승급 간격과 승급 심사 의뢰
    사무소: 6급까지는 2주, 5·4급은 3주에 한 번꼴. 3급 이상은 협회 승급 심사 의뢰를 EXAM_NEED_OFFICE건 해내야 심사를 받는다(간격 3주).
    해결사: 6급까지는 매주, 5·4급은 3주에 한 번꼴. 3급 이상은 승급 심사 의뢰를 EXAM_NEED_FIXER건 해낸 상태에서 기존 조건을 채워야 한다. */
@@ -4487,7 +4497,7 @@ function requestNarrative(q, story){
     ? (doc?"사무소에 의뢰서가 도착했다.":"의뢰인이 찾아와 사정을 설명했다.") : opening;
   const out=[start,speech,...remaining];
   if(!scripted&&!out.some(l=>/의뢰 기한|기한은|마감은|마감 기한|기한이|기한 없이/.test(l))){
-    out.push(q.deadline==null?"의뢰에는 따로 마감 기한이 정해져 있지 않았다.":`계약상 남은 기한은 ${q.deadline}일이었다.`);
+    out.push(q.deadline==null?"계약상 별도 마감 기한은 없었다.":q.deadline===1?"계약상 오늘이 마감이었다.":`계약상 남은 기한은 ${q.deadline}일이었다.`);
   }
   return out;
 }
@@ -4495,7 +4505,7 @@ function requestNarrativeHtml(q){ return requestNarrative(q, personalNomStory(q)
 function genRequests(){ const before = new Set(S.requests.map(q=>q.id)); genRequestsInner(); examRequestTick(); personalNomTick();
   if(S.day <= EARLY_DL_DAYS){ const nF = Math.max(1, S.fixers.filter(f=>f.hp > 0).length), fresh = S.requests.filter(q=>!before.has(q.id) && q.deadline!=null);
     const load = {}; S.requests.forEach(q=>{ if(before.has(q.id) && q.deadline!=null) load[q.deadline] = (load[q.deadline]||0) + 1; });
-    fresh.forEach(q=>{ let d = 2; while((load[d]||0) >= nF) d++; q.deadline = d; load[d] = (load[d]||0) + 1; }); } }
+    fresh.forEach(q=>{ let d = Math.max(2, q.deadline); while(d < EARLY_DL_MAX && (load[d]||0) >= nF) d++; q.deadline = d; load[d] = (load[d]||0) + 1; }); } }
 // 하루에 새로 들어오는 일반 의뢰 수(사무소 등급별): 8 · 7급 2개, 6 · 5급 3개, 4 · 3급 3~4개, 2급 이상 4개
 // 하루 의뢰 수 = 사무소 해결사 수(대표 포함) + 1
 function dailyReqN(){ return ((S && S.fixers) ? S.fixers.length : 1) + 1; }
@@ -10155,7 +10165,7 @@ function ledgerScene(lines){
 const FIELD_P = 0.18;
 const FIELD_EVENTS = [
   {id:"extra", when:"ok", t:"웃돈", body:q=>`일을 마치자 ${esc(jo(q.client,"이"))} 봉투를 하나 더 내민다. "같은 동네에 한 건 더 있는데… 오늘 안에 봐 줄 수 있겠소?"`,
-   opts:[{t:"맡는다", d:"같은 등급 의뢰가 하나 더 올라온다(보수 +20%, 기한 1일)", run:(c)=>{ const nq = makeRequest(c.q.grade, {kind:"일반", attrs:[pick(["str","agi","tec"])]}); nq.reward = Math.round(nq.reward*1.2/100)*100; nq.deadline = S.day + 1; nq.client = c.q.client; S.requests.unshift(nq); return "게시판에 의뢰가 하나 더 붙었다(보수 +20%)."; }},
+   opts:[{t:"맡는다", d:"같은 등급 의뢰가 하나 더 올라온다(보수 +20%, 기한 1일)", run:(c)=>{ const nq = makeRequest(c.q.grade, {kind:"일반", attrs:[pick(["str","agi","tec"])]}); nq.reward = Math.round(nq.reward*1.2/100)*100; nq.deadline = 1; nq.client = c.q.client; S.requests.unshift(nq); return "게시판에 의뢰가 하나 더 붙었다(보수 +20%)."; }},
          {t:"오늘은 여기까지", d:"수고비로 보수의 10%를 더 받는다", run:(c)=>{ c.payMul *= 1.1; return "의뢰인이 웃으며 수고비를 얹어 주었다(보수 +10%)."; }}]},
   {id:"rival", when:"ok", t:"몫 다툼", body:q=>`현장을 정리하는데 다른 사무소 사람들이 들이닥쳤다. "이 건, 우리가 먼저 받은 거야. 몫 좀 나누지?"`,
    opts:[{t:"몫을 떼어 준다", d:"보수 -20% · 일 없이 끝난다", run:(c)=>{ c.payMul *= 0.8; return "말없이 봉투에서 몇 장을 덜어 주었다(보수 -20%)."; }},
@@ -10163,7 +10173,7 @@ const FIELD_EVENTS = [
            if(ok){ c.payMul *= 1.15; return `${esc(jo(f.name,"이"))} 앞으로 나서자 그들이 물러났다. 오히려 사과 값까지 챙겼다(보수 +15%).`; }
            const v = Math.floor(f.hpMax*0.12); f.hp = Math.max(1, f.hp - v); return `<span style="color:#ff8a7a">주먹다짐이 붙었다. ${esc(f.name)} 체력 -${v}.</span> 보수는 지켰다.`; }}]},
   {id:"stiff", when:"ok", t:"외상", body:q=>`${esc(jo(q.client,"이"))} 난처한 얼굴로 머리를 긁는다. "지금 가진 게 이것뿐이라… 나머지는 사흘 안에 꼭 드리리다."`,
-   opts:[{t:"믿고 기다린다", d:"지금 보수의 60%만, 사흘 뒤 나머지 60%가 들어온다", run:(c)=>{ const later = Math.round(c.pay*0.6/100)*100; c.payMul *= 0.6; S.pending = (S.pending||[]).concat([{day:S.day+3, amt:later, from:c.q.client}]); return `사흘 뒤 ${won(later)}을 받기로 했다.`; }},
+   opts:[{t:"믿고 기다린다", d:"지금 보수의 약 60%를 받고, 사흘 뒤 나머지를 받는다", run:(c)=>{ const now = Math.min(c.pay, Math.round(c.pay*0.6/100)*100); const later = c.pay - now; c.payMul = c.pay ? now/c.pay : 1; S.pending = (S.pending||[]).concat([{day:S.day+3, amt:later, from:c.q.client}]); return `사흘 뒤 ${won(later)}을 받기로 했다.`; }},
          {t:"지금 받아 낸다", d:"대표의 의지 판정 — 이기면 전액, 지면 절반만", run:(c)=>{ const L = leader() || c.team[0], ok = Math.random() < clamp(power(L,["wil"])/Math.max(1,c.q.req)*0.6, 0.2, 0.9);
            if(ok) return "끝까지 눈을 피하지 않자 의뢰인이 숨겨 둔 돈을 꺼냈다(전액)."; c.payMul *= 0.5; return `<span style="color:#ff8a7a">의뢰인이 뒷문으로 달아났다. 절반만 손에 남았다.</span>`; }}]},
   {id:"patrol", when:"any", t:"순찰대", body:()=>`돌아오는 길, ${esc(districtOf().name)} 둥지 경비대가 길을 막는다. "방금 그 소란, 해결사 쪽이지? 신고서부터 쓰고 가."`,
@@ -10181,7 +10191,7 @@ const FIELD_EVENTS = [
            return `${esc(jo(f.name,"이"))} 업어서 진료소까지 데려다주었다. 이름도 묻지 못했다.`; }},
          {t:"지나친다", d:"출동한 사람 모두 정신력 -3%", run:(c)=>{ c.team.forEach(f=>{ f.mp = Math.max(1, f.mp - Math.floor(f.mpMax*0.03)); }); return "도시에선 흔한 일이다. 그래도 발걸음이 무겁다."; }}]},
   {id:"retry", when:"fail", t:"한 번 더", body:q=>`${esc(jo(q.client,"이"))} 다른 사무소에 넘기기 전에 묻는다. "…한 번만 더 맡아 줄 수 있겠소? 대신 값은 깎읍시다."`,
-   opts:[{t:"다시 맡는다", d:"보수가 30% 줄어든 같은 의뢰가 게시판에 다시 등록된다", run:(c)=>{ const nq = Object.assign({}, c.q, {id:S.nextId++, reward:Math.round(c.q.reward*0.7/100)*100, deadline: c.q.deadline ? Math.max(c.q.deadline, S.day+1) : S.day+2}); S.requests.unshift(nq); return "같은 의뢰를 다시 받았다(보수 -30%)."; }},
+   opts:[{t:"다시 맡는다", d:"보수가 30% 줄어든 같은 의뢰가 기한 2일로 다시 등록된다", run:(c)=>{ const nq = Object.assign({}, c.q, {id:S.nextId++, reward:Math.round(c.q.reward*0.7/100)*100, deadline:2, accepted:false, fieldRetried:true}); S.requests.unshift(nq); return "같은 의뢰를 다시 받았다(보수 -30%)."; }},
          {t:"고개를 숙인다", d:"아무 일도 없다", run:()=>"의뢰인은 말없이 돌아섰다."}]},
   {id:"gossip", when:"fail", t:"소문", body:()=>`실패한 이야기가 벌써 골목에 돌고 있다. "${esc(S.officeName)}? 거기 요즘 손이 무디다던데."`,
    opts:[{t:"의뢰인을 찾아가 사과한다", d:"자금 -보수의 10% · 소문이 가라앉는다", run:(c)=>{ const v = Math.round(c.q.reward*0.1/100)*100; S.money = Math.max(0, S.money - v); return `작은 선물을 들고 찾아가 고개를 숙였다(-${won(v)}). 소문은 금방 잦아들었다.`; }},
@@ -10198,7 +10208,8 @@ const FIELD_EVENTS = [
 async function fieldEvent(q, team, success, pay){
   if(q.ruins || isAbnoContract(q) || q.trio || isDistContract(q) || q.kind==="지명" || q.kind==="특색 심사") return null;
   if(!window.__forceField && Math.random() >= FIELD_P) return null;
-  const pool = FIELD_EVENTS.filter(e=>e.when==="any" || (e.when==="ok") === success); const E = window.__forceField && FIELD_EVENTS.find(e=>e.id===window.__forceField) || pick(pool);
+  const retryAllowed = !q.fieldRetried && !q.boss && !q.officeStoryId && !isSpecialReq(q) && !specialKind(q);
+  const pool = FIELD_EVENTS.filter(e=>(e.id!=="retry" || retryAllowed) && (e.when==="any" || (e.when==="ok") === success)); const E = window.__forceField && FIELD_EVENTS.find(e=>e.id===window.__forceField) || pick(pool);
   const c = {q, team, success, pay, payMul:1, payAdd:0, best: a => team.slice().sort((x,y)=>power(y,[a])-power(x,[a]))[0]};
   const v = await modal(`현장 사건 — ${E.t}`, `<p>${E.body(q)}</p><div class="pk-moves">${E.opts.map((o,i)=>`<div class="fe-opt"><b>${o.t}</b><small class="muted">${o.d}</small></div>`).join("")}</div>`, E.opts.map((o,i)=>({t:o.t, v:i, primary:i===0})));
   const o = E.opts[typeof v==="number" ? v : 1] || E.opts[1]; const note = o.run(c); ac("field");
@@ -10538,7 +10549,11 @@ async function endDayInner(reason){
   const expired = [];
   S.requests.forEach(q=>{ if(q.deadline!=null&&forgottenAllowed(q)){ q.deadline--; if(q.deadline<=0) expired.push(q);} });
   S.requests = S.requests.filter(q=>!expired.includes(q));
-  expired.forEach(officeStoryModule.expire);
+  expired.forEach(q=>{
+    delete teamSel[q.id];
+    if(openQ===q.id) openQ = null;
+    officeStoryModule.expire(q);
+  });
   const letDown = expired.filter(q=>q.accepted).map(q=>changeOfficeTrust(-7, `수락한 의뢰 기한 초과 · ${q.client}`)).filter(Boolean);
   // 도시는 금방 잊는다: 사무소 신뢰도는 매일 밤 2씩 줄어든다
   const fade = changeOfficeTrust(-2, "하루가 지나 사무소의 이름이 조금 잊혔다");
@@ -13648,7 +13663,7 @@ function vnApplyAlign(o, note){ if(!o || !o.al) return; const A = alignOf();
 function vnApplyEff(q, eff){ if(!q || !eff) return;
   if(eff.rw) q.reward = Math.round(q.reward*eff.rw/100)*100;
   if(eff.req) q.req = Math.max(1, q.req + eff.req);
-  if(eff.dl) q.deadline = Math.max(1, q.deadline + eff.dl);
+  if(eff.dl && q.deadline!=null) q.deadline = Math.max(1, q.deadline + eff.dl);
   if(eff.goal) q.goal = eff.goal;
   if(eff.foe) q.foe = eff.foe; }
 /* 성향 — 가장 크게 기운 쪽(차이가 2 이상일 때만). 사무소 기록에서만 문장으로 보인다 */
@@ -16160,7 +16175,7 @@ function anomalyNarrative(q){
   if(org)out.push(institutionalTail(q));
   if(q.nom)out.push("이번 계약은 이 사무소를 지정한 별도 의뢰로 접수됐다.");
   if(q.loot)out.push(lootLine(q));if(q.relic)out.push("현장 주변에서 정체를 확인하지 못한 물건을 봤다는 별도 제보가 있었다.");
-  out.push(q.deadline==null?"계약상 별도 마감 기한은 없었다.":"계약상 남은 기한은 "+q.deadline+"일이었다.");
+  out.push(q.deadline==null?"계약상 별도 마감 기한은 없었다.":q.deadline===1?"계약상 오늘이 마감이었다.":`계약상 남은 기한은 ${q.deadline}일이었다.`);
   return out.filter(Boolean);
 }
 /* 의뢰서 본문을 보고 덧붙일 의뢰인의 말을 고른다 — 같은 말이 두 번 나오지 않게 */
@@ -17122,7 +17137,7 @@ async function openAccept(qid){
   const story = requestNarrativeHtml(q); save();
   const v = await modal(`[${requestTitle(q)}] — ${q.client}`, `<div class="acc-story${q.relic ? " relic" : ""}${q.hanaStar ? " hana" : ""}">${story}</div>
     <div class="kv"><span>의뢰</span><b>[${esc(requestTitle(q))}]</b><span>종류</span><b>${esc(requestDisplayKind(q))}${q.goal ? ` · ${q.goal}` : ""}</b><span>하나 협회 추정 등급</span><b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)} <span class="muted" style="font-weight:400">(${gName(q.grade)} 수준)</span></b>
-    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b>${q.personalNom?`<span>지명 해결사</span><b>${esc(q.personalNom.name)} · ${gName(q.personalNom.grade)}</b><span>지명 출동</span><b>${won(personalNomPay(q,true))} (+25%)</b><span>다른 해결사 출동</span><b>${won(personalNomPay(q,false))} (-15%)</b>`:""}<span>마감</span><b>${q.deadline==null?"없음":q.deadline+"일"}</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품 소문</span><b>${esc(lootName(q))}</b>` : ""}</div>`,
+    <span>요구</span><b>${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</b><span>보수</span><b>${won(q.reward)}</b>${q.personalNom?`<span>지명 해결사</span><b>${esc(q.personalNom.name)} · ${gName(q.personalNom.grade)}</b><span>지명 출동</span><b>${won(personalNomPay(q,true))} (+25%)</b><span>다른 해결사 출동</span><b>${won(personalNomPay(q,false))} (-15%)</b>`:""}<span>마감</span><b>${requestDeadlineText(q)}</b><span>출동 인원</span><b>최대 ${partyMax(q)}명 · 권장 ${partyRec(q)}명</b>${q.loot ? `<span>특수 전리품 소문</span><b>${esc(lootName(q))}</b>` : ""}</div>`,
     [{t:"닫기", v:"close", x:true}, ...(q.boss==="forgotten"?[]:[{t:"거절한다", v:"no"}]), {t:"사람을 보낸다", v:"yes", primary:true}]);
   if(!S || !S.requests.includes(q) || v==="close") return;
   if(v==="yes"){ acceptRequest(q); save(); render(); return; }
@@ -17165,12 +17180,12 @@ function render(){
     teamSel[q.id] = (teamSel[q.id]||[]).filter(id=>opts.some(f=>f.id===id));
     return `<div class="req${openQ===q.id ? " open" : ""} ${q.kind==="뒤틀림 토벌" || q.kind==="뒤틀림 처리"?"distort":q.special?"special":""}${q.relic ? " relic" : ""}${q.hanaStar ? " hana-star" : ""}${q.arc ? " arc" : ""}${q.boss ? " boss" : ""}" data-q="${q.id}"${(c=>c ? ` style="border-color:${c};--bc:${c}"` : "")(reqBorderCol(q))}>
       <div class="head">${q.boss?`<span class="boss-stamp">보스</span>`:""}${q.personalNom?`<span class="badge" style="color:#e8d27a;border-color:currentColor">개인 지명 · ${esc(q.personalNom.name)}</span>`:""}${q.nom ? `<span class="badge" style="color:#e8d27a;border-color:currentColor" title="사무소 등급보다 한 단계 높은 일 · 보수 1.5배 · 해내면 심사 실적 두 배">지명 의뢰</span>` : ""}${q.trustBonus ? `<span class="badge" style="color:#9fe8b0;border-color:currentColor" title="사무소 신뢰도로 보수 +${q.trustBonus*10}%">신뢰 보수 +${q.trustBonus*10}%</span>` : ""}${q.accepted?`<span class="badge" style="color:#e8c98a;border-color:currentColor">계약 수락</span>`:""}${q.arc ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">사건 · ${esc((ARCS.find(a=>a.id===q.arc.id)||{}).n||"")} · ${arcStageOf(q.arc.ch)}</span>` : ""}${q.relic ? `<span class="badge relic-name" style="border-color:#d8b45a">유물</span>` : ""}${q.hanaStar ? `<span class="badge" style="color:#e8c98a;border-color:currentColor">하나 협회 지정</span>` : ""}${q.ruins?`<span class="badge" style="color:#9fe8b0;border-color:currentColor">폐허 L사 지하 ${q.ruins.floor}층 · 갈림길 탐험</span>`:""}${q.prescript ? `<span class="badge" style="color:#f1efe9;border-color:currentColor">지령</span>` : ""}${q.cat==="이상" ? `<span class="badge" style="color:#ff8aa0;border-color:currentColor">이상 의뢰</span>` : ""}${q.assoc && ASSOCS[q.assoc] ? `<span class="badge" style="color:${ASSOCS[q.assoc].col};border-color:currentColor">${ASSOCS[q.assoc].n} 의뢰</span>` : ""}<span class="badge k" style="background:${KIND_COLOR[requestDisplayKind(q)]||"#999"}">${requestDisplayKind(q)}</span>${q.synd && SYN_BY[q.synd] ? `<span class="badge" style="color:${SYN_BY[q.synd].col};border-color:currentColor">${esc(SYN_BY[q.synd].n)}</span>` : ""}
-        <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.deadline!=null&&q.deadline<=1?`<span class="badge deadline-urgent">오늘 마감</span>`:""}${q.risk && q.kind!=="환상체" && !q.abno ? `<span class="badge">${q.risk}</span>`:""}
+        <span class="badge threat" style="color:${THREAT_COL[threatOf(q)]||"#ccc"};border-color:currentColor">${threatOf(q)}</span>${q.risk && q.kind!=="환상체" && !q.abno ? `<span class="badge">${q.risk}</span>`:""}
         <span class="badge">${q.attrs.map(a=>REQ_TYPE[a]).join("+")}</span>${q.hazard?`<span class="badge" style="color:var(--red);border-color:var(--red)">고위험</span>`:""}${q.goal?`<span class="badge" style="color:${q.goal==="사살"?"#ff8a7a":"#9fe8b0"};border-color:currentColor">${q.goal}</span>`:""}</div>
       <div class="client">의뢰자: ${esc(q.client)}</div>
       <div class="txt req-title">[${esc(requestTitle(q))}]${q.personalNom?`<div style="color:#e8d27a;margin-top:5px">${esc(q.personalNom.line)}</div>`:""}</div>
       ${openQ!==q.id&&showSpecialRequestText(q)&&q.text?`<div class="req-special-description">${esc(q.text)}</div>`:""}
-      <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b>${q.personalNom?` <small>· 지명 ${won(personalNomPay(q,true))} / 미출동 ${won(personalNomPay(q,false))}</small>`:""}</span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span>마감 <b>${q.deadline==null?"없음":q.deadline+"일"}</b></span></div>
+      <div class="row"><span>재해 등급 <b style="color:${THREAT_COL[threatOf(q)]||"#ccc"}">${threatOf(q)}</b> <small class="muted">(${gName(q.grade)} 수준)</small></span><span>보수 <b>${won(q.reward)}</b>${q.personalNom?` <small>· 지명 ${won(personalNomPay(q,true))} / 미출동 ${won(personalNomPay(q,false))}</small>`:""}</span><span>요구 ${q.attrs.map(a=>ATTR_NAME[a]).join("·")} ${q.req}</span><span><b class="${q.deadline===1?"deadline-urgent":""}">${requestDeadlineText(q)}</b></span></div>
       ${q.loot?`<div class="loot">특수 전리품 소문: ${esc(lootName(q))}</div>`:""}
       ${openQ!==q.id ? `<div class="assign"><button class="primary" data-open="${q.id}">상세 보기${q.accepted?" · 수락됨":""}</button></div></div>` : reqPanel(q, opts)}`;
   }).join("") : `<p class="muted">${S.requests.length?"이 분류에 해당하는 의뢰가 없다.":"게시판이 비었다."}</p>`;
