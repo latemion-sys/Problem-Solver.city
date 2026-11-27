@@ -1884,7 +1884,7 @@ const COLOR_PREFIX = ["푸른","붉은","보라","주홍","옥빛","하얀","검
 const COLOR_HUES = {"푸른":"#6aa2ff","붉은":"#ff5a52","보라":"#b07cff","주홍":"#ff8a3d","옥빛":"#5fd3a6","하얀":"#f4f1ea","검은":"#a7a7b8",
   "잿빛":"#b3b0aa","새벽빛":"#a9c3ef","구릿빛":"#d48c56","은빛":"#d9dfe8","쪽빛":"#5c7fe0","황금빛":"#f2c94c","달빛":"#efe7c2","먹빛":"#8a8a98","핏빛":"#e0414c","별빛":"#f6eaa8","노을빛":"#ff9a66","물빛":"#82cdea","쇳빛":"#a3aab3","꽃빛":"#ff9ec4","풀빛":"#8fd27a","잉크빛":"#7a8ad0","호박빛":"#f0a640","재빛":"#b3b0aa"};
 const COLOR_WORDS = COLOR_PREFIX.concat(Object.keys(COLOR_HUES).filter(k=>/빛$/.test(k) && !COLOR_PREFIX.includes(k) && k!=="재빛"));
-const COLOR_NOUNS = ["요람","등불","서리","칼날","발자국","서약","그림자","바람","파도","가시","종소리","매듭","날개","비늘","유리","장미","실타래","나침반","저울","꽃잎","굴레","철로","우산","촛대","모래시계","깃발","편지","거울","뿔","이정표","닻","등대"];
+const COLOR_NOUNS = ["요람","등불","서리","휘파람","서약","그림자","잔상","파도","가시","소리","매듭","날개","광대","꽃잎","굴레","우산","시계","깃발","거울","이정표","등대","궤적","낙뢰","투사","그늘","독사","억압","본능","통찰","애착","분노","악마","천사","성녀","용사","방패"];
 const COLOR_CANON_NOUNS = ["안개","침묵","눈물","잔향","흉터","상흔","십자","십자가","시선","노인"];
 const COLOR_BANNED = ["붉은 안개","검은 침묵","보라 눈물","보랏빛 눈물","푸른 잔향","진홍빛 흉터","진홍 흉터","진홍빛 상흔","주홍 십자","주홍빛 십자가","붉은 시선","쪽빛 노인"];
 function colorTitleCheck(t){ t = String(t||"").trim().replace(/^\[|\]$/g,"").replace(/\s+/g," "); const w = t.split(" ");
@@ -10187,8 +10187,8 @@ async function fieldEvent(q, team, success, pay){
   return {payMul:c.payMul, payAdd:c.payAdd, line:`<span style="color:#d8c9a0">현장 사건 · ${E.t}</span> — ${note}`}; }
 const COLOR_MAX = 3;
 const colorHeld = () => S ? S.fixers.filter(f=>f.grade===0).length : 0;
-async function passColor(f, preset){ if(colorHeld() >= COLOR_MAX && f.grade!==0) return; ac("color");
-  const title = preset || (f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle());
+async function passColor(f, preset){ if(f.grade===0 && f.title) return; if(colorHeld() >= COLOR_MAX && f.grade!==0) return; ac("color");
+  const title = preset || (f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle(f));
   const oldWage=syncGradeWage(f); f.grade = 0; const newWage=syncGradeWage(f); f.title = title; f.tcol = colorOfTitle(title); f.cap = 80;
   f.unique = f.unique || {};
   await colorAscend(f.name, title, f.tcol);
@@ -10199,9 +10199,35 @@ async function passColor(f, preset){ if(colorHeld() >= COLOR_MAX && f.grade!==0)
   const go = await modal("특색 지정", `${jo(esc(f.name),"이")} 특색 <b style="color:${f.tcol}">[${esc(title)}]</b>${jo(title,"로").slice(title.length)} 지정되었다.${!f.isLeader&&newWage>oldWage?`<br><span style="color:#e8c98a">주급 ${won(oldWage)} → ${won(newWage)} (다음 정산부터)</span>`:""}<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
   if(go) await openForge(f, "armor");
 }
-function randomColorTitle(){
-  let t, k = 0; do { t = pick(COLOR_WORDS)+" "+pick(COLOR_NOUNS); } while(!colorTitleCheck(t).ok && ++k < 200);
-  return t;
+// 동료의 특색 뒷말은 성격과 이미 저장된 개인별 의뢰 행적으로 정한다. 대표의 직접 작명은 유지한다.
+const COLOR_PERSONAL_NOUNS = {"공격적":"투사 분노 낙뢰 가시 용사","신중함":"통찰 거울 시계 이정표 매듭","헌신":"서약 방패 등불 천사 성녀","냉소":"서리 그림자 독사 그늘 가시","충동적":"낙뢰 파도 본능 휘파람 분노","침착함":"서리 시계 거울 등대 통찰","집요함":"매듭 굴레 궤적 서약 가시","낙천적":"휘파람 날개 광대 꽃잎 등불","비관적":"그늘 잔상 굴레 우산 그림자","오만함":"깃발 날개 투사 억압 용사","소심함":"우산 그림자 요람 방패 그늘","정의감":"용사 깃발 서약 방패 성녀","탐욕":"굴레 독사 애착 매듭 억압","다정함":"요람 꽃잎 애착 우산 천사","무심함":"잔상 서리 그림자 소리 궤적","광기":"광대 악마 본능 소리 파도"};
+const COLOR_MISSION_NOUNS = {"escort":"방패 우산 요람 등불 서약 천사 성녀 깃발 등대 애착","search":"통찰 거울 이정표 등대 시계 궤적 등불 매듭 잔상","chase":"궤적 그림자 날개 휘파람 잔상 독사 낙뢰 파도","abno":"통찰 거울 소리 서리 시계 굴레 광대 본능 잔상","hunt":"투사 용사 낙뢰 분노 악마 가시 억압 깃발","kill":"악마 독사 가시 분노 억압 본능","spare":"용사 방패 천사 성녀 서약 투사 등불","crew":"매듭 깃발 서약 방패 날개 애착","solo":"그림자 그늘 휘파람 서리 잔상"};
+function colorNounScores(f, nouns, personalityMap, missionMap) {
+  const scores=Object.fromEntries(nouns.map(n=>[n,0]));
+  const p=(personalityMap[f.personality]||"").split(" ");
+  p.forEach((n,i)=>{if(Object.hasOwn(scores,n))scores[n]+=3-i*.4;});
+  const L=f.life||{};
+  const counts=Object.keys(missionMap).map(k=>Math.max(0,Number(L[k])||0));
+  const max=Math.max(0,...counts);
+  if(max>0){
+    const work=Object.fromEntries(nouns.map(n=>[n,0]));
+    Object.entries(missionMap).forEach(([k,list],i)=>{
+      const weight=(k==="crew"||k==="solo")?.35:1;
+      const ratio=counts[i]/max*weight;
+      list.split(" ").forEach((n,j)=>{if(Object.hasOwn(work,n))work[n]+=ratio*(1-j*.045);});
+    });
+    const peak=Math.max(0,...Object.values(work));
+    if(peak>0)for(const n of nouns)scores[n]+=3.5*work[n]/peak;
+  }
+  return scores;
+}
+function randomColorTitle(f){
+  const valid = COLOR_NOUNS.map(n=>({n, titles:COLOR_WORDS.map(c=>c+" "+n).filter(t=>colorTitleCheck(t).ok)})).filter(x=>x.titles.length);
+  if(!valid.length) throw new Error("사용 가능한 특색 칭호가 없다");
+  if(!f || f.isLeader) return pick(pick(valid).titles);
+  const scores=colorNounScores(f,COLOR_NOUNS,COLOR_PERSONAL_NOUNS,COLOR_MISSION_NOUNS);
+  const best=Math.max(...valid.map(x=>scores[x.n]));
+  return pick(pick(valid.filter(x=>Math.abs(scores[x.n]-best)<1e-9)).titles);
 }
 
 /* ================= 특색 심사 ================= */
@@ -10261,7 +10287,7 @@ async function colorReview(f){
       <p style="text-align:center">아직은 이르다는 판단이다. <b>1주일 뒤(${S.day + 7}일차)</b>부터 해결사 카드에서 재심사를 요청할 수 있다.</p>`, [{t:"확인", primary:true}], false, root=>{ setTimeout(()=>root.querySelector(".hana-stamp").classList.add("go"), 120); });
     return; }
   // 통과: 칭호를 정하고 인장을 받는다
-  let title = randomColorTitle();
+  let title = randomColorTitle(f);
   if(f.isLeader){ for(let k=0; k<4; k++){ const v = await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다.", title);
       if(!v){ break; } const c = colorTitleCheck(v); if(c.ok){ title = c.t; break; } await modal("하나 협회", "심사관이 고개를 젓는다. 그 이름으로는 올릴 수 없다고 한다.", [{t:"다시 정한다"}]); } }
   const col = colorOfTitle(title);
