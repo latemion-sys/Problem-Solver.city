@@ -1667,6 +1667,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · 사무소 주변 사건", ["이웃 사무소 공동 계약, 츠바이 야간 호위, 콩콩이파 통행료 조사. 계약 결과에 따라 후속 연락이 달라진다."]],
   ["미리보기 · 다인 출동", ["교대와 3인 이상 엄호를 전투당 1회 지원. 후열에는 실제로 입은 피해와 강행군 비용을 반영."]],
   ["미리보기 · 환상체 현장 선택", ["환상체 배회 징후에 개체별 능력치 판정과 안전 선택을 추가. 최대 성공률 95%. 실패 시 최대 체력·정신력 각각 5% 차감. 일부 개체의 성공 보상으로 선택 기프트 추가."]],
   ["미리보기 · ALEPH 현장 선택", ["ALEPH 5종에 현장 장면, 행동별 결과 안내, 선봉 선택 및 철수 적용. 전투 징후는 지정 카드를 내면 대응되며 놓치면 추가 피해가 발생."]],
@@ -2698,7 +2699,96 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     const d=state();
     return d.founderIds.map(id=>S.fixers.find(f=>f.id===id)||null);
   }
+  const cityCases = {
+    sharedContract:{
+      day:10,title:"반으로 접힌 의뢰서",client:"주변 사무소",kind:"호위",attrs:["str","agi"],
+      intro:["이웃 사무소 사람이 의뢰서를 반으로 접어 가져왔다. 종이가 접힌 곳에 시장 동문과 서문이 갈라져 있었다.","“한쪽에 보낼 사람이 모자랍니다. 동문을 맡아 주시면 그쪽 몫은 따로 계산하죠.”"],
+      accept:"동문을 맡는다",decline:"의뢰서를 돌려준다",
+      task:"시장 동문에서 짐수레를 받아 보관소까지 호위한다.",scene:["서문 쪽에서는 이웃 사무소가 짐을 받는다.","동문에서 인수증을 확인하고 수레가 보관소에 들어갈 때까지 동행한다."],
+      success:"이웃 사무소 사람이 반으로 접었던 의뢰서를 펴고 양쪽 수령 도장을 확인했다. 며칠 뒤, 이번에는 자기 쪽에서 건널목을 맡겠다는 연락이 왔다.",
+      failure:"동문 수레가 도착하지 않았다. 서문 짐은 보관소에 들어갔지만, 다음 계약서에는 이 사무소 이름이 빠졌다.",
+      expired:"수레는 다른 호위 인력을 구해 떠났다. 이웃 사무소가 빈 인수증을 돌려보냈다.",
+      refused:"이웃 사무소는 서문 일행이 돌아온 뒤 동문 수레를 받기로 했다. 보관소에 늦는다는 전갈을 보냈다.",
+      next:"crossingCover"
+    },
+    crossingCover:{
+      title:"건널목의 교대",client:"주변 사무소",kind:"호위",attrs:["str","agi"],assist:true,
+      accept:"건널목에서 인계한다",decline:"이번에는 맡지 않는다",
+      task:"약품 수레를 건널목까지 호위한다. 건너편은 이웃 사무소가 맡는다.",scene:["건널목 건너에서 이웃 사무소 사람이 빈 수레를 끌고 나왔다.","짐을 옮겨 싣고 인수증에 서명하면 우리 쪽 계약은 끝난다."],
+      success:"인수증에 두 사무소의 도장이 찍혔다. 약품 상자를 열어 본 사람은 없었다.",
+      failure:"약속한 건널목까지 닿지 못했다. 건너편 일행은 빈 수레를 끌고 돌아갔다.",
+      expired:"건널목에 기다리던 사람이 수레를 돌려보냈다. 인계 약속도 끝났다.",
+      refused:"이웃 사무소가 건널목 인수를 취소했다."
+    },
+    emptyRoster:{
+      day:17,title:"빈 당번표",client:"츠바이 협회",kind:"호위",attrs:["str","agi"],
+      intro:["점심때 츠바이 직원이 왔다. 책상 위에 출근표 한 장을 놓았다. 야간 칸 하나가 비어 있었다.","“저녁 여덟 시입니다. 시장 뒷문에서 사람 셋을 받아 검문소까지만 데려다주시면 됩니다.”","“돌아오는 길은요?”","“그건 계약서에 없습니다.”"],
+      accept:"야간 호위를 맡는다",decline:"다른 사무소를 찾아보라고 한다",
+      task:"시장 뒷문에 모인 사람 셋을 검문소까지 호위한다.",scene:["가게 문이 닫히고 세 사람이 시장 뒷문으로 나온다.","검문소 직원에게 세 사람을 넘기고 인계표를 받는다."],
+      success:"츠바이 직원이 인계표에 적힌 이름 셋을 확인했다. 빈 칸이 하나 더 생겼다며 다음 계약서를 꺼냈다.",
+      failure:"검문소는 도착 인원을 다시 셌다. 츠바이 직원은 미도착 인원부터 확인하러 갔다.",
+      expired:"여덟 시가 지나 츠바이에서 다른 호위 인력을 불렀다. 당번표에서 이 사무소 이름이 지워졌다.",
+      refused:"츠바이 직원은 당번표를 접고 옆 골목 사무소의 주소를 물었다.",
+      next:"returnWatch"
+    },
+    returnWatch:{
+      title:"두 번째 당번",client:"츠바이 협회",kind:"호위",attrs:["str","agi"],
+      accept:"다음 당번도 맡는다",decline:"이번 당번까지만 한다",
+      task:"검문소 야간 교대 인원을 시장 앞 집결지까지 호위한다.",scene:["지난번 담당자가 교대 인원 명단을 내민다.","시장 앞 집결지에서 현장 담당자가 인계표에 서명한다."],
+      success:"츠바이 직원은 당번표를 가져가고 인계표 사본을 한 장 남겼다.",
+      failure:"집결지 담당자가 교대 인원을 다시 불렀다. 빈 칸은 다음 조가 메웠다.",
+      expired:"시장이 문을 닫자 교대 인원은 츠바이 순찰대와 함께 움직였다.",
+      refused:"츠바이 직원은 고개를 끄덕이고 교대 명단을 다시 가져갔다."
+    },
+    tollReceipt:{
+      day:24,title:"가판대 밑 영수증",client:"장터 상인회",kind:"수색",attrs:["agi","tec"],
+      intro:["상인이 가판대에서 쓰는 동전통을 들고 왔다. 밑바닥에서 기름 먹은 종이 한 장을 꺼냈다.","“콩콩이파 애가 돈을 받고 두고 갔어요. 제 이름은 의뢰서에서 빼 주실 수 있습니까?”"],
+      accept:"이름을 빼고 영수증을 조사한다",decline:"영수증을 돌려준다",
+      task:"영수증의 숫자와 장터 출납 기록을 대조해 콩콩이파가 돈을 받는 장소를 찾는다.",scene:["종이에는 금액 밑에 같은 숫자가 세 번 적혀 있다.","상인 이름을 묻지 않고, 같은 숫자가 찍힌 출납표를 찾는다."],
+      success:"숫자는 날짜가 아니라 창고 번호였다. 상인회가 다음 수금일에 빈 창고를 살펴 달라고 했다.",
+      failure:"비에 젖은 장부에서는 같은 숫자를 찾지 못했다. 상인은 영수증을 동전통 밑에 다시 밀어 넣었다.",
+      expired:"다음 장이 서자 종이의 번호가 바뀌었다. 영수증 한 장으로는 돈이 어디로 갔는지 알 수 없었다.",
+      refused:"상인은 종이를 동전통 밑에 넣고 뚜껑을 닫았다. 접수부에 이름은 남지 않았다.",
+      next:"markedStorehouse"
+    },
+    markedStorehouse:{
+      title:"번호가 찍힌 창고",client:"장터 상인회",kind:"수색",attrs:["agi","tec"],
+      accept:"수금일에 창고를 살핀다",decline:"상인회에 번호만 넘긴다",
+      task:"다음 수금일에 표시된 창고를 살펴 돈을 받으러 오는 사람을 확인한다.",scene:["영수증에 적힌 번호가 창고 문 위에 찍혀 있다.","창고 앞에 들르는 사람을 확인하고, 상인회에 시간과 인상착의를 알려 준다."],
+      success:"상인회가 보고서를 받았다. 접수부에는 상인 이름 대신 창고 번호만 적혔다.",
+      failure:"약속한 시간에 창고 문은 한 번도 열리지 않았다. 돈은 이미 다른 데로 옮겨졌다.",
+      expired:"수금일이 지나자 창고에 걸린 번호판이 떼어져 있었다.",
+      refused:"상인회에 창고 번호를 넘겼다. 그날 이후 사무소 앞으로 새 의뢰서는 오지 않았다."
+    }
+  };
+  function cityCaseResult(id,result){
+    const d = state();
+    if(d.results[id]) return;
+    d.results[id] = result;
+    d.followups.push({id,result});
+  }
+  async function offerCityCase(id){
+    const c = cityCases[id], d = state();
+    const office = c.client==="주변 사무소" ? initSurroundings().offices.find(o=>!o.closed && (id==="sharedContract" || o.id===d.sharedOffice)) : null;
+    if(c.client==="주변 사무소" && !office){
+      d.seen[id] = true;
+      save();
+      return;
+    }
+    const client = office?.name || c.client;
+    const accepted = await modal(c.title,`<p class="muted">${escapeText(client)}</p>${(c.intro||[c.task]).map(line=>`<p>${escapeText(line)}</p>`).join("")}`,
+      [{t:c.decline,v:false},{t:c.accept,v:true,primary:true}]);
+    d.seen[id] = true;
+    if(accepted){
+      if(id==="sharedContract") d.sharedOffice = office.id;
+      postRequest(id,c.kind,c.attrs,client,c.task,null,c.scene);
+    }else{
+      cityCaseResult(id,"refused");
+      save();
+    }
+  }
   function titleOf(id){
+    if(cityCases[id]) return cityCases[id].title;
     return {intro:"우리 사무소",week1:"첫 단골손님",week2:"아는 사람",week3:"두 번째 동료의 부탁",month1:"한 달의 장부",month2:"우리 사무소의 일",month3:"세 달을 버틴 간판"}[id]||"사무소에서 생긴 일";
   }
   function addStoryLog(title,txt){
@@ -2726,7 +2816,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   }
   function postRequest(id, kind, attrs, client, text, actorId, scene){
     const grade=Math.max(1,Math.min(9,(Number(S.officeGrade)||8)+1));
-    const q=makeRequest(grade,{kind,attrs});
+    const c = cityCases[id];
+    const q=makeRequest(grade,c ? {kind,attrs,noRelic:true,noKw:true,over:{loot:null,foe:null,chase:null}} : {kind,attrs});
+    if(c?.assist) q.req = Math.max(1,q.req-2);
     q.officeStoryId=id;
     if(actorId!=null) q.officeStoryActor=actorId;
     q.client=client; q.text=text;
@@ -2746,6 +2838,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
         d.seen[id]=true; save(); continue;
       }
       return {kind:"calendar",id};
+    }
+    for(const [id,c] of Object.entries(cityCases)){
+      if(c.day && S.day>=c.day && !d.seen[id]) return {kind:"city",id};
     }
     if(S.day<=90||d.afterDay===S.day) return null;
     if(d.starWins>=1&&!d.seen["star1"]) return {kind:"after",id:"star1"};
@@ -2784,8 +2879,19 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   async function show(event){
     if(!S||S.over) return;
     const d=state(), ff=founders(), id=event.id;
+    if(event.kind==="city") return offerCityCase(id);
     if(event.kind==="followup"){
-      const f=d.followups.shift(), actor=S.fixers.find(x=>x.id===f.actor);
+      const f=d.followups[0], city = cityCases[f.id];
+      if(city){
+        await modal(titleOf(f.id),`<p>${escapeText(city[f.result])}</p>`,[{t:"확인",primary:true}]);
+        d.followups.shift();
+        addStoryLog(titleOf(f.id),city[f.result]);
+        if(f.result==="success" && city.next && !d.seen[city.next]) await offerCityCase(city.next);
+        save();
+        return;
+      }
+      d.followups.shift();
+      const actor=S.fixers.find(x=>x.id===f.actor);
       // 의뢰 후일담: 의뢰마다, 결과(완료 · 실패 · 기한 초과)마다 문장을 따로 둔다. 동료의 개인 의뢰는 그 동료의 이름으로 이야기한다.
       const N=actor?escapeText(actor.name):"동료", Ni=actor?escapeText(josa(actor.name,"이","가")):"동료가", Nn=actor?escapeText(josa(actor.name,"은","는")):"동료는";
       const personal=f.id==="week2"||f.id==="week3";
@@ -2900,7 +3006,10 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     d.followups.push({id,result:"expired",actor:q.officeStoryActor||null});
     addLog(`[사무소 이야기] ${titleOf(id)} 의뢰의 기한이 지났다.`);
   }
-  return {schedule,after,starAfter,expire};
+  function refuse(q){
+    if(q.officeStoryId && cityCases[q.officeStoryId]) cityCaseResult(q.officeStoryId,"refused");
+  }
+  return {schedule,after,starAfter,expire,refuse,cityCaseTitle:id=>cityCases[id]?.title};
 })();
 
 /* ================= 의뢰 생성 ================= */
@@ -17416,7 +17525,7 @@ function specialRequestTitle(q){
   if(q.ruins) return "폐쇄 L사 지부 지하 "+q.ruins.floor+"층 탐사";
   if(q.kind==="특색 심사") return "특색 지정 심사";
   if(q.arc){ const A = ARCS.find(a=>a.id===q.arc.id); return A ? `${A.n} · ${arcStageOf(q.arc.ch)}` : "연속 사건 "+specialRequestAction(q); }
-  if(q.officeStoryId!=null) return "사무소 관련 "+specialRequestAction(q);
+  if(q.officeStoryId!=null) return officeStoryModule.cityCaseTitle(q.officeStoryId) || "사무소 관련 "+specialRequestAction(q);
   let title=null;
   if(q.abno || q.kind==="환상체"){
     const id=q.abno && q.abno.id;
@@ -17467,7 +17576,7 @@ async function openAccept(qid){
     [{t:"닫기", v:"close", x:true}, ...(q.boss==="forgotten"?[]:[{t:"거절한다", v:"no"}]), {t:"사람을 보낸다", v:"yes", primary:true}]);
   if(!S || !S.requests.includes(q) || v==="close") return;
   if(v==="yes"){ acceptRequest(q); save(); render(); return; }
-  if(v==="no"&&q.boss!=="forgotten"){ if(q.accepted) changeOfficeTrust(-6, `수락한 계약 포기 · ${q.client}`); S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id];
+  if(v==="no"&&q.boss!=="forgotten"){ officeStoryModule.refuse(q); if(q.accepted) changeOfficeTrust(-6, `수락한 계약 포기 · ${q.client}`); S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id];
     if(q.prescript){ idxFail(); addLog("지령을 거절했다. 그날 밤부터 출근길마다 누군가 뒤를 밟았다. 모두 체력 -10%"); }
     else addLog(`의뢰를 거절했다 — ${q.client}`);
     save(); render(); } }
@@ -17593,6 +17702,7 @@ async function refuseReq(qid){ const q = S.requests.find(x=>x.id===qid); if(!q) 
   if(q.prescript && !await confirmBox("지령 거절", "지령을 거절하면 대가가 따른다. 정말 거절할까?")) return;
   if(q.accepted){ if(!await confirmBox('계약 포기', `이미 수락한 의뢰입니다. 포기하면 사무소 신뢰도가 6 감소합니다. ${esc(q.client)}의 계약을 포기하시겠습니까?`)) return;
     changeOfficeTrust(-6, `수락한 계약 포기 · ${q.client}`); }
+  officeStoryModule.refuse(q);
   if(!q.accepted)surroundingsHandOff(q);
   S.requests = S.requests.filter(x=>x!==q); ac("refuse"); delete teamSel[q.id]; if(openQ===qid) openQ = null;
   if(q.prescript){ idxFail(); addLog("지령을 거절했다. 그날 밤부터 출근길마다 누군가 뒤를 밟았다. 모두 체력 -10%"); }
