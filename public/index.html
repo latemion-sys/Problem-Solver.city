@@ -1658,8 +1658,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a3.1.4.2";
+const VERSION = "v.a3.1.4.6";
 const CHANGELOG = [
+  ["v.a3.1.4.6", ["2급 이상 해결사마다 2주에 한 번 5% 확률로 신(心) 깨우침 사건 발생. 정신력 제한 폐지, 기존 발현 연출 유지.", "신을 사용한 횟수가 5회 쌓일 때마다 10% 확률로 망(望) 한 겹 해금. 관리에서 무기에 감을 수 있으며 최대 5겹 유지."]],
   ["v.a3.1.4.2", ["환상체 도감의 네 번째 조우 해금에 배회 징후와 실제 전투 대응법 추가. 기존 브라우저별 조우·통제·제압·기프트 해금 유지."]],
   ["v.a3.1.4.1", ["교대형 환상체의 실제 전열 교대와 카드 판정 연결. 빨간 구두 빙의 전투, 실밥 터진 테디의 원종 반전, 고요한 오케스트라 4악장과 피날레 구현."]],
   ["v.a3.1.4", ["죄종 제외 현재 등록된 환상체 56종: 배회 징후는 실제 행동·담당자·직전 행동과 상태로 판정. 별도 징후 대응 버튼 제거.", "전투 징후는 실제 공격·가드·기술 및 합·피해·담당자·상태를 판정. 다음 턴 징후 간접 예고 및 필요한 기본 카드 제한 보장. 기존 전투 덱과 관리·폭주·보상 규칙 유지."]],
@@ -4554,9 +4555,9 @@ const tiredPen = team => team.some(f=>f.tired) ? TIRED_RATE : 0;   // 피로한 
    그 뒤 '무기에 망(望)을 감는다'(익힌 망까지, 한 겹마다 위력 +1, 정신력 8 · 15 · 21 · 26 · 50). 둘 다 턴을 쓰지 않는 추가 행동이며 한 턴에 한 번.
    전투 중 정신력이 -20 이하로 떨어지면 망이 풀리고, -35 이하면 신도 꺼진다. 2급 이상 인간 적 가운데 아주 일부도 신을 깨우친 채 나온다.
    자동 진행: 신: 그 해결사가 나서면 의뢰 성공률 +1%p(상한 97%를 넘어설 수 있다), 전투 위력 +1. 쓸 때마다 정신력 -5.
-   신을 자주 쓰다 보면(나선 횟수) 무기에 망(望)을 감을 수 있다 — 망 하나마다 신과 따로 위력 +1, 대신 쓸 때 정신력이 더 든다(1~5망: 8 · 15 · 21 · 26 · 50). 최대 5망.
+   신을 5회 사용할 때마다 10% 확률로 무기에 망(望)을 한 겹 더 감을 수 있다 — 망 하나마다 신과 따로 위력 +1, 대신 쓸 때 정신력이 더 든다(1~5망: 8 · 15 · 21 · 26 · 50). 최대 5망.
    관리에서 신 · 망을 켜고 끌 수 있다(끄면 효과도 대가도 없다). */
-const SHIN_RATE = 1, SHIN_POW = 1, SHIN_MP = 4, MANG_MAX = 5, MANG_MP = [8, 15, 21, 26, 50], MANG_NEED = [8, 20, 35, 55, 80];
+const SHIN_RATE = 1, SHIN_POW = 1, SHIN_MP = 4, MANG_MAX = 5, MANG_MP = [8, 15, 21, 26, 50], MANG_STEP = 5, MANG_CHANCE = 0.10, SHIN_PERIOD = 14, SHIN_CHANCE = 0.05;
 const shinOn = f => !!(f && f.shin && f.shinOff !== true);
 // 깨우친 뒤의 상시 보정과 전투 중 신을 두르는 추가 행동은 별개다.
 const shinAwakeDamage = f => f && f.shin ? 5 : 0;
@@ -4565,7 +4566,15 @@ const mangN = f => shinOn(f) && f.mangOff !== true ? Math.min(MANG_MAX, f.mang||
 const shinPow = f => (shinOn(f) ? SHIN_POW : 0) + mangN(f);
 const shinCost = f => (shinOn(f) ? SHIN_MP : 0) + (mangN(f) ? MANG_MP[mangN(f)-1] : 0);
 const shinRate = team => team.filter(shinOn).length * SHIN_RATE;
-const mangReady = f => !!(f && f.shin && (f.mang||0) < MANG_MAX && (f.shinUses||0) >= MANG_NEED[f.mang||0]);
+const mangPending = f => Math.min(Math.max(0,MANG_MAX-(f.mang||0)),Math.max(0,Math.floor(f.mangPending||0)));
+const mangReady = f => !!(f && f.shin && mangPending(f)>0);
+function countShinUse(f,lines){
+  f.shinUses = (f.shinUses||0)+1;
+  if(f.shinUses%MANG_STEP!==0 || (f.mang||0)+mangPending(f)>=MANG_MAX || Math.random()>=MANG_CHANCE) return;
+  f.mangPending=mangPending(f)+1;
+  lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`);
+  addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`);
+}
 /* 성격별 전문 분야. 해결사의 급수가 높기만 하면 모든 일을 도맡는 상황을 줄인다.
    대표의 전문 분야는 전부, 동료는 절반만 더한다. 불리한 성격도 있을 수 있다. */
 function specialty(f,q){
@@ -8795,12 +8804,10 @@ async function dispatch(qid, fids, modeArg){
   // 신(心) · 망(望)을 쓴 대가: 정신력. 신을 쓴 횟수가 쌓이면 무기에 망을 감을 수 있다
   team.forEach(f=>{ const cb = combat && combat.battle ? combat.battle.find(x=>x.f===f) : null;
     if(cb && f.shin){   // 직접 싸운 전투: 신 · 망은 전투 안에서 두르고 감았고, 정신력도 그때 썼다
-      if(cb.shinUsed){ f.shinUses = (f.shinUses||0) + 1; lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 전투에서 신(心)을 둘렀다${cb.mangPeak ? ` · 망(望) ${cb.mangPeak}겹` : ""}</span>`);
-        if(mangReady(f) && f.mangHint !== (f.mang||0)){ f.mangHint = f.mang||0; lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`); addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`); } }
+      if(cb.shinUsed){ lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 전투에서 신(心)을 둘렀다${cb.mangPeak ? ` · 망(望) ${cb.mangPeak}겹` : ""}</span>`); countShinUse(f,lines); }
       return; }
-    if(mode==="play" || !shinOn(f)) return; const c = shinCost(f), m = mangN(f); f.mp = Math.max(1, f.mp - c); f.shinUses = (f.shinUses||0) + 1;
-    lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 신(心)${m ? ` · 망(望) ${m}` : ""}</span> — 정신력 -${c}`);
-    if(mangReady(f) && f.mangHint !== (f.mang||0)){ f.mangHint = f.mang||0; lines.push(`<b style="color:#ffd27a">${esc(f.name)}: 무기에 망(望)을 하나 더 감을 수 있다 (관리)</b>`); addLog(`${f.name}: 무기에 망(望)을 감을 수 있게 되었다`); } });
+    if(mode==="play" || !shinOn(f)) return; const c = shinCost(f), m = mangN(f); f.mp = Math.max(1, f.mp - c);
+    lines.push(`<span style="color:#ffd27a">${esc(f.name)}: 신(心)${m ? ` · 망(望) ${m}` : ""}</span> — 정신력 -${c}`); countShinUse(f,lines); });
   // 환상체 기믹: 쇳물에 녹는 무기 · 따라붙은 요정 · 고양이의 회수
   if(abnoR && abnoR.fought && abnoOf(q) && abnoOf(q).fx==="molten") team.forEach(f=>{ const b = combat?.battle?.find(x=>x.f===f), g = f.gear.weapon; if(b && b.fought && isWornable(g) && g.durMax){ g.dur = Math.max(0, g.dur-1); lines.push(`${esc(f.name)}의 ${esc(g.name)}: 쇳물에 날이 녹았다 — 내구도 -1`); } });
   team.forEach(f=>{ const A = f.ab; if(!A) return;
@@ -8877,7 +8884,6 @@ async function dispatch(qid, fids, modeArg){
   await flushLoss();
   for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkCollapse(f); }
   await flushLoss();
-  for(const f of team){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f,{q,success,teamSize:team.length}); }
   if(S && !S.over) team.forEach(f=>{ if(S.fixers.includes(f)) checkOmen(f); });
   if(!S) return;
   officeStoryModule.starAfter(q, team, success);
@@ -9259,7 +9265,7 @@ const ENDINGS = {
   "무심함":["{n}은(는) 아무것에도 마음을 두지 않았다. 그게 살아남는 법이었다.","목소리는 그 빈 곳을 알아보았다. 비어 있으니까, 무엇이든 담을 수 있잖아.","{o}의 액자 속 사진에서 대표의 얼굴만 하얗게 바래 있었다."],
   "광기":["{n}은(는) 원래 조금 이상했다고, 다들 그렇게 말했다.","목소리는 그 웃음을 좋아했다. 그래서 끝까지 웃게 해 주었다.","뒷골목에 톱니 맞물리는 소리가 오래 울렸다. 누군가 웃는 소리 같았다."]
 };
-/* 신(心): 2급 이상의 해결사가 정신력 30% 미만에서 제 죄를 돌아보고, 그것을 하나의 소망으로 엮어 몸에 감으면 깨우친다.
+/* 신(心): 2급 이상의 해결사가 14일마다 따로 5% 확률로 마음을 다스리는 법을 깨우친다.
    sin=돌아보는 죄, img=죄가 쌓인 모습(비유), wish=엮어 낸 소망, words=가슴으로 모여드는 말들 */
 const SHIN = {
   "공격적":{sin:"너무 많은 것을 부수며 여기까지 왔다", img:"부서진 문짝의 나뭇결", wish:"지킬 것을 위해서만 주먹을 쥐기를", words:["부서진 문","주먹","지킬 것"]},
@@ -9297,50 +9303,33 @@ function memoryShards(f, d){
 }
 /* 문장(레퍼런스: 숨을 죽이고 마음을 비운 뒤, 기억 가운데 가장 무겁고 빽빽한 것을 골라 그 감정으로 몸을 채운다 → 금빛 기운 · 망(望)) */
 function shinLines(f, d, ctx={}){
-  const nm=josa(f.name,"은","는"), precious=f.precious||{}, recent=(f.diary||[]).slice(-1)[0]||"";
-  const today=recent.startsWith(S.day+"일차"), q=ctx.q, p=String(precious.text||"").trim();
-  const wound=Number(f._w)||0, loss=precious.lost!=null&&S.day-precious.lost<=7;
-  let first, memory;
-  if(loss&&p){
-    first=pick(["잃어버린 것을 되찾을 방법이 있는지 수없이 생각했다. 이제는 그 질문조차 입 밖으로 나오지 않는다.","다시 돌아갈 수 없다는 사실을 받아들이기까지 얼마나 많은 밤을 보냈던가."]);
-    memory=`아직도 ‘${p}’이라는 말이 마음에 남는다. 그 이름을 떠올리자 애써 피했던 생각이 되살아났다.`;
-  }else if(q&&ctx.success===false){
-    first=pick(["의뢰는 실패로 끝났다. 돌아오는 길에 몇 번이나 그 순간을 되짚었다.","실패했다는 말이 머리에서 떠나지 않는다. 어디에서부터 잘못된 것인지 생각했다."]);
-    memory=q.kind==="환상체"?"그 존재 앞에서 내린 판단들이 떠오른다. 그때 하지 못했던 일까지 하나하나 헤아렸다.":q.kind==="뒤틀림 토벌"?"마주했던 뒤틀림과 그 앞에서 내린 선택이 머릿속을 떠나지 않는다.":"의뢰를 맡았을 때부터 돌아오기까지, 자신이 했던 선택들을 돌이켜 본다.";
-  }else if(q&&wound>=2){
-    first=pick(["몸을 움직이자 상처가 욱신거린다. 숨을 내쉬고 눈을 감았다.","겨우 돌아왔다. 아직 떨리는 손을 내려다보며 조금씩 숨을 고른다."]);
-    memory=ctx.teamSize>1?"함께 의뢰를 수행한 동료들의 얼굴이 떠오른다. 자신이 내렸던 선택을 한 번 더 생각한다.":"홀로 의뢰를 수행했던 순간들이 하나씩 떠오른다.";
-  }else if(q&&ctx.success===true){
-    first=pick(["의뢰는 끝났는데 마음은 아직 그곳에 있다. 눈을 감고 가쁜 숨을 가라앉힌다.","해야 할 일은 해냈다. 그런데도 쉽게 마음을 놓을 수 없었다."]);
-    memory=q.kind==="호위"?"호위하는 동안 내렸던 판단을 되짚는다. 지켜야 했던 것과 자신에게 남은 것이 무엇인지 생각한다.":q.kind==="수색"?"단서를 좇던 순간들이 다시 떠오른다. 찾으려 했던 것과 지금 찾고 있는 것이 달랐다.":"이번 의뢰에서 보고 겪은 일을 떠올리다가, 문득 지나온 날들의 자신을 돌아본다.";
-  }else if(today&&/동료.*(죽었다|뒤틀렸다)/.test(recent)){
-    first="오늘따라 익숙한 목소리 하나가 들리지 않는다. 한참을 그 사실만 생각했다.";
-    memory="동료와 함께했던 날들이 떠오른다. 그중 차마 외면할 수 없는 순간이 있었다.";
-  }else{
-    first=pick(["하루가 지났다. 눈을 감아도 생각이 좀처럼 멎지 않는다.","잠시 아무 말도 하지 않고 숨을 고른다. 차마 꺼내지 못했던 생각들이 하나둘 떠오른다.","지금껏 자신을 움직여 온 것이 무엇인지 생각했다. 답을 내리기까지 긴 시간이 걸렸다."]);
-    memory=p?`‘${p}’. 자신이 소중히 여겼던 것을 떠올리자 그동안 내린 선택들도 함께 떠올랐다.`:pick(["지나온 날을 되짚다가 끝내 외면하지 못한 기억에 닿았다.","잊은 줄 알았던 순간들이 다시 떠오른다. 그중 하나를 끝까지 놓을 수 없었다."]);
-  }
-  return [first,memory,pick([`${d.sin}. 이제 ${nm} 그 사실을 외면하지 않기로 했다. “${d.wish}”.`,`${d.sin}. 되돌릴 수 없다면 앞으로의 자신만이라도 바꾸고 싶었다. “${d.wish}”.`]),pick(["소망을 품은 채 다시 숨을 들이마신다. 손목에서 피어난 금빛이 어깨를 지나 가슴에 닿는다.","가슴에 남은 마음을 놓지 않는다. 손끝에서 번진 따스한 빛이 몸을 감싸고 심장이 다시 힘차게 뛰기 시작한다.","한 번 더 숨을 고른다. 금빛 기운이 팔을 타고 올라와 가슴을 감싼다. 마음속에 품은 소망이 선명해졌다."])];
+  const first=pick([
+    "의뢰를 마치고 돌아온 뒤, 문득 며칠 전 들었던 이야기가 생각났다. 마음을 다스리는 법이 따로 있다고 했던가.",
+    "훈련을 끝낸 뒤에도 손에서 무기를 놓지 못했다. 얼마 전 만난 해결사가 일러 준 대로 눈을 감았다.",
+    "사무소에 혼자 남았다. 의자에 앉아 숨을 죽이고, 이제껏 애써 잊고 살았던 일을 떠올렸다."
+  ]);
+  const memory=f.precious?.text?`‘${f.precious.text}’. 한때 그토록 소중히 여겼던 것이었다. 그때의 자신은 무슨 짓을 했던가.`:"그날 했던 말과 휘둘렀던 무기가 생각났다. 더는 다른 사람의 탓으로 돌릴 수 없었다.";
+  return [first,memory,`${d.sin}. 다시 그때로 돌아갈 수는 없겠지. 그렇다면 이제는. “${d.wish}”.`,"숨을 들이마시자 손목이 뜨거워졌다. 눈을 뜨니 금빛 기운이 팔을 타고 가슴까지 번져 있었다."];
 }
-const MANG_N = f => f.grade<=0 ? 3 : f.grade===1 ? 2 : 1;
 async function awakenShin(f, ctx={}){ ac("shin");
   const d = SHIN[f.personality] || SHIN["침착함"];
   const name = Math.random() < 0.2 ? (SHIN_EXC[f.personality] || "운명") : givenName(f.name);
   f.shin = {name, sin: d.sin, wish: d.wish, day: S.day};
   f.mp = Math.max(f.mp, Math.round(f.mpMax*0.6));
   save();
-  await HeartFx.shin(f, shinLines(f, d, ctx), memoryShards(f, d), d, MANG_N(f));
+  await HeartFx.shin(f, shinLines(f, d, ctx), memoryShards(f, d), d, 0);
   HeartFx.clear();
   S.records.push({day:S.day, name:f.name, what:"신(心) 발현", note:`${shinLabel(f.shin)} — 소망: ${d.wish}`}); addLog(`${f.name}: ${jo(shinLabel(f.shin),"을")} 깨우쳤다 — “${d.wish}”`);
   save(); render();
-  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 제 죄를 소망으로 엮어 몸에 감았다.<br><b style="color:#ffd27a">${esc(shinLabel(f.shin))}</b><br>“${esc(d.wish)}”<br><span class="muted">정신력이 60%까지 돌아왔다. 이후 기본 피해 +5, 합 기본 위력 +1. 받는 정신력 피해 -15%. 망(望) ${MANG_N(f)}개.</span>`, [{t:"확인",primary:true}]);
+  await modal("신(心) 발현", `${esc(josa(f.name,"은","는"))} 마음을 힘으로 바꾸는 법을 깨우쳤다.<br><b style="color:#ffd27a">${esc(shinLabel(f.shin))}</b><br>“${esc(d.wish)}”<br><span class="muted">정신력이 60%까지 돌아왔다. 이후 기본 피해 +5, 합 기본 위력 +1. 받는 정신력 피해 -15%. 신을 5회 사용할 때마다 10% 확률로 망(望)을 한 겹 익힐 수 있다.</span>`, [{t:"확인",primary:true}]);
 }
-// 깨우칠 수 있는 때: 2급 이상 · 정신력 30% 미만(0 초과) · 아직 신이 없음 — 조건을 모두 갖춘 날에만, 하루 한 번 15%
-const shinReady = f => !!(S && f && !f.shin && f.grade <= 2 && f.mp > 0 && f.mp/Math.max(1,f.mpMax) < 0.3);
-async function checkShin(f, ctx={}){
-  if(!shinReady(f) || f.shinTry===S.day) return false;
-  f.shinTry = S.day; if(Math.random() >= 0.15) return false;
-  await awakenShin(f, ctx); return true;
+// 14일차 정산을 마친 뒤, 2급 이상 소속 해결사 각각 한 번만 판정한다.
+const shinReady = f => !!(S && f && !f.shin && f.grade <= 2 && f.hp > 0);
+async function checkShin(f, ended){
+  if(!shinReady(f) || ended%SHIN_PERIOD!==0 || f.shinTryPeriod===ended) return false;
+  f.shinTryPeriod=ended; save();
+  if(Math.random()>=SHIN_CHANCE) return false;
+  await awakenShin(f); return true;
 }
 // 징조를 한 번이라도 본 해결사 — 카드에 '징조'를 징조 문구와 같은 주홍빛으로 표시(뒤틀리거나 개화하면 사라진다)
 const omenSeen = f => !!f && (f.omenFirst!=null || f.omenDay!=null) && !f.riftDone && !(f.ego && !f.ego.unstable);
@@ -10490,7 +10479,7 @@ async function endDayInner(reason){
   save(); render();
   playFx("아침", `${S.day}일차 · ${weatherText(S.weather)}`, `의뢰 ${S.requests.length}건이 게시판에 올라왔다.`, true);
   S.fixers.forEach(lossByDay); await flushLoss();
-  for(const f of S.fixers.slice()){ if(!S || S.over) break; await checkShin(f); }
+  if(ended%SHIN_PERIOD===0){ for(const f of S.fixers.slice()){ if(!S || S.over) break; if(S.fixers.includes(f)) await checkShin(f,ended); } }
   if(S && !S.over) S.fixers.forEach(checkOmen);
   if(S && !S.over) S.fixers.forEach(riftOmen);
   if(S && !S.over) await riftBreak();
@@ -10808,7 +10797,7 @@ async function openManage(){
       <span>머리</span><b>${esc(hairText(f.look))}${f.isLeader?` <button data-relook="1" style="padding:2px 8px">외형 변경</button>`:""}</b>
       <span>눈</span><b>${esc(eyeText(f.look))}</b>
       ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">${esc(shinLabel(f.shin.name ? f.shin : Object.assign({name:givenName(f.name)}, f.shin)))} — “${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">· 돌아본 죄: ${esc(f.shin.sin)}</span>
-        <br><span style="font-weight:400;font-size:12px">깨우침: 기본 피해 +${shinAwakeDamage(f)} · 합 기본 위력 +${shinAwakeClash(f)} (상시)<br>신: 성공률 +${SHIN_RATE}% · 두를 때 합 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 고정 피해 +${f.mang} · 턴 종료 정신력 -${3*f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? ` · 다음 망까지 ${Math.max(0, MANG_NEED[f.mang||0] - (f.shinUses||0))}회` : " · 망을 모두 감았다"}</span>
+        <br><span style="font-weight:400;font-size:12px">깨우침: 기본 피해 +${shinAwakeDamage(f)} · 합 기본 위력 +${shinAwakeClash(f)} (상시)<br>신: 성공률 +${SHIN_RATE}% · 두를 때 합 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 고정 피해 +${f.mang} · 턴 종료 정신력 -${3*f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? ` · 다음 습득 판정까지 ${MANG_STEP-((f.shinUses||0)%MANG_STEP)}회 (10%)${mangPending(f)?` · 감을 수 있는 망 ${mangPending(f)}겹`:""}` : " · 망을 모두 감았다"}</span>
         <br><button data-shintog="1" style="padding:2px 8px">${shinOn(f) ? "신 끄기" : "신 켜기"}</button>${(f.mang||0) ? ` <button data-mangtog="1" style="padding:2px 8px">${f.mangOff ? "망 켜기" : "망 끄기"}</button>` : ""}${mangReady(f) ? ` <button class="primary" data-mangwind="1" style="padding:2px 8px">무기에 망(望)을 감는다</button>` : ""}</b>`:""}
       <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</b>
       <span>성장</span><b class="muted">${(growOf(f), ATTRS.map(a=>`${ATTR_NAME[a]} ${f.grade>1&&growDone(f,a)>=GROW_PER ? "✓" : `${Math.min(f.gc[a]||0, growNeed(f))}/${growNeed(f)}${f.grade>1 && growDone(f,a) ? ` (${growDone(f,a)}/${GROW_PER})` : ""}`}`).join(" · "))}</b>
@@ -10869,7 +10858,7 @@ async function openManage(){
         if(!w){ toast("망(望)을 감을 무기가 없다"); return; }
         const n = (f.mang||0) + 1;
         if(!await confirmBox("망(望)", `${esc(jo(f.name,"은"))} 소망을 실처럼 꼬아 ${esc(w.name||"무기")}에 한 겹 더 감는다.<br><b style="color:#ffd27a">망 ${n}</b> — 전투 위력 +${n}(신과 따로), 대신 쓸 때 정신력 -${MANG_MP[n-1]}${n>1 ? ` (지금 -${MANG_MP[n-2]})` : ""}.`)) return;
-        f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
+        f.mangPending = Math.max(0,mangPending(f)-1); f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
       else if(d.discard!==undefined){ const i = +d.discard, g = S.inventory[i]; if(!g || !pawnWorn(g)) return;
         if(!await confirmBox("버리기", `<b>${esc(jo(g.name,"을"))}</b> 버린다. 받는 돈은 없고, 되찾을 수 없다.`)) return;
         S.inventory.splice(i, 1); addLog(`${g.name}을(를) 버렸다 — 너무 닳아 전당포도 받지 않았다`.replace(`${g.name}을(를)`, jo(g.name,"을"))); }
@@ -21339,7 +21328,7 @@ function fxTestPanel(){
             ix.save(); ix.translate(90, 90); ix.rotate(-0.6); const ok = RTW.item(ix, {kind:R.kind, relic:R.id, seal:0, add:[]}, 0, 0, 230, 120, {spin: 0.35 + t*0.6, t, tight: true, line: 1.1}); ix.restore();
             if(!ok){ try{ relicArt(ix, R, 180, 180, 1.2, 0); }catch(e){ console.error(e); } } });
           requestAnimationFrame(tick); }; tick(); }); return; }
-    if(k==="shin80"){ L.shin = true; L.shinOff = false; L.shinUses = Math.max(L.shinUses||0, MANG_NEED[Math.min(MANG_MAX-1, L.mang||0)]); L.mp = L.mpMax; save(); render(); toast(`${L.name}: 신을 감았고, 망을 감을 수 있다(관리 → 해결사).`); return; }
+    if(k==="shin80"){ L.shin = true; L.shinOff = false; L.shinUses = Math.max(L.shinUses||0, MANG_STEP); L.mangPending = Math.max(mangPending(L), (L.mang||0)<MANG_MAX?1:0); L.mp = L.mpMax; save(); render(); toast(`${L.name}: 신을 감았고, 망을 감을 수 있다(관리 → 해결사).`); return; }
     if(k==="astrape"){ closeAll(); for(let i=0; i<40 && !(RTW.idx && RTW.idx.relics); i++){ RTW.bbox({kind:"spear", relic:"astrape", seal:0}); await new Promise(r=>setTimeout(r, 100)); }
       const ids = Object.keys((RTW.idx && RTW.idx.relics) || {}), WR = RELICS.filter(r=>r.slot==="weapon" && ids.includes(r.id));
       if(!WR.length){ toast("유물 무기 3D 모형을 아직 읽지 못했다 — 잠시 뒤 다시"); return; }
