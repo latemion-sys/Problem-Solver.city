@@ -1660,6 +1660,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · E.G.O.", ["개화 즉시 해당 칸에 장착하고 기존 장비는 보관함으로 이동. 장착 칸에는 일반 장비를 구매·장착할 수 없음."]],
   ["미리보기", ["약공·보통 공격·강공의 정신력 소모를 0으로 조정. 특수 기술 비용과 공격 수치는 유지."]],
   ["v.a3.1.5.1", ["환상체 전투 징후마다 현재 전투원이 사용할 단 하나의 대응 카드와 성공 조건을 직접 표시. 방어는 방어(가드), 공격은 약공·보통 공격·강공으로 명시.", "징후 안내·실제 파훼 판정·필수 카드 손패 보장을 통합. 숨은 조건 제거, 탄창이 비면 징후 대응을 방어로 전환. 환상체 도감과 악장별 안내도 동기화. 기존 피해·보상·일반 전투 덱 유지."]],
   ["v.a3.1.4.8", ["해결사 목록 및 영입 화면의 능력치와 총합에 현재 적용 중인 장비 보정치를 합산하여 표시.", "관리에서는 기본 능력치 옆에 장비 보정치를 초록색 (+수치) 또는 빨간색 (-수치)으로 표시. 기존 성장 및 전투 판정은 유지."]],
@@ -1825,6 +1826,20 @@ const egoGuardCut=e=>egoHasArmor(e)?2:0;
 const egoSlot = e => e && e.type==="armor" ? "armor" : "weapon";   // 형상 고르기에서 정하는 쪽(일체형은 무기와 의복을 함께 편집)
 const egoSpecList = type => type==="weapon" ? EGO_SPECIAL.weapon : type==="armor" ? EGO_SPECIAL.armor : EGO_SPECIAL.weapon.concat(EGO_SPECIAL.armor);
 const egoSpecLabel = type => type==="weapon" ? "특수 공격" : type==="armor" ? "특수 방어" : "특수 능력";
+const egoOccupies = (f,slot) => slot==="weapon" ? egoHasWeapon(f?.ego) : slot==="armor" && egoHasArmor(f?.ego);
+function stowEgoEquipment(f,state){
+  if(!f.ego) return;
+  syncEgoForm(f);
+  for(const slot of ["weapon","armor"]){
+    const gear = f.gear?.[slot];
+    if(!gear || !egoOccupies(f,slot)) continue;
+    if(slot==="weapon" && !f.ego.initialWeapon){
+      f.ego.initialWeapon = {kind:weaponTypeOf(gear), look:gear.look};
+    }
+    (state.inventory ||= []).push(gear);
+    f.gear[slot] = null;
+  }
+}
 const egoLabel = e => `${e.unstable ? "불안정 " : ""}개화 E.G.O::${e.name}`;
 const EGO_TWIST_P = e => e && e.unstable ? 0.2 : 0.01;    // 정신력이 바닥났을 때 그래도 뒤틀릴 확률(불안정 20% · 개화 1%)
 /* 마음속에 간직한 것: 뒤틀림은 정신력이 0인 채로 소중한 것을 잃었을 때만 일어난다.
@@ -4699,8 +4714,13 @@ function level(cur,max){ const p = cur/max*100; return p>=60?["안정","s"]:p>30
 /* ================= 장비 정보(연출용) ================= */
 function weaponTypeOf(g){ if(!g) return null; if(g.wtype) return g.wtype==="drill" ? "lance" : g.wtype; const s = SHOP.find(i=>i.name===g.name); return s ? s.wtype : "blade"; }
 // E.G.O.가 형상을 갖추면 그 무기·방어구 모습으로 나선다(가진 장비 대신)
-function wGear(f){ const w=needsRepair(f.gear.weapon)?null:f.gear.weapon;if(egoHasWeapon(f.ego)){const kind=f.ego.look?.kind||weaponTypeOf(w)||"blade",look=f.ego.look||w?.look||defaultSpec(kind);return {name:f.ego.name,wtype:kind,look,ego:true,tier:EGO_WORKSHOP_TIER,power:EGO_WEAPON_POWER};}return w; }
-function aGear(f){ return f.ego && f.ego.type==="armor" && f.ego.look ? {name:f.ego.name, look:f.ego.look, ego:true} : f.ego && f.ego.type==="both" && f.ego.look ? {name:f.ego.name, look:Object.assign({type:2, pad:1, collar:1, trim:f.ego.look.glow||null}, f.ego.look2||{}), ego:true} : f.gear.armor; }
+function wGear(f){ const w=needsRepair(f.gear.weapon)?null:f.gear.weapon;if(egoHasWeapon(f.ego)){const kind=f.ego.look?.kind||f.ego.initialWeapon?.kind||weaponTypeOf(w)||"blade",look=f.ego.look||f.ego.initialWeapon?.look||w?.look||defaultSpec(kind);return {name:egoLabel(f.ego),wtype:kind,look,ego:true,tier:EGO_WORKSHOP_TIER,power:EGO_WEAPON_POWER};}return w; }
+function aGear(f){
+  if(!egoHasArmor(f.ego)) return f.gear.armor;
+  const e = f.ego;
+  const look = e.type==="both" ? {type:2, pad:1, collar:1, trim:e.look?.glow||null, ...e.look2} : e.look || {type:2, pad:1, collar:1};
+  return {name:egoLabel(e), look, ego:true};
+}
 function leadGear(f){
   if(!f) return null; const w = wGear(f), acc = f.gear.acc, ar = aGear(f);
   const sp0 = weaponSpecOf(w), sp = sp0 && mangN(f) ? Object.assign({}, sp0, {mang: mangN(f)}) : sp0;
@@ -5678,7 +5698,7 @@ function mgCombat(ctx){
     const q = ctx.q, goal = q.goal || "제압";
     const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 사용할 기술을 선택해 상대와 합을 겨룬다. 위력이 낮은 쪽의 코인이 하나씩 파괴되며, 합에서 승리하면 무기와 기술, 남은 코인에 따라 피해를 입힌다. 상대를 쓰러뜨린 뒤 의뢰 목표인 ${goal}을 달성하면 성공하며, 모든 해결사가 전투 불능이 되면 실패한다.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100+statHpPlus(f), shownHp:100+statHpPlus(f), max:100+statHpPlus(f), lg:leadGear(f), wt: weaponTypeOf(wGear(f)) || "none", spec: weaponSpecOf(wGear(f)), armor: armorSpecOf(aGear(f)), sp2: f.ego && f.ego.special || null, wsp: (wspOf(wGear(f))||{}).id || null, ye:0, wchg:0, hits:0, charge:0, shield:0, endured:false}));
-    if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !party[0].f.gear.weapon) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
+    if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !wGear(party[0].f)) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     party.forEach(p=>{ p.resolve=0; p.resolveTurn=0; p.resolveBoost=0; p.guardStreak=0; p.guardMode="guard"; p.shinLive = false; p.mangLive = 0; p.shinUsed = false; p.mangPeak = 0; p.extraTurn = 0; });   // 신(心) · 망(望): 전투 안에서 두르고 감는다
     const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null,
       reqC = DF && DIST_TIER[DF.th] ? Math.max(1, q.req - DIST_TIER[DF.th].req) : q.req,   // 뒤틀림: 합 전투는 그 등급의 본래 요구치로 겨룬다(가산된 요구치는 자동 진행 성공률에만)
@@ -9527,7 +9547,7 @@ async function bloomEgo(f, opt={}){ ac("ego");
   const unstable = opt.unstable!=null ? !!opt.unstable : Math.random() < (window.__forceUnst!=null ? window.__forceUnst : 0.55);     // 목소리의 틈은 판정으로, 그 밖에는 55% 불안정 개화
   const p = PERSONALITIES.find(x=>x[0]===f.personality) || PERSONALITIES[0];
   // 동료: 연출 없이 결과만 — 이름은 비워 두고 형태는 성격을 따른다
-  if(opt.quiet){ f.ego = {type: p[1], unstable, name:""}; f.mp = Math.round(f.mpMax*0.5); save(); render();
+  if(opt.quiet){ f.ego = {type: p[1], unstable, name:""}; stowEgoEquipment(f,S); f.mp = Math.round(f.mpMax*0.5); save(); render();
     await modal(unstable ? "불안정 개화" : "E.G.O. 개화", `${esc(f.name)}에게 목소리가 들어왔다. ${esc(josa(f.name,"은","는"))} 그것을 견뎌 냈다.<br><b>${esc(egoLabel(f.ego))}</b> (${EGO_FORM_NAME[p[1]]})${unstable ? `<br><span class="muted">아직 흔들린다 — 불안정한 개화다.</span>` : ""}`, [{t:"확인", primary:true}]);
     // 개화한 동료가 대표에게 이름을 지어 달라고 한다 — 성격마다 말투가 다르다
     const ask = (EGO_NAME_ASK[f.personality] || EGO_NAME_ASK["다정함"]);
@@ -9542,6 +9562,7 @@ async function bloomEgo(f, opt={}){ ac("ego");
   const nm = await promptBox("E.G.O. 개화", `${esc(f.name)}의 안에서 무언가가 피어난다. 이 E.G.O.에 이름을 지어 준다.<br><span class="muted">이름은 지금만 지을 수 있다. 비워 두면 "${unstable ? "불안정 " : ""}개화 E.G.O::"로만 남고, 나중에 지을 수 없다.</span>`, "");
   const ty = await modal("E.G.O. 형태", `${esc(f.name)}의 E.G.O.는 어떤 형태로 드러나는가?`, [{t:"무기",v:"weapon",primary:p[1]==="weapon"},{t:"의복",v:"armor",primary:p[1]==="armor"},{t:"일체형",v:"both"}], true) || p[1];
   f.ego = {type: ty, unstable, name: (nm && nm!=="__c" ? String(nm).trim().replace(/^(불안정\s*)?개화\s*E\.G\.O::\s*/,"") : "").slice(0,20)};
+  stowEgoEquipment(f,S);
   const type = f.ego.type;
   f.mp = Math.round(f.mpMax*0.5);
   playFx("에고", "E.G.O. 개화", `${f.name} — ${egoLabel(f.ego)}`, true); save(); render();
@@ -10890,7 +10911,9 @@ async function openManage(){
     sel = f.id; if(!mview) mview = "idle";
     const inv = (S.inventory||[]);
     const lootCount = inv.filter(g=>!g.gift).length, giftCount = inv.filter(g=>g.gift).length;
-    const gearRow = (slot,label) => { const g=f.gear[slot], nf = slot==="weapon" && needsRepair(g); return `<span class="gear-k${nf?" need-fix":""}">${label}</span><b class="gear-v${nf?" need-fix":""}">${g?(g.relic ? `<span class="relic-name">${esc(g.name)}</span> <span class="badge" style="color:#d8b45a;border-color:currentColor">유물 · 귀속</span>${g.seal!=null ? (g.sealFree ? ` <span class="fg-seg" style="display:inline-flex;margin-left:4px">${[0,1,2].map(k=>`<button data-seal="${k}" data-sslot="${slot}" class="${(g.seal||0)===k?"on":""}" style="padding:2px 8px">${SEAL_NAME[k]}</button>`).join("")}</span>` : ` <span class="badge">${SEAL_NAME[g.seal]}</span>`) : ""}` : esc(g.name))+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
+    const gearRow = (slot,label) => {
+      if(egoOccupies(f,slot)) return `<span class="gear-k">${label}</span><b class="gear-v">${esc(egoLabel(f.ego))} · 장착 중</b>`;
+      const g=f.gear[slot], nf = slot==="weapon" && needsRepair(g); return `<span class="gear-k${nf?" need-fix":""}">${label}</span><b class="gear-v${nf?" need-fix":""}">${g?(g.relic ? `<span class="relic-name">${esc(g.name)}</span> <span class="badge" style="color:#d8b45a;border-color:currentColor">유물 · 귀속</span>${g.seal!=null ? (g.sealFree ? ` <span class="fg-seg" style="display:inline-flex;margin-left:4px">${[0,1,2].map(k=>`<button data-seal="${k}" data-sslot="${slot}" class="${(g.seal||0)===k?"on":""}" style="padding:2px 8px">${SEAL_NAME[k]}</button>`).join("")}</span>` : ` <span class="badge">${SEAL_NAME[g.seal]}</span>`) : ""}` : esc(g.name))+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
     const hc = healCost(f);
     return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}${x.gear && needsRepair(x.gear.weapon) ? " need-fix" : ""}">${esc(x.name)}${x.gear && needsRepair(x.gear.weapon) ? " ⚠" : ""}</button>`).join("")}</div>
     <div class="item" style="margin:8px 0;align-items:center;flex-wrap:wrap"><div><b>상담 휴식</b> <span class="muted" style="font-size:12px">무료 · 3일에 1회</span><div class="d">선택 대상: ${esc(f.name)}${f.isLeader?" (대표 제외)":""} · 체력 ${f.hp}/${f.hpMax} · 정신력 ${f.mp}/${f.mpMax}</div><div class="d">최대 체력 및 정신력 각각 10% 회복 · 사무소 전체 1명${counselRestRemaining(S)>0?" · "+counselRestRemaining(S)+"일 후 사용 가능":""}</div></div>
@@ -10901,7 +10924,7 @@ async function openManage(){
       <button data-heal="mpall" ${f.mp>=f.mpMax?"disabled":""}>정신력 전부 (${won(Math.ceil((f.mpMax-f.mp)/10)*hc)})</button>
     </div>
     <div class="mg-prev"><canvas class="mgp"></canvas><div><div class="fg-seg">${STATE_TABS.map(([k,n])=>`<button class="${mview===k?"on":""}" data-mview="${k}">${n}</button>`).join("")}</div>
-      ${f.grade===0?`<button style="margin-top:8px" data-forgego="1">고유 방어구 제작</button>`:""}</div></div>
+      ${f.grade===0&&!egoOccupies(f,"armor")?`<button style="margin-top:8px" data-forgego="1">고유 방어구 제작</button>`:""}</div></div>
     <div class="kv">
       ${f.isLeader?`<span>성별</span><b>${esc(genderText(f))}</b>`:f.originBody?`<span>신체 특성</span><b>전신 의체 출신 · 정신력 피해 -1 · 체력 피해 +1</b>`:""}
       <span>이름</span><b>${esc(f.name)} ${f.isLeader?"(대표)":""} ${f.renamed ? `<small class="muted">(이름은 정해졌다)</small>` : `<button data-rename="1" style="padding:2px 8px" title="이름은 한 번만 바꿀 수 있다">이름 정하기 (1회)</button>`}</b>
@@ -10931,7 +10954,7 @@ async function openManage(){
     </div>
     ${reviewProgressHtml()}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;align-items:start;margin-top:14px">
-      <section style="min-width:0">${lootCount?`<h4 style="margin:0 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>g.gift?"":`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}${pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>${needsRepair(g) && g.durMax <= 1 ? "" : `<button class="danger" data-discard="${i}">버리기</button>`}` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:`<p class="muted">보관 중인 전리품 없음</p>`}</section>
+      <section style="min-width:0">${lootCount?`<h4 style="margin:0 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>g.gift?"":`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.relic?`<span class="muted">귀속 유물 · 보관 중</span>`:g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}" ${egoOccupies(f,g.slot)?"disabled":""}>${egoOccupies(f,g.slot)?"E.G.O. 장착 중":esc(f.name)+"에게 장착"}</button>`}${g.relic ? "" : pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>${needsRepair(g) && g.durMax <= 1 ? "" : `<button class="danger" data-discard="${i}">버리기</button>`}` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:`<p class="muted">보관 중인 전리품 없음</p>`}</section>
       <details data-gift-storage${giftOpen?" open":""} style="min-width:0;border:1px solid currentColor;border-color:var(--line,#555);border-radius:6px;padding:8px"><summary style="cursor:pointer;font-weight:700">E.G.O. 기프트 보관함 (${giftCount})</summary><p class="muted" style="font-size:12px;margin:6px 0">E.G.O. 기프트는 판매할 수 없습니다.</p><div class="list">${giftCount?inv.map((g,i)=>!g.gift?"":`<div class="item" style="flex-wrap:wrap"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button data-equipinv="${i}">${esc(f.name)}에게 장착</button></div></div>`).join(""):`<div class="muted">보관 중인 기프트 없음</div>`}</div></details>
     </div>
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
@@ -10978,14 +11001,15 @@ async function openManage(){
         const n = (f.mang||0) + 1;
         if(!await confirmBox("망(望)", `${esc(jo(f.name,"은"))} 소망을 실처럼 꼬아 ${esc(w.name||"무기")}에 한 겹 더 감는다.<br><b style="color:#ffd27a">망 ${n}</b> — 전투 위력 +${n}(신과 따로), 대신 쓸 때 정신력 -${MANG_MP[n-1]}${n>1 ? ` (지금 -${MANG_MP[n-2]})` : ""}.`)) return;
         f.mangPending = Math.max(0,mangPending(f)-1); f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
-      else if(d.discard!==undefined){ const i = +d.discard, g = S.inventory[i]; if(!g || g.gift || !pawnWorn(g)) return;
+      else if(d.discard!==undefined){ const i = +d.discard, g = S.inventory[i]; if(!g || g.gift || g.relic || !pawnWorn(g)) return;
         if(!await confirmBox("버리기", `<b>${esc(jo(g.name,"을"))}</b> 버린다. 받는 돈은 없고, 되찾을 수 없다.`)) return;
+        if(S.inventory[i]!==g) return;
         S.inventory.splice(i, 1); addLog(`${g.name}을(를) 버렸다 — 너무 닳아 전당포도 받지 않았다`.replace(`${g.name}을(를)`, jo(g.name,"을"))); }
-      else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; if(g.gift){ toast("E.G.O. 기프트는 판매할 수 없습니다."); return; } if(pawnWorn(g)){ toast("전당포 주인이 고개를 저었다. 이만큼 닳은 무기는 받지 않는다고."); return; } const v = pawnPrice(g);
+      else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g || g.relic) return; if(g.gift){ toast("E.G.O. 기프트는 판매할 수 없습니다."); return; } if(pawnWorn(g)){ toast("전당포 주인이 고개를 저었다. 이만큼 닳은 무기는 받지 않는다고."); return; } const v = pawnPrice(g);
         if(!await confirmBox("전당포", `<b>${esc(jo(g.name,"을"))}</b> 전당포에 맡긴다. 받는 돈 <b>${won(v)}</b> — 되찾을 수 없다.`)) return;
         if(S.inventory[i]!==g || g.gift) return;
         S.inventory.splice(i, 1); S.money += v; ac("pawn"); if(g.ruinsItem)ac("ruinsSold"); addLog(`전당포: ${g.name} → +${won(v)}`); }
-      else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; if(!g||!["weapon","armor","acc"].includes(g.slot))return; if(g && relicLocked(f, g.slot)){ toast("귀속된 유물은 다른 장비로 바꿀 수 없다"); return; } const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
+      else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; if(!g||g.relic||!["weapon","armor","acc"].includes(g.slot))return; if(egoOccupies(f,g.slot)){toast("E.G.O. 장착 중인 칸입니다.");return;} if(relicLocked(f, g.slot)){ toast("귀속된 유물은 다른 장비로 바꿀 수 없다"); return; } const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
       else if(d.fire && f){ if(await confirmBox("해고", `${jo(esc(f.name),"을")} 내보낸다. 되돌릴 수 없다.`)){ removeFixer(f,"해고","사무소를 떠남"); sel=S.fixers[0]?.id; } }
       else return;
       box.innerHTML = draw(); prev(); save(); render();
@@ -11081,11 +11105,11 @@ async function openShop(startTab){
     <p class="muted" style="font-size:12px">${["보통 7급 의뢰까지 쓸 만한 양산품. 무기 내구도 3~6.","원작 세계관의 공방 제품. 보통 4급 의뢰까지 쓸 만하다. 무기 내구도 7~12. 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다.","원작 세계관의 상급 공방·인더스트리·아틀리에 제품. 1급 의뢰까지 쓸 만하다. 무기 내구도 13~20. 오래 손에 익히면 공방이 고유 무기로 다시 벼려 줄 때가 있다."][tab]}<br>무기는 출동할 때마다 내구도가 1씩 닳고, 절반 이하가 되면 고쳐야 쓸 수 있다. 고칠 때마다 최대 내구도가 1 줄고, 다 닳으면 부서진다.</p>
     ${locked?`<p class="muted">${lockMsg(tab)}</p>`:""}
     ${makers.map(mk=>`<h4 class="sh-mk">${esc(mk)} <span class="muted">${esc(MAKERS[mk]||"")}</span></h4>
-      <div class="list">${items.filter(i=>i.maker===mk).map(i=>{ const cur=f&&f.gear[i.slot];
+      <div class="list">${items.filter(i=>i.maker===mk).map(i=>{ const cur=f&&f.gear[i.slot], occupied=egoOccupies(f,i.slot);
         return `<div class="item sh-item">${i.slot==="weapon"?`<canvas class="wicon" data-icon="${i.id}"></canvas>`:`<div class="wicon sh-slot">${{armor:"방어구",acc:"장신구"}[i.slot]}</div>`}
         <div style="flex:1"><b>${esc(i.name)}</b> <span class="badge">${i.slot==="weapon" ? WEAPON_KINDS[i.wtype].n+" · "+WEAPON_KINDS[i.wtype].vars[i.look.v||0] : {armor:"방어구",acc:"장신구"}[i.slot]}</span>
           <div class="d">${gearDesc(i)}${i.slot==="weapon" ? ` · 내구도 ${DUR_RANGE[i.tier].join("~")}` : ""}</div><div class="d">${won(i.price)}${cur?` · 현재: ${esc(cur.name)}`:""}</div></div>
-        <button class="primary" data-buy="${i.id}" ${locked||!f||S.money<i.price||(cur&&cur.unique)?"disabled":""}>${cur&&cur.unique?"고유 장비 착용 중":"구매·장착"}</button></div>`;}).join("")}</div>`).join("")}
+        <button class="primary" data-buy="${i.id}" ${locked||!f||occupied||S.money<i.price||(cur&&cur.unique)?"disabled":""}>${occupied?"E.G.O. 장착 중":cur&&cur.unique?"고유 장비 착용 중":"구매·장착"}</button></div>`;}).join("")}</div>`).join("")}
     <p class="muted" style="font-size:12px">원래 끼고 있던 장비는 보관함으로 옮겨진다. 공방 이름과 특징만 원작에서 따왔고, 물건과 수치는 이 게임을 위해 만든 것이다.</p>`;
   };
   const paint = box => { box.innerHTML = draw(); box.querySelectorAll("canvas[data-icon]").forEach(cv=>{ const it = SHOP.find(i=>i.id===cv.dataset.icon); drawWeaponIcon(cv, weaponSpecOf(it)); }); };
@@ -11115,6 +11139,7 @@ async function openShop(startTab){
       else if(d.ammoBuy){const [id,t]=d.ammoBuy.split("|"),g=SHOP.find(x=>x.id===id);if(!g||!purchaseAmmo(g,t))return;}
        else if(d.ammoLoad){const f=S.fixers.find(x=>x.id===who),g=f&&f.gear.weapon;if(!g||!gunKind(g))return;const n=loadAmmo(g,d.ammoLoad);addLog(`${f.name}: ${g.name}에 ${(AMMO_BY[d.ammoLoad]||AMMO_TYPES[0]).name} 장전(+${n}발)`);}
        else if(d.buy){ const it=SHOP.find(i=>i.id===d.buy), f=S.fixers.find(x=>x.id===who); if(!it||!f||S.money<it.price) return;
+        if(egoOccupies(f,it.slot)){toast("E.G.O. 장착 중인 칸입니다.");return;}
         if(relicLocked(f, it.slot)){ toast(`${f.name}의 ${f.gear[it.slot].name}은(는) 귀속된 유물이라 바꿀 수 없다`.replace(`${f.gear[it.slot].name}은(는)`, jo(f.gear[it.slot].name,"은"))); return; }
         S.money-=it.price; ac("buy"); const old=f.gear[it.slot]; f.gear[it.slot]=initDur(JSON.parse(JSON.stringify(it))); if(gunKind(f.gear[it.slot]))ammoMagazine(f.gear[it.slot]); if(old){ S.inventory=S.inventory||[]; S.inventory.push(old);} addLog(`${f.name}: ${it.name} 장착${it.slot==="weapon" ? ` (내구도 ${f.gear[it.slot].durMax})` : ""}`); }
       else if(d.forge){ const f = S.fixers.find(x=>x.id===+d.forge); if(f) await openForge(f, d.slot, d.mode); }
@@ -11424,6 +11449,7 @@ function forgeDefault(mode, slot, kind, pw){
 }
 /* mode: "ego" E.G.O. 형상 · "upgrade" 공방이 벼려 준 고유 무기(이름은 이때만) · "retouch" 고유 무기 손질 · 없음 = 특색의 고유 방어구 */
 async function openForge(f, slot0, mode){
+  if(mode!=="ego" && egoOccupies(f, mode==="upgrade"||mode==="retouch"?"weapon":"armor")){toast("E.G.O. 장착 중인 칸입니다.");return;}
   if(mode==="ego"){if(!f.ego)return;syncEgoForm(f);if(egoFormLocked(f.ego)){toast("이미 확정한 E.G.O. 형상은 변경할 수 없습니다.");return;}}
   const ego = mode==="ego", wpn = (mode==="upgrade" || mode==="retouch") && f.gear.weapon && f.gear.weapon.unique ? f.gear.weapon : null, up = !!wpn;
   if((mode==="upgrade" || mode==="retouch") && !wpn) return;
@@ -11747,6 +11773,7 @@ function prepareSavedGame(d){
   d.fixers.forEach(f=>{ try{ relicRefresh(f); }catch(_){} });
   pruneOldGifts(d);
   abRecMigrate(d);
+  d.fixers.forEach(f=>stowEgoEquipment(f,d));
   for(const f of d.fixers.concat(d.recruitPool)){
     if(!f.look) f.look = randomLook();
     if(!f.precious) f.precious = f.isLeader ? {kind:"마음", text:"소중한 것"} : {kind:pick(["사람","물건","목표"]), text:""};
@@ -11794,7 +11821,7 @@ function gearScore(g){ const b = g.bonus ? Object.values(g.bonus).reduce((a,v)=>
 function pawnValue(g){ if(!g || g.gift) return 0; if(g.price) return g.price; const sc = gearScore(g), peers = SHOP.filter(it=>it.slot===g.slot && it.price);
   if(!peers.length) return 0; return peers.slice().sort((a,b)=>Math.abs(gearScore(a)-sc) - Math.abs(gearScore(b)-sc))[0].price; }
 const pawnWorn = g => !!(g && isWornable(g) && g.durMax && Number.isFinite(g.dur0) && g.durMax <= Math.floor(g.dur0/2));
-const pawnPrice = g => !g || g.gift ? 0 : g.ruinsItem ? Math.max(0,Number(g.pawnFixed)||0) : Math.floor(pawnValue(g)*PAWN_K);
+const pawnPrice = g => !g || g.gift || g.relic ? 0 : g.ruinsItem ? Math.max(0,Number(g.pawnFixed)||0) : Math.floor(pawnValue(g)*PAWN_K);
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
@@ -11892,8 +11919,9 @@ function combatTier(q, AB, DF){
 async function relicTry(q, team){
   if(!team.length || Math.random() >= RELIC_GET_P) return;
   const owned = new Set(S.fixers.flatMap(f=>Object.values(f.gear).filter(g=>g && g.relic).map(g=>g.id)));
-  const pool = RELICS.filter(R=>!owned.has("relic-"+R.id)); if(!pool.length) return;
-  const R = pick(pool), cands = team.map(m=>({f:m, fit:relicFit(m)})).sort((a,b)=>b.fit.v - a.fit.v), f = cands[0].f, fit = cands[0].fit, ok = fit.v > RELIC_FIT_MIN;
+  for(const g of S.inventory||[]){ if(g.relic) owned.add(g.id); }
+  const pool = RELICS.filter(R=>!owned.has("relic-"+R.id) && team.some(f=>!egoOccupies(f,R.slot))); if(!pool.length) return;
+  const R = pick(pool), cands = team.filter(f=>!egoOccupies(f,R.slot)).map(m=>({f:m, fit:relicFit(m)})).sort((a,b)=>b.fit.v - a.fit.v), f = cands[0].f, fit = cands[0].fit, ok = fit.v > RELIC_FIT_MIN;
   fit.tier = relicTier(fit.v);   // 무기 · 방어구 · 장신구 모두 적성 단계로 봉인 상태가 정해진다
   const X = {mode: pick(RELIC_FIND), cands}; fit.mode = X.mode;
   await relicScene(R, f, fit, ok, X);
@@ -11904,6 +11932,7 @@ async function relicTry(q, team){
   if(!ok){ const v = Math.max(1, Math.round(f.hpMax*RELIC_BACKLASH)); f.hp = Math.max(1, f.hp - v);
     addLog(`유물 「${R.name}」${jo(R.name,"이").slice(R.name.length)} ${jo(f.name,"을")} 거부했다 — 적성이 없는 손을 태웠다 (적합도 ${fit.v}, 체력 -${v})`);
     S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name} — 적합도 ${fit.v}, 거부당했다`}); ac("relicMiss"); save(); render(); return; }
+  if(egoOccupies(f,R.slot)) return;
   const it = relicItem(R, f, fit.tier), old = f.gear[R.slot]; f.gear[R.slot] = it; it.sealFree = fit.tier===0;
   if(old && !old.relic){ S.inventory = S.inventory || []; S.inventory.push(old); }
   S.records.push({day:S.day, name:f.name, what:"유물", note:`${R.name}(${R.origin}) — ${RELIC_FIND_NOTE[X.mode]}, 적합도 ${fit.v}, 귀속 · ${SEAL_NAME[it.seal]}`}); addLog(`유물 획득 — ${f.name}: ${R.name}`); ac("relic"); if(TECHS["r_"+R.id])acSet("relicTechDiscovered",R.id);
