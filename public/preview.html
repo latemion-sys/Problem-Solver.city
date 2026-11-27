@@ -1667,6 +1667,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a3.1.5.3";
 const CHANGELOG = [
+  ["미리보기 · 환상체 현장 선택", ["환상체 배회 징후에 개체별 능력치 판정과 안전 선택을 추가. 최대 성공률 95%. 실패 시 최대 체력·정신력 각각 5% 차감. 일부 개체의 성공 보상으로 선택 기프트 추가."]],
   ["미리보기 · ALEPH 현장 선택", ["ALEPH 5종에 현장 장면, 행동별 결과 안내, 선봉 선택 및 철수 적용. 전투 징후는 지정 카드를 내면 대응되며 놓치면 추가 피해가 발생."]],
   ["미리보기 · 고요한 오케스트라", ["현장에서 통제·제압 준비·철수를 선택. 악장 마지막 턴과 피날레의 대응을 예고하며, 놓치면 전열과 후열에 공연 피해가 발생."]],
   ["미리보기 · 약공과 대검", ["약공으로 합에서 패배하면 직접 공격 피해 10% 감소. 대검 기본 공격은 기본 위력 +2, 코인 위력 -2로 최대 합 위력 유지."]],
@@ -7901,10 +7902,83 @@ function pickAbno(g, anyGrade=false){
 /* 의뢰지에는 환상체인지 죄종인지 적지 않는다 — 의뢰인은 생김새와 피해만 안다 */
 const requestDisplayKind = q => q && q.boss && BOSS_DEF[q.boss] ? BOSS_DEF[q.boss].kindLabel : q && (q.kind==="환상체" || q.abno) ? "정체불명" : q.kind;
 const abnoOf = q => { const a = ABNO_BY[q.abno && q.abno.id]; if(!a) return null; return q.abno.variant ? Object.assign({}, a, {n:`${a.n} (아종: ${a.variant.n})`, pref:a.variant.pref, vid:a.id+"~v"}) : Object.assign({}, a, {vid:a.id}); };
+const ABNO_FIELD_CHOICES = {
+  onesin:["wil","해골 앞에서 숨겨 둔 잘못을 고백한다","묵례하고 물러난다"],
+  wellcheers:["tec","새우 일꾼이 건넨 캔의 봉인을 살핀다","캔을 내려놓는다"],
+  donttouch:["wil","손을 등 뒤로 모은 채 버튼에서 눈을 뗀다","문턱 뒤로 물러난다"],
+  fairy:["wil","상처를 가리고 요정들의 호의를 받아들인다","손을 내밀지 않는다"],
+  toad:["wil","울음 사이에 끊기는 숨소리를 센다","귀를 막고 기다린다"],
+  tornmail:["tec","찢긴 봉투의 주소를 맞춰 본다","봉투를 놓아둔다"],
+  twotail:["agi","두 꼬리가 그리는 원 바깥에 손을 내민다","고양이가 지나가도록 비켜선다"],
+  blackwater:["tec","컵을 빛에 비춰 가라앉은 것을 확인한다","잔을 그대로 돌려준다"],
+  lonefairy:["wil","손바닥을 펴고 작은 요정의 시선을 받는다","손을 거둔다"],
+  confession:["wil","참회의 말을 끝까지 듣고 한 문장으로 답한다","입을 다문 채 물러난다"],
+  pbird:["agi","새가 내려앉을 때까지 발밑을 살펴 비켜선다","나뭇가지 아래로 들어가지 않는다"],
+  oldlady:["wil","빈 의자에 앉아 여인의 이야기를 들어 준다","의자를 비워 둔다"],
+  scorched:["agi","불씨가 번지기 전에 옆 통로를 살핀다","성냥에 손대지 않는다"],
+  wall:["wil","등 뒤에서 나는 소리를 듣고도 벽만 바라본다","복도 입구로 물러난다"],
+  spiderbud:["tec","거미줄을 건드리지 않고 매듭의 방향을 읽는다","거미줄 앞에서 멈춘다"],
+  armor:["str","검이 드리운 자리에 굳게 선다","검이 닿는 거리 밖으로 물러난다"],
+  lantern:["tec","빛의 높이를 재어 매복한 자리를 알아낸다","불빛을 따라가지 않는다"],
+  echo:["wil","머릿속 울림이 사라질 때까지 다른 박자를 센다","울림이 잦아들길 기다린다"],
+  lavaingot:["str","열기가 덜한 모서리를 떠받친다","흘러내리는 길을 비켜선다"],
+  headlessmantis:["agi","앞다리가 움직이기 전에 몸을 옆으로 뺀다","앞다리의 범위 밖에 선다"],
+  creed:["wil","되풀이되는 맹세를 듣고 마지막 구절을 되받는다","맹세에 답하지 않는다"],
+  shepherd:["tec","소년의 말과 바닥에 남은 흔적을 대조한다","어느 말도 믿지 않고 기다린다"],
+  flyingfish:["agi","날치가 그리는 포물선 아래를 빠져나간다","다음 물결을 기다린다"],
+  apple:["wil","내민 열매 대신 가지 끝의 움직임을 살핀다","열매를 받아 들지 않는다"],
+  frozenbible:["wil","얼어붙은 구절을 숨결이 닿지 않게 읽는다","책을 펼치지 않는다"],
+  bari:["tec","놓인 꽃들의 모양을 구분해 순서를 가늠한다","꽃을 만지지 않는다"],
+  ichthys:["wil","물가의 울림에 맞춰 발끝으로 물을 찬다","웅덩이 가장자리에서 지켜본다"],
+  freischutz:["tec","사수의 총구와 탄착 흔적을 맞춰 본다","사선에서 벗어난다"],
+  teddy:["wil","곰 인형의 품이 닫히기 전에 차분히 말을 건다","인형에게 다가가지 않는다"],
+  porccubus:["wil","가시 끝의 유혹을 견디며 손을 거둔다","가시가 닿지 않는 곳에 선다"],
+  redshoes:["wil","구두 소리를 듣고도 발을 떼지 않는다","구두를 피해 돌아선다"],
+  grudgeshooter:["agi","잔향이 울리는 방향을 보고 사선에서 몸을 뺀다","엄폐물 뒤에서 기다린다"],
+  carousel:["agi","목마가 멈추는 박자에 맞춰 가시 사이를 지나간다","회전 반경에서 물러난다"],
+  greenboots:["agi","젖은 발자국을 밟지 않고 그 끝을 따라간다","발자국에서 벗어난다"],
+  stitchbear:["tec","뜯긴 실밥이 잡아당겨지는 방향을 살핀다","실밥에 손대지 않는다"],
+  mothwedding:["wil","날갯짓에 귀를 기울이되 행렬을 따라가지 않는다","행렬이 지나가도록 비켜선다"],
+  biik:["agi","동료와 박자를 맞춰 두 날개 사이를 벗어난다","두 날개가 펼쳐질 때까지 기다린다"],
+  skel:["wil","이름을 부르지 않고 물속에서 올라오는 울림을 센다","물가에서 한 걸음 물러난다"],
+  erlking:["wil","안개 속에서 자기 이름이 들려도 동료 곁을 지킨다","부르는 소리에 답하지 않는다"],
+  knight:["wil","무릎을 꿇고 기사가 검을 거두기를 기다린다","기사에게 손을 내밀지 않는다"],
+  littlered:["tec","용병이 가리킨 발자국 두 줄을 비교한다","추적에 끼어들지 않는다"],
+  moth:["agi","불꽃이 끊기는 순간에 날개 아래를 빠져나간다","재가 가라앉길 기다린다"],
+  spiral:["wil","눈을 마주치지 않은 채 회전하는 방향을 읽는다","고개를 돌려 시선을 피한다"],
+  brokenlance:["str","부러진 창끝이 떨어지기 전에 자루를 받쳐 든다","무너지는 창의 범위를 벗어난다"],
+  onegram:["tec","저울추를 만지지 않고 기울기를 읽는다","저울 접시를 비워 둔다"],
+  bluereception:["tec","접수표의 이름과 실제 일행을 대조한다","번호가 불릴 때까지 거리를 둔다"],
+  ashfly:["agi","재가 날아오르는 틈에 옆길로 몸을 뺀다","재가 가라앉길 기다린다"],
+  dosan:["agi","발밑에서 올라오는 칼날의 간격을 읽는다","칼날이 닿지 않는 곳에 멈춘다"],
+  bloodtear:["wil","울음에 섞인 호흡을 가려내고 낮게 말을 건다","울음에 대답하지 않는다"],
+  jade:["wil","눈을 뜬 채 방금 본 꿈과 현실을 하나씩 구분한다","보석을 내려놓는다"],
+  nails:["tec","솟은 못의 문양을 읽고 손의 모양을 따라 한다","손바닥에서 물러난다"],
+  orchestra:["wil","지휘봉이 멈춘 동안 들숨을 참는다","객석 뒤에서 악장이 지나가길 기다린다"],
+  bluestar:["wil","바닥을 두 발로 딛고 동료의 손을 붙잡는다","별을 올려다보지 않는다"],
+  nothing:["agi","익숙한 목소리와 반대 방향으로 재빨리 돌아선다","부르는 소리에 답하지 않는다"],
+  sun:["wil","외투 깃을 여민 채 그늘이 옮겨 가는 방향을 살핀다","남은 그늘에 머문다"],
+  eternity:["tec","탑의 무게가 쏠리지 않도록 받침점을 짚는다","탑 아래로 들어가지 않는다"],
+};
+const CHOICE_GIFTS = {
+  tornmail:{n:"반송 도장",bonus:{tec:2}},
+  twotail:{n:"두 갈래 털실",bonus:{agi:2}},
+  frozenbible:{n:"서리 낀 책갈피",mpRed:0.04},
+  ichthys:{n:"잔물결의 비늘",bonus:{wil:3}},
+  stitchbear:{n:"남겨진 바늘땀",bonus:{tec:3}},
+  onegram:{n:"가벼운 저울추",bonus:{tec:4}},
+  jade:{n:"꿈 밖의 옥가루",mpRed:0.06},
+  orchestra:{n:"침묵의 박자",mpRed:0.08}
+};
+const choiceGiftFor = id => CHOICE_GIFTS[String(id).split("~")[0]];
+function abnoChoiceChance(stat, req){
+  return clamp(Math.round(45 * Math.max(0,stat) / Math.max(1,req) + 20), 5, 95);
+}
+
 /* 도감: 같은 환상체를 만날수록 정보가 열린다(이름 → 위험 등급 → 선호 행동 → 폭주·전투 조건 → 이야기). 업적처럼 이 브라우저에 남는다. */
 const CODEX_KEY = "problem-solver-codex-v1-preview";
 // 저장 파일에서 지금 목록에 없는 예전 기프트를 지운다(보관함 · 착용 중인 장신구 모두)
-function giftOk(g){ if(!g || !g.gift) return true; const A = ABNO_BY[String(g.gift.abno).split("~")[0]]; return !!(A && A.gifts && [A.gifts.a, A.gifts.b].some(x=>x && x.n===g.name)); }
+function giftOk(g){ if(!g || !g.gift) return true; const A = ABNO_BY[String(g.gift.abno).split("~")[0]]; return g.gift.kind==="선택 기프트" ? choiceGiftFor(g.gift.abno)?.n===g.name : !!(A && A.gifts && [A.gifts.a, A.gifts.b].some(x=>x && x.n===g.name)); }
 /* 기프트 상향 — 원래 수치에 위험 등급별 배율을 곱한다(ZAYIN ×2, TETH ×2.25, HE·WAW ×2.5, ALEPH ×2.75). 모두 소수점 올림(피해 감소는 % 단위).
    이로운 수치만 키우고, 대가로 붙은 마이너스 수치는 그대로 둔다. 가장 낮은 ZAYIN 기프트도 일반 의뢰 특수 전리품보다 낫게. */
 const GIFT_BOOST = {ZAYIN:2, TETH:2.25, HE:2.5, WAW:2.5, ALEPH:2.75}, GIFT_V = 3;
@@ -7921,7 +7995,7 @@ function pruneOldGifts(d){ d.inventory = (d.inventory||[]).filter(giftOk); d.fix
 let CODEX_TEST=null;
 function codexLoad(){ if(FXTEST) return CODEX_TEST||(CODEX_TEST={}); let d; try{ d = JSON.parse(localStorage.getItem(CODEX_KEY))||{}; }catch(_){ return {}; }
   Object.keys(d).forEach(v=>{ const e = d[v]; if(!e || !Array.isArray(e.gifts)) return; const A = typeof ABNO_BY!=="undefined" && ABNO_BY[String(v).split("~")[0]];
-    const ok = A && A.gifts ? [A.gifts.a, A.gifts.b].filter(Boolean).map(g=>g.n) : []; e.gifts = e.gifts.filter(n=>ok.includes(n)); });
+    const ok = A ? [A.gifts?.a, A.gifts?.b, choiceGiftFor(v)].filter(Boolean).map(g=>g.n) : []; e.gifts = e.gifts.filter(n=>ok.includes(n)); });
   return d; }
 function codexSave(d){ if(FXTEST){ CODEX_TEST=d; return; } try{ localStorage.setItem(CODEX_KEY, JSON.stringify(d)); }catch(_){} }
 /* 사무소별 환상체 기록(예외 — 새 사무소면 처음부터): 환상체가 주는 기프트 쪽, 환상체 제압 수, 마탄을 의뢰한 수. 도감(만난 횟수)은 브라우저에 남아 이어진다. */
@@ -7962,6 +8036,18 @@ function grantAbnoGift(a, how, q, f, chance, emit){
   const msg = `<span style="color:#e8d27a">기프트</span>: ${esc(f.name)} — <b>${esc(g.name)}</b>(${g.gift.kind} · ${threatOf(q)}) 획득${equipped ? " · 장착" : " · E.G.O. 기프트 보관함"}`;
   if(emit) emit(msg); addLog(`${f.name}: ${g.name}(${g.gift.kind}) 기프트 획득`);
   return true;
+}
+function grantChoiceGift(a,q,f,emit){
+  const definition = choiceGiftFor(a.id), rec = abRec();
+  if(!definition || rec.choiceGifts?.[a.id]) return;
+  const {n, ...stats} = definition;
+  const item = {...stats, slot:"acc", name:n, giftV2:GIFT_V,
+    gift:{abno:a.vid, from:a.n, kind:"선택 기프트", grade:q.grade, recipientId:f.id, recipientName:f.name}};
+  (S.inventory ||= []).push(item);
+  (rec.choiceGifts ||= {})[a.id] = true;
+  codexNote(a.vid,null,n);
+  addLog(`${f.name}: 선택 기프트 [${n}] 획득`);
+  emit(`<b style="color:#e8d27a">선택 기프트</b> · ${esc(n)} — 기프트 보관함에 넣었다.`);
 }
 function awardAbnoCompletion(a, q, team, r, emit){
   if(!r || !r.win || !a || a.risk==="죄종" || a.kill) return;
@@ -8483,7 +8569,46 @@ function mgAbno(ctx){
       if(E.tongue){ G.tongue = Math.max(0, G.tongue + E.tongue); out.push(E.tongue > 0 ? `혀에 맞았다(${G.tongue})` : `혀에 맞은 횟수 -1`); }
       say(`<span style="color:#8fd6a0">징후 파훼 · ${esc(f.name)} — ${esc(SG.okT)}</span>${out.length ? " ("+out.join(" · ")+")" : ""}`);
       return false; }
+    // 첫 배회 징후에서만 열리는 별도의 행동. 기존 징후는 통제 행동에서 처리한다.
+    function fieldChoice(){
+      const entry = ABNO_FIELD_CHOICES[a.id];
+      if(!entry || !ctx.team.length) return false;
+      const [stat, action, pass] = entry;
+      const f = workerFor(stat);
+      if(!f || benched(f) || blessedF(f) || f.hp<=0) return false;
+      const chance = abnoChoiceChance(power(f,[stat]),q.req);
+      const hp = Math.floor(f.hpMax*0.05), mp = Math.floor(f.mpMax*0.05);
+      const reward = !abRec().choiceGifts?.[a.id] && choiceGiftFor(a.id);
+      const scene = `<div class="aleph-scene"><b>${esc(shown)}</b><p>${esc(G.sign.txt)}</p><p>${esc(f.name)} · ${ATTR_NAME[stat]} ${power(f,[stat])} · 성공 ${chance}%</p></div>`;
+      G.choiceShown = true;
+      offer([
+        {v:"try",t:action,warn:true,d:`성공하면 기분이 최대 12 오른다${reward?` · 선택 기프트 [${esc(reward.n)}] 획득`:""}. 실패하면 ${esc(f.name)}의 최대 체력과 최대 정신력의 5%를 잃는다(체력 -${hp} · 정신력 -${mp}).`},
+        {v:"pass",t:pass,d:"판정 없이 넘긴다. 추가 피해와 보상은 없다."}
+      ], value=>{
+        if(value==="try"){
+          if(Math.random()<chance/100){
+            const gain = Math.max(0,Math.min(12,(a.fx==="bari"?88:99)-G.mood));
+            G.mood += gain;
+            say(`<b style="color:#8fd6a0">선택 성공</b> · ${esc(action)} · 기분 +${gain}`);
+            if(reward) grantChoiceGift(a,q,f,say);
+          }else{
+            const actualMp = Math.min(f.mp,mp);
+            const actualHp = Math.min(f.hp,hp);
+            f.hp -= actualHp;
+            f.mp -= actualMp;
+            say(`<b style="color:#ff8a7a">선택 실패</b> · ${esc(f.name)} 체력 -${actualHp} · 정신력 -${actualMp}`);
+            if(f.hp===0){
+              if(G.sign?.f===f.id) G.sign = null;
+              if(killWorker(f,"현장 선택에 실패해 쓰러졌다")) return;
+            }
+          }
+        }else say(`선택을 넘겼다 — ${esc(pass)}`);
+        menu();
+      },scene);
+      return true;
+    }
     function menu(){ if(G.signDue || (q.__signNow && !G.signForced)){ const fc = q.__signNow && !G.signForced; G.signDue = false; G.signForced = true; signSpawn(fc); }
+      if(G.sign && !G.choiceShown && fieldChoice()) return;
       menuBase();
       if(aleph) m.ctrl.insertAdjacentHTML("beforeend", '<button data-aleph-retreat="1">철수한다</button>');
       if(G.sign)m.ctrl.insertAdjacentHTML('afterbegin', '<div class="muted" style="flex:1 1 100%;color:#ffb35a">징후: '+esc(G.sign.txt)+'</div>'); }
@@ -11082,6 +11207,7 @@ function gearDesc(g){
   const pc = (lab, v) => p.push(v<0 ? `<span style="color:#ff8a7a">${lab} 피해 +${Math.abs(Math.round(v*100))}%</span>` : `${lab} 피해 -${Math.abs(Math.round(v*100))}%`);
   if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed); const extra=SHOP.find(x=>x.id===g.id&&x.slot==="armor")?.extraRed;if(extra&&!g.unique&&!g.relic)p.push("최종 받는 피해 -"+Math.round(extra*100)+"%");if(g.slot==="weapon"){if(g.unique&&!g.ego)p.push("고정 추가 피해 +3");const b=weaponTierBonus(g.unique||g.relic?3:g.tier);p.push(normalAttackCards(weaponTypeOf(g)||"none",g).map(c=>esc(c.n)+" "+(c.a+b)+"+"+c.normalCoins+"×"+c.normalCp).join(" / "));}
   if(g.effect) p.push(`<span style="color:#cfe2ff">${esc(g.effect)}</span>${g.fx==="enk" ? ` <span class="muted">(사용 ${g.uses||0}회)</span>` : ""}`, g.desc && !g.relic ? `<span class="muted">${esc(g.desc)}</span>` : "");
+  if(g.gift?.kind==="선택 기프트") p.unshift("선택 기프트");
   if(g.gift && g.gift.recipientName) p.push(`획득자: ${esc(g.gift.recipientName)}`);
   if(g.selfUp && g.gift) p.push(`${g.gift.from.replace(/ \(아종:.*\)$/,"")} 관측 시 행동 성공률 +${Math.round(g.selfUp*100)}%p`);
   if(g.relic) p.push(`<span style="color:#d8b45a">유적 출토 · ${esc(g.origin)} · ${esc(g.boundName||"")}에게 귀속</span>`, g.trait ? `<span style="color:#9fe8c8">성질: ${esc(g.trait)}</span>` : "", g.special ? `<span style="color:${(g.seal||0)===0 ? "#f2d27a" : "#8f8676"}">원본 특수: ${esc(g.special)}${(g.seal||0)===0 ? "" : " (봉인 중 — 쓸 수 없다)"}</span>` : "", `<span class="muted">${esc(g.desc||"")}</span>`);
@@ -17893,6 +18019,7 @@ function codexRecordHtml(){
   const {cx,met}=codexRecordData();
   const row = e => { const c = cx[e.vid] || {seen:0, gifts:[]}, n = c.seen, lock = k => `<span class="muted">— ${k-n}번 더 만나면 열린다</span>`;
     const L = k => n >= k; const M = L(4) ? codexMechanicText(e) : null;
+    const choiceGift = choiceGiftFor(e.id), regularGifts = (c.gifts||[]).filter(n=>n!==choiceGift?.n);
     return `<div class="cdx ${n?"on":""}"><div class="cdx-h"><b>${L(1) ? esc(e.n) : "???"}</b>${L(2) ? `<span class="badge" style="border-color:${RISK_COL[e.risk]};color:${RISK_COL[e.risk]}">${e.risk}${e.sin ? " · "+e.sin : ""}</span>` : ""}${L(1) ? (e.canon ? `<span class="muted" style="font-size:11px">${e.code ? esc(e.code)+" · " : ""}원작${e.base && ABNO_BY[e.base] ? ` 아종(${esc(ABNO_BY[e.base].n)})` : ""} · ${e.canon==="LCB" ? "림버스 컴퍼니" : "로보토미 코퍼레이션"}</span>` : (e.base && ABNO_BY[e.base]) || e.baseName ? `<span class="muted" style="font-size:11px">${e.code ? esc(e.code)+" · " : ""}창작 아종 · 바탕: ${esc(e.baseName || ABNO_BY[e.base].n)}</span>` : `<span class="muted" style="font-size:11px">${e.code ? esc(e.code)+" · " : ""}창작</span>`) : ""}<span class="muted" style="margin-left:auto;font-size:11px">만남 ${n} · 통제 ${c.ctrl||0} · 제압 ${c.sup||0}</span></div>
       <div class="cdx-g"><span>외형</span><div>${n && e.form ? esc(e.form) : lock(1)}</div><span>위험 등급</span><div>${L(2) ? `${e.risk}${e.sin ? ` — 작은 ${e.sin} 죄종` : ""}` : lock(2)}</div>
         <span>선호 행동</span><div>${e.kill && L(3) ? `<span style="color:#ff8a7a">관리 불가</span> · 발견 즉시 사살 대상` : L(3) ? WORKS.map(w=>`${w.n} <b style="color:${WORK_COLOR[e.pref[w.k]]||"#8a8490"}">${e.pref[w.k]} (${WORK_PCT[e.pref[w.k]]}%)</b>`).join(" · ") : lock(3)}</div>
@@ -17900,7 +18027,7 @@ function codexRecordHtml(){
         <span>전투 조건</span><div>${L(4) ? (T=>`<b style="color:${T[1]}">${T[0]}</b> — ${T[2]}`)(FIGHT_TXT[fightType(e)]) : lock(4)}</div>
         ${e.kill ? "" : `<span>배회 징후 대응</span><div>${L(4) ? esc(M.work) : lock(4)}</div><span>전투 징후 대응</span><div>${L(4) ? esc(M.combat) : lock(4)}</div>`}
         <span>이야기</span><div style="white-space:pre-line">${L(5) ? esc(e.story) : lock(5)}</div>
-        ${e.kill ? "" : `<span>기프트</span><div>${(c.gifts||[]).length ? c.gifts.map(esc).join(", ") : `<span class="muted">아직 얻지 못했다</span>`}</div>`}</div></div>`; };
+        ${e.kill ? "" : `<span>기프트</span><div>${regularGifts.length ? regularGifts.map(esc).join(", ") : `<span class="muted">아직 얻지 못했다</span>`}</div>${choiceGift && (c.gifts||[]).includes(choiceGift.n)?`<span>선택 기프트</span><div>${esc(choiceGift.n)}</div>`:""}`}</div></div>`; };
   const cdxBody = met.length ? `<p class="muted" style="margin:0 0 8px">도시에서 마주친 환상체와 죄종의 정보를 확인할 수 있다. 조우 횟수에 따라 이름, 위험 등급, 선호 행동, 폭주·전투 조건 및 징후 대응법, 관련 이야기가 차례로 공개되며, 확인한 정보는 현재 브라우저에 저장된다. 환상체의 기프트는 2개가 있다.</p>${met.map(row).join("")}`
     : `<div class="ach-empty"><div class="ach-empty-ic">◇</div><b>아직 마주친 환상체가 없다</b><div class="d">환상체 의뢰에서 만난 환상체가 여기에 기록된다.</div></div>`;
   return cdxBody;
