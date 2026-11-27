@@ -92,7 +92,7 @@ test('자동 출동과 의뢰 카드 성공률 동일',()=>{
 });
 test('목표 달성 시 의뢰 확정 성공',()=>assert.match(game,/else if\(r\.decisive===true[^\n]*\{ mgScore = r\.score; decisive = true;/));
 test('피해 예측과 실제 정산 공통 계산 함수 사용',()=>{
-  assert.match(game,/const pct = damagePercent\(f,q,success,w,mental,march/);
+  assert.match(game,/(?:const|let) pct = damagePercent\(f,q,success,w,mental,march/);
   assert.match(game,/mx\*damagePercent\(f,q,success,w,mental,march\)/);
 });
 
