@@ -1658,8 +1658,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a3.1.4.7";
+const VERSION = "v.a3.1.4.8";
 const CHANGELOG = [
+  ["v.a3.1.4.8", ["해결사 목록 및 영입 화면의 능력치와 총합에 현재 적용 중인 장비 보정치를 합산하여 표시.", "관리에서는 기본 능력치 옆에 장비 보정치를 초록색 (+수치) 또는 빨간색 (-수치)으로 표시. 기존 성장 및 전투 판정은 유지."]],
   ["v.a3.1.4.7", ["관리의 전리품 보관 장소 옆에 접고 펼칠 수 있는 E.G.O. 기프트 전용 보관함 추가. 기존 보관 기프트도 자동 분리 표시.", "E.G.O. 기프트는 전당포 판매 불가. 기존 장착 및 교체 기능 유지."]],
   ["v.a3.1.4.6", ["특정 등급 이상 해결사마다 2주에 한 번 5% 확률로 신(心) 깨우침 사건 발생. 기존 발현 연출 유지.", "신을 사용한 횟수가 N회 쌓일 때마다 10% 확률로 망(望) 한 겹 해금. 관리에서 무기에 감을 수 있으며 최대 5겹 유지."]],
   ["v.a3.1.4.2", ["환상체 도감의 네 번째 조우 해금에 배회 징후와 실제 전투 대응법 추가. 기존 브라우저별 조우·통제·제압·기프트 해금 유지."]],
@@ -4536,6 +4537,25 @@ const PARTY = {9:[1,3],8:[1,3],7:[2,3],6:[2,3],5:[2,3],4:[3,3],3:[3,4],2:[3,4],1
 const partyMax = q => q.kind==="특색 심사" ? 1 : (["도시 악몽","도시의 별"].includes(threatOf(q)) ? 4 : 3);
 const partyRec = q => q.kind==="특색 심사" ? 1 : q.boss ? 2 : Math.min(partyMax(q), (PARTY[q.grade]||[1])[0]);
 function gearList(f){ return bodyItems(f).concat(augItems(f), [needsRepair(f.gear.weapon) ? null : f.gear.weapon, f.ab && f.ab.coatOff && S && S.day <= f.ab.coatOff ? null : f.gear.armor, f.gear.acc].filter(Boolean)); }
+// 표시 전용: 기존 의뢰 판정에 적용되는 장비별 능력치 보정만 합산한다.
+function equipmentStatBonus(f){
+  const bonus=Object.fromEntries(ATTRS.map(a=>[a,0]));
+  const items=f.gear?gearList(f):bodyItems(f).concat(augItems(f));
+  for(const g of items.concat(f.ego?[f.ego]:[])){
+    for(const a of ATTRS) bonus[a]+=Number(g.bonus?.[a])||0;
+  }
+  return bonus;
+}
+function displayedStat(f,a,bonus){return (Number(f.stats?.[a])||0)+bonus[a];}
+function displayedStatTotal(f,bonus){return ATTRS.reduce((n,a)=>n+displayedStat(f,a,bonus),0);}
+function displayedStatsLine(f,manage=false){
+  const bonus=equipmentStatBonus(f);
+  return ATTRS.map(a=>{
+    const v=bonus[a];
+    const label=manage?(Number(f.stats?.[a])||0)+(v?' <span style="color:'+(v>0?'#7fb069':'#ff8a7a')+';white-space:nowrap">('+(v>0?'+':'')+v+')</span>':''):displayedStat(f,a,bonus);
+    return ATTR_NAME[a]+" "+label;
+  }).join(" · ")+" (총합 "+displayedStatTotal(f,bonus)+(manage?" · 장비 포함":"")+")";
+}
 function power(f, attrs){
   let p = attrs.reduce((s,a)=>s+f.stats[a],0)/attrs.length;
   gearList(f).forEach(g=>{ if(g.bonus) p += attrs.reduce((s,a)=>s+(g.bonus[a]||0),0)/attrs.length; });
@@ -10728,7 +10748,7 @@ async function openRecruit(){
     save();
   }
   const draw = () => S.recruitPool.length ? S.recruitPool.map(f=>`<div class="item"><div><b>${esc(f.name)}</b> <span class="badge">${gName(f.grade)}</span> <span class="badge">${f.personality}</span>${f.alumniKey ? ` <span class="badge" style="color:#e8c98a;border-color:currentColor">이전 사무소 출신</span>` : ""}${f.distEye ? ` <span class="badge" style="color:#c9b0ff;border-color:currentColor" title="${esc(distEyeText)}">뒤틀림을 보는 눈</span>` : ""}
-    ${f.alumniKey ? `<div class="d">예전 소속: ${esc(f.fromOffice||"이전 사무소")}</div>` : ""}<div class="d">근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</div><div class="d">${esc(hairText(f.look||{}))} · ${esc(eyeText(f.look||{}))}</div><div class="d">간직한 것: ${esc(f.precious ? f.precious.text : "—")}</div><div class="d">고용비 ${won(f.cost)}</div></div>
+    ${f.alumniKey ? `<div class="d">예전 소속: ${esc(f.fromOffice||"이전 사무소")}</div>` : ""}<div class="d">${displayedStatsLine(f)}</div><div class="d">${esc(hairText(f.look||{}))} · ${esc(eyeText(f.look||{}))}</div><div class="d">간직한 것: ${esc(f.precious ? f.precious.text : "—")}</div><div class="d">고용비 ${won(f.cost)}</div></div>
     <div class="d" style="color:#e8c98a">고용비 ${won(f.cost)} · 주급 ${won(syncGradeWage(f))}</div><button class="primary" data-hire="${f.id}" ${S.money<f.cost||officeCompanionCount()>=officeCompanionMax()?"disabled":""}>고용</button></div>`).join("") : `<p class="muted">오늘은 더 이상 찾아온 해결사가 없다. 명단은 매일 아침 바뀐다.</p>`;
   await modal("영입", `<p class="muted">${gName(S.officeGrade)} 사무소 · 일반 지원자는 최대 ${gName(Math.max(2,S.officeGrade-1,leadGrade))}까지 찾아온다. 이전 회차 인연도 대표보다 높은 급수는 등장하지 않는다. 1급 사무소에서는 대표가 1급 이상일 때 이전 회차의 1급 해결사가 재등장할 수 있다. 특색은 영입으로 오지 않는다.</p><p class="muted" id="recruit-cap">동료 ${officeCompanionCount()}/${officeCompanionMax()}명 (대표 제외) · 한도를 늘리려면 공방 → 사무소 확장에서 비용을 지불하세요.</p><div class="list" id="rlist">${draw()}</div>`, [{t:"닫기"}], false, root=>{
     root.addEventListener("click", async e=>{
@@ -10801,7 +10821,7 @@ async function openManage(){
       ${f.shin?`<span>신(心)</span><b style="color:#ffd27a">${esc(shinLabel(f.shin.name ? f.shin : Object.assign({name:givenName(f.name)}, f.shin)))} — “${esc(f.shin.wish)}” <span class="muted" style="font-weight:400">· 돌아본 죄: ${esc(f.shin.sin)}</span>
         <br><span style="font-weight:400;font-size:12px">깨우침: 기본 피해 +${shinAwakeDamage(f)} · 합 기본 위력 +${shinAwakeClash(f)} (상시)<br>신: 성공률 +${SHIN_RATE}% · 두를 때 합 위력 +${SHIN_POW} · 쓸 때 정신력 -${SHIN_MP} · 나선 횟수 ${f.shinUses||0}${(f.mang||0) ? ` · <b style="color:#ffd27a">망(望) ${f.mang}</b>(위력 +${f.mang} · 고정 피해 +${f.mang} · 턴 종료 정신력 -${3*f.mang} · 쓸 때 정신력 -${MANG_MP[f.mang-1]})` : ""}${(f.mang||0) < MANG_MAX ? (mangPending(f)?` · 감을 수 있는 망 ${mangPending(f)}겹`:"") : " · 망을 모두 감았다"}</span>
         <br><button data-shintog="1" style="padding:2px 8px">${shinOn(f) ? "신 끄기" : "신 켜기"}</button>${(f.mang||0) ? ` <button data-mangtog="1" style="padding:2px 8px">${f.mangOff ? "망 켜기" : "망 끄기"}</button>` : ""}${mangReady(f) ? ` <button class="primary" data-mangwind="1" style="padding:2px 8px">무기에 망(望)을 감는다</button>` : ""}</b>`:""}
-      <span>능력치</span><b>근력 ${f.stats.str} · 민첩 ${f.stats.agi} · 재주 ${f.stats.tec} · 의지 ${f.stats.wil} (총합 ${total(f)})</b>
+      <span>능력치</span><b>${displayedStatsLine(f,true)}</b>
       <span>성장</span><b class="muted">${(growOf(f), ATTRS.map(a=>`${ATTR_NAME[a]} ${f.grade>1&&growDone(f,a)>=GROW_PER ? "✓" : `${Math.min(f.gc[a]||0, growNeed(f))}/${growNeed(f)}${f.grade>1 && growDone(f,a) ? ` (${growDone(f,a)}/${GROW_PER})` : ""}`}`).join(" · "))}</b>
       <span>능력치 효과</span><b>근력: 기본 위력 +${statClashBasePlus(f)} · 최대 체력 +${statHpPlus(f)} · 민첩: 방어 고정 피해 -${statGuardMinus(f)} · 재주: 코인 위력 +${statClashCoinPlus(f)} · 합 코인 앞면 +${statClashHeadPlus(f).toFixed(2)}%p · 의지: 최대 정신력 +${statMpPlus(f)}</b>
       <span>체력</span><b>${f.hp}/${f.hpMax} <span class="lv ${level(f.hp,f.hpMax)[1]}">${level(f.hp,f.hpMax)[0]}</span></b>
@@ -17094,6 +17114,7 @@ function render(){
     const st = !bodyServiceReady(f) ? "전신 의체 정비비 미납 · 출동 불가" : f.unavailUntil>=S.day ? "출동 불가" : f.lastDispatch===S.day ? (f.marchDay===S.day ? "강행군까지 마침" : "오늘 출동함 · 강행군 가능") : "대기 중";
     const hc = {s:"#8a8a8a",b:"#d8b24a",d:"#c94a4a"};
     const nc = nameCol(f);
+    const statBonus = equipmentStatBonus(f);
     const headerTag = f.isLeader ? "div" : "summary";
     const cardStart = f.isLeader ? '<div class="fx">' : `<details class="fx fx-companion" data-fixer="${esc(String(f.id))}"${openedFixers.has(String(f.id)) ? " open" : ""}>`;
     return `${cardStart}<${headerTag} class="n"><b${nc ? ` style="color:${nc};text-shadow:0 0 10px ${nc}55"` : ""}>${esc(f.name)}${f.isLeader?" ★":""}${f.title ? ` <span class="ctitle" style="color:${nc||"inherit"}">[${esc(f.title)}]</span>` : ""}</b><span>${gName(f.grade)} · ${f.personality}</span></${headerTag}>${f.isLeader ? "" : '<div class="fx-companion-body">'}
@@ -17101,8 +17122,8 @@ function render(){
       <div style="font-size:12px">체력 ${f.hp}/${f.hpMax}<span class="lv ${lh[1]}">${lh[0]}</span></div>${bar(f.hp,f.hpMax,hc[lh[1]]==="#8a8a8a"?"#7fb069":hc[lh[1]])}
       <div style="font-size:12px">정신력 ${f.mp}/${f.mpMax}<span class="lv ${lm[1]}">${lm[0]}</span></div>${bar(f.mp,f.mpMax,hc[lm[1]]==="#8a8a8a"?"#6aa0c9":hc[lm[1]])}
       ${!f.isLeader?`<div style="font-size:12px">신뢰 ${fixerTrust(f)}/100</div>${bar(fixerTrust(f),100,fixerTrust(f)>=70?"#7fb069":fixerTrust(f)>=35?"#d8b24a":"#c94a4a")}`:""}
-      <div class="stats"><div><small>근력</small> ${f.stats.str}</div><div><small>민첩</small> ${f.stats.agi}</div><div><small>재주</small> ${f.stats.tec}</div><div><small>의지</small> ${f.stats.wil}</div></div>
-      <div class="state">${st} · 총합 ${total(f)}${f.tired ? ` · <b style="color:#e7a07c">피로</b>` : (f.streak||0) >= 1 ? ` · <span class="muted">연속 출동 ${f.streak}일</span>` : ""}</div>${f.isLeader ? "</div>" : "</div></details>"}`;
+      <div class="stats">${ATTRS.map(a=>`<div><small>${ATTR_NAME[a]}</small> ${displayedStat(f,a,statBonus)}</div>`).join("")}</div>
+      <div class="state">${st} · 총합 ${displayedStatTotal(f,statBonus)}${f.tired ? ` · <b style="color:#e7a07c">피로</b>` : (f.streak||0) >= 1 ? ` · <span class="muted">연속 출동 ${f.streak}일</span>` : ""}</div>${f.isLeader ? "</div>" : "</div></details>"}`;
   }).join("");
   app.querySelector("#log").innerHTML = S.log.map(l=>`<div class="${l.cls||""}">${l.d}일 · ${esc(l.t)}</div>`).join("");
   app.querySelector("#endday").disabled = S.over;
