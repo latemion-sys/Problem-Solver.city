@@ -1660,7 +1660,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a2.3.9.1";
 const CHANGELOG = [
-  ["v.a2.3.9.1", ["HE · WAW · ALEPH 환상체 관리 부담 완화: 체력·정신력 피해와 수치형 고유 기믹 불이익 30% 감소(정수 감소량 올림), 조우 시 폭주 확률 및 광폭 카운터 감소량 완화", "전투 피해·징후·재앙·의뢰 정산·지속 피해 완화. 보상 및 죄종·ZAYIN·TETH 유지"]],
+  ["v.a2.3.9.1", ["HE · WAW · ALEPH 환상체 관리 부담 완화: 체력·정신력 피해와 수치형 고유 기믹 불이익 30% 감소(정수 감소량 올림), 조우 시 폭주 확률 및 광폭 카운터 감소량 완화", "전투 피해·징후·재앙·의뢰 정산·지속 피해 완화. 일부 확정 사망·실종 기믹은 발동 확률 70%로 조정. 보상 및 죄종·ZAYIN·TETH 유지"]],
   ["v.a2.3.7", ["보스 의뢰마다 동료 한 명의 과거에서 시작하는 이야기 추가: 발단 → 고조 → 고백(선택) → 도발 → 결말, 단계마다 며칠과 의뢰 하나씩 쌓인 뒤 진행", "랫키어(쥐 출신 동료) · 바르크(철쇄 수금원 출신) · 테이어파이어(공방 시험 상대 출신) · 99번째 거래처(거래처를 다녀온 동료) · 여섯 번째 손가락(고개를 숙이지 않고 떠난 동료) · 12 과업의 대행자(빈 골목의 생존자)", "고백 장면은 동료 성격에 따라 대사가 달라지고, 대표의 대답과 보스전 동행 여부에 따라 신뢰와 결말 장면이 달라짐", "실패하면 놓친 밤 장면, 다시 나타날 때 재도발 장면"]],
   ["v.a2.3.3",["환상체 의뢰 등장 제한 해제: 사무소·의뢰 급수와 관계없이 모든 위험 등급 등장 가능, 수락 여부는 플레이어 선택","환상체 의뢰 기본 등장 확률 재조정: 8~9급 10% 유지 · 6~7급 30%→20% · 4~5급 40%→25% · 1~3급 44%→30%","초반 3일에도 모든 위험 등급의 환상체 등장 가능. 환상체 고유 급수·요구치 유지, 게시판 중복 방지 우선 및 지령·폐지부 탐사로의 변경 방지","의뢰 급수와 사무소 등급에 맞춘 의뢰인 및 협회 담당 과 선정, 기관·개인·익명 의뢰인의 환상체·뒤틀림 의뢰 서술 개편","합 평균 기준 재조정: 맨손 8 · 양산 10 · 정식 13 · 상급 16 · 고유·개화 18, 공방 기본 위력 보정 0·3·6·8","위압 적용: 해결사가 적보다 높은 급수일 때 급수 차이 1마다 적 코인 뒷면 확률 +3%p. 기존 요구치·급수 차이 기반 합 위력 보정 폐지","신(心) 깨우침 연출 및 의뢰 상황별 대사 개편, 깨우침 이후 기본 피해 +5 및 합 기본 위력 +1 상시 적용","기술 일람·전투 규칙·환상체 도감·업적 버튼 색상 및 업적 이동 방식 개선"]],
   ["v.a2.3.1", ["무기 12종과 맨손의 일반 공격 및 특수 기술 코인 수·코인 위력·기본 위력 개편", "동일 공방 등급의 기본 평균 합 위력 균등화(정신력 0, 앞면 50% 기준): 양산 12 · 정식 16 · 상급 20 · 고유 24", "전투 화면과 기술 일람에 새 위력·코인 구성 표시", "개화 E.G.O. 장비 상급 공방 기준 재설정: 무기형 기본 피해 +5, 의복형 보호막 20, 일체형 기본 피해 +2 및 보호막 5. 보호막 특수 효과 선택 시 10 추가"]],
@@ -4585,6 +4585,7 @@ const LOSS_PCT = {ok:[10,15,20,25],fail:[35,43,52,60]};
 function abHigh(a){return ["HE","WAW","ALEPH"].includes(typeof a==="string"?a:a&&a.risk);}
 function abPenalty(a,n){return abHigh(a)&&n>0?Math.max(0,n-Math.ceil(n*3/10)):n;}
 function abRate(a,n){return abHigh(a)?n*0.7:n;}
+function abRiskRoll(a){return !abHigh(a)||Math.random()<0.7;}
 function abCap(a,current,target){return current-abPenalty(a,Math.max(0,current-target));}
 function damagePercent(f,q,success,wound,mental,march,doom=false){
   const red=mental ? redMP(f) : redHP(f), w=wound===1&&accFx(f,"lining")?0:Math.max(0,Math.min(3,wound));
@@ -5674,9 +5675,9 @@ function mgCombat(ctx){
       if(relicFx(p.f,"bell")) AXN.push(`<span style="color:#e8d27a">청동 방울이 여덟 갈래로 울린다 — ${esc(p.name)}의 마음에 다른 목소리가 들어오지 못한다</span>`); });
     if(AB && AB.aoe) AXN.push(`<span style="color:#e8d27a">${AB.aoe}턴마다 금빛 저울이 기운다 — 그 자리 모두가 심판받는다</span>`);
     if(AB && AB.enrage){ foe.clock = 4; AXN.push(`<span style="color:#e8d27a">징벌 새는 4턴이 지나면 스스로 알로 돌아간다. 그 전에 공격하면 몸이 붉게 변하며 커다란 부리로 반격한다</span>`); }
-    if(AB && AB.movement) AXN.push(`<span style="color:#e8d27a">악장마다 공격·방어·기술 가운데 하나만 지휘자에게 닿는다</span>`);
+    if(AB && AB.movement) AXN.push(`<span style="color:#e8d27a">악장마다 공격·방어·기술 가운데 하나만 온전히 지휘자에게 닿는다</span>`);
     if(AB && (AB.rule==="ember")){ party.forEach(p=>p.ember = Math.max(1, AB.emberStart||1)); AXN.push(`<span style="color:#ffb35a">모두의 몸에 불씨가 옮아 붙었다(${party[0].ember}) — 턴마다 커지고, 나방에게 맞으면 더 탄다</span>`); }
-    if(AB && AB.immune) AXN.push(`<span style="color:#ff8a7a">그것의 몸에는 어지간한 물리적 공격이 통하지 않는다 — 1급 이상이 쥔 고유 무기나 개화한 E.G.O. 무기만 상처를 낸다</span>`);
+    if(AB && AB.immune) AXN.push(`<span style="color:#ff8a7a">그것의 몸은 일반 공격 피해를 크게 줄인다 — 1급 이상이 쥔 고유 무기나 개화한 E.G.O. 무기는 온전히 상처를 낸다</span>`);
     if(AB && AB.fx==="spiral") AXN.push(`<span style="color:#e8d27a">합을 이길 때마다 시선이 쌓여 피해가 오른다. 7이 되면 경멸받는다. 두 턴마다 누군가를 움켜쥔다</span>`);
     if(AB && AB.fx==="knives") AXN.push(`<span style="color:#ff8a7a">칼날 산 위에서 싸운다 — 턴이 끝날 때마다 모두가 발밑의 칼날에 베인다(사살한 만큼 더 깊이)</span>`);
     if(DF) AXN.push(`<span style="color:${DIST_TIER[DF.th].col}">${DF.th}급 뒤틀림 — ${DIST_TIER[DF.th].note}</span>`);
@@ -6046,14 +6047,14 @@ function mgCombat(ctx){
         if(W==="wheels" && foe.hp <= foe.max*0.3){ dmg *= 2; wNote.push("처형 — 피해 2배"); }
         if(W==="logic"){ const ex = wSk.cp*2; dmg += ex; wNote.push(`연사 — 한 발 더(+${ex})`); }
         if(W==="crystal" && R.left){ dmg += R.left*2; wNote.push(`쌍 팔시온 — 남은 코인 ${R.left}개(+${R.left*2})`); }
-        if(AB && AB.movement && (isBasic(si)?0:si) !== foe.allow){ dmg = 0; abNote.push("이번 악장에는 닿지 않았다 — 소리에 묻혔다"); }
-        if(AB && AB.immune && !(me.f.grade <= 1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))){ dmg = Math.max(1, Math.round(dmg*0.05)); ammoEffective=0; abNote.push("칼날이 미끄러진다 — 거의 통하지 않았다"); }
+        if(AB && AB.movement && (isBasic(si)?0:si) !== foe.allow){ dmg = Math.round(dmg*(1-abRate(AB,1))); abNote.push(abHigh(AB)?"이번 악장에는 피해의 70%가 소리에 묻혔다":"이번 악장에는 닿지 않았다 — 소리에 묻혔다"); }
+        if(AB && AB.immune && !(me.f.grade <= 1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.95)))); ammoEffective=0; abNote.push(abHigh(AB)?"칼날이 미끄러진다 — 피해 일부만 전달됐다":"칼날이 미끄러진다 — 거의 통하지 않았다"); }
         if(AB && AB.fx==="spiral"){ if(me.contempt) dmg = Math.round(dmg*(1-abRate(AB,0.3))); else { me.gaze = (me.gaze||0) + 1; dmg = Math.round(dmg*(1 + 0.1*me.gaze)); abNote.push(`시선 ${me.gaze}(피해 +${me.gaze*10}%)`);
-            if(me.gaze >= 7){ me.contempt = true; me.hp = Math.max(1, me.hp - abPenalty(AB,15)); abNote.push(`<b style="color:#ff8a7a">나선이 ${esc(me.name)}의 시선마저 경멸했다 — 출혈, 이후 피해 -30%</b>`); } }
+            if(me.gaze >= 7){ me.contempt = true; me.hp = Math.max(1, me.hp - abPenalty(AB,15)); abNote.push(`<b style="color:#ff8a7a">나선이 ${esc(me.name)}의 시선마저 경멸했다 — 출혈, 이후 피해 -${Math.round(abRate(AB,0.3)*100)}%</b>`); } }
           party.forEach(p=>{ if(p.grasp){ p.grasp = 0; abNote.push(`${esc(p.name)}를 쥔 손아귀가 풀렸다`); } }); }
-        if(AB && AB.fx==="jade"){ if(turn <= 2){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.5)))); abNote.push("꿈속이다 — 칼끝이 반만 닿았다"); } else { dmg = Math.round(dmg*1.2); abNote.push("옥에 금이 갔다(피해 +20%)"); } }
+        if(AB && AB.fx==="jade"){ if(turn <= 2){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.5)))); abNote.push(`꿈속이다 — 공격 피해 ${Math.round(abRate(AB,0.5)*100)}% 감소`); } else { dmg = Math.round(dmg*1.2); abNote.push("옥에 금이 갔다(피해 +20%)"); } }
         if(AB && AB.fx==="whale" && (foe.shell||0) < 3){ foe.shell = (foe.shell||0) + 1; dmg = Math.max(1, dmg - abPenalty(AB,3)); abNote.push(foe.shell >= 3 ? "껍데기가 깨져 나갔다" : `껍데기가 칼날을 튕겼다(-${abPenalty(AB,3)}, ${foe.shell}/3)`); }
-        if(me.burden){ dmg = Math.max(1, Math.round(dmg*0.6)); me.burden = false; abNote.push(`<span style="color:#e8d27a">짊어진 탑 탓에 칼끝이 무뎠지만, 그래도 이겨 쳤다. 거인에게 탑을 되돌려 주었다</span>`); }
+        if(me.burden){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.4)))); me.burden = false; abNote.push(`<span style="color:#e8d27a">짊어진 탑 탓에 칼끝이 무뎠지만, 그래도 이겨 쳤다. 거인에게 탑을 되돌려 주었다</span>`); }
         // 탄환의 추가 피해는 마지막에 한 번만 더하며, 기술·고유 무기 배율로 증폭되지 않는다.
         // 적이 방어하거나 특수 면역 상태라면 탄환에도 동일한 제약이 걸린다.
         const ammoNet=dmg>0?Math.min(6,Math.round(ammoEffective*(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))?0.5:1))):0;
@@ -6173,7 +6174,7 @@ function mgCombat(ctx){
       if(AB && AB.fx==="nails" && foe.hp > 0){ const k5 = ((turn - 1) % 5) + 1;
         if(k5 < 5) tk.push(`<span style="color:#ff8a7a">${["엄지","검지","중지","약지"][k5-1]}가 접혔다(${k5}/5)</span>`);
         else { party.forEach(p=>{ if(p.hp<=0) return; const d = Math.max(8, Math.round(32*(1-redHP(p.f)))); p.hp = Math.max(0, p.hp - abPenalty(AB,d)); }); tk.push(`<b style="color:#ff8a7a">새끼손가락까지 접혔다 — 주먹이 내리쳤다. 모두가 깊은 상처를 입었다</b>`); } }
-      if(AB && AB.fx==="erl" && foe.erlChild && foe.hp > 0 && turn >= 3 && foe.erlChild.hp > 0){ foe.erlChild.hp = 0; foe.erlChild.death = "erl"; tk.push(`<b style="color:#ff8a7a">마왕이 ${esc(jo(foe.erlChild.name,"을"))} 품에 안고 안개 속으로 데려갔다</b>`); foe.erlChild = null; }
+      if(AB && AB.fx==="erl" && foe.erlChild && foe.hp > 0 && turn >= 3 && foe.erlChild.hp > 0){ if(abRiskRoll(AB)){ foe.erlChild.hp = 0; foe.erlChild.death = "erl"; tk.push(`<b style="color:#ff8a7a">마왕이 ${esc(jo(foe.erlChild.name,"을"))} 품에 안고 안개 속으로 데려갔다</b>`); } else { tk.push(`${esc(foe.erlChild.name)}: 마왕의 부름을 간신히 떨쳤다`); } foe.erlChild = null; }
       if(AB && AB.fx==="spiral" && foe.hp > 0){ const gp = party.find(p=>p.grasp && p.hp > 0);
         if(gp){ gp.grasp--; if(gp.grasp <= 0){ const d = abPenalty(AB,50); gp.hp = Math.max(0, gp.hp - d); foe.hp = Math.min(foe.max, foe.hp + abPenalty(AB,Math.round(foe.max*0.15))); tk.push(`<b style="color:#ff8a7a">나선이 ${esc(gp.name)}를 짓눌렀다(-${d}) — 흘린 피로 나선이 아물었다</b>`); } }
         else if(turn % 2 === 0){ const pool = party.filter((p,i)=>p.hp > 0 && i!==act), t = pool.length ? pick(pool) : party[act]; if(t && t.hp > 0){ t.grasp = 2; tk.push(`<span style="color:#ff8a7a">검은 돌손이 ${esc(t.name)}를 움켜쥐었다 — 두 턴 안에 합을 이겨 풀어내지 못하면 짓눌린다</span>`); } } }
@@ -7799,15 +7800,15 @@ function abnoApply(q, team, R, lines){
       else { const n = (S.requests||[]).length; S.requests = (S.requests||[]).filter(x=>x.id===q.id); lines.push(`<b style="color:#ff8a7a">일어나선 안 될 일이 일어났다. 사무소 게시판의 의뢰 ${Math.max(0,n-1)}건이 처음부터 없었던 것이 되었다</b>`); } }
     if(D.custom==="solitude"){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || pick(team); if(f){ f.ab = f.ab || {}; f.ab.solitude = {n:2}; f.unavailUntil = Math.max(f.unavailUntil||0, S.day+abPenalty(A,1)); lines.push(`<span style="color:#9ab8d8">${esc(f.name)}: 고독이 들러붙었다 — 이틀 밤 동안 정신력이 깎이고, 내일은 출동하지 못한다</span>`); } }
     if(D.custom==="orchestra"){ team.forEach(f=>{ const v = abPenalty(A, Math.floor(f.mpMax*0.35)); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: 악장이 이어졌다 — 정신력 -${v}`); });
-      team.forEach(f=>{ if(f.mp < f.mpMax*0.5){ f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 마지막 음이 끝나는 순간 머리가 터졌다</b>`); } }); }
+      team.forEach(f=>{ if(f.mp < f.mpMax*0.5 && abRiskRoll(A)){ f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 마지막 음이 끝나는 순간 머리가 터졌다</b>`); } }); }
     if(D.custom==="bluestar"){ team.forEach(f=>{ const v = abPenalty(A, Math.floor(f.mpMax*0.3)); f.mp = Math.max(0, f.mp - v); lines.push(`${esc(f.name)}: 별의 맥박 — 정신력 -${v}`); });
-      team.forEach(f=>{ if(f.mp<=0 || power(f,["wil"]) < q.req*0.6){ lost.push({f, kind:"실종", why:"푸른 별의 심장으로 끌려 들어갔다"}); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 하늘로 떠올라 푸른 별의 심장으로 끌려 들어갔다</b>`); } }); }
+      team.forEach(f=>{ if((f.mp<=0 || power(f,["wil"]) < q.req*0.6) && abRiskRoll(A)){ lost.push({f, kind:"실종", why:"푸른 별의 심장으로 끌려 들어갔다"}); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 하늘로 떠올라 푸른 별의 심장으로 끌려 들어갔다</b>`); } }); }
     if(D.custom==="jadeDream"){ team.forEach(f=>{ f.unavailUntil = Math.max(f.unavailUntil||0, S.day + abPenalty(A,1)); }); lines.push(`<span style="color:#9ad0ff">꿈에서 덜 깬 일행은 내일 하루를 자며 보낸다(출동 불가)</span>`); }
     if(D.custom==="frostAll"){ team.forEach(f=>{ f.unavailUntil = Math.max(f.unavailUntil||0, S.day + abPenalty(A,1)); const v = abPenalty(A, Math.floor(f.hpMax*0.1)); f.hp = Math.max(1, f.hp - v); lines.push(`<span style="color:#9ad0ff">${esc(f.name)}: 얼어붙은 몸을 녹이느라 내일은 출동하지 못한다 — 동상, 체력 -${v}</span>`); }); }
     if(D.custom==="shoesSolo"){ const f = (R.victim!=null && team.find(x=>x.id===R.victim)) || team[0]; if(f){ f.hp = abCap(A,f.hp,Math.max(1,Math.floor(f.hpMax*0.08))); f.stats.agi = Math.max(1, f.stats.agi - abPenalty(A,3)); syncStatVitals(f); lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 춤을 멈추려 스스로 발목을 잘라 냈다 — 체력 ${f.hp} · 민첩 -${abPenalty(A,3)}(영구)</b>`); } } }
   (R.dead||[]).forEach(d=>{ const f = who(d.id); if(!f) return; lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: ${esc(d.why)}</b>`); lost.push({f, kind:d.kind||"사망", why:d.why}); });
   if(R.possess){ const f = who(R.possess.id); if(f){ if(R.possess.win){ f.hp = abCap(A,f.hp,Math.max(1,Math.floor(f.hpMax*0.1))); f.stats.agi = Math.max(1, f.stats.agi - abPenalty(A,3)); syncStatVitals(f); lines.push(`<span style="color:#ffb35a">${esc(f.name)}: 동료들이 발목째 빨간 구두를 벗겨 냈다 — 목숨은 건졌다. 체력 ${f.hp} · 민첩 -${abPenalty(A,3)}(영구)</span>`); }
-    else { lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 빨간 구두를 신은 채 춤추며 골목 너머로 사라졌다</b>`); lost.push({f, kind:"실종", why:"빨간 구두를 신고 춤추며 사라졌다"}); } } }
+    else if(abRiskRoll(A)){ lines.push(`<b style="color:#ff8a7a">${esc(f.name)}: 빨간 구두를 신은 채 춤추며 골목 너머로 사라졌다</b>`); lost.push({f, kind:"실종", why:"빨간 구두를 신고 춤추며 사라졌다"}); } else { f.hp=abCap(A,f.hp,1); lines.push(`${esc(f.name)}: 빨간 구두를 간신히 벗겨 내고 살아 돌아왔다 — 체력 ${f.hp}`); } } }
   (R.battle||[]).forEach(b=>{ if(!b.death || !S.fixers.includes(b.f)) return; b.f.hp = 0; lines.push(`<b style="color:#ff8a7a">${esc(b.f.name)}: ${b.death==="hanged" ? "심판받아 교수대에 매달렸다" : b.death==="erl" ? "마왕의 품에 안긴 채 숨을 거두었다" : "등불을 따라가 큰 새에게 머리를 잃었다"}</b>`); });
   if(R.skin) S.skinVisit = {name:R.skin.name, day:S.day + 2};
   const X = R.fxOut || {}, day = S.day, mark = (id, k, v) => { const f = who(id); if(f){ f.ab = f.ab || {}; f.ab[k] = v; } return f; };
@@ -8116,7 +8117,7 @@ function mgAbno(ctx){
     const shown = know(1) ? a.n : "정체불명의 환상체", riskTxt = know(2) ? a.risk + (a.sin ? ` · ${a.sin}` : "") : "???";
     const ctrName = a.noCounter ? "실수 허용" : "광폭 카운터";
     const m = mgOpen(`${a.risk==="죄종"?"죄종 조우":"환상체 의뢰"} · 관측`, a.risk==="죄종" ? "죄종은 환상체처럼 알로 되돌릴 수 없으므로 발견 즉시 사살해야 한다." : "현장에 도착하면 먼저 환상체의 상태를 확인한다. 배회 중인 개체는 적절한 행동으로 진정시켜 알로 되돌릴 수 있지만, 이미 날뛰고 있거나 폭주한 개체는 전투를 통해 제압해야 한다.", ctx, 300);
-    const rampP = a.noFight ? 0 : abRate(a,({죄종:0.25, ZAYIN:0.2, TETH:0.4, HE:0.5, WAW:0.6, ALEPH:0.8}[a.risk] || 0.25));   // 날뜀으로 마주칠 확률: ZAYIN 20 · TETH 40 · HE 50 · WAW 60 · ALEPH 80%
+    const rampP = a.noFight ? 0 : abRate(a,({죄종:0.25, ZAYIN:0.2, TETH:0.4, HE:0.5, WAW:0.6, ALEPH:0.8}[a.risk] || 0.25));   // 날뜀으로 마주칠 확률: ZAYIN 20 · TETH 40 · HE 35 · WAW 42 · ALEPH 56%
     const G = {mood:20, ctr:a.ctr, max:a.ctr, state: q.__state || (Math.random() < rampP ? "rage" : "calm"), log:[], mpLoss:{}, hurt:{}, turn:0, done:false, shake:0, flash:0, pick:null, last:null, blessed:null, embers:0, tongue:0, sac:0, dead:[], gaze:{},
       bench:[], out:{}, heat:{}, coatAsked:{}, frost:{}, flowers:[], lure:0, dream:0, floor:0, babel:null, nailSeq:null, nailPos:0, order:null};
     const ctrStep=abHigh(a)?0.7:1, ctrDown=(n=1)=>{G.ctr=Math.round((G.ctr-n*ctrStep)*10)/10;};
@@ -8196,9 +8197,9 @@ function mgAbno(ctx){
       say(`<b style="color:#ffb35a">징후 — ${esc(G.sign.txt)}</b>`); }
     function signMiss(){ if(!SG || !G.sign) return false; G.sign = null; ctrDown(); G.shake = 6;
       if(SG.missFx && SG.missFx.embers) G.embers = (G.embers||0) + SG.missFx.embers;
-      if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*0.1))); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 -10%)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
+      if(SG.missFx){ if(SG.missFx.sac){ G.sac += SG.missFx.sac; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*0.1))); x.hp = Math.max(1, x.hp - v); }); say(`<b style="color:#ff8a7a">물주머니가 가득 찼다 — 잘린 목에서 피 섞인 물이 뿜어져 모두를 적셨다(체력 피해)</b>`); } } if(SG.missFx.lure && G.child!=null) G.lure = Math.min(4, G.lure + SG.missFx.lure); }
       let dmgT = ""; if(SG.missDmg){ const D = SG.missDmg, parts = []; ctx.team.forEach(x=>{ if(D.mp){ const v = abPenalty(a, Math.floor(x.mpMax*D.mp)); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; } if(D.hp){ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*D.hp*(1 - redHP(x)*0.5)))); x.hp = Math.max(1, x.hp - v); } });
-        if(D.mp) parts.push(`모두 정신력 -${Math.round(D.mp*100)}%`); if(D.hp) parts.push(`모두 체력 -${Math.round(D.hp*100)}%`); dmgT = ` · <b style="color:#ff8a7a">${esc(D.t)} (${parts.join(" · ")})</b>`; }
+        if(D.mp) parts.push(`모두 정신력 피해`); if(D.hp) parts.push(`모두 체력 피해`); dmgT = ` · <b style="color:#ff8a7a">${esc(D.t)} (${parts.join(" · ")})</b>`; }
       say(`<span style="color:#ff8a7a">징후를 놓쳤다 — ${esc(SG.missT)}</span> · ${ctrName} -1${dmgT}`);
       if(G.ctr <= 0){ breach(workerFor("wil")); return true; } return false; }
     function signAct(){ if(!SG || !G.sign || G.done) return; const tg = G.sign.f!=null ? ctx.team.find(x=>x.id===G.sign.f) : null, f = tg || workerFor(sgChk() || "wil"); G.sign = null;
@@ -8321,12 +8322,12 @@ function mgAbno(ctx){
           else if(G.ctr > 0){ ctrDown(); line += ` · <span style="color:#ff8a7a">순서를 잘못 지켜 꽃이 시들었다. 이번에 꺾어야 할 꽃은 ${["뼈살이꽃","살살이꽃","피살이꽃"][G.flowers.length]}이다(카운터 -1)</span>`; } }
         if(a.rule==="goodDrops" && lv==="최고"){ ctrDown(); line += ` · <span style="color:#ff8a7a">너무 좋은 결과를 얻어 오히려 카운터가 감소했다(-1)</span>`; }
         if(a.rule==="onlyBest" && lv!=="최고"){ ctrDown(); line += ` · <span style="color:#ff8a7a">최고 등급의 결과를 얻지 못해 카운터가 감소했다(-1)</span>`; }
-        if(a.rule==="goodRaises" && lv==="최고" && G.ctr < G.max){ G.ctr++; line += " · 카운터 +1"; }
+        if(a.rule==="goodRaises" && lv==="최고" && G.ctr < G.max){ G.ctr=Math.min(G.max,Math.round((G.ctr+1)*10)/10); line += " · 카운터 +1"; }
         if(a.rule==="quickDrops" && ratio >= 1.3){ ctrDown(); line += ` · <span style="color:#ff8a7a">너무 빨리 끝났다 — 카운터 -1</span>`; }
         if(a.rule==="heal" && lv==="최고"){ const v = Math.floor(f.mpMax*0.06); f.mp = Math.min(f.mpMax, f.mp + v); line += ` · ${esc(f.name)} 정신력 +${v}`; }
         if(a.rule==="healHp"){ const v = Math.floor(f.hpMax*0.05); f.hp = Math.min(f.hpMax, f.hp + v); line += ` · 요정의 보살핌 체력 +${v}`; }
         if(a.fx==="flame" && k==="wil"){ f.ab = f.ab || {}; const lv0 = flameOf(f), lv1 = Math.min(3, lv0 + 1); if(lv1 > lv0){ f.ab.flame = {lv:lv1}; G.flameGiven = true; line += ` · <span style="color:${["#7fb0ff","#ffb35a","#ff6a5a"][lv1-1]}">${esc(f.name)}에게 깃든 용기의 불꽃이 ${["푸르게","주황빛으로","붉게"][lv1-1]}타오른다(민첩 +${lv1*2})</span>`; } }
-        if(a.rule==="company" && G.ctr < G.max){ G.ctr++; line += ` · 이야기를 들어 주자 노파가 웃었다 — 카운터 +1`; }
+        if(a.rule==="company" && G.ctr < G.max){ G.ctr=Math.min(G.max,Math.round((G.ctr+1)*10)/10); line += ` · 이야기를 들어 주자 노파가 웃었다 — 카운터 +1`; }
         if(a.fx==="prick" && lv==="최고" && !(a.lowBest && power(f,[a.lowBest]) < q.req)){ f.ab = f.ab || {}; f.ab.prick = {n:3}; line += ` · <span style="color:#ffa8d0">${esc(jo(f.name,"이"))} 가시에 찔렸다 — 달콤한 쾌감이 남는다</span>`; }
         if(a.rule==="ember" && lv==="최고" && G.embers){ G.embers = 0; line += " · 불씨가 모두 사라졌다"; }
         if(a.lowBest && lv==="최고" && power(f,[a.lowBest]) < q.req){ maimOf(f); line += ` · <span style="color:#ff8a7a">${esc(jo(f.name,"이"))} 쾌감을 견디지 못하고 쓰러졌다(${ATTR_NAME[a.lowBest]} 부족)</span>`; }
@@ -8336,17 +8337,17 @@ function mgAbno(ctx){
         ctrDown(); G.shake = 10; G.flash = 1;
         const pct = a.gentle ? 2 : Math.round(({죄종:6, ZAYIN:8, TETH:10, HE:12, WAW:15, ALEPH:18}[a.risk] || 8) * (1 - redMP(f)*0.5)), loss = abPenalty(a,Math.floor(f.mpMax*pct/100));
         f.mp = Math.max(0, f.mp - loss); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + loss;
-        line += `${nailNow===4 ? `<span class="muted">반응을 알 수 없다</span>` : `<span style="color:${lie ? "#8fd6a0" : "#ff8a7a"}">${esc(dislikeT)}</span>`} · ${ctrName} -1 · ${esc(f.name)} 정신력 -${pct}%(${loss})`;
+        line += `${nailNow===4 ? `<span class="muted">반응을 알 수 없다</span>` : `<span style="color:${lie ? "#8fd6a0" : "#ff8a7a"}">${esc(dislikeT)}</span>`} · ${ctrName} -1 · ${esc(f.name)} 정신력 -${loss}`;
         if(a.fx==="jade"){ const v2 = Math.min(f.mp, loss); f.mp -= v2; G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; line += ` · <span style="color:#ff8a7a">옥을 잃어버린 듯 한동안 넋을 놓았다(정신력 추가 -${v2})</span>`; }
         if(a.fx==="kin"){ const v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*0.06))); f.hp = Math.max(1, f.hp - v); line += ` · 피를 빨렸다(체력 -${v})`;
           if(G.child===f.id && G.ctr > 0){ ctrDown(); line += ` · <b style="color:#ff8a7a">자식이 부모에게 적대적인 행동을 보였다. 금기를 어겨 카운터가 1 더 감소했다</b>`; } }
-        if(nailNow===2){ ctx.team.forEach(x=>{ const v = abPenalty(a, Math.floor(x.mpMax*0.05)); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; }); line += ` · <span style="color:#ff8a7a">중지의 못 — 형제가 다쳤으니 모두가 갚는다(일행 정신력 -5%)</span>`; }
+        if(nailNow===2){ ctx.team.forEach(x=>{ const v = abPenalty(a, Math.floor(x.mpMax*0.05)); x.mp = Math.max(0, x.mp - v); G.mpLoss[x.id] = (G.mpLoss[x.id]||0) + v; }); line += ` · <span style="color:#ff8a7a">중지의 못 — 형제가 다쳤으니 모두가 갚는다(일행 정신력 피해)</span>`; }
         if(a.rule==="flesh"){ const v = abPenalty(a, Math.max(1, Math.floor(f.hpMax*0.06))); f.hp = Math.max(1, f.hp - v); line += ` · <span style="color:#ff8a7a">${esc(f.name)}의 살 1g을 달아 갔다(체력 -${v})</span>`; }
         if(a.rule==="badMaim"){ maimOf(f); line += ` · <span style="color:#ff8a7a">${esc(f.name)} 중상</span>`; }
         if(a.hurt){ const v = abPenalty(a,Math.min(f.hp - 1, Math.round(f.hpMax*a.hurt*(1 - redHP(f)*0.5)))); if(v > 0){ f.hp -= v; G.hurt[f.id] = true; } line += ` · <b style="color:#ff8a7a">${esc(jo(f.name,"이"))} 크게 다쳤다(체력 -${Math.max(0,v)}${f.hp <= 1 ? " · 쓰러지기 직전" : ""})</b>`; }
-        if(a.rule==="badKill") G.killNow = f;
+        if(a.rule==="badKill" && abRiskRoll(a)) G.killNow = f;
         if(a.rule==="tongue"){ G.tongue++; line += ` · 혀에 맞았다(${G.tongue})`; }
-        if(a.rule==="sac"){ G.sac++; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*0.1))); x.hp = Math.max(1, x.hp - v); }); line += ` · <b style="color:#ff8a7a">물주머니가 터졌다 — 잘린 목으로 피 섞인 물을 뿜어 일행 모두가 젖었다(체력 -10%)</b>`; } else line += ` · 배 속 물주머니가 차오른다(${G.sac}/3)`; }
+        if(a.rule==="sac"){ G.sac++; if(G.sac >= 3){ G.sac = 0; ctx.team.forEach(x=>{ const v = abPenalty(a, Math.max(1, Math.floor(x.hpMax*0.1))); x.hp = Math.max(1, x.hp - v); }); line += ` · <b style="color:#ff8a7a">물주머니가 터졌다 — 잘린 목으로 피 섞인 물을 뿜어 일행 모두가 젖었다(체력 피해)</b>`; } else line += ` · 배 속 물주머니가 차오른다(${G.sac}/3)`; }
         if(a.rule==="ember"){ G.embers++; if(G.embers >= 2 && G.ctr > 0){ ctrDown(); line += " · 불씨가 번져 카운터 -1"; } }
       }
       }
@@ -8406,8 +8407,8 @@ function mgAbno(ctx){
         else { G.mood = Math.max(0, G.mood - 5); say(`${esc(jo(f.name,"이"))} 조각을 돌려주었다. (기분 -5)`); }
         if(!settle(f)) menu(); }); }
     function offerCoat(f){ G.coatAsked[f.id] = true; say(`햇살이 ${esc(f.name)}의 외투 깃을 다정하게 데운다. 단추를 풀고 싶어진다.`);
-      offer([{v:"off", t:"외투를 벗는다", d:"태양이 기뻐한다(기분 +25) · 이틀 동안 방어구가 소용없다"},{v:"keep", t:"외투를 여민다", d:"카운터 -1 · 땀이 흐른다(정신력 -8%)"}], v=>{
-        if(v==="off"){ f.ab = f.ab || {}; f.ab.coatOff = S.day + 1; G.mood = Math.min(100, G.mood + 25); say(`<span style="color:#ffb35a">${esc(jo(f.name,"이"))} 외투를 벗었다. 해님이 이겼다.</span> (기분 +25 · 이틀 동안 방어구 무효)`); }
+      offer([{v:"off", t:"외투를 벗는다", d:`태양이 기뻐한다(기분 +25) · ${abHigh(a)?"오늘":"이틀 동안"} 방어구가 소용없다`},{v:"keep", t:"외투를 여민다", d:"카운터 -1 · 땀이 흐른다(정신력 -8%)"}], v=>{
+        if(v==="off"){ f.ab = f.ab || {}; f.ab.coatOff = S.day + abPenalty(a,1); G.mood = Math.min(100, G.mood + 25); say(`<span style="color:#ffb35a">${esc(jo(f.name,"이"))} 외투를 벗었다. 해님이 이겼다.</span> (기분 +25 · ${abHigh(a)?"오늘":"이틀 동안"} 방어구 무효)`); }
         else { ctrDown(); const v2 = abPenalty(a, Math.floor(f.mpMax*0.08)); f.mp = Math.max(0, f.mp - v2); G.mpLoss[f.id] = (G.mpLoss[f.id]||0) + v2; say(`<span style="color:#ff8a7a">${esc(jo(f.name,"이"))} 외투를 더 꼭 여몄다. 해가 더 뜨거워졌다</span> · 카운터 -1 · 정신력 -${v2}`); }
         if(!settle(f)) menu(); }); }
     function offerAtlas(f){ G.atlasAsked = true; const ok = power(f,["tec"]) >= q.req;
@@ -8491,7 +8492,7 @@ function mgAbno(ctx){
       // 즉사는 대비가 하나도 없을 때만: 정신 방호(장비·E.G.O.)가 전혀 없고, 의지도 요구치의 60%에 못 미치고, 정신력까지 무너진 이
       for(const f of ctx.team.slice()){ const unready = redMP(f) <= 0 && !f.ego && power(f,["wil"]) < q.req*0.6;
         const broken = a.fx==="overture" ? f.mp < f.mpMax*0.5 : f.mp <= f.mpMax*0.25;
-        if(unready && broken){ intro += `<br><b style="color:#ff8a7a">${a.fx==="overture" ? `아무 대비도 없던 ${esc(f.name)}의 머리가 터졌다` : `아무 대비도 없던 ${esc(f.name)}가 떠올라 별의 심장으로 빨려 들어갔다`}</b>`;
+        if(unready && broken && abRiskRoll(a)){ intro += `<br><b style="color:#ff8a7a">${a.fx==="overture" ? `아무 대비도 없던 ${esc(f.name)}의 머리가 터졌다` : `아무 대비도 없던 ${esc(f.name)}가 떠올라 별의 심장으로 빨려 들어갔다`}</b>`;
           if(killWorker(f, a.fx==="overture" ? "고요한 오케스트라의 첫 음에 머리가 터졌다" : "푸른 별의 심장으로 빨려 들어갔다", a.fx==="overture" ? "사망" : "실종")) return; }
         else if(unready) intro += `<br><span class="muted">${esc(f.name)}: 대비가 없다 — 정신력이 무너지면 위험하다</span>`; }
       intro += `<br><span class="muted">정신 방호 장비·E.G.O.가 있거나 의지가 충분하면 조우만으로 죽지 않는다. 징후를 놓치지 말 것</span>`; }
