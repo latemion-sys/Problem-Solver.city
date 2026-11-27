@@ -1658,8 +1658,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a3.1.4.6";
+const VERSION = "v.a3.1.4.7";
 const CHANGELOG = [
+  ["v.a3.1.4.7", ["관리의 전리품 보관 장소 옆에 접고 펼칠 수 있는 E.G.O. 기프트 전용 보관함 추가. 기존 보관 기프트도 자동 분리 표시.", "E.G.O. 기프트는 전당포 판매 불가. 기존 장착 및 교체 기능 유지."]],
   ["v.a3.1.4.6", ["특정 등급 이상 해결사마다 2주에 한 번 5% 확률로 신(心) 깨우침 사건 발생. 기존 발현 연출 유지.", "신을 사용한 횟수가 N회 쌓일 때마다 10% 확률로 망(望) 한 겹 해금. 관리에서 무기에 감을 수 있으며 최대 5겹 유지."]],
   ["v.a3.1.4.2", ["환상체 도감의 네 번째 조우 해금에 배회 징후와 실제 전투 대응법 추가. 기존 브라우저별 조우·통제·제압·기프트 해금 유지."]],
   ["v.a3.1.4.1", ["교대형 환상체의 실제 전열 교대와 카드 판정 연결. 빨간 구두 빙의 전투, 실밥 터진 테디의 원종 반전, 고요한 오케스트라 4악장과 피날레 구현."]],
@@ -7830,7 +7831,7 @@ function grantAbnoGift(a, how, q, f, chance, emit){
   if(equipped) f.gear.acc = g;
   else { S.inventory = S.inventory||[]; S.inventory.push(g); }
   ac("gift"); codexNote(a.vid, null, g.name);
-  const msg = `<span style="color:#e8d27a">기프트</span>: ${esc(f.name)} — <b>${esc(g.name)}</b>(${g.gift.kind} · ${threatOf(q)}) 획득${equipped ? " · 장착" : " · 보관함"}`;
+  const msg = `<span style="color:#e8d27a">기프트</span>: ${esc(f.name)} — <b>${esc(g.name)}</b>(${g.gift.kind} · ${threatOf(q)}) 획득${equipped ? " · 장착" : " · E.G.O. 기프트 보관함"}`;
   if(emit) emit(msg); addLog(`${f.name}: ${g.name}(${g.gift.kind}) 기프트 획득`);
   return true;
 }
@@ -10770,11 +10771,12 @@ async function nameEgoSkills(f){
   if(ok&&next){Object.assign(e,next);save();render();}
 }
 async function openManage(){
-  let sel = S.fixers[0]?.id, mview = null;
+  let sel = S.fixers[0]?.id, mview = null, giftOpen = false;
   const draw = () => {
     const f = S.fixers.find(x=>x.id===sel) || S.fixers[0]; if(!f) return "";
     sel = f.id; if(!mview) mview = "idle";
     const inv = (S.inventory||[]);
+    const lootCount = inv.filter(g=>!g.gift).length, giftCount = inv.filter(g=>g.gift).length;
     const gearRow = (slot,label) => { const g=f.gear[slot], nf = slot==="weapon" && needsRepair(g); return `<span class="gear-k${nf?" need-fix":""}">${label}</span><b class="gear-v${nf?" need-fix":""}">${g?(g.relic ? `<span class="relic-name">${esc(g.name)}</span> <span class="badge" style="color:#d8b45a;border-color:currentColor">유물 · 귀속</span>${g.seal!=null ? (g.sealFree ? ` <span class="fg-seg" style="display:inline-flex;margin-left:4px">${[0,1,2].map(k=>`<button data-seal="${k}" data-sslot="${slot}" class="${(g.seal||0)===k?"on":""}" style="padding:2px 8px">${SEAL_NAME[k]}</button>`).join("")}</span>` : ` <span class="badge">${SEAL_NAME[g.seal]}</span>`) : ""}` : esc(g.name))+" <span class='muted' style='"+(needsRepair(g)?"color:#e7a07c":"")+"'>"+gearDesc(g)+"</span>"+(slot==="weapon" ? " "+repairBtn(g, 'data-repair="1"')+(g.unique ? ` <button data-retouch="1" style="padding:2px 8px">손질</button>` : "") : ""):"<span class='muted'>없음</span>"}</b>`; };
     const hc = healCost(f);
     return `<div class="tabs">${S.fixers.map(x=>`<button data-sel="${x.id}" class="${x.id===f.id?"on":""}${x.gear && needsRepair(x.gear.weapon) ? " need-fix" : ""}">${esc(x.name)}${x.gear && needsRepair(x.gear.weapon) ? " ⚠" : ""}</button>`).join("")}</div>
@@ -10815,11 +10817,15 @@ async function openManage(){
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
     ${reviewProgressHtml()}
-    ${inv.length?`<h4 style="margin:14px 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}${pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>${needsRepair(g) && g.durMax <= 1 ? "" : `<button class="danger" data-discard="${i}">버리기</button>`}` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:""}
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;align-items:start;margin-top:14px">
+      <section style="min-width:0">${lootCount?`<h4 style="margin:0 0 6px">보관 중인 전리품 · 전당포 <span class="muted" style="font-weight:400;font-size:12px">— 쓸모없어진 물건은 전당포에 맡기고 값의 ${Math.round(PAWN_K*100)}%를 받는다</span></h4><div class="list">${inv.map((g,i)=>g.gift?"":`<div class="item"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap">${g.ruinsItem?`<span class="muted">매각용 전리품</span>`:repairBtn(g, `data-repinv="${i}"`)+`<button data-equipinv="${i}">${esc(f.name)}에게 장착</button>`}${pawnWorn(g) ? `<button disabled title="최대 내구도가 처음(${g.dur0})의 절반 이하로 줄어 전당포가 받지 않는다">전당포 불가 · 너무 닳음</button>${needsRepair(g) && g.durMax <= 1 ? "" : `<button class="danger" data-discard="${i}">버리기</button>`}` : `<button data-pawn="${i}">전당포 +${won(pawnPrice(g))}</button>`}</div></div>`).join("")}</div>`:`<p class="muted">보관 중인 전리품 없음</p>`}</section>
+      <details data-gift-storage${giftOpen?" open":""} style="min-width:0;border:1px solid currentColor;border-color:var(--line,#555);border-radius:6px;padding:8px"><summary style="cursor:pointer;font-weight:700">E.G.O. 기프트 보관함 (${giftCount})</summary><p class="muted" style="font-size:12px;margin:6px 0">E.G.O. 기프트는 판매할 수 없습니다.</p><div class="list">${giftCount?inv.map((g,i)=>!g.gift?"":`<div class="item" style="flex-wrap:wrap"><div>${esc(g.name)}<div class="d">${gearDesc(g)}</div></div><div style="display:flex;gap:6px;flex-wrap:wrap"><button data-equipinv="${i}">${esc(f.name)}에게 장착</button></div></div>`).join(""):`<div class="muted">보관 중인 기프트 없음</div>`}</div></details>
+    </div>
     ${!f.isLeader?`<div style="margin-top:14px"><button class="danger" data-fire="1">해고</button></div>`:""}`;
   };
   await modal("관리", `<div id="mg">${draw()}</div>`, [{t:"닫기"}], false, root=>{
     const box = root.querySelector("#mg");
+    box.addEventListener("toggle", e=>{ if(e.target.matches("[data-gift-storage]") && box.contains(e.target)) giftOpen = e.target.open; }, true);
     const prev = ()=>{ const cv = box.querySelector(".mgp"), f = S.fixers.find(x=>x.id===sel); if(cv && f) animPreview(cv, ()=>Object.assign(fixerLook(f), stateOpts(mview))); };
     prev();
     root.addEventListener("change", e=>{ if(!e.target.dataset || !e.target.dataset.tech) return; const f = S.fixers.find(x=>x.id===sel); if(f){ const id=e.target.value,rare=knownHanaArts(f),wt=weaponTypeOf(wGear(f))||"none";if(!techFits(id,wt)||!(rare.includes(id)||(f.techs||[]).includes(id)||id==="allout"&&!rare.length))return;f.tech = id; save(); box.innerHTML = draw(); prev(); } });
@@ -10859,11 +10865,12 @@ async function openManage(){
         const n = (f.mang||0) + 1;
         if(!await confirmBox("망(望)", `${esc(jo(f.name,"은"))} 소망을 실처럼 꼬아 ${esc(w.name||"무기")}에 한 겹 더 감는다.<br><b style="color:#ffd27a">망 ${n}</b> — 전투 위력 +${n}(신과 따로), 대신 쓸 때 정신력 -${MANG_MP[n-1]}${n>1 ? ` (지금 -${MANG_MP[n-2]})` : ""}.`)) return;
         f.mangPending = Math.max(0,mangPending(f)-1); f.mang = n; ac("mang"); S.records.push({day:S.day, name:f.name, what:"망(望)", note:`${w.name||"무기"}에 망 ${n}`}); addLog(`${f.name}: ${w.name||"무기"}에 망(望)을 감았다 — 망 ${n}`); }
-      else if(d.discard!==undefined){ const i = +d.discard, g = S.inventory[i]; if(!g || !pawnWorn(g)) return;
+      else if(d.discard!==undefined){ const i = +d.discard, g = S.inventory[i]; if(!g || g.gift || !pawnWorn(g)) return;
         if(!await confirmBox("버리기", `<b>${esc(jo(g.name,"을"))}</b> 버린다. 받는 돈은 없고, 되찾을 수 없다.`)) return;
         S.inventory.splice(i, 1); addLog(`${g.name}을(를) 버렸다 — 너무 닳아 전당포도 받지 않았다`.replace(`${g.name}을(를)`, jo(g.name,"을"))); }
-      else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; if(pawnWorn(g)){ toast("전당포 주인이 고개를 저었다. 이만큼 닳은 무기는 받지 않는다고."); return; } const v = pawnPrice(g);
+      else if(d.pawn!==undefined){ const i = +d.pawn, g = S.inventory[i]; if(!g) return; if(g.gift){ toast("E.G.O. 기프트는 판매할 수 없습니다."); return; } if(pawnWorn(g)){ toast("전당포 주인이 고개를 저었다. 이만큼 닳은 무기는 받지 않는다고."); return; } const v = pawnPrice(g);
         if(!await confirmBox("전당포", `<b>${esc(jo(g.name,"을"))}</b> 전당포에 맡긴다. 받는 돈 <b>${won(v)}</b> — 되찾을 수 없다.`)) return;
+        if(S.inventory[i]!==g || g.gift) return;
         S.inventory.splice(i, 1); S.money += v; ac("pawn"); if(g.ruinsItem)ac("ruinsSold"); addLog(`전당포: ${g.name} → +${won(v)}`); }
       else if(d.equipinv!==undefined && f){ const i=+d.equipinv; const g=S.inventory[i]; if(!g||!["weapon","armor","acc"].includes(g.slot))return; if(g && relicLocked(f, g.slot)){ toast("귀속된 유물은 다른 장비로 바꿀 수 없다"); return; } const old=f.gear[g.slot]; f.gear[g.slot]=g; S.inventory.splice(i,1); if(old) S.inventory.push(old); }
       else if(d.fire && f){ if(await confirmBox("해고", `${jo(esc(f.name),"을")} 내보낸다. 되돌릴 수 없다.`)){ removeFixer(f,"해고","사무소를 떠남"); sel=S.fixers[0]?.id; } }
@@ -11620,13 +11627,13 @@ function load(){ try{ const d = JSON.parse(localStorage.getItem(SAVE_KEY)); if(d
   (d.requests||[]).forEach(q=>{ delete q.reg; if(q.kind==="환상체" && (!q.abno || !ABNO_BY[q.abno.id])){ q.abno = pickAbno(q.grade!=null ? q.grade : 9); q.risk = ABNO_BY[q.abno.id].risk; q.text = `${ABNO_BY[q.abno.id].rumor}. 확인하고 처리해 달라`; }
     if(typeof q.text==="string") q.text = q.text.replace(/(달라)\. 확인하고 처리해 달라$/, "$1"); }); return syncAllStatVitals(migrateWorkshopDur(migrate1247(migrateGunAmmoState(d)))); }
 }catch(e){ if(!saveWarningShown){saveWarningShown=true;try{console.warn("저장 불러오기 실패",e);}catch(_){}} } return null; }
-/* 전당포: 보관함의 물건을 산 값(값이 없는 전리품·기프트는 같은 칸에서 가장 비슷한 가치의 공방 물건 값)의 40%에 판다. 소수점 버림. */
+/* 전당포: 일반 보관품은 산 값(값이 없는 전리품은 비슷한 공방 물건 값)의 40%에 판다. E.G.O. 기프트는 판매 불가. */
 const PAWN_K = 0.4;
 function gearScore(g){ const b = g.bonus ? Object.values(g.bonus).reduce((a,v)=>a+v, 0) : 0; return (g.power||0) + b*2 + ((g.hpRed||0) + (g.mpRed||0))*100; }
-function pawnValue(g){ if(g.price) return g.price; const sc = gearScore(g), peers = SHOP.filter(it=>it.slot===g.slot && it.price);
+function pawnValue(g){ if(!g || g.gift) return 0; if(g.price) return g.price; const sc = gearScore(g), peers = SHOP.filter(it=>it.slot===g.slot && it.price);
   if(!peers.length) return 0; return peers.slice().sort((a,b)=>Math.abs(gearScore(a)-sc) - Math.abs(gearScore(b)-sc))[0].price; }
 const pawnWorn = g => !!(g && isWornable(g) && g.durMax && Number.isFinite(g.dur0) && g.durMax <= Math.floor(g.dur0/2));
-const pawnPrice = g => g && g.ruinsItem ? Math.max(0,Number(g.pawnFixed)||0) : Math.floor(pawnValue(g)*PAWN_K);
+const pawnPrice = g => !g || g.gift ? 0 : g.ruinsItem ? Math.max(0,Number(g.pawnFixed)||0) : Math.floor(pawnValue(g)*PAWN_K);
 function addLog(t, cls){ S.log.unshift({d:S.day,t,cls}); S.log = S.log.slice(0,60); }
 
 /* ================= 모달 ================= */
