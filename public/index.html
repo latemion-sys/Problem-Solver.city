@@ -1879,16 +1879,34 @@ const GIVEN = ["민준","서연","도윤","하은","지호","수아","현우","�
 const FOREIGN = ["올리비에","레오나르","미셸","카를로","이자벨","마르타","에반","루카","오스카","니나","빅토르","엘리안","줄리아","하인츠","아델","로렌츠","세바스티안","클라라","펠릭스","노아","마야","휴고","레나","라울","에디트","테오","실비아","얀","미라","케이"];
 const OFFICE_WORDS = ["새벽","잔돌","등대","모퉁이","회색 우산","녹슨 열쇠","작은 불","늦은 종","외길","빈 상자","철길","가로등","북향","굽은 못"];
 /* 특색 칭호: [○○빛 ○○] 또는 [푸른/붉은/보라/주홍/옥빛/하얀/검은 ○○]. 원작 특색과 같은 이름은 쓸 수 없고,
-   원작 특색의 뒷말(안개·침묵·눈물·잔향·흉터·십자·시선 …)도 피한다 — 검은 요람은 되지만 검은 침묵·검은 잔향은 안 된다 */
+   원작 특색의 뒷말(안개·침묵·눈물·잔향·흉터·십자·시선 …)도 피한다 */
 const COLOR_PREFIX = ["푸른","붉은","보라","주홍","옥빛","하얀","검은"];
 const COLOR_HUES = {"푸른":"#6aa2ff","붉은":"#ff5a52","보라":"#b07cff","주홍":"#ff8a3d","옥빛":"#5fd3a6","하얀":"#f4f1ea","검은":"#a7a7b8",
   "잿빛":"#b3b0aa","새벽빛":"#a9c3ef","구릿빛":"#d48c56","은빛":"#d9dfe8","쪽빛":"#5c7fe0","황금빛":"#f2c94c","달빛":"#efe7c2","먹빛":"#8a8a98","핏빛":"#e0414c","별빛":"#f6eaa8","노을빛":"#ff9a66","물빛":"#82cdea","쇳빛":"#a3aab3","꽃빛":"#ff9ec4","풀빛":"#8fd27a","잉크빛":"#7a8ad0","호박빛":"#f0a640","재빛":"#b3b0aa"};
 const COLOR_WORDS = COLOR_PREFIX.concat(Object.keys(COLOR_HUES).filter(k=>/빛$/.test(k) && !COLOR_PREFIX.includes(k) && k!=="재빛"));
-const COLOR_NOUNS = ["요람","등불","서리","칼날","발자국","서약","그림자","바람","파도","가시","종소리","매듭","날개","비늘","유리","장미","실타래","나침반","저울","꽃잎","굴레","철로","우산","촛대","모래시계","깃발","편지","거울","뿔","이정표","닻","등대"];
+// 기본, 호위, 수색, 추격, 환상체, 뒤틀림 실적 순서
+const COLOR_TITLE_NOUNS = {
+  "공격적":["쇄도","성벽","돌파구","질주","격돌","분쇄"],
+  "신중함":["숙고","보루","단서","잠복","봉인","검증"],
+  "헌신":["버팀목","수호자","인도자","전령","성소","수문장"],
+  "냉소":["냉기","방벽","편린","비수","균열","단죄"],
+  "충동적":["불꽃","화로","번쩍임","돌풍","섬광","폭발"],
+  "침착함":["수면","수평선","물결","급류","고요","심해"],
+  "집요함":["갈고리","사슬","추적자","포위망","철창","사냥꾼"],
+  "낙천적":["햇살","온기","여명","산들바람","유성","해돋이"],
+  "비관적":["먹구름","처마","폐허","빗줄기","잔해","종말"],
+  "오만함":["왕관","옥좌","첨탑","군마","위엄","군주"],
+  "소심함":["껍데기","울타리","오솔길","발걸음","속삭임","피난처"],
+  "정의감":["저울","파수꾼","증언","집행관","감찰관","심판"],
+  "탐욕":["금고","자물쇠","감정사","수집가","보석함","전리품"],
+  "다정함":["손길","품","징검돌","산책길","자장가","치유"],
+  "무심함":["공백","경계선","빈자리","무명","여백","무채"],
+  "광기":["톱니","회전목마","미로","회오리","환영","광란"]
+};
 const COLOR_CANON_NOUNS = ["안개","침묵","눈물","잔향","흉터","상흔","십자","십자가","시선","노인"];
 const COLOR_BANNED = ["붉은 안개","검은 침묵","보라 눈물","보랏빛 눈물","푸른 잔향","진홍빛 흉터","진홍 흉터","진홍빛 상흔","주홍 십자","주홍빛 십자가","붉은 시선","쪽빛 노인"];
 function colorTitleCheck(t){ t = String(t||"").trim().replace(/^\[|\]$/g,"").replace(/\s+/g," "); const w = t.split(" ");
-  if(w.length !== 2) return {ok:false, why:"두 낱말로 짓는다. 예: 검은 요람, 새벽빛 등대"};
+  if(w.length !== 2) return {ok:false, why:"두 낱말로 짓는다. 예: 검은 갈고리, 새벽빛 여명"};
   const [c, n] = w; if(!(COLOR_PREFIX.includes(c) || (/빛$/.test(c) && c.length >= 2 && c.length <= 4))) return {ok:false, why:"앞말은 '○○빛'이거나 푸른·붉은·보라·주홍·옥빛·하얀·검은 가운데 하나여야 한다"};
   if(!/^[가-힣]{1,6}$/.test(n)) return {ok:false, why:"뒷말은 한글 1~6자로 짓는다"};
   if(COLOR_BANNED.includes(t) || COLOR_CANON_NOUNS.includes(n)) return {ok:false, why:`'${n}'${jo(n,"은").slice(n.length)} 원작 특색의 이름과 겹친다`};
@@ -10188,7 +10206,7 @@ async function fieldEvent(q, team, success, pay){
 const COLOR_MAX = 3;
 const colorHeld = () => S ? S.fixers.filter(f=>f.grade===0).length : 0;
 async function passColor(f, preset){ if(colorHeld() >= COLOR_MAX && f.grade!==0) return; ac("color");
-  const title = preset || (f.isLeader ? ((await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", randomColorTitle())) || randomColorTitle()) : randomColorTitle());
+  const title = preset || await chooseColorTitle(f);
   const oldWage=syncGradeWage(f); f.grade = 0; const newWage=syncGradeWage(f); f.title = title; f.tcol = colorOfTitle(title); f.cap = 80;
   f.unique = f.unique || {};
   await colorAscend(f.name, title, f.tcol);
@@ -10199,9 +10217,28 @@ async function passColor(f, preset){ if(colorHeld() >= COLOR_MAX && f.grade!==0)
   const go = await modal("특색 지정", `${jo(esc(f.name),"이")} 특색 <b style="color:${f.tcol}">[${esc(title)}]</b>${jo(title,"로").slice(title.length)} 지정되었다.${!f.isLeader&&newWage>oldWage?`<br><span style="color:#e8c98a">주급 ${won(oldWage)} → ${won(newWage)} (다음 정산부터)</span>`:""}<br>능력치 최대치가 80으로 오르고, <b>고유 방어구 제작</b>이 열렸다.<br><span class="muted">공방 → 고유 장비에서 주문 제작할 수 있다.</span>`, [{t:"나중에",v:false},{t:"지금 만들기",v:true,primary:true}]);
   if(go) await openForge(f, "armor");
 }
-function randomColorTitle(){
-  let t, k = 0; do { t = pick(COLOR_WORDS)+" "+pick(COLOR_NOUNS); } while(!colorTitleCheck(t).ok && ++k < 200);
-  return t;
+function randomColorTitle(f){
+  const nouns = COLOR_TITLE_NOUNS[f.personality] || COLOR_TITLE_NOUNS["침착함"];
+  const life = f.life || {};
+  const records = ["escort","search","chase","abno","hunt"]
+    .map((kind, i)=>({noun:nouns[i+1], count:life[kind] || 0}))
+    .filter(record=>record.count>0)
+    .sort((a,b)=>b.count-a.count);
+  const noun = records[0]?.noun || nouns[0];
+  const titles = COLOR_WORDS.map(color=>color+" "+noun).filter(title=>colorTitleCheck(title).ok);
+  return pick(titles);
+}
+async function chooseColorTitle(f){
+  const title = randomColorTitle(f);
+  if(!f.isLeader) return title;
+  for(let k=0; k<4; k++){
+    const input = await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다. 직접 정할 수 있다.", title);
+    if(!input) break;
+    const result = colorTitleCheck(input);
+    if(result.ok) return result.t;
+    await alertBox("하나 협회", esc(result.why));
+  }
+  return title;
 }
 
 /* ================= 특색 심사 ================= */
@@ -10261,9 +10298,7 @@ async function colorReview(f){
       <p style="text-align:center">아직은 이르다는 판단이다. <b>1주일 뒤(${S.day + 7}일차)</b>부터 해결사 카드에서 재심사를 요청할 수 있다.</p>`, [{t:"확인", primary:true}], false, root=>{ setTimeout(()=>root.querySelector(".hana-stamp").classList.add("go"), 120); });
     return; }
   // 통과: 칭호를 정하고 인장을 받는다
-  let title = randomColorTitle();
-  if(f.isLeader){ for(let k=0; k<4; k++){ const v = await promptBox("특색 칭호", "하나 협회가 칭호를 묻는다.", title);
-      if(!v){ break; } const c = colorTitleCheck(v); if(c.ok){ title = c.t; break; } await modal("하나 협회", "심사관이 고개를 젓는다. 그 이름으로는 올릴 수 없다고 한다.", [{t:"다시 정한다"}]); } }
+  const title = await chooseColorTitle(f);
   const col = colorOfTitle(title);
   f.colorMail = null; f.colorRetry = null;
   await modal("특색 인장", `<div class="hana-stamp" style="color:${col}"><div class="st"><small>하나 협회 · 특색</small><span>${esc(title)}</span></div></div>
@@ -11726,7 +11761,7 @@ function promptBox(title, label, def, allowRandom){
     modal(title, `<p class="muted">${label}</p><div class="field">${field}${allowRandom&&!longCode?'<button id="pbr">랜덤</button>':""}</div>`,
       [{t:"취소",v:"__c"},{t:"확인",v:"__ok",primary:true}], false, root=>{
         const i=root.querySelector("#pb"); i.focus(); i.select();
-        const r=root.querySelector("#pbr"); if(r) r.onclick=()=>{ i.value = title.includes("특색")?randomColorTitle():randomName(); };
+        const r=root.querySelector("#pbr"); if(r) r.onclick=()=>{ i.value = randomName(); };
         i.addEventListener("keydown",e=>{ if(e.key==="Enter"&&!longCode) root.querySelector(".mf .primary").click(); });
         root.querySelector(".mf .primary").addEventListener("click",()=>res(i.value.trim()), {capture:true});
         root.querySelector(".mf button").addEventListener("click",()=>res(null), {capture:true});
@@ -21329,8 +21364,8 @@ function fxTestPanel(){
     }
   });
   el.addEventListener("click", async e=>{ const k = e.target.dataset.fxc; if(!k) return; const f = S.fixers[0];
-    if(k==="color"){ f.grade = 0; f.title = f.title || randomColorTitle(); f.unique = f.unique || {}; S.officeGrade = 1; render(); toast(`${f.name} → 특색 [${f.title}]`); }
-    else if(k==="forge"){ if(f.grade!==0){ f.grade = 0; f.title = randomColorTitle(); f.unique = {}; } await openForge(f); }
+    if(k==="color"){ f.grade = 0; f.title = f.title || randomColorTitle(f); f.unique = f.unique || {}; S.officeGrade = 1; render(); toast(`${f.name} → 특색 [${f.title}]`); }
+    else if(k==="forge"){ if(f.grade!==0){ f.grade = 0; f.title = randomColorTitle(f); f.unique = {}; } await openForge(f); }
     else if(k==="tw1"){ const t = S.fixers.find(x=>!x.isLeader); if(!t) return toast("동료가 없다"); await twistFixer(t); }
     else if(k==="tw0"){ await twistLeader(f); }
     else if(k==="shin"){ const t = S.fixers.find(x=>!x.isLeader) || f; t.shin = null; if(t.grade>2) t.grade = 2; t.mp = Math.round(t.mpMax*0.2); await awakenShin(t); }
@@ -21365,7 +21400,7 @@ function fxTestPanel(){
       S.fixers.filter(f=>!f.isLeader).forEach(f=>S.records.push({day:S.day, name:f.name, what:"사망", note:"시험"})); S.fixers = [L];
       while(lossCount() < 3) S.records.push({day:S.day, name:randomName(), what:"실종", note:"시험"}); return ledgerOffer(false); }
     if(k==="en-scar"){ closeAll(); repayAll(); S.repaidShown = true; S.scars = 0; S.scarCard = S.day; S.scarJobPosted = S.day; S.scarJobDone = S.day; S.scarJobSeen = false; return scarJobCheck(); }
-    if(k==="en-color"){ closeAll(); repayAll(); S.repaidShown = true; const L = leader(); if(L.grade!==0){ L.grade = 0; L.title = randomColorTitle(); L.tcol = colorOfTitle(L.title); L.cap = 80; } return ledgerOffer(false); }
+    if(k==="en-color"){ closeAll(); repayAll(); S.repaidShown = true; const L = leader(); if(L.grade!==0){ L.grade = 0; L.title = randomColorTitle(L); L.tcol = colorOfTitle(L.title); L.cap = 80; } return ledgerOffer(false); }
     if(k==="en-ws"){ closeAll(); repayAll(); S.repaidShown = true; S.wsAsked = null; const L = leader(); let g = L.gear.weapon; if(!g){ g = Object.assign({}, SHOP.find(i=>i.slot==="weapon" && i.tier>=1)); L.gear.weapon = g; } Object.assign(g, {unique:true, owner:L.id}); return workshopOffer(); }
     if(k==="en-idx"){ closeAll(); const X = idxState(); X.closed = false; X.cur = null; if(X.done >= 3) X.done = 0; S.requests.unshift(prescriptReq(makeRequest(Math.min(S.officeGrade, 3), {kind:"일반", attrs:["str"]}))); save(); render(); return toast("게시판에 지령이 붙었다"); }
     if(k==="move5"){ closeAll(); S.officeGrade = Math.min(S.officeGrade, 5); S.moved = null; S.moveDue = 0; if(S.debt > 0){ S.debt = 0; S.repaidShown = true; } return officeMove(); }
