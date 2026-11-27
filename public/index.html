@@ -1658,8 +1658,9 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a3.1.4";
+const VERSION = "v.a3.1.4.1";
 const CHANGELOG = [
+  ["v.a3.1.4.1", ["교대형 환상체의 실제 전열 교대와 카드 판정 연결. 빨간 구두 빙의 전투, 실밥 터진 테디의 원종 반전, 고요한 오케스트라 4악장과 피날레 구현."]],
   ["v.a3.1.4", ["죄종 제외 현재 등록된 환상체 56종: 배회 징후는 실제 행동·담당자·직전 행동과 상태로 판정. 별도 징후 대응 버튼 제거.", "전투 징후는 실제 공격·가드·기술 및 합·피해·담당자·상태를 판정. 다음 턴 징후 간접 예고 및 필요한 기본 카드 제한 보장. 기존 전투 덱과 관리·폭주·보상 규칙 유지."]],
   ["v.a3.1.3.1", ["방어구 판매가 재조정: 표준 해결사 코트 3,000안, 방검 조끼 8,000안, 덧댄 롱코트 19,200안, 유니온 공방 경량 방호 코트 108,000안, 유니온 공방 생체 보호구 192,000안, 재단사 옷감제 특수 방호 코트 800,000안, 슈바르츠 인더스트리 의체 장갑 1,350,000안. 피해 감소율은 유지."]],
   ["v.a3.1.3", ["전투 개편: 기본 10장 덱(약공 3·보통 3·강공 2·가드 2), 매 턴 손패 4장, 한 장 보관 및 버린 카드 재순환", "16종 무기 동작·코인 구조 및 정식·상급 공방 기술명 변경, 공방 보정 +0/+2/+4/+6", "가드 보호막 +8·최대 30·턴 종료 절반 감소·정신력 +3, 기본 방어 방식 통합", "환상체 대응 예고 및 제한적 카드 보장, 기존 고위험 완화 유지", "희귀 기술 21종 이름 변경 및 기존 습득 제한 유지, 기술 일람 정리", "일반 판매 방어구 가격 20% 인상, 정식·상급 추가 피해 감소 3/6/9/12%, 재단사 특수 방호 코트 100만 안 추가"]],
@@ -5777,7 +5778,7 @@ function mgCombat(ctx){
     }
     function odds(a, spA, b, spB, chg){ const samples = 64; let w = 0; for(let i=0;i<samples;i++) if(simClash(a, spA, b, spB, chg, tecClashBonus()).win==="me") w++; return w/samples; }
     const oddLabel = p => p>=0.8 ? ["압도", "#7fe0a8"] : p>=0.6 ? ["우세", "#a8e07f"] : p>=0.4 ? ["호각", "#e0d27f"] : p>=0.2 ? ["열세", "#e0a37f"] : ["절망", "#e07f7f"];
-    let act = 0, turn = 1; const st = {};
+    let act = 0, turn = 1, abSwitchTurn=0; const st = {};
     const BOSS = q.boss && BOSS_DEF[q.boss] ? bossFight(q.boss, {foe, party, act:()=>act, turn:()=>turn}) : null; if(BOSS) AXN.unshift(...BOSS.intro());   // 턴 제한 없음 — 목표(사살/제압)를 이루거나 모두 쓰러질 때까지 싸운다
     let phase = "skill", done = false, outcome = null, foeSkill = null, clash = null, anim = [], downed = false;
     const longK = () => turn > 12 ? 1 + 0.1*(turn - 12) : 1;   // 합이 아주 길어지면 양쪽 모두 지쳐 한 대가 무거워진다(끝없이 이어지지 않게)
@@ -5835,7 +5836,8 @@ function mgCombat(ctx){
       const k = pick(Object.keys(HV_STATUS)), H = HV_STATUS[k];
       return Object.assign({}, hv, {n:`${hv.n}(${H.tag})`, heavy:"status", stk:k, stn:rnd(1,2), tell:`${N}${H.tell}`, hint:H.hint}); }
     // 뒤틀림은 다음 두 수까지 미리 정해 둔다 — '뒤틀림을 보는 눈'을 가진 이가 있으면 그것이 보인다
-    function pickFoeSkill(){ if(AB && AB.movement){foe.allow=foe.nextAllow??rnd(0,2);foe.nextAllow=rnd(0,2);}
+    function orchestraStage(t){return Math.floor(((t-1)%17)/4);}
+    function pickFoeSkill(){ if(AB && AB.movement){foe.allow=orchestraStage(turn);foe.nextAllow=orchestraStage(turn+1);}
       if(DF){ foe.q = foe.q || []; while(foe.q.length < 3) foe.q.push(rollFoeSkill(turn + foe.q.length)); foeSkill = foe.q.shift(); }
       else foeSkill = rollFoeSkill(turn);
       { const fb = foeLivePow(); if(fb) foeSkill = Object.assign({}, foeSkill, {base: foeSkill.base + fb}); } }
@@ -5854,8 +5856,9 @@ function mgCombat(ctx){
       const c = MANG_MP[me.mangLive], no = used || f.mp <= c;
       return `<button data-sk="4" class="pk-shin" ${no?"disabled":""}><b>무기에 망(望)을 감는다</b><small>추가 행동 — 턴을 쓰지 않는다 · 망 ${me.mangLive} → ${me.mangLive+1} · 위력 +1 · 정신력 -${c}${used?"<br>이번 턴에는 이미 썼다":f.mp<=c?"<br>정신력이 모자라다":""}</small></button>`; }
     // 환상체 고유 기믹(날뜀): 징후가 뜨면 신 곁에 대응 버튼 · 놓치면 턴이 끝날 때 피해
-    const FSG = AB && !AB.kill && !AB.possessed ? ((signOf(AB)||{}).rage || null) : null; const BGMK=FSG&&AB_BATTLE_ACTION[AB.id]; foe.signLast = 0; let lastAbMove=null;
-    const signScheduled=t=>!!BGMK&&t%3===2;
+    const FSG = AB && !AB.kill && (!AB.possessed || AB.id==="redshoes") ? ((signOf(AB)||{}).rage || null) : null; const BGMK=FSG&&AB_BATTLE_ACTION[AB.id]; foe.signLast = 0; let lastAbMove=null;
+    const signScheduled=t=>!!BGMK&&(AB.movement?orchestraStage(t)===4:t%3===2);
+    const abSwitchAllowed=()=>!!(BGMK&&foe.sign&&["spiral","biik","bluereception","erlking","brokenlance","creed","dosan","eternity","lantern","nails","bloodtear","knight"].includes(AB.id)&&abSwitchTurn!==turn&&party[act].extraTurn!==turn&&party[act].resolveTurn!==turn&&party.filter(p=>p.hp>0).length>1);
     const RISK_SIGN = {ZAYIN:1, TETH:1.4, HE:1.8, WAW:2.4, ALEPH:3}[AB && AB.risk] || 1;
     function foeSignSpawn(force){ if(!FSG || foe.sign || foe.hp<=0 || outcome) return "";
       if(!BGMK||(!force&&!signScheduled(turn))) return ""; foe.sign = true; foe.signLast = turn; if(AB.id==='bluereception')foe.signTarget=party[act];
@@ -5879,8 +5882,8 @@ function mgCombat(ctx){
       tick = [line].concat(tick ? [tick] : []).join("<br>"); skillMenu(); }
     const coinStr = sk => "●".repeat(sk.coins);
     function statusLine(){ const me = party[act], a = [], b = [];if(foe.defense)a.push(`방어력 ${foe.defense}`);if(foe.keywordId)a.push(`적중 ${KEYWORD_NAMES[foe.keywordId]} +${foe.keywordPower}`);
-      if(foe.clock != null) a.push(`징벌 새의 시간 ${Math.max(0, foe.clock - turn + 1)}턴`); if(AB && AB.movement) a.push(["지휘자가 몸을 드러낸다.","지휘봉이 낮아지며 충격이 몰려올 듯하다.","악단의 빈 박자가 열린다."][foe.allow]);if(AB&&AB.movement)a.push("다음 악장: "+["음이 갈라지며 몸이 드러날 듯하다.","현악기가 팽팽해진다. 자세를 바로잡아야 할 듯하다.","악단이 호흡을 가다듬는다. 평소와 다른 동작이 필요할 듯하다."][foe.nextAllow]);if(AB?.enrage&&!foe.enraged)a.push("작은 새는 가만히 있는 이에게 관심을 두지 않는 듯하다.");if(AB?.fuse&&turn===AB.fuse-1)a.push("불씨가 커진다. 크게 공격하지 않으면 터질 듯하다.");
-      if(BGMK&&foe.sign)a.push(esc(BGMK.tell));else if(signScheduled(turn+1))a.push("다가올 징후: "+esc(BGMK.tell));
+      if(foe.clock != null) a.push(`징벌 새의 시간 ${Math.max(0, foe.clock - turn + 1)}턴`); if(AB&&AB.movement){const hs=["악단 사이로 좁고 깊은 틈이 열린다. 묵직한 일격이 들어갈 듯하다.","악보가 기묘하게 뒤틀린다. 평소와 다른 기술로 박자를 끊을 수 있을 듯하다.","가느다란 독주가 이어진다. 작은 충격에도 음이 끊길 듯하다.","박자가 고르게 이어진다. 무리하지 않는 일격이 들어갈 듯하다.","지휘자가 마지막 음을 준비한다. 악단 전체가 일어서며 몸을 감싼다."];a.push(`${foe.allow===4?"피날레":(foe.allow+1)+"악장"} · ${hs[foe.allow]}`);if(foe.nextAllow!==foe.allow)a.push("다음: "+hs[foe.nextAllow]);}if(AB?.enrage&&!foe.enraged)a.push("작은 새는 가만히 있는 이에게 관심을 두지 않는 듯하다.");if(AB?.fuse&&turn===AB.fuse-1)a.push("불씨가 커진다. 크게 공격하지 않으면 터질 듯하다.");
+      if(BGMK&&foe.sign){a.push(esc(BGMK.tell));if(foe.signTarget&&AB.id==="bluereception")a.push("호명된 해결사: "+esc(foe.signTarget.name));}else if(signScheduled(turn+1))a.push("다가올 징후: "+esc(BGMK.tell));
       if(me.tremor)b.push(`진동 ${me.tremor}`);if(me.daze)b.push(`휘청임(다음 합 기본 위력 -${CLASH_DAZE_CUT})`);if(foe.shieldMax)a.push(`보호막 ${foe.shield}/${foe.shieldMax}`);if(foe.sink)a.push(`침잠 ${foe.sink}`);if(me.bleed) b.push(`<span style="color:#ff8a7a">출혈 ${me.bleed}</span>`); if(me.rupture) b.push(`<span style="color:#ff8a7a">파열 ${me.rupture}</span>`); if(me.sink) b.push(`<span style="color:#8ab0ff">침잠 ${me.sink}</span>`); if(me.burn) b.push(`<span style="color:#ffb35a">화상 ${me.burn}</span>`); if(me.cpDown) b.push(`<span style="color:#ffb35a">손이 무뎌짐(다음 합 코인 위력 -${me.cpDown})</span>`);
       if(me.ember) b.push(`불씨 ${me.ember}`); if(me.gaze) b.push(`시선 ${me.gaze}${me.contempt ? " · 경멸" : ""}`); { const gp = party.find(p=>p.grasp); if(gp) a.push(`${esc(gp.name)}를 움켜쥐고 있다(${gp.grasp})`); }
       if(AB && AB.fuse && foe.fuseMark) a.push(`성냥불 ${Math.max(0, AB.fuse - turn + 1)}턴 남음 → ${esc(foe.fuseMark.name)}`); if(foe.lampMark) a.push(`등불에 홀림: ${esc(foe.lampMark.name)} (${Math.max(0, 3 - turn + 1)}턴 남음)`);
@@ -5893,7 +5896,7 @@ function mgCombat(ctx){
       a.push(...hanaMarkLabel(foe));b.push(...hanaMarkLabel(me));return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function shuffleDeck(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
     function deckOf(me){return me.deck||(me.deck={draw:shuffleDeck([0,0,0,6,6,6,7,7,1,1].map((sk,id)=>({sk,id}))),discard:[],hand:[],held:null,carry:null,turn:0});}
-    function requiredCard(me){if(!AB)return null;if(AB.enrage&&!foe.enraged)return 1;if(AB.movement&&foe.allow===1)return 1;if(AB.movement&&foe.allow===0)return 7;if(AB.movement&&foe.allow===2&&!techReady(me))return 7;if(AB.fuse&&turn===AB.fuse)return 7;if(foe.sign&&BGMK&&BGMK.card!=null)return BGMK.card;return null;}
+    function requiredCard(me){if(!AB)return null;if(AB.enrage&&!foe.enraged)return 1;if(AB.movement)return [7,6,0,6,1][foe.allow];if(AB.fuse&&turn===AB.fuse)return 7;if(foe.sign&&BGMK&&BGMK.card!=null)return BGMK.card;return null;}
     function handOf(me){const d=deckOf(me);if(d.turn===turn)return d;d.turn=turn;d.hand=d.carry?[d.carry]:[];d.held=d.carry?.id??null;d.carry=null;while(d.hand.length<4){if(!d.draw.length){d.draw=shuffleDeck(d.discard.splice(0));}if(!d.draw.length)break;d.hand.push(d.draw.pop());}
       const req=requiredCard(me);if(req!==null&&!d.hand.some(c=>c.sk===req)){for(const pool of [d.draw,d.discard]){const i=pool.findIndex(c=>c.sk===req);const j=d.hand.findIndex(c=>c.id!==d.held);if(i>=0&&j>=0){const card=pool[i];pool[i]=d.hand[j];d.hand[j]=card;break;}}}return d;}
     function closeHands(){party.forEach(me=>{const d=me.deck;if(!d||d.turn!==turn)return;for(const c of d.hand){if(d.carry&&c.id===d.carry.id)continue;d.discard.push(c);}d.hand=[];});}
@@ -5913,6 +5916,7 @@ function mgCombat(ctx){
       const attackButton=(c,i,card)=>{const v=mySkill(basicTrainingSkill(me,c),previewFirst),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" data-card="${card.id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"}${keywordLabel(me,i)} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(v).toFixed(1)} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${listedAmmoBonus?` · 탄환 +${listedAmmoBonus} 이하`:""}</small></button>`;};
       m.ctrl.innerHTML = `<div class="pk-moves">${deck.hand.map(card=>{const i=card.sk===0?0:card.sk===6?1:2;return '<div style="display:flex;flex-direction:column;gap:4px">'+(card.sk===1?'<button data-sk="1" data-card="'+card.id+'"><b>가드</b><small>보호막 +8 (최대 30) · 정신력 +3 · 합 없음</small></button>':attackButton(ak[i],i,card))+'<button data-hold="'+card.id+'" '+(card.id===deck.held?'disabled':'')+'>'+(deck.carry?.id===card.id?'보관 취소':'다음 턴 보관')+'</button></div>';}).join("")}
                 <button data-sk="2" class="pk-tech" ${(!hasBullet&&!tk.sk.def)||!techReady(me)||(tk.T.hana&&me.sp<-27)?"disabled":""}><b>특수 기술 · ${esc(tk.T.n)}</b><small>${!techReady(me)?`<span style="color:#ffb35a">재사용까지 ${techWait(me)}턴</span><br>`:tk.T.hana&&me.sp<-27?`<span style="color:#ffb35a">정신력 소모 불가</span><br>`:""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · 피해 기준 ${techniqueShown} · ${esc(tk.T.d)} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(tsk).toFixed(1)} · 정신력 -${techCost(tk.T)} · ${techCD(me)?`사용 간격 ${techCD(me)}턴`:"재사용 제한 없음"}</small></button></div>`;
+      if(abSwitchAllowed())m.ctrl.insertAdjacentHTML("afterbegin",`<div style="flex:1 1 100%;display:flex;gap:5px;flex-wrap:wrap"><span class="muted">전열 교대 (이번 턴 1회 · 교대 후 직접 행동)</span>${party.map((p,i)=>p.hp>0&&i!==act?`<button data-ab-actor="${i}">${esc(p.name)} · ${WOUND[woundOf(p.hp,p.max)]}</button>`:"").join("")}</div>`);
       { const sb = shinBtn(me); if(sb){ const mv = m.ctrl.querySelector(".pk-moves"),tech=mv&&mv.querySelector(".pk-tech"); if(tech)tech.insertAdjacentHTML("beforebegin",sb); } }
       { const ob = BOSS && BOSS.offerBtn(); if(ob){ const mv = m.ctrl.querySelector(".pk-moves"); if(mv) mv.insertAdjacentHTML("beforeend", ob); } } if(BOSS) bossFx.hud(BOSS.hud(), BOSS.B);
       m.ctrl.insertAdjacentHTML("beforeend", `<div style="flex:1 1 100%;display:flex;gap:5px;flex-wrap:wrap"><span class="muted">투지 ${me.resolve}/100 · 추가 행동(턴당 1회)</span>${[["breath","심호흡",30],["strike","혼신의 일격",50],["last","사즉생",100]].map(([id,n,cost])=>`<button data-resolve="${id}" ${me.resolve<cost||me.resolveTurn===turn||me.resolveBoost?"disabled":""}>${n} (${cost})</button>`).join("")}</div>${ammoGun?`<div style="flex:1 1 100%">${ammunition}${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}">재장전 · ${a.name} (${ammoStock(ammoGun,a.id)}발)</button>`).join("")}</div>`:""}`);
@@ -6045,7 +6049,7 @@ function mgCombat(ctx){
         if(W==="wheels" && foe.hp <= foe.max*0.3){ dmg *= 2; wNote.push("처형 — 피해 2배"); }
         if(W==="logic"){ const ex = wSk.cp*2; dmg += ex; wNote.push(`연사 — 한 발 더(+${ex})`); }
         if(W==="crystal" && R.left){ dmg += R.left*2; wNote.push(`쌍 팔시온 — 남은 코인 ${R.left}개(+${R.left*2})`); }
-        if(AB && AB.movement && (isBasic(si)?0:si) !== foe.allow && !(foe.allow===2&&!techReady(me)&&si===7)){ dmg = Math.round(dmg*(1-abRate(AB,1))); abNote.push(abHigh(AB)?"이번 악장에는 피해의 70%가 소리에 묻혔다":"이번 악장에는 닿지 않았다 — 소리에 묻혔다"); }
+        if(AB&&AB.movement){const allowed=[si===7,si===2||si===6,si===0,si===6,false][foe.allow];if(!allowed){dmg=foe.allow===4?0:Math.round(dmg*(1-abRate(AB,1)));abNote.push(foe.allow===4?"피날레 — 악단에 공격이 닿지 않았다":"이번 악장에는 피해의 70%가 소리에 묻혔다");}}
         if(AB && AB.immune && !(me.f.grade <= 1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.95)))); ammoEffective=0; abNote.push(abHigh(AB)?"칼날이 미끄러진다 — 피해 일부만 전달됐다":"칼날이 미끄러진다 — 거의 통하지 않았다"); }
         if(AB && AB.fx==="spiral"){ if(me.contempt) dmg = Math.round(dmg*(1-abRate(AB,0.3))); else { me.gaze = (me.gaze||0) + 1; dmg = Math.round(dmg*(1 + 0.1*me.gaze)); abNote.push(`시선 ${me.gaze}(피해 +${me.gaze*10}%)`);
             if(me.gaze >= 7){ me.contempt = true; me.hp = Math.max(1, me.hp - abPenalty(AB,15)); abNote.push(`<b style="color:#ff8a7a">나선이 ${esc(me.name)}의 시선마저 경멸했다 — 출혈, 이후 피해 -${Math.round(abRate(AB,0.3)*100)}%</b>`); } }
@@ -6206,7 +6210,8 @@ function mgCombat(ctx){
     }
     m.ctrl.onchange=e=>{if(phase!=="skill")return;const me=party[act];if(e.target.dataset.basicChoice){me.basicChoice=+e.target.value;skillMenu();}else if(e.target.dataset.guardMode&&guardModes[e.target.value]){me.guardMode=e.target.value;skillMenu();}};
     m.ctrl.onclick = e=>{ const b=e.target.closest("button"); if(!b||done) return;
-      if(b.dataset.boss && BOSS){ if(phase==="skill"){ const t2 = b.dataset.boss==="yes" ? BOSS.accept() : BOSS.refuse(); tick = [t2].concat(tick ? [tick] : []).join("<br>"); skillMenu(); } }
+      if(b.dataset.abActor!==undefined){const i=Number(b.dataset.abActor);if(phase==="skill"&&abSwitchAllowed()&&party[i]?.hp>0&&i!==act){act=i;abSwitchTurn=turn;suppressPlan=null;skillMenu();}}
+      else if(b.dataset.boss && BOSS){ if(phase==="skill"){ const t2 = b.dataset.boss==="yes" ? BOSS.accept() : BOSS.refuse(); tick = [t2].concat(tick ? [tick] : []).join("<br>"); skillMenu(); } }
       else if(b.dataset.hold!==undefined&&phase==="skill"){const d=handOf(party[act]),c=d.hand.find(c=>c.id===Number(b.dataset.hold));if(c&&c.id!==d.held){d.carry=d.carry?.id===c.id?null:c;skillMenu();}}
       else if(b.dataset.resolve){if(phase==="skill")resolveAction(b.dataset.resolve);}
       else if(b.dataset.sk==="4"){ if(phase==="skill") shinAct(); }
@@ -7251,7 +7256,7 @@ const ABNOS = [
    gifts:{a:{n:"초록 안대", mpRed:0.06, bonus:{tec:3}}, b:{n:"진군", hpRed:0.03, bonus:{agi:3,str:2}}}},
   {id:"stitchbear", n:"실밥 터진 테디", base:"teddy", risk:"HE", code:"T-04-15-03", g:[4,3], form:"배가 세로로 갈라진 커다란 곰 인형. 터진 솜이 흘러나오고, 벌린 두 팔 사이의 빈 품이 무언가를 채우려 한다", look:"배가 갈라진 곰 인형이 터진 솜을 흘리며, 비어 버린 품을 채울 것을 찾는다",
    rumor:"헌 옷 수거함 옆에 배가 세로로 갈라진 곰 인형이 버려져 있었다. 터진 솜이 흘러나오고, 벌린 두 팔 사이가 텅 비어 있다. 그 인형을 주워 간 집의 아이가 밤마다 숨이 막혀 깬다. 처리해 달라", pref:PF("agi>tec>str>wil"), ctr:3, rule:"teddy",
-   escape:"같은 사람이 연달아 다가가면 그를 끌어안아 터진 품을 채우려 한다. 카운터가 다하면 가장 가까운 이를 끌어안으러 온다",
+   escape:"처음 바느질을 시작한 사람이 연달아 다가가면 얌전히 기다린다. 다른 사람이 중간에 다가오면 실밥을 뜯고 그를 끌어안는다. 카운터가 다하면 가장 가까운 이를 끌어안으러 온다",
    story:"분실물 신고서\n품목: 곰 인형(갈색, 대형). 배 부분이 세로로 크게 터져 있음.\n특징: 안아 주면 조용해짐. 안아 주지 않으면 계속 따라옴.\n분실 장소: 모름. 인형이 스스로 나갔음.\n신고인 비고: 찾지 않으셔도 됩니다. 돌려받고 싶지 않습니다.\n혹시 찾으시더라도, 그 애를 너무 오래 안아 주지는 마세요. 아무리 안아도 채워지지 않거든요. 저는 그걸 너무 늦게 알았어요.",
    like:"곰 인형이 팔을 내린다", dislike:"터진 배에서 솜이 쏟아진다",
    cards:[{n:"끌어안기",a:3,b:12},{n:"솜 쏟기",a:4,b:9},{n:"폭신한 몸",a:5,b:8,def:true}], hp:1.2,
@@ -7534,7 +7539,7 @@ const ABNO_SIGN = {
     ok:{mood:8}, okT:"손끝을 거두었다. 포큐버스가 아쉬운 듯 가시를 접는다", bad:{mp:0.07}, badT:"가시 끝을 살짝 스치고 말았다 — 머리가 멍하다", missT:"아무도 손을 거두지 않았다. 가시가 한 뼘 더 자란다",
     rage:{t:"가시가 사방으로 돋으며 달콤한 독을 흩뿌린다", btn:"쾌감을 뿌리친다", okT:"숨을 참고 독을 털어 냈다", missT:"가시가 모두를 찔렀다 — 쾌감과 통증이 함께 번진다", sp:6, hp:4}},
   redshoes:{t:()=>"빨간 구두가 누군가를 부르듯 또각, 또각 박자를 맞춘다", btn:"구두에서 눈을 뗀다", d:"재주(자제) 판정 · 홀리면 신어 보고 싶어진다", chk:"tec",
-    ok:{mood:8}, okT:"고개를 돌렸다. 구두 소리가 멎는다", bad:{mp:0.07}, badT:"구두 굽이 자꾸 눈에 밟힌다 — 발끝이 근질거린다", missT:"구두 소리가 점점 빨라진다. 누군가의 발이 박자를 따라간다"},
+    ok:{mood:8}, okT:"고개를 돌렸다. 구두 소리가 멎는다", bad:{mp:0.07}, badT:"구두 굽이 자꾸 눈에 밟힌다 — 발끝이 근질거린다", missT:"구두 소리가 점점 빨라진다. 누군가의 발이 박자를 따라간다",rage:{t:"구두를 신은 이가 도끼를 휘두르며 발을 구른다",okT:"발목을 지탱하는 자세가 무너졌다. 구두를 벗길 틈이 생겼다",missT:"구두의 박자에 휘말려 도끼가 일행을 스쳤다",sp:4,hp:5}},
   grudgeshooter:{t:()=>"사수가 조준경 너머로 누군가를 오래 겨눈다. 손가락이 방아쇠에 걸린다", btn:"엄폐한다", d:"민첩 판정 · 늦으면 총알이 스친다", chk:"agi",
     ok:{mood:6}, okT:"엄폐물 뒤로 몸을 숨겼다. 사수가 조준을 거둔다", bad:{mp:0.04, hurt:0.07}, badT:"총알이 어깨를 스쳤다", missT:"아무도 숨지 않았다. 사수의 눈에 옛 전장이 겹친다",
     rage:{t:"흉탄이 장전되는 소리가 울린다", btn:"엄폐한다", okT:"모두 엄폐물 뒤로 몸을 던졌다", missT:"흉탄이 쏟아졌다", sp:3, hp:7}},
@@ -7647,7 +7652,7 @@ const AB_WORK_ACTION = Object.freeze({
   grudgeshooter:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(k==='tec'&&!G.pendant||k==='wil'&&G.pendant),
   carousel:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(k==='str'&&redHP(f)>0||k==='wil'),
   greenboots:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(k==='agi'&&G.prevWork!=='agi'||k==='tec'&&G.prevWork==='agi'),
-  stitchbear:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(prev===f.id&&k==='tec'||freeT().length===1&&k==='tec'||prev!==f.id&&k==='wil'),
+  stitchbear:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(k==='tec'&&(prev==null||prev===f.id||freeT().length===1)),
   mothwedding:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(k==='wil'&&power(f,['str'])<=q.req*1.5||k==='tec'&&power(f,['str'])<=q.req),
   biik:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(!G.pair?k==='wil':G.pair.includes(f.id)&&prev!==f.id),
   skel:({k,f,prev,G,target,q,freeT,power,redHP,blessedF,flameOf,hasCoat,a})=>(k==='wil'&&G.prevWork!=='agi'||k==='str'&&G.prevWork==='agi'),
@@ -7685,10 +7690,11 @@ const AB_BATTLE_ACTION = Object.freeze({
   bari:{card:1,tell:"피살이꽃이 벌어진 상처를 향해 줄기를 뻗는다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard),apply:({me,foe,party})=>{me.bleed=0;me.shield=Math.min(30,(me.shield||0)+4);}},
   ichthys:{card:7,tell:"물주머니가 팽팽해져 얇은 막 너머로 붉은 물이 보인다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&total>=Math.max(5,Math.floor(foe.baseDamage*.4))),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
   porccubus:{card:0,tell:"가시 끝이 달콤하게 빛난다. 깊이 닿을수록 손이 떨어지지 않을 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&si===0&&me.sp<35),apply:({me,foe,party})=>{me.sp=clamp(me.sp-2,-45,45);foe.down=Math.max(foe.down||0,1);}},
+  redshoes:{card:0,tell:"도끼를 쥔 사람이 발뒤꿈치를 들고 휘청인다. 몸통보다 발의 움직임이 먼저 보인다.",check:({si,hit})=>hit&&si===0,apply:({foe})=>{foe.coinDown=Math.max(foe.coinDown||0,2);}},
   grudgeshooter:{card:1,tell:"총구가 직전의 몸짓을 따라간다. 조준선이 잠깐 비어 있다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&(!last||last.si!==1)),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,2);}},
   carousel:{card:6,tell:"목마가 정면으로 기울고 옆구리의 가시가 벌어진다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&si===6),apply:({me,foe,party})=>{foe.down=Math.max(foe.down||0,2);}},
   greenboots:{card:null,tell:"장화가 직전 동작과 같은 박자로 발을 구른다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&(!last||last.si!==si)&&si!==7),apply:({me,foe,party})=>{foe.daze=Math.max(foe.daze||0,1);}},
-  stitchbear:{card:1,tell:"곰의 빈 품이 직전 상대를 더듬는다. 낯선 쪽에는 팔을 늦게 뻗는다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&(!last||last.me!==me||party.filter(p=>p.hp>0).length===1)),apply:({me,foe,party})=>{me.sp=clamp(me.sp+2,-45,45);foe.down=Math.max(foe.down||0,1);}},
+  stitchbear:{card:1,tell:"곰이 익숙한 손길을 찾아 팔을 벌린다. 낯선 사람이 다가가면 실밥을 잡아뜯을 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&(!last||last.me===me||party.filter(p=>p.hp>0).length===1)),apply:({me,foe,party})=>{me.sp=clamp(me.sp+2,-45,45);foe.down=Math.max(foe.down||0,1);}},
   mothwedding:{card:1,tell:"나방 떼가 날갯짓을 멈춘 이의 머리 위에서 방향을 잃는다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&(!last||last.si!==1)),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
   biik:{card:null,tell:"한쪽 날개가 상대를 따라 돌아섰다. 반대편이 비어 있다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&(!last||last.me!==me||party.filter(p=>p.hp>0).length===1)),apply:({me,foe,party})=>{foe.down=Math.max(foe.down||0,1);}},
   skel:{card:1,tell:"고래가 정면으로 그림자를 넓힌다. 옆을 향하면 길도 함께 사라진다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard),apply:({me,foe,party})=>{me.shield=Math.min(30,(me.shield||0)+5);}},
@@ -7704,7 +7710,7 @@ const AB_BATTLE_ACTION = Object.freeze({
   dosan:{card:1,tell:"사살을 많이 한 사람의 발밑부터 칼끝이 솟는다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&(me.f.life?.kill||0)===Math.min(...party.filter(p=>p.hp>0).map(p=>p.f.life?.kill||0))),apply:({me,foe,party})=>{me.shield=Math.min(30,(me.shield||0)+4);}},
   bloodtear:{card:null,tell:"아비가 상처 깊은 사람의 피를 좇는다. 피가 충분한 사람이 나설 틈이다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(hit&&total>0&&me.hp>me.max*.4),apply:({me,foe,party})=>{foe.bleed=Math.min(9,(foe.bleed||0)+2);}},
   nails:{card:null,tell:"손가락 하나가 접히기 전, 그 손가락의 법을 다시 집행하려는 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(turn%5===1?hit&&me.f.grade===Math.min(...party.filter(p=>p.hp>0).map(p=>p.f.grade)):turn%5===2?hit&&si===7:turn%5===3?guard:turn%5===4?hit&&si===2:guard||hit&&si===0),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
-  orchestra:{card:null,tell:"지휘봉의 박자가 바뀐다. 이전 악장과 다른 몸짓이 필요한 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(foe.allow===1?guard:foe.allow===2?hit&&(si===2||si===7):hit&&isBasic(si)),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
+  orchestra:{card:null,tell:"지휘봉의 박자가 바뀐다. 이전 악장과 다른 몸짓이 필요한 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(foe.allow===4?guard:hit&&[si===7,si===2||si===6,si===0,si===6][foe.allow]),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
   bluestar:{card:1,tell:"푸른 맥박에 발끝이 들린다. 자세를 바로 세운 이만 버틸 수 있을 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&me.sp>=0),apply:({me,foe,party})=>{party.filter(p=>p.hp>0).forEach(p=>p.sp=clamp(p.sp+2,-45,45));}},
   nothing:{card:1,tell:"동료의 목소리가 끊기고 팔이 칼날처럼 변한다. 정면에서 받아치거나 몸을 지켜야 할 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard||hit&&egoHasWeapon(me.f.ego)),apply:({me,foe,party})=>{foe.coinDown=Math.max(foe.coinDown||0,1);}},
   sun:{card:null,tell:"열기가 외투 안쪽에 갇힌다. 큰 동작은 열기를 더 부를 듯하다.",check:({si,me,hit,guard,last,total,foe,party,turn,isBasic,techReady})=>(guard&&!me.f.gear.armor||hit&&si===0),apply:({me,foe,party})=>{me.burn=Math.max(0,(me.burn||0)-3);}},
@@ -8226,7 +8232,7 @@ function mgAbno(ctx){
     // 오래 남는 기믹: 기사의 축복을 받은 이는 행동할 수 없다 · 용기의 불꽃을 지닌 이가 재주 행동을 하면 목이 떨어진다
     const blessedF = f => f.ab && f.ab.bless && S.day <= f.ab.bless.until, flameOf = f => f.ab && f.ab.flame ? f.ab.flame.lv : 0;
     const benched = f => G.bench.includes(f.id), freeT = () => ctx.team.filter(f=>!benched(f));
-    const best = k => { const T = freeT().length ? freeT() : ctx.team, ok = T.filter(f=>!blessedF(f) && !(k==="tec" && flameOf(f)) && !(a.rule==="teddy" && T.length > 1 && f.id===G.last)), pool = ok.length ? ok : T.filter(f=>!blessedF(f)).length ? T.filter(f=>!blessedF(f)) : T;
+    const best = k => { const T = freeT().length ? freeT() : ctx.team, ok = T.filter(f=>!blessedF(f) && !(k==="tec" && flameOf(f)) && !(a.rule==="teddy" && T.length > 1 && G.last!=null && (a.id==="stitchbear"?f.id!==G.last:f.id===G.last))), pool = ok.length ? ok : T.filter(f=>!blessedF(f)).length ? T.filter(f=>!blessedF(f)) : T;
       return pool.slice().sort((x,y)=>power(y,[k]) - power(x,[k]))[0]; };
     const workerFor = k => { if(G.babel!=null){ const b = ctx.team.find(f=>f.id===G.babel && !benched(f)); if(b) return b; }
       const p = G.pick!=null ? ctx.team.find(f=>f.id===G.pick && !benched(f)) : null; return p || best(k); };
@@ -8387,9 +8393,9 @@ function mgAbno(ctx){
       // 즉시 재앙 규칙
       if(a.rule==="teddy" && prev===f.id && freeT().length > 1 && a.gentle){ ctrDown(); say(line + `<span style="color:#e0c64a">같은 사람이 연달아 다가왔다 — 곰 인형이 ${esc(jo(f.name,"을"))} 꼭 끌어안았다가 놓아주었다</span> · ${ctrName} -1`);
         if(G.ctr <= 0) return breach(f); return menu(); }
-      if(a.rule==="teddy" && prev===f.id && freeT().length > 1){
+      if(a.rule==="teddy" && prev!=null && (a.id==="stitchbear"?prev!==f.id:prev===f.id) && freeT().length > 1){
         if(a.noFight){ say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다</span>`); return doom(f); }
-        maimOf(f); ctrDown(); say(line + `<span style="color:#ff8a7a">같은 사람이 연달아 다가왔다 — ${esc(jo(f.name,"을"))} 꼭 끌어안았다(중상)</span> · ${ctrName} -1`);
+        maimOf(f); ctrDown(); say(line + `<span style="color:#ff8a7a">${a.id==="stitchbear"?"낯선 손에 실밥을 뜯었다":"같은 사람이 연달아 다가왔다"} — ${esc(jo(f.name,"을"))} 꼭 끌어안았다(중상)</span> · ${ctrName} -1`);
         if(G.ctr <= 0) return breach(f); return menu(); }
       if(a.rule==="killWork" && k===a.killK){ say(line + `<span style="color:#ff8a7a">${esc(a.dislike)}</span>`); return doom(f); }
       const slip = Math.random() >= sp;
