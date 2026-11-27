@@ -26,6 +26,51 @@ test('기존 저장 키와 저장 파일 호환',()=>{
   assert.match(game,/const SAVE_KEY = "problem-solver-office-save-v1"/);
   for(const word of ['problem-solver-backup','data-x="download"','data-x="file"','S.rentArrears','S.scarWeekDue'])assert.ok(game.includes(word),word);
 });
+test('사무소 이야기는 하루에 한 편만 열리고 참여 동료가 바뀐다',async()=>{
+  const timers=[], scenes=[];
+  const members=[
+    {id:1,name:'대표',isLeader:true,hp:100},
+    {id:2,name:'민준',personality:'신중함',hp:100},
+    {id:3,name:'유나',personality:'다정함',hp:100},
+    {id:4,name:'부상자',personality:'냉소',hp:0}
+  ];
+  let pickIndex=0;
+  const cx={
+    S:{day:60,fixers:members,requests:[],records:[],officeStory:{dialoguePending:['emptyRoster','tollReceipt']}},
+    save(){}, render(){}, addLog(){}, changeFixerTrust(){}, modalStack:[],
+    document:{querySelector:()=>null,body:{classList:{contains:()=>false}}},
+    setTimeout(fn){ return timers.push(fn); },
+    pick(list){ assert.deepEqual(Array.from(list),members.slice(1,3)); return list[pickIndex]; },
+    async vnPlay(title,lines,ask,options){ scenes.push({title,lines}); return options[0]; }
+  };
+  vm.createContext(cx);
+  const schedule=()=>vm.runInContext('officeStoryModule.schedule()',cx);
+  vm.runInContext(section('const officeStoryModule =','/* ================= 의뢰 생성'),cx);
+  schedule();
+  schedule();
+  assert.equal(timers.length,1);
+  await timers.shift()();
+  assert.equal(cx.S.officeStory.lastStoryDay,60);
+  assert.equal(timers.length,0);
+  assert.deepEqual(Array.from(cx.S.officeStory.dialoguePending),['tollReceipt']);
+  assert.ok(scenes[0].lines.some(([name,line])=>name==='민준' && line.includes('길목에 표시')));
+
+  cx.S=JSON.parse(JSON.stringify(cx.S));
+  schedule();
+  assert.equal(timers.length,0);
+  cx.S.day++;
+  pickIndex=1;
+  schedule();
+  await timers.shift()();
+  assert.equal(scenes[1].title,'장 마감 전 한 시간');
+  assert.ok(scenes[1].lines.some(([name,line])=>name==='유나' && line.includes('손수레 끌고')));
+  assert.equal(timers.length,0);
+  cx.S.day++;
+  schedule();
+  await timers.shift()();
+  assert.equal(scenes[2].title,'가판대 밑 영수증');
+  assert.equal(timers.length,0);
+});
 test('사무소 심사는 대표 해결사 급수보다 앞서갈 수 없다',()=>{
   const cx={Math,gName:n=>n+'급',OFFICE_DIRECT_NEED:5,OFFICE_ROSTER_NEED:2,OFFICE_FALLBACK_OK:2};
   vm.createContext(cx);vm.runInContext(section('function officeReviewStatus(','function reviewProgressHtml('),cx);

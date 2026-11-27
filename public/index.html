@@ -1673,7 +1673,8 @@ const CHANGELOG = [
     "환상체마다 현장 선택지를 추가했습니다. 일부 선택의 보상으로 선택 기프트를 얻을 수 있습니다. ALEPH 조우에서는 통제·제압·철수에 따른 결과와 전투 징후의 대응법을 안내합니다.",
     "일반 의뢰와 고위험 의뢰의 권장 인원을 나눴습니다. 여러 명이 출동하면 전열 교대와 엄호를 사용할 수 있으며, 후열의 부상은 실제로 받은 피해에 따라 정산합니다.",
     "츠바이·시·리우·세븐·디에치 협회, 주변 사무소, 콩콩이파, 검지와 얽힌 일을 동료와의 대화와 선택으로 풀어가는 사건을 추가했습니다.",
-    "해결사와 사무소의 고등급 승급에 고위험 의뢰 실적을 반영합니다. 사무소 심사에서는 단체 출동 실적을 확인합니다."
+    "해결사와 사무소의 고등급 승급에 고위험 의뢰 실적을 반영합니다. 사무소 심사에서는 단체 출동 실적을 확인합니다.",
+    "사무소 이야기가 같은 날 몰려 나오지 않도록 조정했습니다. 방문객에게 답하는 동료는 이야기마다 달라지며, 성격에 따라 대사도 달라집니다."
   ]],
   ["v.a3.1.5.1", ["환상체 전투 징후마다 현재 전투원이 사용할 단 하나의 대응 카드와 성공 조건을 직접 표시. 방어는 방어(가드), 공격은 약공·보통 공격·강공으로 명시.", "징후 안내·실제 파훼 판정·필수 카드 손패 보장을 통합. 숨은 조건 제거, 탄창이 비면 징후 대응을 방어로 전환. 환상체 도감과 악장별 안내도 동기화. 기존 피해·보상·일반 전투 덱 유지."]],
   ["v.a3.1.4.8", ["해결사 목록 및 영입 화면의 능력치와 총합에 현재 적용 중인 장비 보정치를 합산하여 표시.", "관리에서는 기본 능력치 옆에 장비 보정치를 초록색 (+수치) 또는 빨간색 (-수치)으로 표시. 기존 성장 및 전투 판정은 유지."]],
@@ -2682,7 +2683,12 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   async function reactToAsk(f, yes){ if(!f) return; const L = askReact[f.personality] || ["고마워요.","…알겠어요."];
     await modal(`${escapeText(f.name)}의 대답`, `<p>"${escapeText(L[yes?0:1])}"</p>`, [{t:"확인", primary:true}]);
     if(yes) changeFixerTrust(f, 2, "개인적인 부탁을 들어주었다"); }
-  const mealTalk = ["오랜만에 국물 있는 거 먹으니까 살 것 같네요. 이 도시에서 따뜻한 밥 한 끼는 사치거든요.","한 달 버틴 사무소가 생각보다 많지 않대요. 우린 그중 하나네요.","다음 달에도 이렇게 다 같이 앉아 있었으면 좋겠어요."];
+  const mealTalk = [
+    "다음 달에도 옵시다. 그때는 뒤에 붙은 큰 상으로 잡고요.",
+    "장부에 식비는 제가 적어 둘게요. 오늘은 식기 전에 드세요.",
+    "다음 달에도 이렇게 다 같이 앉아 있었으면 좋겠어요.",
+    "이번 달에 제일 마음에 드는 지출이네요. 계산서는 국물 다 먹고 보시죠."
+  ];
 
   function state(){
     if(!S) return null;
@@ -2761,6 +2767,87 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       accept:[["","종이 모서리가 자꾸 말린다. 동료가 영수증 통으로 받쳐 둔다."],["colleague","이러면 밖에서도 흰 쪽만 보입니다. 이제 문 닫을까요?"]],
       refuse:[["colleague","그럼 걸어 둘게요."],["","동료는 달력을 벽 쪽에 붙이고, 내일 아침 혼자 문을 열던 순번을 바꾼다."]]}
   };
+  // 선택에 필요한 사실은 같지만, 동료마다 먼저 확인하는 것이 다르다.
+  const cityVoices = {
+    sharedContract:[
+      "동문은 저희가 맡죠. 동문에서 짐을 잃으면 누가 물어냅니까?",
+      "인수증에 두 사무소 이름이 있네요. 동문에서 잃어버린 짐도 공동 책임입니까?",
+      "서문 쪽 사람들한테 동문 짐값까지 물릴 순 없잖아요. 책임도 문마다 나눌까요?",
+      "보수는 동문 몫만 준다면서요. 짐 잃으면 그때는 두 사무소 이름 다 쓸 겁니까?"
+    ],
+    crossingCover:[
+      "제가 저녁에 나갑니다. 건널목에서 누구한테 가면 됩니까?",
+      "저녁 당번은 접니다. 건널목에서 누구 이름을 대면 되죠?",
+      "저녁엔 제가 나가요. 건널목에 계신 분 성함부터 알려 주실래요?",
+      "저녁에 나갈 건 접니다. 괜히 낯선 사람 붙잡지 않게 이름이나 알려 주세요."
+    ],
+    emptyRoster:[
+      "큰길부터 표시합시다. 해 지기 전에 손님들 눈에 띄어야죠.",
+      "큰길만 보호 범위라면 지도 대신 길목에 표시를 붙여야 하지 않을까요?",
+      "모르고 골목으로 들어가는 사람이 또 있겠어요. 큰길이 안전하다고 먼저 알려요.",
+      "계약서 속 선을 장 보러 나온 사람이 어떻게 봅니까. 큰길에 간판부터 세우죠."
+    ],
+    returnWatch:[
+      "손수레 치우는 분들은 마감 지나도 남습니다. 그쪽에도 바로 알려야겠는데요.",
+      "어제 마감 뒤에도 손수레 세 대가 남았습니다. 정리하는 분들에게도 새 시간이 전달됐습니까?",
+      "마감하고 손수레 끌고 가는 분들도 순찰이 끝나는 시각을 알아야 해요.",
+      "장만 닫는다고 손수레까지 사라지진 않아요. 정리하는 사람도 그 얘길 들었습니까?"
+    ],
+    tollReceipt:[
+      "종이는 가져가세요. 여기선 번호면 됩니다.",
+      "원본이 사라지면 누가 가져갔는지 알아낼 수도 있겠네요. 번호만 기록할까요?",
+      "두고 가셨다가 곤란해지면 안 되죠. 번호만 받아도 괜찮을까요?",
+      "원본 들고 있다간 저희한테도 찾아오겠네요. 번호만 적죠."
+    ],
+    markedStorehouse:[
+      "창고는 찾았네요. 사람 이름은 빼고 번호만 넘길까요?",
+      "창고 번호는 맞지만 돈 받은 사람은 확인이 안 됐습니다. 확인된 것만 적을까요?",
+      "괜한 사람한테 책임이 가면 안 돼요. 창고 번호까지만 전하죠.",
+      "번호 하나로 누굴 찍으면 그 뒤끝까지 저희 몫입니다. 창고만 적죠."
+    ],
+    missingPage:[
+      "도장을 들고 나가는 건 봤습니다. 찍는 걸 봤다고는 못 씁니다.",
+      "도장을 가져간 시점은 증언할 수 있습니다. 찍은 사람은 확인 못 했어요.",
+      "도장을 들고 나갔다는 이유로 그 사람이 찍었다고 쓰면 안 돼요. 저희도 그 장면은 못 봤어요.",
+      "저희는 도장을 가져가는 데까지만 봤어요. 그 뒤까지 증언하길 바라면 다른 사람한테 물으세요."
+    ],
+    closedLedger:[
+      "전에 와서 점검하던 사람이 비슷한 걸 들고 있었습니다. 그쪽에 물어보죠.",
+      "지난번 점검 때 비슷한 장부를 봤습니다. 점검 날짜부터 찾아볼까요?",
+      "전에 여기 점검 오신 분이 비슷한 걸 들고 계셨어요. 연락이 닿으면 물어볼 수 있겠네요.",
+      "비슷한 장부를 들고 온 점검원이 있었죠. 아직 그 일을 한다면 물어보면 되겠네요."
+    ],
+    freightGate:[
+      "빈자리에 저희 사람 하나 보낼 순 있죠. 가서 누구랑 합을 맞춥니까?",
+      "한 명을 보낸다면 합류 위치와 옆에 설 사람부터 알아야 합니다.",
+      "손 다친 분은 어쩌고요? 저희가 사람을 보내면 그분하고 어떻게 움직이죠?",
+      "머릿수는 채울 수 있죠. 서로 발 밟을 일 없게 조부터 알려 주시죠."
+    ],
+    sealedRoom:[
+      "열쇠는 드릴 수 있습니다. 누가 썼는지는 방 주인한테 말해야 해요.",
+      "건너편 가게에서 빌린 방입니다. 사용자를 명부에 남길 수 있습니까?",
+      "방 주인이 저를 믿고 빌려준 거라서요. 누가 다녀갔는지는 알려 드려야 해요.",
+      "건너편 가게 방입니다. 누가 썼냐고 주인이 물으면 제 입으로 답해야 하고요."
+    ],
+    borrowedCart:[
+      "사람 필요하면 부르죠. 무슨 일인지는 그때 얘기해도 됩니까?",
+      "지원은 고맙습니다. 다음에 용도와 시간을 먼저 알려 드려도 될까요?",
+      "바퀴도 고쳐 주셨는데 사람이 꼭 필요할 때 연락드릴게요. 그땐 무슨 일인지 먼저 말씀드리고요.",
+      "사람까지 외상으로 달아 둘 필요는 없죠. 일 생기면 그때 얘기해도 됩니까?"
+    ],
+    indexSeal:[
+      "누가 보러 옵니까? 언제요?",
+      "방문 시각이나 전달받을 사람은 적혀 있습니까?",
+      "누가 오기로 했으면 문을 열어 둬야 할까요?",
+      "달력 보러 올 사람이 있긴 합니까? 시각이라도 알려 주시죠."
+    ]
+  };
+  const cityVoiceFor = {
+    "공격적":0,"충동적":0,"오만함":0,"광기":0,
+    "신중함":1,"침착함":1,"집요함":1,"소심함":1,
+    "헌신":2,"낙천적":2,"정의감":2,"다정함":2,
+    "냉소":3,"비관적":3,"탐욕":3,"무심함":3
+  };
   function restoreDialogueCases(d){
     const pending = d.requests.filter(q=>Object.hasOwn(cityCases,q.officeStoryId));
     if(!pending.length) return;
@@ -2783,11 +2870,15 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     const c = cityCases[id], d = state();
     const office = c.neighbor ? initSurroundings().offices.find(o=>!o.closed && (id!=="crossingCover" || o.id===d.sharedOffice)) : null;
     if(c.neighbor && !office){ d.dialoguePending=(d.dialoguePending||[]).filter(key=>key!==id); d.seen[id]=true; save(); return; }
-    const colleague = S.fixers.find(f=>!f.isLeader && f.hp>0);
+    const colleague = pick(S.fixers.filter(f=>!f.isLeader && f.hp>0));
     const speaker = office?.name || c.speaker;
     const lines = rows=>rows.map(([who,line])=>[who==="visitor"?speaker:who==="colleague"?(colleague?.name||"대표"):who,line]);
     const dialogue = c.lines.slice();
+    const reply = dialogue.findIndex(([who])=>who==="colleague");
+    const voiced = cityVoices[id]?.[cityVoiceFor[colleague?.personality]];
+    if(reply>=0 && voiced) dialogue[reply]=["colleague",voiced];
     if(c.order) dialogue.splice(2,0,["",`「${c.order}」`]);
+    beginStory(d);
     const selected = await vnPlay(c.title,lines(dialogue),
       c.prescript?"지령을 거절하면 사무소 인원의 체력이 감소한다.":"어떻게 답할까?",
       [{k:"accept",t:c.yes,after:lines(c.accept)},{k:"refuse",t:c.no,after:lines(c.refuse)}]);
@@ -2813,6 +2904,10 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   function addStoryLog(title,txt){
     S.records.push({day:S.day,name:S.officeName,what:"사무소 이야기",note:title});
     addLog(`[사무소 이야기] ${title}${txt?" · "+txt:""}`);
+  }
+  function beginStory(d){
+    d.lastStoryDay = S.day;
+    save();
   }
   function personalCase(f,which){
     const k=f.precious&&f.precious.kind||"목표", n=f.name, t=f.precious&&f.precious.text||"소중한 것";
@@ -2848,13 +2943,15 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   function next(){
     if(!S||S.over||S.ending) return null;
     const d=state(), ff=founders();
+    if(d.lastStoryDay===S.day || d.afterDay===S.day ||
+      (d.lastStoryDay==null && S.records.some(r=>r.day===S.day && r.what==="사무소 이야기"))) return null;
     const due = d.followups.find(item=>!item.dueDay || item.dueDay<=S.day);
     if(due) return {kind:"followup",item:due};
-    const canShow = id=>!cityCases[id].prescript || !(S.idx?.closed || S.idx?.cur || S.idx?.done>=3 || S.requests.some(q=>q.prescript));
+    const canShow = id=>cityCases[id] && (!cityCases[id].prescript || !(S.idx?.closed || S.idx?.cur || S.idx?.done>=3 || S.requests.some(q=>q.prescript)));
     const pending = d.dialoguePending?.find(canShow);
     if(pending) return {kind:"city",id:pending};
     for(const [day,id] of calendar){
-      if(S.day!==day||d.seen[id]) continue;
+      if(S.day<day||d.seen[id]) continue;
       if((id==="intro"&&(!ff[0]||!ff[1]))||(id==="week2"&&!ff[0])||(id==="week3"&&!ff[1])){
         d.seen[id]=true; save(); continue;
       }
@@ -2886,7 +2983,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     timer=setTimeout(async()=>{
       timer=null;
       if(!S||S.over||busy) return;
-      if(S.ending||modalStack.length||document.querySelector(".vn:not(.out)")||document.body.classList.contains("on-title")){
+      if(S.ending||modalStack.length||document.querySelector(".vn:not(.out), .mg-bg, .relic-fx, .cls, .endcard")||document.body.classList.contains("on-title")){
         timer=setTimeout(()=>{timer=null;schedule();},950);
         return;
       }
@@ -2904,8 +3001,9 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     if(event.kind==="followup"){
       const f=event.item, city = cityCases[f.id];
       if(city){
-        d.followups.splice(d.followups.indexOf(f),1);
         if(f.result==="success" && city.next && !d.seen[city.next]) await offerCityCase(city.next);
+        if(f.result==="success" && city.next && !d.seen[city.next]) return;
+        d.followups.splice(d.followups.indexOf(f),1);
         save();
         return;
       }
@@ -2933,7 +3031,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       const body=R[f.id]||R._||(f.result==="success"?"일은 잘 마무리됐다.":"바라던 결과는 얻지 못했다.");
       const suffix=personal ? (f.result==="success" ? `${Nn} 대표를 보고 작게 고개를 끄덕였다.` : "") : (f.result==="success" ? "동료들은 다음 의뢰서를 집어 들었다." : "동료들은 아무 말 없이 다음 의뢰서를 펼쳤다.");
       addStoryLog("의뢰 후일담",`${titleOf(f.id)} · ${f.result==="success"?"완료":f.result==="expired"?"기한 초과":"실패"}`);
-      save();
+      beginStory(d);
       await modal(`사무소 이야기 · ${titleOf(f.id)} — 후일담`,`<p>${body}</p>${suffix?`<p>${suffix}</p>`:""}`,[{t:"확인",primary:true}]);
       return;
     }
@@ -2950,13 +3048,13 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       else if(id==="trustedOffice"){heading="다시 찾아오는 사람들";body="한동안 보이지 않던 손님이 새 의뢰서를 들고 왔다. '여기는 맡은 일을 끝내 주니까요.' 누군가 접수대에 따뜻한 음료 세 잔을 놓고 갔다. 신뢰는 이렇게 조금씩 쌓인다.";}
       else return;
       addStoryLog(heading);
-      save();
+      beginStory(d);
       await modal(`사무소 이야기 · ${heading}`,`<p>${body}</p><p class="muted">${S.day}일차 · ${escapeText(S.officeName)}</p>`,[{t:"다음 의뢰를 확인한다",primary:true}]);
       return;
     }
     if(event.kind!=="calendar") return;
     d.seen[id]=true;
-    addStoryLog(titleOf(id)); save();
+    addStoryLog(titleOf(id)); beginStory(d);
     if(id==="intro"){
       const a=ff[0],b=ff[1],aName=escapeText(a.name),bName=escapeText(b.name);
       await modal("첫날 · 우리 사무소",`<p>${aName}${escapeText(josa(a.name,"이","가").slice(a.name.length))} 대표에게 말을 건다.</p><p>"${escapeText(introLines[a.personality]||"그러니까... 이게 저희 사무소라는 말씀이죠? 대표님 덕도 다 보나 봅니다. 아무튼 잘해 보죠.")}"</p><p>${bName}${escapeText(josa(b.name,"이","가").slice(b.name.length))} 고개를 끄덕이며 맞장구친다.</p><p>"${escapeText(replies[b.personality]||"네. 일단 첫 의뢰부터 받아 봐야겠네요.")}"</p>`,[{t:"첫 의뢰를 살펴본다",primary:true}]);
@@ -2976,11 +3074,11 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       if(choice==="yes"){const c=personalCase(f,3);postRequest(id,c.kind,c.attrs,c.client,c.text,f.id,c.scene);}
       await reactToAsk(f, choice==="yes");
     }else if(id==="month1"){
-      const members=S.fixers.filter(f=>!f.isLeader);
+      const members=S.fixers.filter(f=>!f.isLeader && f.hp>0);
       const intro=`<p>개업하고 한 달이 지났다. 현재 자금은 <b>${won(S.money)}</b>, 남은 빚은 <b>${won(S.debt)}</b>이다.</p><p>${S.money>=10000?"동료들이 오늘 하루만큼은 다 같이 밥이나 먹자고 했다.":"동료들은 오늘도 아껴 써야 한다며 장부를 펼쳤다."}</p>`;
       const choice=await modal("1달째 · 한 달의 장부",intro,[{t:"각자 쉬게 한다",v:"rest"},{t:"장부를 정리한다",v:"ledger",primary:true},...(S.money>=1500?[{t:"함께 식사한다 (1,500안)",v:"meal"}]:[])]);
       if(choice==="meal"&&S.money>=1500){S.money-=1500;members.forEach(f=>changeFixerTrust(f,2,"한 달 기념 식사"));addLog("동료들과 식사했다. 식비 1,500안");
-        const sp=members.length?pick(members):null; if(sp) await modal("한 달 기념 식사",`<p>골목 국밥집 구석 자리에 다 같이 둘러앉았다. 김이 오르는 그릇 너머로, ${escapeText(sp.name)}${escapeText(josa(sp.name,"이","가").slice(sp.name.length))} 숟가락을 내려놓았다.</p><p>"${escapeText(pick(mealTalk))}"</p>`,[{t:"확인",primary:true}]);}
+        const sp=pick(members); if(sp) await modal("한 달 기념 식사",`<p>골목 국밥집 구석 자리에 다 같이 둘러앉았다. 김이 오르는 그릇 너머로, ${escapeText(sp.name)}${escapeText(josa(sp.name,"이","가").slice(sp.name.length))} 숟가락을 내려놓았다.</p><p>"${escapeText(mealTalk[cityVoiceFor[sp.personality]] || mealTalk[2])}"</p>`,[{t:"확인",primary:true}]);}
       else if(choice==="rest"){ addLog("한 달을 버틴 기념으로 동료들에게 쉬는 시간을 주었다."); await modal("각자의 저녁",`<p>오늘은 일찍 문을 닫았다. 누구는 잠을 자러, 누구는 둥지 쪽 야시장 구경을 간다며 흩어졌다.</p><p>불 꺼진 사무소에 혼자 남아 장부를 덮었다. 한 달. 이 도시에선 짧지 않은 시간이다.</p>`,[{t:"확인",primary:true}]); }
       else { addLog("한 달 치 장부를 정리했다."); await modal("한 달의 장부",`<p>동료들과 접수대에 둘러앉아 한 달 치 영수증을 맞췄다. 빠진 칸 하나를 두고 한참 실랑이가 오갔다.</p><p>"이거, 그날 탄피값이에요." 누군가 말했고, 다들 웃었다. 빚은 아직 그대로지만, 장부는 깨끗해졌다.</p>`,[{t:"확인",primary:true}]); }
       save();render();
