@@ -6020,10 +6020,10 @@ const CARDS = {
 const TECHS = {
   allout:   {n:"전력 공격", d:"온 힘을 실어 친다. 기본 위력 +2. 대신 합에서 지면 받는 피해 1.5배."},
   zorn:     {n:"분노베기",  kinds:["long","blade"],   d:"높이 든 자세를 깨는 사선 내려베기. 기본 위력 +2, 맞히면 휘청임(다음 합 기본 위력 -2)."},
-  zwerch:   {n:"가로지르기", kinds:["long","great"], def:true, d:"내려오는 공격을 받으며 동시에 가로로 벤다. 방어 기술 — 이기면 반격이 제 위력 그대로(×1.2) 들어간다."},
+  zwerch:   {n:"가로지르기", kinds:["long","great"], def:true, counterFactor:0.96, d:"내려오는 공격을 받으며 동시에 가로로 벤다. 방어 기술 — 이기면 반격 피해 ×0.96."},
   mordhau:  {n:"살격",      kinds:["long","great"],   d:"칼날을 쥐고 코등이로 내리찍는다. 상대의 방어를 무시하고, 맞히면 상대 기본 위력 -1(이 전투 동안 최대 3까지 쌓인다)."},
   iai:      {n:"발도",      kinds:["blade","long"],   d:"칼을 뽑는 첫 칼에 모든 것을 건다. 전투에서 처음 쓸 때만 기본 위력 +6, 그 뒤로는 +1."},
-  riposte:  {n:"되찌르기",  kinds:["rapier","twin"],  def:true, d:"막고 바로 되찌른다. 방어 기술 — 이기면 반격 피해 ×1.5."},
+  riposte:  {n:"되찌르기",  kinds:["rapier","twin"],  def:true, counterFactor:1.20, d:"막고 바로 되찌른다. 방어 기술 — 이기면 반격 피해 ×1.20."},
   fleche:   {n:"플레슈",    kinds:["rapier","spear"], d:"몸의 무게를 앞으로 내던지며 뛰어든다. 기본 위력 +4. 합에서 지면 받는 피해 1.3배."},
   sweep:    {n:"자루 걸기", kinds:["spear","staff"],  d:"자루로 발을 걸어 넘어뜨린다. 기본 위력 +1, 맞히면 휘청임(다음 합 기본 위력 -2) 및 코인 위력 -2."},
   charge:   {n:"돌격",      kinds:["lance"],          d:"자세를 낮추고 그대로 들이받는다. 기본 위력 +5. 합에서 지면 받는 피해 1.3배."},
@@ -6044,12 +6044,12 @@ const TECHS = {
   suppress: {n:"제압 사격", kinds:["gun"],            d:"머리를 들지 못하게 쏟아붓는다. 맞히면 휘청임(다음 합 기본 위력 -2) 및 위축 3(다음 공격 피해 -3)."},
   deadeye:  {n:"정조준",    kinds:["gun"],            d:"숨을 멈추고 한 발에 건다. 코인 하나에 높은 코인 위력을 집중한다. 평균 합 위력 +2."},
   crack:    {n:"갑주 깨기", kinds:["blunt","tool"],   d:"단단한 곳만 골라 두드린다. 맞힐 때마다 금이 하나씩 가고, 그 뒤로 우리가 주는 피해가 금마다 +1(최대 5)."},
-  improv:   {n:"임기응변",  kinds:["tool","fist","none"], def:true, d:"손에 잡히는 것으로 막고 비튼다. 방어 기술 — 이기면 반격 ×1.0, 상대 기본 위력 -1(이 전투 동안 최대 3까지 쌓인다)."},
-  brace:    {n:"버텨 서기", kinds:["lance","great"],  def:true, d:"땅에 박듯 버틴다. 방어 기술 — 지면 받는 피해를 75% 줄이고, 이기면 반격 ×0.8."},
+  improv:   {n:"임기응변",  kinds:["tool","fist","none"], def:true, counterFactor:0.80, d:"손에 잡히는 것으로 막고 비튼다. 방어 기술 — 이기면 반격 ×0.80, 상대 기본 위력 -1(이 전투 동안 최대 3까지 쌓인다)."},
+  brace:    {n:"버텨 서기", kinds:["lance","great"],  def:true, counterFactor:0.64, d:"땅에 박듯 버틴다. 방어 기술 — 지면 받는 피해를 75% 줄이고, 이기면 반격 ×0.64."},
   impale:   {n:"꿰어 박기", kinds:["spear","lance"],  d:"깊숙이 찔러 넣고 비튼다. 기본 위력 +2, 맞히면 출혈 +2 및 휘청임(다음 합 기본 위력 -2)."},
   vault:    {n:"장대 넘기", kinds:["staff","spear"],  d:"자루를 짚고 뛰어올라 내려친다. 이 합에서 앞면 확률 +10%, 기본 위력 +2."},
-  bind:     {n:"칼날 묶기", kinds:["rapier","long"],  def:true, d:"상대의 칼날을 내 칼날로 눌러 묶는다. 방어 기술 — 기본 위력 +1, 이기면 반격 ×1.2, 상대 위축 2(다음 공격 피해 -2)."},
-  counter:  {n:"카운터",    kinds:["fist","none"],    def:true, d:"맞기 직전에 먼저 꽂는다. 방어 기술 — 이기면 반격 ×1.6, 지면 막지 못한다(받는 피해 그대로)."},
+  bind:     {n:"칼날 묶기", kinds:["rapier","long"],  def:true, counterFactor:0.96, d:"상대의 칼날을 내 칼날로 눌러 묶는다. 방어 기술 — 기본 위력 +1, 이기면 반격 ×0.96, 상대 위축 2(다음 공격 피해 -2)."},
+  counter:  {n:"카운터",    kinds:["fist","none"],    def:true, counterFactor:1.28, d:"맞기 직전에 먼저 꽂는다. 방어 기술 — 이기면 반격 ×1.28, 지면 막지 못한다(받는 피해 그대로)."},
   whirl:    {n:"회오리 베기", kinds:["twin","great"], d:"몸째로 돌며 벤다. 무기별 연타형 코인 구성, 맞히면 출혈 +2."},
   crush:    {n:"짓누르기",  stat:"str", d:"막아도 소용없게 힘으로 짓누른다. 상대가 막는 동작이면 막기를 무시하고, 기본 위력 +2."},
   rush:     {n:"몰아치기",  stat:"agi", d:"틈을 주지 않고 몰아친다. 이기면 남은 코인 하나마다 피해 +2."},
@@ -6060,7 +6060,7 @@ const TECHS = {
   r_gyeongui:{n:"경의", relic:"gyeongui", kinds:["blade"], d:"안으로 밝히고(경 敬) 밖으로 끊어낸다(의 義). 합 전에 정신력 +15, 이기면 피해 ×1.5."},
   r_ruyi:{n:"여의", relic:"ruyi", kinds:["staff"], d:"뜻대로 늘어나 먼저 닿고, 그 무게로 내리찍는다. 연타형 코인 구성, 평균 합 위력 +3, 맞히면 휘청임(다음 합 기본 위력 -2)."},
   r_drepanon:{n:"추수", relic:"drepanon", kinds:["long"], d:"베어 거둔 자리에서 무언가가 자란다. 맞히면 출혈 +3, 준 피해의 30%만큼 체력을 되찾는다."},
-  steadfast:{n:"불굴",      stat:"wil", def:true, d:"무너지지 않는다. 방어 기술 — 지면 받는 피해 절반에 정신력이 깎이지 않고, 이기면 반격 ×0.8과 함께 정신력 +8."}
+  steadfast:{n:"불굴",      stat:"wil", def:true, counterFactor:0.64, d:"무너지지 않는다. 방어 기술 — 지면 받는 피해 절반에 정신력이 깎이지 않고, 이기면 반격 ×0.64 및 정신력 +8."}
 };
 const HANA_ARTS=Object.freeze({"hana_1":{"n":"충격 증폭","hana":true,"base":5,"coins":2,"cp":3,"mul":1.5,"fx":"tremor","d":"기본 위력 +5, 코인 2개 · 코인 위력 추가 +3, 피해 1.5배. 적중 시 적 진동 10 및 [진동 - 반향] 부여. 다음 유효 적중 시 진동 5 이상이면 진동의 절반만큼 추가 피해(최대 8) (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"tremor","amount":10,"special":"진동 - 반향","specialDesc":"진동 5 이상이면 진동의 절반만큼 추가 피해(최대 8)"},"hana_2":{"n":"난도질","hana":true,"base":2,"coins":4,"cp":1,"mul":1.5,"fx":"bleed","d":"기본 위력 +2, 코인 4개 · 코인 위력 추가 +1, 피해 1.5배. 적중 시 적 출혈 6 및 [상처] 부여. 다음 유효 적중 시 출혈 3 이상이면 출혈 +3, 적 위축 2 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"bleed","amount":6,"special":"상처","specialDesc":"출혈 3 이상이면 출혈 +3, 적 위축 2"},"hana_3":{"n":"방벽 관통","hana":true,"base":7,"coins":1,"cp":5,"mul":1.5,"fx":"rupture","d":"기본 위력 +7, 코인 1개 · 코인 위력 추가 +5, 피해 1.5배. 적중 시 적 파열 5 및 [파쇄흔] 부여. 다음 유효 적중 시 파열 3 이상이면 보호막 6 감소 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"rupture","amount":5,"special":"파쇄흔","specialDesc":"파열 3 이상이면 보호막 6 감소"},"hana_4":{"n":"발화","hana":true,"base":3,"coins":3,"cp":2,"mul":1.5,"fx":"burn","d":"기본 위력 +3, 코인 3개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 적 화상 5 및 [흑염] 부여. 다음 유효 적중 시 화상 수치만큼 추가 피해(최대 8) (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"burn","amount":5,"special":"흑염","specialDesc":"화상 수치만큼 추가 피해(최대 8)"},"hana_5":{"n":"연쇄 타격","hana":true,"base":3,"coins":5,"cp":1,"mul":1.5,"fx":"tremor","d":"기본 위력 +3, 코인 5개 · 코인 위력 추가 +1, 피해 1.5배. 적중 시 적 진동 10 및 [진동 - 균열] 부여. 다음 유효 적중 시 진동 5 이상이면 적의 다음 합 코인 위력 -1 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"tremor","amount":10,"special":"진동 - 균열","specialDesc":"진동 5 이상이면 적의 다음 합 코인 위력 -1"},"hana_6":{"n":"정신 붕괴","hana":true,"base":4,"coins":2,"cp":3,"mul":1.5,"fx":"sink","d":"기본 위력 +4, 코인 2개 · 코인 위력 추가 +3, 피해 1.5배. 적중 시 적 침잠 8 및 [침잠쇄도] 부여. 다음 유효 적중 시 침잠 5 이상이면 침잠 5 소모, 추가 피해 8 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"sink","amount":8,"special":"침잠쇄도","specialDesc":"침잠 5 이상이면 침잠 5 소모, 추가 피해 8"},"hana_7":{"n":"역장 전개","hana":true,"base":5,"coins":2,"cp":2,"mul":1.5,"fx":"charge","d":"기본 위력 +5, 코인 2개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 자신 충전 8 및 [충전 역장] 부여. 다음 유효 적중 시 충전 5 소모, 자신 보호막 8 획득 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"charge","amount":8,"special":"충전 역장","specialDesc":"충전 5 소모, 자신 보호막 8 획득"},"hana_8":{"n":"회심의 일격","hana":true,"base":6,"coins":1,"cp":5,"mul":1.5,"fx":"poise","d":"기본 위력 +6, 코인 1개 · 코인 위력 추가 +5, 피해 1.5배. 적중 시 자신 호흡 10 및 [검의 호흡] 부여. 다음 유효 적중 시 호흡 5 소모, 추가 피해 8 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"poise","amount":10,"special":"검의 호흡","specialDesc":"호흡 5 소모, 추가 피해 8"},"hana_9":{"n":"승부수","hana":true,"base":4,"coins":3,"cp":2,"mul":1.5,"fx":"poise","d":"기본 위력 +4, 코인 3개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 자신 호흡 10 및 [결사의 호흡] 부여. 다음 유효 적중 시 호흡 5 소모, 투지 +15 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"poise","amount":10,"special":"결사의 호흡","specialDesc":"호흡 5 소모, 투지 +15"},"hana_10":{"n":"과부하","hana":true,"base":5,"coins":2,"cp":3,"mul":1.5,"fx":"charge","d":"기본 위력 +5, 코인 2개 · 코인 위력 추가 +3, 피해 1.5배. 적중 시 자신 충전 8 및 [과충전] 부여. 다음 유효 적중 시 충전 5 소모, 추가 피해 8 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"charge","amount":8,"special":"과충전","specialDesc":"충전 5 소모, 추가 피해 8"},"hana_11":{"n":"치명상","hana":true,"base":3,"coins":4,"cp":2,"mul":1.5,"fx":"bleed","d":"기본 위력 +3, 코인 4개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 적 출혈 6 및 [과다출혈] 부여. 다음 유효 적중 시 출혈 4 소모, 추가 피해 8 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"bleed","amount":6,"special":"과다출혈","specialDesc":"출혈 4 소모, 추가 피해 8"},"hana_12":{"n":"급소 간파","hana":true,"base":6,"coins":1,"cp":4,"mul":1.5,"fx":"rupture","d":"기본 위력 +6, 코인 1개 · 코인 위력 추가 +4, 피해 1.5배. 적중 시 적 파열 5 및 [균열 표식] 부여. 다음 유효 적중 시 파열 3 이상이면 적의 다음 합 기본 위력 -2 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"rupture","amount":5,"special":"균열 표식","specialDesc":"파열 3 이상이면 적의 다음 합 기본 위력 -2"},"hana_13":{"n":"내부 붕괴","hana":true,"base":4,"coins":3,"cp":2,"mul":1.5,"fx":"tremor","d":"기본 위력 +4, 코인 3개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 적 진동 10 및 [진동 - 붕괴] 부여. 다음 유효 적중 시 진동 5 소모, 보호막 8 감소 및 추가 피해 3 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"tremor","amount":10,"special":"진동 - 붕괴","specialDesc":"진동 5 소모, 보호막 8 감소 및 추가 피해 3"},"hana_14":{"n":"과열 공격","hana":true,"base":4,"coins":2,"cp":3,"mul":1.5,"fx":"burn","d":"기본 위력 +4, 코인 2개 · 코인 위력 추가 +3, 피해 1.5배. 적중 시 적 화상 5 및 [작열] 부여. 다음 유효 적중 시 화상 3 소모, 추가 피해 7 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"burn","amount":5,"special":"작열","specialDesc":"화상 3 소모, 추가 피해 7"},"hana_15":{"n":"위압","hana":true,"base":5,"coins":2,"cp":2,"mul":1.5,"fx":"sink","d":"기본 위력 +5, 코인 2개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 적 침잠 8 및 [나비] 부여. 다음 유효 적중 시 침잠 3 이상이면 자신 정신력 +5, 적 위축 3 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"sink","amount":8,"special":"나비","specialDesc":"침잠 3 이상이면 자신 정신력 +5, 적 위축 3"},"hana_16":{"n":"무아지경","hana":true,"base":3,"coins":4,"cp":2,"mul":1.5,"fx":"poise","d":"기본 위력 +3, 코인 4개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 자신 호흡 10 및 [맑은 정신] 부여. 다음 유효 적중 시 호흡 5 소모, 정신력 +7 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음.","keyword":"poise","amount":10,"special":"맑은 정신","specialDesc":"호흡 5 소모, 정신력 +7"},"hana_17":{"n":"열상","hana":true,"base":4,"coins":3,"cp":2,"mul":1.5,"fx":"burn","keyword":"burn","amount":6,"special":"화염의 낙인","specialDesc":"화상 3 이상이면 화상 +3, 적의 다음 합 기본 위력 -2","d":"기본 위력 +4, 코인 3개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 적 화상 6 및 [화염의 낙인] 부여. 다음 유효 적중 시 화상 3 이상이면 화상 +3, 적의 다음 합 기본 위력 -2 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음."},"hana_18":{"n":"사냥의 대가","hana":true,"base":3,"coins":4,"cp":2,"mul":1.5,"fx":"bleed","keyword":"bleed","amount":7,"special":"혈찬","specialDesc":"출혈 3 이상이면 자신 체력 +6","d":"기본 위력 +3, 코인 4개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 적 출혈 7 및 [혈찬] 부여. 다음 유효 적중 시 출혈 3 이상이면 자신 체력 +6 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음."},"hana_19":{"n":"상처 벌리기","hana":true,"base":5,"coins":2,"cp":3,"mul":1.5,"fx":"rupture","keyword":"rupture","amount":6,"special":"붕괴의 상흔","specialDesc":"파열 3 소모, 추가 피해 8","d":"기본 위력 +5, 코인 2개 · 코인 위력 추가 +3, 피해 1.5배. 적중 시 적 파열 6 및 [붕괴의 상흔] 부여. 다음 유효 적중 시 파열 3 소모, 추가 피해 8 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음."},"hana_20":{"n":"무력화","hana":true,"base":4,"coins":3,"cp":2,"mul":1.5,"fx":"sink","keyword":"sink","amount":8,"special":"깊은 침잠","specialDesc":"침잠 5 이상이면 적 보호막 8 감소, 다음 합 코인 위력 -1","d":"기본 위력 +4, 코인 3개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 적 침잠 8 및 [깊은 침잠] 부여. 다음 유효 적중 시 침잠 5 이상이면 적 보호막 8 감소, 다음 합 코인 위력 -1 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음."},"hana_21":{"n":"최대 출력","hana":true,"base":3,"coins":4,"cp":2,"mul":1.5,"fx":"charge","keyword":"charge","amount":9,"special":"충전 - 맥동","specialDesc":"충전 5 소모, 투지 +20","d":"기본 위력 +3, 코인 4개 · 코인 위력 추가 +2, 피해 1.5배. 적중 시 자신 충전 9 및 [충전 - 맥동] 부여. 다음 유효 적중 시 충전 5 소모, 투지 +20 (3턴 이내, 1회). 정신력 -12, 재사용 제한 없음."}});
 Object.assign(TECHS,HANA_ARTS);
@@ -6204,8 +6204,9 @@ function learnedCombatTechs(f, defense){
 }
 function equippedTechId(f, wt, defense=false){
   const id = defense ? f.guardTech : f.tech;
-  if(learnedCombatTechs(f,defense).includes(id) && techFits(id,wt)) return id;
-  return null;
+  const compatible=learnedCombatTechs(f,defense).filter(key=>techFits(key,wt));
+  if(compatible.includes(id)) return id;
+  return defense ? compatible[0]??null : null;
 }
 function techCost(T){return T.signature?10:TECH_SP_COST;}
 function techDamage(T){return T.damage??1.5;}
@@ -6387,9 +6388,10 @@ function weaponTechniqueShape(kind,T,ctx={}){
   // 높은 연타 수에서도 기본 위력이 1 미만으로 내려가지 않도록 코인 위력을 조정한다.
   while(cp>1&&target-coins*cp/2<.5)cp--;
   const base=Math.max(1,Math.round(target-coins*cp/2))+2;
-  return {card,sk:{...origin,n:T.n,base,coins,cp,def:!!T.def}};
+  const counter=T.counterFactor!=null;
+  return {card,sk:{...origin,n:T.n,base:base-(counter?1:0),coins,cp:cp-(counter?3:0),def:!!T.def}};
 }
-function specialInterval(id){if(HANA_ARTS[id])return 0;if(TECHS[id]?.signature)return 4;return TECHS[id]?.interval??(["r_astrape","r_gyeongui","r_drepanon"].includes(id)?3:2);}
+function specialInterval(id){if(HANA_ARTS[id])return 0;if(TECHS[id]?.def)return 0;if(TECHS[id]?.signature)return 4;return TECHS[id]?.interval??(["r_astrape","r_gyeongui","r_drepanon"].includes(id)?3:2);}
 function clashPowerValue(sk,heads){return sk.base+heads.filter(Boolean).length*sk.cp;}
 function coinDamage(base,remaining,original,heads,mul=1){
   const survival=0.55+0.45*remaining/Math.max(1,original), facing=0.9+0.2*(heads.filter(Boolean).length/Math.max(1,heads.length));
@@ -6505,8 +6507,8 @@ function mgCombat(ctx){
     party.forEach(p=>{ if(relicFx(p.f,"tyr")) AXN.push(`<span style="color:#d8d8e8">티르의 오른손 — 여섯 가닥 은실이 ${esc(jo(p.name,"와"))} ${esc(foe.name)}의 몸에 감겼다. ${esc(jo(p.name,"이"))} 나서는 동안 둘의 강함이 같아진다</span>`);
       if(relicFx(p.f,"bell")) AXN.push(`<span style="color:#e8d27a">청동 방울이 여덟 갈래로 울린다 — ${esc(p.name)}의 마음에 다른 목소리가 들어오지 못한다</span>`); });
     if(AB && AB.aoe) AXN.push(`<span style="color:#e8d27a">${AB.aoe}턴마다 금빛 저울이 기운다 — 그 자리 모두가 심판받는다</span>`);
-    if(AB && AB.enrage){ foe.clock = 4; AXN.push(`<span style="color:#e8d27a">징벌 새는 4턴이 지나면 스스로 알로 돌아간다. 별도 방어 칸에서 방어(가드)를 사용한다. 그 전에 공격하면 큰 부리로 반격한다</span>`); }
-    if(AB && AB.movement) AXN.push(`<span style="color:#e8d27a">악장마다 화면에 표시된 대응 카드가 유효하다. 피날레에는 별도 방어 칸에서 방어(가드)를 사용한다</span>`);
+    if(AB && AB.enrage){ foe.clock = 4; AXN.push(`<span style="color:#e8d27a">징벌 새는 4턴이 지나면 스스로 알로 돌아간다. 방어 칸의 행동을 사용한다. 그 전에 공격하면 큰 부리로 반격한다</span>`); }
+    if(AB && AB.movement) AXN.push(`<span style="color:#e8d27a">악장마다 화면에 표시된 대응 카드가 유효하다. 피날레에는 방어 칸의 행동을 사용한다</span>`);
     if(AB && (AB.rule==="ember")){ party.forEach(p=>p.ember = Math.max(1, AB.emberStart||1)); AXN.push(`<span style="color:#ffb35a">모두의 몸에 불씨가 옮아 붙었다(${party[0].ember}) — 턴마다 커지고, 나방에게 맞으면 더 탄다</span>`); }
     if(AB?.id==="nothing") AXN.push(`<span style="color:#ff8a7a">광폭 — 물리 공격 피해 60% 적용. 개화 E.G.O. 무기형·일체형의 공격은 감소 없이 들어간다</span>`);
     if(AB && AB.immune) AXN.push(`<span style="color:#ff8a7a">그것의 몸은 일반 공격 피해를 크게 줄인다 — 1급 이상이 쥔 고유 무기나 개화한 E.G.O. 무기는 온전히 상처를 낸다</span>`);
@@ -6786,7 +6788,7 @@ function mgCombat(ctx){
       }
       return card;
     }
-    const responseLabel=card=>({0:"약공",6:"보통 공격",7:"강공",1:"방어(가드)"}[card]||"");
+    const responseLabel=card=>({0:"약공",6:"보통 공격",7:"강공",1:"방어 칸"}[card]||"");
     function battleSignTell(t,me=party[act],sign=true){
       const card=battleResponseCard(t,me,sign);
       if(card===null)return "";
@@ -6794,7 +6796,7 @@ function mgCombat(ctx){
         const {sp,hp} = signMissDamage(t);
         return `${responseLabel(card)}${card===1?"":" 카드"} 사용. 놓치면 전원 ${[sp&&`정신력 최대 -${sp}`,hp&&`체력 최대 -${hp}`].filter(Boolean).join(" · ")}. 알맞은 카드를 내면 합에서 져도 징후 피해는 막는다.`;
       }
-      return card===1?"별도 방어 칸에서 방어(가드)를 사용한다.":responseLabel(card)+" 카드를 사용해 공격을 적중시킨다(합 승리 및 피해 발생).";
+      return card===1?"방어 칸의 행동을 사용한다.":responseLabel(card)+" 카드를 사용해 공격을 적중시킨다(합 승리 및 피해 발생).";
     }
     const RISK_SIGN = {ZAYIN:1, TETH:1.4, HE:1.8, WAW:2.4, ALEPH:3}[AB && AB.risk] || 1;
     function foeSignSpawn(force){ if(!FSG || foe.sign || foe.hp<=0 || outcome) return "";
@@ -6850,7 +6852,7 @@ function mgCombat(ctx){
       if(!AB)return "";
       let hint="";
       if(foe.sign&&BGMK)hint="현재 징후 파훼: "+battleSignTell(turn,me);
-      else if(AB.enrage&&!foe.enraged)hint="대응: 별도 방어 칸에서 방어(가드)를 사용하고 4턴까지 공격하지 않는다.";
+      else if(AB.enrage&&!foe.enraged)hint="대응: 방어 칸의 행동을 사용하고 4턴까지 공격하지 않는다.";
       else if(orchestra && signScheduled(turn+1))hint="다음 턴 악장 마감 예고: "+battleSignTell(turn+1,me);
       else if(AB.movement)hint="현재 악장 대응: "+battleSignTell(turn,me,false);
       else if(signScheduled(turn+1))hint="다음 턴 징후 예고: "+battleSignTell(turn+1,me);
@@ -6895,9 +6897,11 @@ function mgCombat(ctx){
       const ammunition = ammoGun ? `<br><span style="color:#f2d27a">탄창 ${ammoGun.mag}/${ammoCap(ammoGun)} · ${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).name} (+${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus})</span>` : "";
       const previewFirst=!(foeSkill.def&&!AB&&!DF), tsk=tk?mySkill(tk.sk,previewFirst||!!tk.T.signature):null;
       const defenseButton=()=>{
-        if(!defense) return "";
-        const sk=mySkill(techSkill(me,defense).sk,previewFirst), wait=techWait(me,defense);
-        return `<button data-sk="8" ${wait?"disabled":""}><b>방어 기술 · ${esc(defense.n)}</b><small>별도 방어 칸 · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 생존 시 정신력 +5${wait?` · 재사용까지 ${wait}턴`:""}</small></button>`;
+        if(!defense) return '<button data-sk="1"><b>가드</b><small>매 턴 사용 가능 · 보호막 +8 (최대 30) · 정신력 +3, 공격을 막으면 +7 · 합 없음</small></button>';
+        if(AB?.enrage && !foe.enraged)
+          return `<button data-sk="8"><b>방어 기술 · ${esc(defense.n)}</b><small>징벌 새가 알로 돌아갈 때까지 반격 없이 방어</small></button>`;
+        const sk=mySkill(techSkill(me,defense).sk,previewFirst);
+        return `<button data-sk="8"><b>방어 기술 · ${esc(defense.n)}</b><small>매 턴 사용 가능 · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 생존 시 정신력 +5 · ${esc(defense.d)}</small></button>`;
       };
       const attackButton=(c,i,card)=>{const v=mySkill(basicTrainingSkill(me,c),previewFirst),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" data-card="${card.id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"}${i===0?" · 합 패배 시 직접 피해 -10%":""}${keywordLabel(me,i)} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(v).toFixed(1)} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${c.normalSp?` · 정신력 -${c.normalSp}`:""}${listedAmmoBonus?` · 탄환 +${listedAmmoBonus} 이하`:""}</small></button>`;};
       const attackTechniqueButton=(T,sk,attrs,label)=>{
@@ -6912,9 +6916,8 @@ function mgCombat(ctx){
         </div>`;
       }).join("")}</div>
       <div class="pk-moves" data-combat-defense style="border-top:1px solid var(--line);padding-top:6px">
-        <button data-sk="1"><b>방어(가드)</b><small>매 턴 사용 가능 · 보호막 +8 (최대 30) · 정신력 +3, 공격을 막으면 +7 · 합 없음</small></button>
-        ${attackTechniqueButton(tk.T,tsk,'data-sk="2" data-signature-slot',tk.T.keyword?"고유 기술":"공격 기술")}
         ${defenseButton()}
+        ${attackTechniqueButton(tk.T,tsk,'data-sk="2" data-signature-slot',tk.T.keyword?"고유 기술":"공격 기술")}
       </div>
       ${relic?`<div class="pk-moves">${attackTechniqueButton(relic,mySkill(techSkill(me,relic).sk,previewFirst),"data-relic-attack","유물 기술")}</div>`:""}`;
 
@@ -6931,7 +6934,11 @@ function mgCombat(ctx){
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
     async function resolveClash(si,option){
-      const current=party[act], signBefore={hp:current.hp,max:current.max,contempt:current.contempt,requiredCard:foe.sign?battleResponseCard(turn,current):null};
+      const current=party[act];
+      const defense=techOf(current,true);
+      if((si===1&&defense)||(si===8&&!defense)) return;
+      if(si===8 && AB?.enrage && !foe.enraged) si=1;
+      const signBefore={hp:current.hp,max:current.max,contempt:current.contempt,requiredCard:foe.sign?battleResponseCard(turn,current):null};
       const chosen = si===2 && option==="relic" ? relicAttackOf(current.f) : si===2 || si===8 ? techOf(current,si===8) : null;
       if((si===2 || si===8) && (!chosen || !techReady(current,chosen))) return;
       if(chosen?.signature && current.sp-techCost(chosen)<-45) return;
@@ -7014,9 +7021,8 @@ function mgCombat(ctx){
       let total = 0;
       const egoNote = [], abNote = [], bNote = [];
       me.lastWon = won;
-      const DEFK = {riposte:1.5, zwerch:1.2, improv:1.0, brace:0.8, bind:1.2, counter:1.6, steadfast:0.8};
       if(won){ const damageMul=T?techDamage(T):(c.normalMul||1);
-        let dmg = Math.round(P*damageMul*(wSk.def ? (T && DEFK[T.id]!=null ? DEFK[T.id] : 0.6) : 1)*longK()); if(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
+        let dmg = Math.round(P*damageMul*(wSk.def ? (T?.counterFactor??0.6) : 1)*longK()); if(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))) dmg = Math.round(dmg*0.5); dmg = Math.max(1, dmg);
         if(foe.crack) dmg += foe.crack;
         if(relicFx(me.f,"karakawa")){ dmg += 2; rNote.push("카라카와 — 범의 힘이 실렸다(+2)"); }
         if(T){ const id = T.id;
@@ -7047,7 +7053,7 @@ function mgCombat(ctx){
           if(id==="impale"){ keywordAdd(foe,"bleed",2); foe.daze = 1; tNote.push(`꿰어 박기 — 출혈 ${foe.bleed}, ${josa(foe.name,"이","가")} 휘청인다(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); }
           if(id==="vault") tNote.push("장대 넘기 — 위에서 내려쳤다");
           if(id==="bind"){ foe.weak = (foe.weak||0) + 2; tNote.push(`칼날 묶기 — 묶인 칼날을 비틀어 찔렀다(위축 ${foe.weak})`); }
-          if(id==="counter") tNote.push("카운터 — 먼저 꽂았다(×1.6)");
+          if(id==="counter") tNote.push("카운터 — 먼저 꽂았다(×1.28)");
           if(id==="whirl"){ keywordAdd(foe,"bleed",2); tNote.push(`회오리 베기 — 출혈 ${foe.bleed}`); }
           if(id==="crush" && fk.def) tNote.push("짓누르기 — 막는 동작째로 눌렀다");
           if(id==="rush" && R.left){ dmg += R.left*2; tNote.push(`몰아치기 — 남은 코인 ${R.left}개(+${R.left*2})`); }
@@ -12104,9 +12110,9 @@ async function openManage(){
       ${(()=>{
         const wt=weaponTypeOf(wGear(f))||"none", selected=equippedTechId(f,wt,true);
         return `<span>방어 기술</span><b><select data-tech="guard">
-          <option value="" ${selected?"":"selected"}>기본 가드만 사용</option>
+          ${selected?"":'<option value="" selected>가드</option>'}
           ${learnedCombatTechs(f,true).map(id=>`<option value="${id}" ${selected===id?"selected":""} ${techFits(id,wt)?"":"disabled"}>${esc(TECHS[id].n)}${techFits(id,wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
-          <br><span class="muted" style="font-weight:400">${selected?esc(TECHS[selected].d)+" · ":""}별도 방어 칸에서 사용 · 생존 시 정신력 회복</span></b>`;
+          <br><span class="muted" style="font-weight:400">${selected?esc(TECHS[selected].d)+" · ":""}장착하면 가드 자리를 대체 · 생존 시 정신력 회복</span></b>`;
       })()}
       <span>하나 협회 훈련</span><b>일반 기본 +${f.hanaTraining?.base||0} · 일반 코인 +${f.hanaTraining?.cp||0} · 방어 기술 기본·코인 +${f.hanaTraining?.tech||0} · 고유 기술 기본·코인 +${Math.min(2,f.hanaTraining?.tech||0)}</b>
       <span>전투 키워드</span><b>${esc(keywordPlanText(f))}<br><span class="muted">최초 설정 고정 · 무기 장착 시 적용</span></b>
@@ -12805,8 +12811,9 @@ function techniqueRecordHtml(weapon="all"){
       <div class="cdx-g"><span>사용 가능 무기</span><div>${esc(use)}${R?" · "+esc(R.name)+" 원본 장착":""}</div>
       <span>효과</span><div>${esc(effect)}</div><span>무기별 합 위력 (양산 기준)</span><div>${(weapon==="all"?Object.keys(CARDS).filter(k=>techFits(id,k)):[weapon]).map(k=>{
         const v=weaponTechniqueShape(k,{...T,id}).sk;
+        v.cp=Math.max(0,v.cp);
         return `${esc(kindName(k))} · 기본 ${v.base} · 코인 ${v.coins}개 × ${v.cp} · 평균 ${clashMean(v).toFixed(1)}`;
-      }).join("<br>")}</div><span>사용 간격</span><div>${specialInterval(id)}턴 · ${detail}</div></div></div>`;
+      }).join("<br>")}</div><span>사용 간격</span><div>${specialInterval(id)?specialInterval(id)+"턴":"매 턴"} · ${detail}</div></div></div>`;
   }).join("");
   const hint=signatures.size?"":'<div class="cdx on"><div class="cdx-h"><b>접수대에 남은 메모</b></div><div style="padding:10px">근처 약방에서 붕대를 빌려 간 사람이 있다. 다 갚을 돈은 없으니 손을 쓰는 법이라도 알려 주겠다고 했단다.</div></div>';
   return `<p class="muted">습득한 기술이 이곳에 기록된다. 전투 손패에는 일반 공격이 들어가고, 방어 옆에서는 각 해결사의 고유 기술을 쓸 수 있다. 배우기 전에는 그 자리에 전력 공격이 놓인다.</p>
@@ -12827,7 +12834,7 @@ function combatRuleRecordHtml(){
   <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45, 의뢰 전력 보정 0이라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
   <p>양쪽 코인을 던져 위력이 낮은 쪽의 코인 1개를 제거하고 다시 던진다. 동률이면 그대로 다시 던진다. 한쪽 코인이 모두 사라지면 패배한다. 최대 24회 굴림 제한에서 코인이 더 많이 남은 쪽이 승리하며, 같으면 양측 50% 확률로 승리한다.</p>
   <p>해결사의 앞면 확률은 전투 정신력 -45에서 27.5%, 0에서 50%, +15에서 62%, +45에서 85%. 재주 10당 기존 앞면 확률 +0.25%p도 유지한다. 기술 등 추가 보정 후 5~95%로 제한한다. 적은 기본 50%이며 일부 기술은 예외다.</p>
-  <p>전력 공격과 고유 기술은 무기별 코인 구조를 따르며, 사용 시 기술에 표시된 정신력을 소모한다. 방어 기술은 별도 방어 칸에서 쓰며 생존 시 정신력 5를 회복한다. 공격·방어 기술의 재사용 대기시간은 따로 계산한다. 양산 +0 · 정식 +2 · 상급 +4 · 고유·개화 +6의 기본 위력 보정을 받는다. 강공 최대는 맨손 16, 양산 20, 정식 22, 상급 24, 고유·개화 26이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
+  <p>전력 공격과 고유 기술은 무기별 코인 구조를 따르며, 사용 시 기술에 표시된 정신력을 소모한다. 장착한 방어 기술은 가드 자리를 대체하며 매 턴 사용할 수 있다. 방어 기술로 생존하면 정신력 5를 회복한다. 공격·방어 기술의 재사용 대기시간은 따로 계산한다. 양산 +0 · 정식 +2 · 상급 +4 · 고유·개화 +6의 기본 위력 보정을 받는다. 강공 최대는 맨손 16, 양산 20, 정식 22, 상급 24, 고유·개화 26이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
   <p><b>가드와 투지:</b> 공격 합에서 두 번 연속 밀리면 다음 공격 합에서 기본 위력 +2와 음수 정신력에 따른 앞면 확률 불이익 완화를 얻는다. 혼신의 일격이나 사즉생과 함께 쓸 때 기본 위력 보정은 큰 쪽이 적용된다. 가드는 합 없이 보호막 8을 얻고 정신력 3을 회복한다. 상대의 공격을 막고 생존하면 정신력 7을 회복한다. 정신력이 -8 이하일 때 호흡 정리를 쓰면 전투당 한 번, 투지 소모 없이 정신력 12를 회복한다. 보호막 상한은 30이며 턴 종료 시 남은 보호막의 절반을 올림해 감소시킨다. 합 승리 투지 5, 패배 15, 가드 7, 적 방어 3. 기존 투지 행동은 유지한다.</p><p><b>휘청임:</b> 다음 실제 합에서 기본 위력 -${CLASH_DAZE_CUT}. 중복으로 쌓이지 않으며 합을 한 번 진행하면 소멸한다. 코인 위력 감소는 별개이며 해당 합의 각 앞면 코인에 적용된다. 기본 방어·재장전 등 합이 없는 행동으로는 소모하지 않는다. 예: 기본 6, 코인 위력 5, 앞면 2개일 때 휘청임만 받으면 14, 코인 위력 -2까지 받으면 10.</p>
   </div></div><div class="cdx on"><div class="cdx-h"><b>피해량 계산 (직접 전투)</b></div><div style="padding:10px;line-height:1.7">
   <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 합 평균 18, 상급 공방 기준 공격력 20에 무기형 +5, 일체형 +2의 기본 피해를 더한다. 개화 의복은 체력 피해 38% 감소, 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
@@ -18960,42 +18967,42 @@ const AB_CODEX_WORK = Object.freeze({
 });
 const AB_CODEX_BATTLE = Object.freeze({
   toad: "약공 카드를 사용해 공격을 적중시킨다.",
-  twotail: "별도 방어 칸에서 방어(가드)를 사용한다.",
-  lonefairy: "별도 방어 칸에서 방어(가드)를 사용한다.",
-  pbird: "별도 방어 칸에서 방어(가드)를 사용한다. 새를 공격하지 않고 4턴을 버티면 알로 돌아간다.",
+  twotail: "방어 칸의 행동을 사용한다.",
+  lonefairy: "방어 칸의 행동을 사용한다.",
+  pbird: "방어 칸의 행동을 사용한다. 새를 공격하지 않고 4턴을 버티면 알로 돌아간다.",
   scorched: "강공 카드를 사용해 공격을 적중시킨다.",
   lantern: "강공 카드를 사용해 공격을 적중시킨다.",
-  echo: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  echo: "방어 칸의 행동을 사용한다.",
   lavaingot: "보통 공격 카드를 사용해 공격을 적중시킨다.",
-  creed: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  creed: "방어 칸의 행동을 사용한다.",
   flyingfish: "직전 행동이 약공이면 보통 공격, 아니면 약공을 적중시킨다.",
   apple: "강공 카드를 사용해 공격을 적중시킨다.",
-  bari: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  bari: "방어 칸의 행동을 사용한다.",
   ichthys: "강공 카드를 사용해 공격을 적중시킨다.",
   porccubus: "약공 카드를 사용해 공격을 적중시킨다.",
   redshoes: "약공 카드를 사용해 공격을 적중시킨다.",
-  grudgeshooter: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  grudgeshooter: "방어 칸의 행동을 사용한다.",
   carousel: "보통 공격 카드를 사용해 공격을 적중시킨다.",
   greenboots: "직전 행동이 약공이면 보통 공격, 아니면 약공을 적중시킨다.",
-  stitchbear: "별도 방어 칸에서 방어(가드)를 사용한다.",
-  mothwedding: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  stitchbear: "방어 칸의 행동을 사용한다.",
+  mothwedding: "방어 칸의 행동을 사용한다.",
   biik: "직전 행동이 약공이면 보통 공격, 아니면 약공을 적중시킨다.",
-  skel: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  skel: "방어 칸의 행동을 사용한다.",
   erlking: "강공 카드를 사용해 공격을 적중시킨다.",
-  knight: "별도 방어 칸에서 방어(가드)를 사용한다.",
-  littlered: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  knight: "방어 칸의 행동을 사용한다.",
+  littlered: "방어 칸의 행동을 사용한다.",
   moth: "강공 카드를 사용해 공격을 적중시킨다.",
   spiral: "경멸 상태라면 방어(가드), 아니라면 직전 행동이 약공일 때 보통 공격, 그 외에는 약공을 적중시킨다.",
   brokenlance: "현재 체력이 최대치 절반 미만이면 방어(가드), 그 외에는 강공을 적중시킨다.",
   onegram: "보통 공격 카드를 사용해 공격을 적중시킨다.",
-  bluereception: "별도 방어 칸에서 방어(가드)를 사용한다.",
-  ashfly: "별도 방어 칸에서 방어(가드)를 사용한다.",
-  dosan: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  bluereception: "방어 칸의 행동을 사용한다.",
+  ashfly: "방어 칸의 행동을 사용한다.",
+  dosan: "방어 칸의 행동을 사용한다.",
   bloodtear: "현재 체력이 최대치의 40% 이하이면 방어(가드), 그 외에는 보통 공격을 적중시킨다.",
   nails: "징후 턴의 5로 나눈 나머지가 0·3이면 방어(가드), 1·2이면 강공, 4이면 보통 공격을 사용한다.",
   orchestra: "제1악장 강공, 제2악장 보통 공격, 제3악장 약공, 제4악장 보통 공격을 적중시킨다. 피날레에는 방어(가드)를 사용한다. 악장의 마지막 턴에는 지정 카드를 내는 것만으로 공연 피해를 막을 수 있다. 17턴 주기가 반복된다.",
-  bluestar: "별도 방어 칸에서 방어(가드)를 사용한다.",
-  nothing: "별도 방어 칸에서 방어(가드)를 사용한다.",
+  bluestar: "방어 칸의 행동을 사용한다.",
+  nothing: "방어 칸의 행동을 사용한다.",
   sun: "약공 카드를 사용해 징후 피해를 막는다.",
   eternity: "강공 카드를 사용해 징후 피해를 막는다.",
 });
