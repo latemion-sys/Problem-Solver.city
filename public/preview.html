@@ -1669,14 +1669,15 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a4.6.7";
+const VERSION = "v.a4.6.8";
 const CHANGELOG = [
   ["v.a4.6.7", [
     "전투 손패는 일반 공격으로 구성됩니다. 방어 옆에서 전력 공격을 쓰거나, 습득한 고유 기술을 사용할 수 있습니다.",
     "이름없는 해결사와 만나는 사무소 이야기를 추가했습니다. 사무소 인원은 이 이야기에서 각자의 기술을 배울 수 있으며, 습득한 기술은 기술 일람에 기록됩니다.",
     "위험한 적의 행동을 전투 화면 위에서 미리 알립니다. 인간형 적, 환상체, 죄종, 뒤틀림은 서로 다른 방식으로 싸웁니다.",
     "수색에서 목격자에게 질문해 후보를 좁힙니다. 일부 의뢰에서는 확보한 정보에 따라 다른 진입로와 대응을 선택할 수 있습니다.",
-    "장기 운영 중 만날 사무소 대화와 후속 의뢰를 추가했습니다."
+    "장기 운영 중 만날 사무소 대화와 후속 의뢰를 추가했습니다.",
+    "도시 질병 이상 적의 기본 위력과 코인 위력을 높이고, 동급 해결사와의 합 균형을 조정했습니다."
   ]],
   ["v.a4.1.1.6", [
     "기본 공격의 정신력 소모를 없앴습니다. 약공으로 합에서 지면 받는 직접 피해가 줄어들고, 대검은 코인이 뒷면을 보일 때도 더 높은 위력을 냅니다.",
@@ -6358,6 +6359,46 @@ function coinDamage(base,remaining,original,heads,mul=1){
   const survival=0.55+0.45*remaining/Math.max(1,original), facing=0.9+0.2*(heads.filter(Boolean).length/Math.max(1,heads.length));
   return Math.max(1,Math.round(base*mul*survival*facing));
 }
+const LATE_COMBAT_THREATS = new Set(["도시 질병","도시 악몽","도시의 별"]);
+function lateClashHeadChance(player, enemy, playerHeads){
+  // 합의 24회 제한과 동률 처리까지 포함해 중립 상태의 보통 공격을 기준으로 맞춘다.
+  function distribution(n,p){
+    const row=[1];
+    for(let count=1;count<=n;count++){
+      for(let h=count;h>=0;h--) row[h]=(row[h]||0)*(1-p)+(h?row[h-1]*p:0);
+    }
+    return row;
+  }
+  const playerRolls=Array.from({length:player.coins+1},(_,n)=>distribution(n,playerHeads));
+  function enemyWins(p){
+    const enemyRolls=Array.from({length:enemy.coins+1},(_,n)=>distribution(n,p));
+    const states=[];
+    for(let a=1;a<=player.coins;a++) for(let b=1;b<=enemy.coins;b++){
+      let win=0, lose=0;
+      playerRolls[a].forEach((pa,x)=>enemyRolls[b].forEach((pb,y)=>{
+        const delta=enemy.base+y*enemy.cp-player.base-x*player.cp;
+        if(delta>0) win+=pa*pb;
+        else if(delta<0) lose+=pa*pb;
+      }));
+      states.push({a,b,win,lose,tie:Math.max(0,1-win-lose)});
+    }
+    let odds=Array.from({length:player.coins+1},(_,a)=>Array.from({length:enemy.coins+1},(_,b)=>a===0||a<b?1:a===b?.5:0));
+    for(let i=0;i<24;i++){
+      const previous=odds;
+      odds=previous.map(row=>row.slice());
+      for(const {a,b,win,lose,tie} of states)
+        odds[a][b]=win*previous[a-1][b]+lose*previous[a][b-1]+tie*previous[a][b];
+    }
+    return odds[player.coins][enemy.coins];
+  }
+  let lo=.05, hi=.95;
+  for(let i=0;i<12;i++){
+    const mid=(lo+hi)/2;
+    if(enemyWins(mid)<.35) lo=mid;
+    else hi=mid;
+  }
+  return (lo+hi)/2;
+}
 function nextHumanIntent(previous, roll=Math.random()){
   if(previous==="heavy") return roll<0.3 ? "guard" : "probe";
   if(previous==="feint") return "heavy";
@@ -6583,6 +6624,21 @@ function mgCombat(ctx){
       return {T,sk,card:{...shaped.card,n:T.n,def:!!T.def}};
     }
     const MOVES = ["기본 공격","방어","기술"];
+    const lateFoe=LATE_COMBAT_THREATS.has(threatOf(q))&&!AB?.kill;
+    const foeGrade=foeBalanceGrade(q,AB,DF,g0);
+    const neutralClashRates=new Map();
+    function lateFoeHeadAdjustment(skill){
+      const me=party[act];
+      if(!lateFoe || skill.def || me.f.grade!==foeGrade) return undefined;
+      const key=[me.f.id,skill.base,skill.cp,skill.coins].join("/");
+      if(!neutralClashRates.has(key)){
+        const ordinary=basicTrainingSkill(me,basicPick(me,1));
+        const w=wMod(me,ordinary);
+        const reference=clashStatSkill(ordinary,me.f,w.base+weaponTierBonus(weaponClashTier(me.f))+shinAwakeClash(me.f),w.cp);
+        neutralClashRates.set(key,100*lateClashHeadChance(reference,skill,headP(0,statClashHeadPlus(me.f)))-50);
+      }
+      return neutralClashRates.get(key);
+    }
     const foeSk = () => Object.assign({}, foeSkill, {headAdj:(foeSkill.headAdj||0)-intimidation(party[act]),base: Math.max(1, foeSkill.base - (foe.daze ? CLASH_DAZE_CUT : 0) - (foe.down||0) - supportCount("great","blunt")), cp: Math.max(0, foeSkill.cp - (foe.coinDown||0))});
     // 정신력 → 코인 앞면 확률: 0 이하는 50+정신력%, +15에서 65%, 그 위로는 완만하게 올라 +45에서 90%
     const spHead = sp => sp < 0 ? 50 + Math.max(-45,sp)*0.5 : sp <= 15 ? 50 + sp*0.8 : 62 + (Math.min(sp,45)-15)*23/30;
@@ -6593,7 +6649,7 @@ function mgCombat(ctx){
     // 충전은 공격 선택 시 미리 적용되며 합 도중 자동 축적되지 않는다.
     function simClash(a, spA, b, spB, chg, headBonus=0){
       let ca = a.coins, cb = b.coins, n = 0; const ex = [];
-      while(ca>0 && cb>0 && n<24){ const ha = flip(ca, spA, headBonus), hb = flip(cb, spB, b.headAdj||0), pa = powOf(a, ha), pb = powOf(b, hb);
+      while(ca>0 && cb>0 && n<24){ const ha = flip(ca, spA, headBonus), hb = flip(cb, spB, b.clashHeadAdj??b.headAdj??0), pa = powOf(a, ha), pb = powOf(b, hb);
         const e = {ha, hb, pa, pb, loser: pa>pb ? "foe" : pb>pa ? "me" : null}; ex.push(e); if(pa>pb) cb--; else if(pb>pa) ca--; n++;
       }
       const mine=cb===0 || (ca>0 && (ca>cb || (ca===cb && Math.random()<0.5))); return {ex, win: mine ? "me" : "foe", left: mine ? ca : cb, count: ex.filter(e=>e.loser).length, a, chg:null, fired:false};
@@ -6652,6 +6708,7 @@ function mgCombat(ctx){
         while(foe.q.length<horizon) foe.q.push(rollFoeSkill(turn+foe.q.length));
         foeSkill=foe.q.shift();
       }
+      if(lateFoe&&!foeSkill.def) foeSkill={...foeSkill,base:foeSkill.base+1,cp:foeSkill.cp+2};
       const fb=foeLivePow();
       if(fb) foeSkill={...foeSkill,base:foeSkill.base+fb};
     }
@@ -6854,7 +6911,10 @@ function mgCombat(ctx){
       const guarding = si===1||reloading, mode="guard"; if(si===1){me.guardStreak++;me.shield=Math.min(30,(me.shield||0)+8);}else me.guardStreak=0;
       const c = isBasic(si) ? basicPick(me,si===0?0:si===6?1:2) : guarding ? basicDefCard(me) : tk.card, sk = mySkill(tk ? tk.sk : isBasic(si)?basicTrainingSkill(me,c):skillOf(c), !guarding && !(foeSkill.def && !AB && !DF)), wNote = [], tNote = [], rNote = [];
       const barrier=barrierAct();if(barrier)tNote.push(barrier);if(!guarding&&!sk.def&&keywordSpend(me,"charge")){tNote.push("충전 10 소모 — 이번 공격 코인 위력 +1");}
-      let fk = foeSk(); if(BOSS && fk.bossSig){ bossFx.sig(fk.n); await wait(350); } const slpNow = !guarding && relicFx(me.f,"sleipnir") && !me.slpUsed;
+      let fk = foeSk();
+      const calibrated=lateFoeHeadAdjustment(foeSkill);
+      if(calibrated!==undefined) fk.clashHeadAdj=calibrated+(fk.headAdj||0);
+      if(BOSS && fk.bossSig){ bossFx.sig(fk.n); await wait(350); } const slpNow = !guarding && relicFx(me.f,"sleipnir") && !me.slpUsed;
       if(slpNow){ me.slpUsed = true; rNote.push("슬레이프니르 — 여덟 다리가 한 박자 먼저 내달렸다(앞면 확률 +15%)"); }
       if(!guarding && relicFx(me.f,"aegis") && !me.aegUsed){ me.aegUsed = true; fk = Object.assign({}, fk, {base: Math.max(1, fk.base - 3)}); rNote.push(`아이기스 — 눈이 뜨였다, ${josa(foe.name,"이","가")} 굳었다(기본 위력 -3)`); }
       const foeGuarding = fk.def && !guarding && !AB && !DF;
