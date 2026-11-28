@@ -324,6 +324,20 @@ test('화상은 턴 종료에 한 번 피해를 주고 진동은 부여한 턴�
   assert.deepEqual(JSON.parse(JSON.stringify(result)),{immediate:0,first:[40,0,9,3],later:1});
 });
 
+test('침잠은 일반 대상에 추가 피해를 주고 보호막 대상에 더 강하다',()=>{
+  const cx=vm.createContext({esc:x=>x,document:{addEventListener(){}}});
+  vm.runInContext(section('const KEYWORD_NAMES=','// 네 능력치의'),cx);
+  const result=vm.runInContext(`(()=>{
+    const bare={hp:50,sink:8,shield:0}, shielded={hp:50,sink:8,shield:10};
+    const first=keywordImpact(bare,keywordSnapshot(bare),1,[]);
+    const second=keywordImpact(shielded,keywordSnapshot(shielded),1,[]);
+    const intact=shielded.shield;
+    const hpDamage=keywordShield(shielded,second,[]);
+    return [first,second,intact,hpDamage,shielded.shield];
+  })()`,cx);
+  assert.deepEqual(Array.from(result),[8,12,10,2,0]);
+});
+
 test('고유 기술이 없는 인원이 있을 때만 첫 만남과 재등장 확률을 적용한다',()=>{
   const cx=vm.createContext({save(){},Math,NAMELESS_P:.035});
   vm.runInContext(section('function rescueDue(','const rescueVoices'),cx);

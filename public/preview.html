@@ -2465,7 +2465,7 @@ const KEYWORD_SLOTS=["약공","보통 공격","강공"];
 const KEYWORD_RULES={
   bleed:{cap:24, text:"적에게 쌓임 · 피격 시 보유량만큼 추가 피해 · 턴 종료 시 3 감소"},
   burn:{cap:12, text:"적에게 쌓임 · 턴 종료 시 보유량만큼 피해 (방어력 무시, 보호막 적용) · 이후 3 감소"},
-  sink:{cap:30, text:"적에게 쌓임 · 적중 시 보유량만큼 보호막을 깎거나, 적이 방어 중이면 최대 4를 써서 방어로 줄어든 피해 일부를 되돌림 · 보호막이 있거나 방어한 턴에만 2 감소 (부여한 턴 제외)"},
+  sink:{cap:18, text:"적에게 쌓임 · 피격 시 보유량만큼 추가 피해 (방어 적용) · 보호막이 있으면 보유량의 절반을 올림해 최대 6 추가 피해 · 턴 종료 시 3 감소 (부여한 턴 제외)"},
   tremor:{cap:30, text:"적에게 쌓임 · 피격 시 10 이상이면 10 소모 · 다음 합 기본 위력 −2 · 턴 종료 시 2 감소 (부여한 턴 제외)"},
   charge:{cap:20, text:"자신에게 쌓임 · 강공·고유 기술 사용 시 10 소모 → 이번 합 코인 위력 +1 · 합 결과와 관계없이 소모"},
   poise:{cap:50, text:"자신에게 쌓임 · 강공·고유 기술 유효 적중 시 10 소모 → 피해 +5 (방어 적용) · 빗나가면 유지"}
@@ -2495,29 +2495,25 @@ function keywordAdd(target,id,n){
   if(n>0 && (id==="sink"||id==="tremor")) (target.freshKeywords ||= {})[id]=true;
   return target[id];
 }
-function keywordDecay(target,held,defended=false){
+function keywordDecay(target,held){
   for(const k of ["bleed","burn","sink","tremor"]){
-    if((k===held && k!=="burn") || target.freshKeywords?.[k] || (k==="sink" && !target.shield && !defended)) continue;
-    target[k]=Math.max(0,Math.min(keywordCap(k),target[k]||0)-(k==="tremor"||k==="sink"?2:3));
+    if((k===held && k!=="burn") || target.freshKeywords?.[k]) continue;
+    target[k]=Math.max(0,Math.min(keywordCap(k),target[k]||0)-(k==="tremor"?2:3));
   }
   target.freshKeywords=null;
 }
 function keywordSnapshot(target){return Object.fromEntries(["bleed","burn","sink","tremor"].map(k=>[k,Math.min(keywordCap(k),Math.max(0,Number(target[k])||0))]));}
-function keywordImpact(target,before,defFactor,notes,defended=false){
+function keywordImpact(target,before,defFactor,notes){
   let extra=0;
   if(before.bleed){
     const b=Math.round(before.bleed*Math.max(0,defFactor));
     extra+=b; notes.push("출혈 추가 피해 "+b);
   }
-  if(before.sink && target.shield>0){
-    const n=Math.min(target.shield,before.sink);
-    target.shield-=n;
-    notes.push("침잠 — 보호막 −"+n);
-  }else if(before.sink && defended){
-    const n=Math.min(4,before.sink);
-    target.sink-=n;
-    extra+=n;
-    notes.push("침잠 — 방어 돌파 피해 +"+n);
+  if(before.sink){
+    const damage=Math.round(before.sink*Math.max(0,defFactor));
+    const shieldBonus=target.shield>0?Math.min(6,Math.ceil(before.sink/2)):0;
+    extra+=damage+shieldBonus;
+    notes.push(`침잠 추가 피해 +${damage}${shieldBonus?` · 보호막 대상 추가 피해 +${shieldBonus}`:""}`);
   }
   if(before.tremor>=10){
     target.tremor-=10;
@@ -6190,7 +6186,7 @@ default:ok=false;
 return damage;}
 
 const SIGNATURE_TECHS = {
-  sig_lamp: {n:"불 꺼진 검문소", keyword:"sink", amount:8, signature:[18,1,14], damage:1.90, d:"적중 → 적에게 침잠 8. 기존 침잠 최대 6을 써서 보호막을 깎거나 방어를 돌파한다. 보호막과 방어가 없으면 최대 4를 추가 피해로 바꾼다.", lesson:"겹쳐 놓은 방호판의 이음새마다 불이 꺼졌다. 맨 안쪽 판을 쳤을 때는 받침대까지 잠잠해졌다."},
+  sig_lamp: {n:"불 꺼진 검문소", keyword:"sink", amount:8, signature:[18,1,14], damage:1.90, d:"적중 → 적에게 침잠 8. 기존 침잠 최대 4를 써서 같은 양만큼 추가 피해. 보호막이 있는 적에게는 최대 6을 써서 그 두 배만큼 추가 피해.", lesson:"겹쳐 놓은 방호판의 이음새마다 불이 꺼졌다. 맨 안쪽 판을 쳤을 때는 받침대까지 잠잠해졌다."},
   sig_seam: {n:"상처값은 두 번 받는다", keyword:"bleed", amount:6, signature:[17,2,8], damage:1.90, d:"적중 → 적에게 출혈 6. 기존 출혈 최대 4를 쓰고, 소모한 수치의 두 배만큼 추가 피해.", lesson:"새로 그은 자국은 얕았다. 한 번 더 같은 자리를 지나자 오래 쓰던 훈련복이 그 선을 따라 벌어졌다."},
   sig_door: {n:"문턱 사수", keyword:"tremor", amount:7, signature:[15,4,5], damage:1.70, d:"적중 → 적에게 진동 7. 기존 진동이 3 이상이면 새 진동으로 다음 합의 휘청임을 발동시킨다. 내 보호막 +12.", lesson:"추가 바닥에 닿아 울렸다. 문턱 뒤에 놓인 물잔은 엎어지지 않았다."},
   sig_ember: {n:"잔화 이송", keyword:"burn", amount:6, signature:[16,3,6], damage:1.80, d:"적중 → 적에게 화상 6. 기존 화상 최대 5만큼의 턴 종료 피해를 앞당긴다.", lesson:"다 타 가던 심지가 다시 밝아졌다. 맞은편 훈련포엔 불씨가 하나 더 옮겨붙었다."},
@@ -6202,7 +6198,7 @@ const SIGNATURE_TECHS = {
   sig_spark: {n:"화구 폐쇄", keyword:"burn", amount:5, signature:[15,4,5], damage:1.70, d:"적중 → 적에게 화상 5. 기존 화상 최대 5를 앞당겨 피해를 주고, 당겨 썼다면 적에게 위축 6.", lesson:"열이 남은 연습판이 한 번 더 날아왔다. 그때는 창틀에 닿고도 유리 한 장 깨뜨리지 못했다."},
   sig_breath: {n:"첫차가 올 때까지", keyword:"poise", amount:8, signature:[18,1,14], damage:1.80, d:"적중 → 내 호흡 +8, 투지 +13. 기존 호흡 10을 썼다면 호흡의 피해 보너스 +4.", lesson:"첫차가 지나는 동안에도 연습추를 피하지 않았다. 한 번마다 숨을 가다듬었고 마지막에는 빈손으로 다시 서 있었다."},
   sig_handoff: {n:"뒷사람부터 들여보내", keyword:"charge", amount:8, signature:[15,5,4], damage:1.65, d:"적중 → 내 충전 +8. 체력 비율이 가장 낮은 생존 동료에게 보호막 +9 (혼자면 +6). 충전을 쓴 공격이면 대신 +15 (혼자면 +9).", lesson:"표적을 밀어 낸 뒤 가장 지쳐 있던 동료 앞으로 돌아왔다. 남은 추는 둘 사이에 떨어졌다."},
-  sig_rope: {n:"폐쇄선 돌파", keyword:"sink", amount:7, signature:[15,4,5], damage:1.90, d:"적중 → 적에게 침잠 7. 기존 침잠 최대 6을 써서 보호막을 깎거나 방어를 돌파한다. 방어하지 않는 적에게는 최대 4 추가 피해.", lesson:"문을 잠그듯 겹쳐 세운 판을 향해 한 번만 움직였다. 안쪽에 걸었던 자물쇠도 같이 떨어졌다."},
+  sig_rope: {n:"폐쇄선 돌파", keyword:"sink", amount:7, signature:[15,4,5], damage:1.90, d:"적중 → 적에게 침잠 7. 기존 침잠 최대 4를 써서 같은 양만큼 추가 피해. 보호막이 있는 적에게는 최대 6을 써서 그 두 배만큼 추가 피해.", lesson:"문을 잠그듯 겹쳐 세운 판을 향해 한 번만 움직였다. 안쪽에 걸었던 자물쇠도 같이 떨어졌다."},
   sig_echo: {n:"복진(伏震)", keyword:"tremor", amount:8, signature:[15,5,4], damage:1.80, d:"적중 → 적에게 진동 8. 기존 진동이 2 이상이면 진동 발동과 함께 추가 피해 6.", lesson:"이미 떨리던 연습판이 마지막 충격을 받아 한 박자 늦게 울었다. 뒤쪽 벽에서도 같은 소리가 났다."},
   sig_ash: {n:"그을음째 벗겨라", keyword:"burn", amount:6, signature:[15,5,4], damage:1.70, d:"적중 → 적에게 화상 6. 기존 화상 최대 5를 앞당겨 피해를 준다. 내 출혈과 화상을 각각 최대 5 제거.", lesson:"타던 훈련포가 표적을 감았다. 피와 검댕이 밴 제 겉옷도 한 꺼풀 벗겨 바닥에 놓았다."}
 };
@@ -6262,7 +6258,7 @@ function signatureLink(T,me,foe,enemyMove,charged=(me.charge||0)>=10){
   switch(T.keyword){
     case "bleed": return Math.min(4,foe.bleed||0);
     case "burn": return Math.min(5,foe.burn||0);
-    case "sink": return Math.min(foe.shield>0 || enemyMove.def?6:4,foe.sink||0);
+    case "sink": return Math.min(foe.shield>0?6:4,foe.sink||0);
     case "tremor": return (foe.tremor||0)>=10-T.amount ? 10-T.amount : 0;
     case "charge": return charged?10:0;
     case "poise": return (me.poise||0)>=10?10:0;
@@ -6285,10 +6281,8 @@ function signatureHit(T,me,foe,{party,enemyMove,factor,lastLost,link,gainResolve
     if(T.keyword==="bleed") extra+=2*spend();
     if(T.keyword==="burn") heat=spend();
     if(T.keyword==="sink"){
-      const spent=spend(), cut=Math.min(foe.shield||0,spent);
-      foe.shield=(foe.shield||0)-cut;
-      if(cut) notes.push(`침잠 연계 — 보호막 −${cut}`);
-      extra+=spent-cut;
+      const spent=spend();
+      extra+=spent*(foe.shield>0?2:1);
     }
     if(T.keyword==="poise") extra+=4;
   }
@@ -7248,7 +7242,7 @@ function mgCombat(ctx){
           }
           const rareDest=T&&T.hana?hanaApply(T,me,foe,tNote):null;
           onWeaponKeyword(me,si,tNote);
-          dmg+=hanaTriggerMarks(me,foe,factor,tNote);if(rareDest)hanaMark(T,rareDest,tNote);if(me.sp2!=="rupture"&&foe.rupture>0){dmg+=foe.rupture;tNote.push("파열 추가 피해 "+foe.rupture);foe.rupture--;}const ks=keywordSnapshot(foe), extra=keywordImpact(foe,ks,factor,tNote,fk.def&&!wSk.def);if(AB?.id==="nothing"&&!egoHasWeapon(me.f.ego)){const before=dmg;dmg=Math.round(dmg*0.6);abNote.push(`광폭 — 물리 공격 피해 ${before}→${dmg} (60%)`);}dmg=foeDefenseDamage(foe,dmg+extra,tNote)+heat;if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}else{dmg=foeDefenseDamage(foe,dmg,tNote);}if(dmg>0&&!blocked){const fixed=combatFixedDamage(me.f,me.mangLive);dmg+=fixed;if(fixed)tNote.push(`고정 추가 피해 +${fixed}`);}if(T?.counterFactor!=null) dmg=limitCounterDamage(me,dmg,tNote);
+          dmg+=hanaTriggerMarks(me,foe,factor,tNote);if(rareDest)hanaMark(T,rareDest,tNote);if(me.sp2!=="rupture"&&foe.rupture>0){dmg+=foe.rupture;tNote.push("파열 추가 피해 "+foe.rupture);foe.rupture--;}const ks=keywordSnapshot(foe), extra=keywordImpact(foe,ks,factor,tNote);if(AB?.id==="nothing"&&!egoHasWeapon(me.f.ego)){const before=dmg;dmg=Math.round(dmg*0.6);abNote.push(`광폭 — 물리 공격 피해 ${before}→${dmg} (60%)`);}dmg=foeDefenseDamage(foe,dmg+extra,tNote)+heat;if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}else{dmg=foeDefenseDamage(foe,dmg,tNote);}if(dmg>0&&!blocked){const fixed=combatFixedDamage(me.f,me.mangLive);dmg+=fixed;if(fixed)tNote.push(`고정 추가 피해 +${fixed}`);}if(T?.counterFactor!=null) dmg=limitCounterDamage(me,dmg,tNote);
           dmg=keywordShield(foe,dmg,tNote);
         }
         if(!wSk.def){
@@ -7306,7 +7300,7 @@ function mgCombat(ctx){
             me.enemyKeywordTurn=turn;
             hvNote.push(`${KEYWORD_NAMES[k]} +${me[k]-before} (보유 ${me[k]})`);
           }
-          dmg+=keywordImpact(me,keywordSnapshot(me),factor,hvNote,guarding||sk.def);
+          dmg+=keywordImpact(me,keywordSnapshot(me),factor,hvNote);
         }
         const abnormalityHit=Boolean(abPressure && landed && !fk.def && dmg>0);
         dmg=keywordShield(me,armorFinalDamage(me.f,abPenalty(AB,dmg)),egoNote);
@@ -7413,7 +7407,7 @@ function mgCombat(ctx){
       if(AB && AB.fuse && turn >= AB.fuse && foe.hp > 0){
         party.forEach(p=>{ if(p===foe.fuseMark && p.hp > 0) p.hp = Math.max(0, p.hp - abPenalty(AB,80)); });
         tick = tk.concat([`<b style="color:#ff8a7a">성냥불이 터졌다. 소녀가 ${esc(jo(foe.fuseMark.name,"을"))} 끌어안고 폭발했다</b>`]).join(" · "); m.info.innerHTML = `<div class="pk-text">${tick}</div>`; return finish("fuse"); }
-      keywordDecay(foe,null,foeSkill.def);party.forEach(p=>keywordDecay(p,p.enemyKeywordTurn===turn?foe.keywordId:null,lastAbMove?.me===p&&lastAbMove.si===1));hanaMarkDecay(foe);party.forEach(hanaMarkDecay);tick = tk.join(" · ");
+      keywordDecay(foe);party.forEach(p=>keywordDecay(p,p.enemyKeywordTurn===turn?foe.keywordId:null));hanaMarkDecay(foe);party.forEach(hanaMarkDecay);tick = tk.join(" · ");
       party.forEach(p=>{ if(!p.shinLive || p.hp<=0) return;
         if(p.sp <= -35){ p.shinLive = false; p.mangLive = 0; tick = [tick, `<span style="color:#b9a890">${esc(p.name)}: 마음이 흐트러져 신(心)이 꺼졌다</span>`].filter(Boolean).join(" · "); }
         else if(p.mangLive && p.sp <= -20){ p.mangLive = 0; tick = [tick, `<span style="color:#b9a890">${esc(p.name)}: 정신력이 바닥나 감아 둔 망(望)이 풀렸다</span>`].filter(Boolean).join(" · "); } });
