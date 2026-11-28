@@ -3014,17 +3014,39 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     const returning=Boolean(d.namelessRescued);
     const colleague=pick(S.fixers.filter(f=>!f.isLeader&&f.hp>0));
     const dialogue=returning
-      ? [["","뒷문에 낮은 발소리가 난다. 전에 이곳에서 상처를 씻은 사람이 붕대를 다시 감고 있다."],
-        [visitor,"문에 다른 이름이 붙었더군. 새로 온 사람도 있소?"]]
-      : [["","문을 잠그려는데, 계단 밑에서 쇠 긁는 소리가 난다. 난간을 짚은 사람이 손 옆에 묻은 피를 소매로 문지른다."],
-        [visitor,"여기서 좀 앉아 있다 가도 되겠소?"],
+      ? [["","뒷문에 접힌 진료비 영수증이 끼워져 있다. 뒤에는 이름 대신 전에 그가 앉았던 계단을 그려 놓았다."],
+        [visitor,"문패가 바뀌었길래 다른 사무소인 줄 알았소. 아직 내 자리 있소?"]]
+      : [["","문을 잠그려는데 계단 밑에서 쇠 긁는 소리가 난다. 낯선 사람이 난간에 등을 댄 채, 피 묻은 소매를 무릎 사이에 끼우고 있다."],
+        [visitor,"위층에선 보이지 않는 자리요. 조금만 있다 가겠소."],
         [colleague?.name||"대표",rescueVoices[cityVoiceFor[colleague?.personality]??1]]];
+    const game=S;
+    const plan=planOfficeSignatures(game);
+    const lesson=[
+      ["","그가 접수대에 영수증을 올려 둔다. 숫자가 적힌 면을 아래로 뒤집고, 빈 면에 사무소 뒷계단의 터진 형광등을 그린다."],
+      [visitor,"그날 저 등 밑에 사람 셋이 지나갔소. 첫째가 나를 보고도 그냥 갔고, 둘째는 신고하면 얼마 받냐고 물었지."],
+      [visitor,"셋째는 아래로 내려왔소."],
+      ["","그는 영수증을 접고 방 안을 둘러본다. 옷걸이에 매달린 낡은 연습추가 눈에 들어온 모양이다."],
+      ["","추를 밀어 놓고도 그는 가만히 앉아 있다. 돌아온 추가 그의 코트 단추에 닿기 직전, 방 안에는 떨어지는 소리만 난다. 추를 매단 쇠고리가 접수대 위에 놓여 있다."],
+      [visitor,"따라 할 필요 없소. 저 계단에서 나를 들어 올릴 때도 다들 손 두는 자리가 달랐잖소. 편한 데부터 해 봐요."],
+      ["","처음에는 추만 부딪쳐 아래층에서 올라와 문을 두드렸다. 한 번 더 소리를 내면 방값을 올리겠다고 했다. 책상 다리 밑에 훈련복을 깔고 다시 시작했다."],
+      ...plan.map(([f,id])=>["",`${jo(f.name,"이")} 나섰다. ${SIGNATURE_TECHS[id].lesson}`]),
+      ["","첫 전차가 맞은편 골목 위를 지날 때, 서로 배운 것을 보여 주느라 접수대를 열 사람이 없었다. 그가 앉았던 의자에는 실밥 하나만 남았다."],
+      ["","진료비 영수증 뒷면, 계단 그림 아래에 손톱으로 눌러 쓴 글씨가 있다. ‘다음엔 내가 내려가리다.’"]
+    ];
     const choices=[
-      {k:"treat",t:"안으로 들여 상처를 치료한다",after:[["","피 묻은 물을 두 번 갈고 나서야 그가 의자에 등을 기댄다."],[visitor,"칼 내려놓고 이리 와 보시오. 내 손이 어디서 멈추는지 보면 돼."]]},
-      {k:"rescue",t:"부축해서 근처 진료소까지 간다",after:[["","진료소 계단 마지막 칸은 그가 제 발로 올라간다. 퇴원한 날, 그가 사무소 뒷문을 두드린다."],[visitor,"저번에 두 사람이 들었지. 오늘은 내가 한 사람씩 봐 주겠소."]]},
+      {k:"treat",t:"안으로 들여 상처를 치료한다",after:[
+        ["","물 대야를 비우러 나갈 때마다 그는 일어나려 했다. 붕대가 다 감기고 나서야 코트에서 손을 뺐다. 내민 손에는 낡은 진료비 영수증이 구겨져 있었다."],
+        [visitor,"돈이 든 곳은 다녀온 뒤에 알려 주겠소. 아침까지 있으면 받으러 올 사람이 먼저 와요."],
+        ["","그날은 뒷문으로 보내 주었다. 사흘 뒤, 그가 같은 문 앞에 서서 의자 하나만 빌려 달라고 했다."],
+        ...lesson
+      ]},
+      {k:"rescue",t:"부축해서 근처 진료소까지 간다",after:[
+        ["","진료소 접수부는 선불 칸만 손가락으로 짚었다. 그가 허리춤의 공방제 무기를 내놓으려 하자, 먼저 사무소 이름을 적어 넣었다."],
+        ["","퇴원한 그가 말했다. 접수부에서 그 이름을 열 번은 읽었다고. 그날 밤 사무소 문을 닫을 때까지 그는 우리 앞에서 기다렸다."],
+        ...lesson
+      ]},
       {k:"pass",t:"진료소 위치를 알려 준다",after:[[visitor,"오른쪽 두 번째 골목. 알겠소."],["","그는 난간을 한 칸씩 짚으며 일어선다."]]}
     ];
-    const game=S;
     d.namelessPending=true;
     beginStory(d);
     const result=await vnPlay(visitor,dialogue,"어떻게 할까?",choices);
@@ -3035,7 +3057,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     if(result.k==="pass"){ save(); render(); return; }
     d.namelessRescued=true;
     d.namelessRescueDay=S.day;
-    const taught=learnOfficeSignatures(S);
+    const taught=learnOfficeSignatures(S,plan);
     for(const [f,T] of taught){
       S.records.push({day:S.day,name:f.name,what:"고유 기술",note:T.n});
       addLog(`${f.name} · 고유 기술 [${T.n}] 습득`);
@@ -6077,21 +6099,21 @@ default:ok=false;
 return damage;}
 
 const SIGNATURE_TECHS = {
-  sig_lamp: {n:"등잔 끄기", keyword:"sink", amount:4, cost:10, interval:3, role:0, d:"대상에게 침잠 4. 보호막이 있다면 침잠을 3 더 쌓는다."},
-  sig_seam: {n:"실밥 자르기", keyword:"bleed", amount:3, cost:10, interval:3, role:1, d:"대상에게 출혈 3. 이미 출혈이 있다면 추가 피해 3."},
-  sig_door: {n:"문간 짚기", keyword:"tremor", amount:3, cost:8, interval:3, role:0, d:"대상에게 진동 3. 자신에게 보호막 8."},
-  sig_ember: {n:"잔불 넘기기", keyword:"burn", amount:3, cost:10, interval:3, role:1, d:"대상에게 화상 3. 이미 화상이 있다면 화상을 2 더 쌓는다."},
-  sig_palm: {n:"빈손 빼기", keyword:"poise", amount:5, cost:8, interval:3, role:0, d:"자신에게 호흡 5. 명중하면 전투 정신력 4 회복."},
-  sig_step: {n:"반 발 늦게", keyword:"charge", amount:5, cost:10, interval:3, role:2, d:"자신에게 충전 5. 상대의 예고된 위험 행동에 적중하면 추가 피해 4."},
-  sig_latch: {n:"빗장 걷기", keyword:"tremor", amount:4, cost:11, interval:4, role:1, d:"대상에게 진동 4. 다음 합에서 대상 코인 위력 -1."},
-  sig_turn: {n:"손목 돌려치기", keyword:"poise", amount:5, cost:9, interval:3, role:2, d:"자신에게 호흡 5. 직전에 실제 공격 합에서 밀렸다면 투지 12 회복."},
-  sig_stitch: {n:"봉합선 긋기", keyword:"bleed", amount:2, cost:9, interval:3, role:1, d:"대상에게 출혈 2. 자신이 최대 체력의 절반 이하면 체력 4 회복."},
-  sig_spark: {n:"불똥 가두기", keyword:"burn", amount:2, cost:9, interval:3, role:0, d:"대상에게 화상 2. 위축 4를 쌓아 이후 받는 공격 피해를 줄인다."},
-  sig_breath: {n:"새벽 숨 고르기", keyword:"poise", amount:4, cost:9, interval:3, role:0, d:"자신에게 호흡 4. 명중하면 투지 9 회복."},
-  sig_handoff: {n:"등 뒤로 넘기기", keyword:"charge", amount:4, cost:8, interval:3, role:1, d:"자신에게 충전 4. 체력 비율이 가장 낮은 생존 동료에게 보호막 10. 혼자라면 자신에게 보호막 6."},
-  sig_rope: {n:"닻줄 끊기", keyword:"sink", amount:3, cost:10, interval:3, role:2, d:"대상에게 침잠 3. 상대가 방어 중이면 추가 피해 5."},
-  sig_echo: {n:"속울림 치기", keyword:"tremor", amount:4, cost:11, interval:3, role:2, d:"대상에게 진동 4. 이번 명중으로 진동이 발동할 때 추가 피해 3."},
-  sig_ash: {n:"재 털기", keyword:"burn", amount:3, cost:9, interval:3, role:1, d:"대상에게 화상 3. 자신의 출혈과 화상을 각각 최대 3 제거."}
+  sig_lamp: {n:"불 꺼진 검문소", keyword:"sink", amount:4, cost:10, interval:3, role:0, d:"대상에게 침잠 4. 보호막이 있다면 침잠을 3 더 쌓는다.", lesson:"겹쳐 놓은 방호판의 이음새마다 불이 꺼졌다. 맨 안쪽 판을 쳤을 때는 받침대까지 잠잠해졌다."},
+  sig_seam: {n:"상처값은 두 번 받는다", keyword:"bleed", amount:3, cost:10, interval:3, role:1, d:"대상에게 출혈 3. 이미 출혈이 있다면 추가 피해 3.", lesson:"새로 그은 자국은 얕았다. 한 번 더 같은 자리를 지나자 오래 쓰던 훈련복이 그 선을 따라 벌어졌다."},
+  sig_door: {n:"문턱 사수", keyword:"tremor", amount:3, cost:8, interval:3, role:0, d:"대상에게 진동 3. 자신에게 보호막 8.", lesson:"추가 바닥에 닿아 울렸다. 문턱 뒤에 놓인 물잔은 엎어지지 않았다."},
+  sig_ember: {n:"잔화 이송", keyword:"burn", amount:3, cost:10, interval:3, role:1, d:"대상에게 화상 3. 이미 화상이 있다면 화상을 2 더 쌓는다.", lesson:"다 타 가던 심지가 다시 밝아졌다. 맞은편 훈련포엔 불씨가 하나 더 옮겨붙었다."},
+  sig_palm: {n:"한 모금만 돌려받지", keyword:"poise", amount:5, cost:8, interval:3, role:0, d:"자신에게 호흡 5. 명중하면 전투 정신력 4 회복.", lesson:"연습추를 받아 낸 뒤 손을 폈다. 본인도 모르고 참던 숨이 그제야 길게 나왔다."},
+  sig_step: {n:"경보가 울린 뒤에", keyword:"charge", amount:5, cost:10, interval:3, role:2, d:"자신에게 충전 5. 상대의 예고된 위험 행동에 적중하면 추가 피해 4.", lesson:"종을 치자 큰 추가 떨어졌다. 모두 물러선 뒤에야 한 걸음 들어갔고, 무겁게 흔들리던 추가 허공에서 멎었다."},
+  sig_latch: {n:"경첩 파쇄", keyword:"tremor", amount:4, cost:11, interval:4, role:1, d:"대상에게 진동 4. 다음 합에서 대상 코인 위력 -1.", lesson:"연습판이 양쪽으로 흔들렸다. 다음번엔 한쪽 경첩이 버티질 못해 판이 끝까지 돌아오지 않았다."},
+  sig_turn: {n:"밀려난 자리에서 다시", keyword:"poise", amount:5, cost:9, interval:3, role:2, d:"자신에게 호흡 5. 직전에 실제 공격 합에서 밀렸다면 투지 12 회복.", lesson:"첫 합에 밀려 바닥의 금 밖으로 나갔다. 두 번째에는 그 자리에서 시작해 연습추를 제 쪽으로 끌어왔다."},
+  sig_stitch: {n:"피 묻은 반송표", keyword:"bleed", amount:2, cost:9, interval:3, role:1, d:"대상에게 출혈 2. 자신이 최대 체력의 절반 이하면 체력 4 회복.", lesson:"젖은 붕대를 매만지던 손으로 다시 무기를 들었다. 표적의 새 자국이 깊어질수록 떨리던 손끝은 가라앉았다."},
+  sig_spark: {n:"화구 폐쇄", keyword:"burn", amount:2, cost:9, interval:3, role:0, d:"대상에게 화상 2. 위축 4를 쌓아 이후 받는 공격 피해를 줄인다.", lesson:"열이 남은 연습판이 한 번 더 날아왔다. 그때는 창틀에 닿고도 유리 한 장 깨뜨리지 못했다."},
+  sig_breath: {n:"첫차가 올 때까지", keyword:"poise", amount:4, cost:9, interval:3, role:0, d:"자신에게 호흡 4. 명중하면 투지 9 회복.", lesson:"첫차가 지나는 동안에도 연습추를 피하지 않았다. 한 번마다 숨을 가다듬었고 마지막에는 빈손으로 다시 서 있었다."},
+  sig_handoff: {n:"뒷사람부터 들여보내", keyword:"charge", amount:4, cost:8, interval:3, role:1, d:"자신에게 충전 4. 체력 비율이 가장 낮은 생존 동료에게 보호막 10. 혼자라면 자신에게 보호막 6.", lesson:"표적을 밀어 낸 뒤 가장 지쳐 있던 동료 앞으로 돌아왔다. 남은 추는 둘 사이에 떨어졌다."},
+  sig_rope: {n:"폐쇄선 돌파", keyword:"sink", amount:3, cost:10, interval:3, role:2, d:"대상에게 침잠 3. 상대가 방어 중이면 추가 피해 5.", lesson:"문을 잠그듯 겹쳐 세운 판을 향해 한 번만 움직였다. 안쪽에 걸었던 자물쇠도 같이 떨어졌다."},
+  sig_echo: {n:"복진(伏震)", keyword:"tremor", amount:4, cost:11, interval:3, role:2, d:"대상에게 진동 4. 이번 명중으로 진동이 발동할 때 추가 피해 3.", lesson:"이미 떨리던 연습판이 마지막 충격을 받아 한 박자 늦게 울었다. 뒤쪽 벽에서도 같은 소리가 났다."},
+  sig_ash: {n:"그을음째 벗겨라", keyword:"burn", amount:3, cost:9, interval:3, role:1, d:"대상에게 화상 3. 자신의 출혈과 화상을 각각 최대 3 제거.", lesson:"타던 훈련포가 표적을 감았다. 피와 검댕이 밴 제 겉옷도 한 꺼풀 벗겨 바닥에 놓았다."}
 };
 Object.assign(TECHS,SIGNATURE_TECHS);
 
@@ -6106,19 +6128,28 @@ function knownSignatureTechs(d){
 function signatureStudents(d){
   return (d?.fixers||[]).filter(f=>f.hp>0&&!knownSignature(f));
 }
-function learnOfficeSignatures(d,rng=Math.random){
+function planOfficeSignatures(d,rng=Math.random){
   const archive=knownSignatureTechs(d);
   const occupied=new Set(d.fixers.map(knownSignature).filter(Boolean));
   const ids=Object.keys(SIGNATURE_TECHS);
-  const taught=[];
+  const plan=[];
   for(const f of signatureStudents(d)){
     const unused=ids.filter(id=>!archive.has(id));
     const pool=unused.length?unused:ids.filter(id=>!occupied.has(id));
     if(!pool.length) break;
     const id=pool[Math.floor(rng()*pool.length)];
-    f.tech=id;
     archive.add(id);
     occupied.add(id);
+    plan.push([f,id]);
+  }
+  return plan;
+}
+function learnOfficeSignatures(d,plan){
+  const archive=knownSignatureTechs(d);
+  const taught=[];
+  for(const [f,id] of plan){
+    f.tech=id;
+    archive.add(id);
     taught.push([f,SIGNATURE_TECHS[id]]);
   }
   d.signatureTechs=[...archive];

@@ -274,14 +274,16 @@ test('공격 손패와 고유 기술 고정 칸이 분리되고 기존 장착은
     limitBasicTechs(leader);
     limitBasicTechs(partner);
     const initial=[leader.tech,leader.guardTech,partner.tech];
-    const taught=learnOfficeSignatures(office,()=>0);
+    const plan=planOfficeSignatures(office,()=>0);
+    if(office.fixers.some(f=>f.tech) || office.signatureTechs) throw new Error("장면 종료 전에 기술 지급");
+    const taught=learnOfficeSignatures(office,plan);
     const earned=taught.map(([f])=>f.tech);
     const reloaded=JSON.parse(JSON.stringify(office));
     reloaded.fixers.forEach(limitBasicTechs);
-    const stays=learnOfficeSignatures(reloaded,()=>0).length;
+    const stays=learnOfficeSignatures(reloaded,planOfficeSignatures(reloaded,()=>0)).length;
     const before=reloaded.signatureTechs.slice();
     reloaded.fixers[1]=limitBasicTechs({hp:100});
-    const newHires=learnOfficeSignatures(reloaded,()=>0).length;
+    const newHires=learnOfficeSignatures(reloaded,planOfficeSignatures(reloaded,()=>0)).length;
     return {initial,earned,stays,before,after:reloaded.signatureTechs,newHires,
       signatureCount:Object.keys(SIGNATURE_TECHS).length,deck:NORMAL_ATTACK_DECK};
   })()`,cx);
