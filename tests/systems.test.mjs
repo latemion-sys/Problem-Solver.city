@@ -37,7 +37,7 @@ test('사무소 이야기는 하루에 한 편만 열리고 참여 동료가 바
   let pickIndex=0;
   const cx={
     S:{day:60,fixers:members,requests:[],records:[],officeStory:{dialoguePending:['emptyRoster','tollReceipt']}},
-    save(){}, render(){}, addLog(){}, changeFixerTrust(){}, modalStack:[],
+    save(){}, render(){}, addLog(){}, changeFixerTrust(){}, signatureStudents:()=>[], modalStack:[],
     document:{querySelector:()=>null,body:{classList:{contains:()=>false}}},
     setTimeout(fn){ return timers.push(fn); },
     pick(list){ assert.deepEqual(Array.from(list),members.slice(1,3)); return list[pickIndex]; },
@@ -254,32 +254,64 @@ test('출동 인원: 일반 3명, 도시 악몽과 도시의 별 4명',()=>{
   assert.match(game,/else if\(sel.length < partyMax\(q\)\)/);
 });
 
-test('현장 장부 단서를 조사하면 모든 위치를 하나로 좁힐 수 있다',()=>{
-  const random=Object.create(Math);
-  let seed=923;
-  random.random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);
-  const cx={Math:random};
-  vm.createContext(cx);
-  vm.runInContext(section('const SR_SPOTS =','// 자리마다의 모습'),cx);
-  const boards=vm.runInContext(`(()=>{
-    const assignments=[];
-    for(let a=0;a<4;a++) for(let b=0;b<4;b++) for(let c=0;c<4;c++) for(let d=0;d<4;d++){
-      const plan=[a,b,c,d];
-      if(new Set(plan).size===4) assignments.push(plan);
-    }
-    const cases=[];
-    for(const k of [.55,.95,1.25,1.65]) for(let i=0;i<60;i++){
-      const P=srMake({text:["장부","고양이","인형","의수"][i%4]},k);
-      const before=assignments.filter(plan=>P.intro.every(h=>srClueFits(P.things,plan,h)));
-      const after=before.filter(plan=>P.at.flat().every(h=>srClueFits(P.things,plan,h)));
-      cases.push({k,before:before.length,after:after.length,correct:after[0]?.join()===P.sol.join(),hints:P.intro.map(h=>h.t)});
-    }
-    return cases;
+test('운영에 미리보기 전투 및 수색 규칙을 함께 배포한다',()=>{
+  const previewGame=inlineScripts(preview).find(script=>script.includes('const VERSION ='));
+  const removeEnvironmentKeys=source=>source.replaceAll(/(const (?:SAVE_KEY|FORMER_KEY|CITY_KEY|CODEX_KEY|ACH_LT_KEY|ACH_KEY) = "[^"]+)-preview";/g,'$1";')
+    .replaceAll(/^\/\* 미리보기 사이트에서만 보이는.*\n|^const IS_PROD = .*\n/gm,'')
+    .replace('if(IS_PROD || document.getElementById("pvbtn"))','if(document.getElementById("pvbtn"))');
+  assert.equal(removeEnvironmentKeys(game),removeEnvironmentKeys(previewGame));
+});
+
+test('공격 손패와 고유 기술 고정 칸이 분리되고 기존 장착은 안전하게 이관된다',()=>{
+  const cx=vm.createContext({TECHS:{brace:{def:true},old:{},allout:{}},Math});
+  vm.runInContext(section('const SIGNATURE_TECHS =','function signatureHit('),cx);
+  vm.runInContext(section('const MAX_BASIC_TECHS =','function syncAllStatVitals('),cx);
+  const result=vm.runInContext(`(()=>{
+    const leader={hp:100,tech:"allout",techs:["old","brace"],guardTech:"brace"};
+    const partner={hp:100,tech:"old",techs:["old"]};
+    const absent={hp:0};
+    const office={fixers:[leader,partner,absent]};
+    limitBasicTechs(leader);
+    limitBasicTechs(partner);
+    const initial=[leader.tech,leader.guardTech,partner.tech];
+    const taught=learnOfficeSignatures(office,()=>0);
+    const earned=taught.map(([f])=>f.tech);
+    const reloaded=JSON.parse(JSON.stringify(office));
+    reloaded.fixers.forEach(limitBasicTechs);
+    const stays=learnOfficeSignatures(reloaded,()=>0).length;
+    const before=reloaded.signatureTechs.slice();
+    reloaded.fixers[1]=limitBasicTechs({hp:100});
+    const newHires=learnOfficeSignatures(reloaded,()=>0).length;
+    return {initial,earned,stays,before,after:reloaded.signatureTechs,newHires,
+      signatureCount:Object.keys(SIGNATURE_TECHS).length,deck:NORMAL_ATTACK_DECK};
   })()`,cx);
-  assert.ok(boards.every(b=>b.correct&&b.after===1));
-  assert.ok(boards.filter(b=>b.k===.55).every(b=>b.before===6));
-  assert.ok(boards.filter(b=>b.k===1.65).every(b=>b.before<=2));
-  assert.ok(boards.some(b=>b.k===.95&&b.hints.includes('trait')));
+  const json=JSON.parse(JSON.stringify(result));
+  assert.deepEqual(json.initial,[null,'brace',null]);
+  assert.equal(new Set(json.earned).size,2);
+  assert.equal(json.stays,0);
+  assert.equal(json.newHires,1);
+  assert.deepEqual(json.after.slice(0,2),json.before);
+  assert.equal(json.signatureCount,15);
+  assert.equal(json.deck.length,10);
+  assert.ok(json.deck.every(card=>[0,6,7].includes(card)));
+  assert.match(game,/data-combat-defense[\s\S]{0,450}data-signature-slot/);
+});
+
+test('고유 기술이 없는 인원이 있을 때만 첫 만남과 재등장 확률을 적용한다',()=>{
+  const cx=vm.createContext({save(){},Math,NAMELESS_P:.035});
+  vm.runInContext(section('function rescueDue(','const rescueVoices'),cx);
+  assert.equal(vm.runInContext('rescueDue({},1,1,()=>0)',cx),false);
+  assert.equal(vm.runInContext('rescueDue({},5,1,()=>.0874)',cx),true);
+  assert.equal(vm.runInContext('rescueDue({},5,1,()=>.0876)',cx),false);
+  assert.equal(vm.runInContext('rescueDue({},7,1,()=>1)',cx),true);
+  assert.equal(vm.runInContext('rescueDue({},7,0,()=>0)',cx),false);
+  assert.equal(vm.runInContext('rescueDue({namelessSeen:true},7,1,()=>1)',cx),false);
+  assert.equal(vm.runInContext('rescueDue({namelessPending:true},7,1,()=>1)',cx),true);
+  assert.equal(vm.runInContext(`(()=>{
+    const d={};
+    rescueDue(d,5,1,()=>1);
+    return rescueDue(d,5,1,()=>0);
+  })()`,cx),false);
 });
 
 test('미리보기는 위험한 수만 예고하며 인간형 적의 강공 뒤에는 일반 행동이 이어진다',()=>{

@@ -1669,11 +1669,15 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 <script>
 "use strict";
 /* ================= 데이터 ================= */
-const VERSION = "v.a4.1.1.7";
+const VERSION = "v.a4.6.7";
 const CHANGELOG = [
-  ["미리보기 · 전투 위협 예고", ["강공과 위험한 행동만 미리 예고하고, 적 유형에 따라 장기전에서 받는 압박을 조정했습니다."]],
-  ["미리보기 · 전투 예고와 문답 수색", ["중요 예고를 전투 화면 위에 표시하고, 일반 인간형 적의 수를 직전 행동에 따라 바꿨습니다. 수색은 목격자 문답으로 진행합니다."]],
-  ["미리보기 · 전투와 후반 의뢰", ["동네 양아치 전투에 예고와 빈틈을 추가했습니다. 장부·추격·호위의 정보 선택, 직접 수행 성공 기준, 이웃 사무소 후속 사건을 시험합니다."]],
+  ["v.a4.6.7", [
+    "전투 손패는 일반 공격으로 구성됩니다. 방어 옆에서 전력 공격을 쓰거나, 습득한 고유 기술을 사용할 수 있습니다.",
+    "이름없는 해결사와 만나는 사무소 이야기를 추가했습니다. 사무소 인원은 이 이야기에서 각자의 기술을 배울 수 있으며, 습득한 기술은 기술 일람에 기록됩니다.",
+    "위험한 적의 행동을 전투 화면 위에서 미리 알립니다. 인간형 적, 환상체, 죄종, 뒤틀림은 서로 다른 방식으로 싸웁니다.",
+    "수색에서 목격자에게 질문해 후보를 좁힙니다. 일부 의뢰에서는 확보한 정보에 따라 다른 진입로와 대응을 선택할 수 있습니다.",
+    "장기 운영 중 만날 사무소 대화와 후속 의뢰를 추가했습니다."
+  ]],
   ["v.a4.1.1.6", [
     "기본 공격의 정신력 소모를 없앴습니다. 약공으로 합에서 지면 받는 직접 피해가 줄어들고, 대검은 코인이 뒷면을 보일 때도 더 높은 위력을 냅니다.",
     "E.G.O.가 개화하면 곧바로 해당 장비 칸에 장착되며, 기존 장비는 보관함으로 옮겨집니다.",
@@ -2454,7 +2458,7 @@ function newFixer(name, grade, stats, opts={}){
     id: S ? S.nextId++ : 0, name, grade, stats, exp:{str:0,agi:0,tec:0,wil:0},
     hp:100, hpMax:100, mp:100, mpMax:100, trust:50, personality: pick(PERSONALITIES)[0], look: randomLook(), precious: null,
     gear:{weapon:null,armor:null,acc:null}, ego:null, title:null, cap:70,
-    lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0, tech:"allout", techs:[], wuse:{}
+    lastDispatch:0, unavailUntil:0, starCleared:false, isLeader:false, hiredDay:S?S.day:1, done:0, tech:null, techs:[], wuse:{}
   }, opts);
   if(f.isLeader){if(!GENDERS.includes(f.gender)) f.gender=rollGender();}else{f.originBody=Math.random()<0.10;delete f.gender;}
   return f;
@@ -2484,14 +2488,11 @@ const MAX_BASIC_TECHS = 3;
 function limitBasicTechs(f){
   if(!f) return f;
   const learned = Array.isArray(f.techs) ? f.techs : [];
-  f.techs = [...new Set(learned.filter(id=>Object.hasOwn(TECHS,id)&&id!=="allout"&&!TECHS[id].hana&&!TECHS[id].relic))].slice(0, MAX_BASIC_TECHS);
-  f.hanaArts = knownHanaArts(f);
-  if(f.techs.includes(f.tech) && TECHS[f.tech].def){
-    if(f.guardTech==null) f.guardTech = f.tech;
-    f.tech = f.hanaArts[0] || "allout";
-  }
-  if(!f.tech || (f.tech!=="allout" && !f.techs.includes(f.tech) && !f.hanaArts.includes(f.tech))) f.tech = f.hanaArts[0] || "allout";
-  if(f.guardTech && (!f.techs.includes(f.guardTech) || !TECHS[f.guardTech]?.def)) delete f.guardTech;
+  const defenses = [...new Set(learned.filter(id=>Object.hasOwn(TECHS,id)&&TECHS[id].def))];
+  const oldGuard = [f.guardTech,f.tech].find(id=>defenses.includes(id));
+  f.techs = (oldGuard && !defenses.slice(0,MAX_BASIC_TECHS).includes(oldGuard) ? [oldGuard,...defenses] : defenses).slice(0,MAX_BASIC_TECHS);
+  f.guardTech = oldGuard || null;
+  f.tech = knownSignature(f);
   return f;
 }
 function syncAllStatVitals(d){ if(d){ (d.fixers||[]).concat(d.recruitPool||[]).forEach(f=>{
@@ -2572,7 +2573,7 @@ function archiveOffice(d){
     if(blocked.has(id) || seen.has(id)) continue;
     seen.add(id);
     people.push({key:id, name:f.name,grade:f.grade, stats:{...f.stats},look:f.look?{...f.look}:null,
-      personality:f.personality,precious:f.precious?{...f.precious}:null,hanaTraining:f.hanaTraining?{...f.hanaTraining}:null,hanaArts:(f.hanaArts||[]).slice(),keywordPlan:validKeywordPlan(f.keywordPlan)?{keys:f.keywordPlan.keys.slice(),order:f.keywordPlan.order.slice()}:null});
+      personality:f.personality,precious:f.precious?{...f.precious}:null,hanaTraining:f.hanaTraining?{...f.hanaTraining}:null,tech:knownSignature(f),keywordPlan:validKeywordPlan(f.keywordPlan)?{keys:f.keywordPlan.keys.slice(),order:f.keywordPlan.order.slice()}:null});
   }
   a.offices.push({key, name:d.officeName, people});
   formerSave(a);
@@ -2604,7 +2605,11 @@ function formerCandidate(officeGrade, leaderGrade){
   if(!pool.length) return null;
   const p=pick(pool), f=newFixer(p.name,p.grade,{...p.stats},{look:p.look?{...p.look}:randomLook(),personality:p.personality,alumniKey:p.key,fromOffice:p.officeName});
   f.hpMax=f.mpMax=100+(9-p.grade)*10; f.hp=f.hpMax; f.mp=f.mpMax; syncStatVitals(f);
-  f.precious=p.precious?{...p.precious}:rollPrecious(f);if(p.hanaTraining)f.hanaTraining={...p.hanaTraining};f.hanaArts=knownHanaArts(p);limitBasicTechs(f);if(validKeywordPlan(p.keywordPlan))lockKeywordPlan(f,p.keywordPlan);
+  f.precious=p.precious?{...p.precious}:rollPrecious(f);
+  if(p.hanaTraining) f.hanaTraining={...p.hanaTraining};
+  f.tech=knownSignature(p);
+  limitBasicTechs(f);
+  if(validKeywordPlan(p.keywordPlan))lockKeywordPlan(f,p.keywordPlan);
   const base=Math.round(HIRE_COST[p.grade]*(0.9+Math.random()*0.2)/100)*100;
   setRecruitCost(f, base);
   return f;
@@ -2619,7 +2624,7 @@ function newGame(leaderName, officeName, partnerName, lead){
   L.precious = lead && lead.precious && lead.precious.text ? {kind: lead.precious.kind || "마음", text: lead.precious.text} : {kind:"마음", text:"소중한 것"};
   const P = newFixer(partnerName, 9, {str:8,agi:11,tec:9,wil:7}, {renamed:true});   // 개업 신고서에서 이름을 정했다
   syncStatVitals(L); syncStatVitals(P); S.fixers.push(L,P);
-  // 미리보기 한정: 두 번째 9급 동료를 이름·능력치·성격·외형 모두 무작위로 생성한다.
+  // 두 번째 9급 동료의 이름·능력치·성격·외형은 무작위로 정한다.
   const P2 = newFixer(randomName(), 9, genStats(9));
   syncStatVitals(P2); S.fixers.push(P2);
   [L,P,P2].forEach((f,i)=>{if(lead&&Array.isArray(lead.keywordPlans))lockKeywordPlan(f,lead.keywordPlans[i]);else if(FXTEST)lockKeywordPlan(f,{keys:["bleed","burn","charge"],order:[0,1,2]});});
@@ -2631,7 +2636,7 @@ function newGame(leaderName, officeName, partnerName, lead){
   save();
 }
 
-/* ================= 미리보기 전용 사무소 이야기 · 1일~90일 및 이후 사건 ================= */
+/* ================= 사무소 이야기 ================= */
 const officeStoryModule = (function buildOfficeStoryModule(){
   let timer = null, busy = false;
   const calendar = [
@@ -2913,6 +2918,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   }
   function titleOf(id){
     if(id==="crossingSearch") return "빈 당번 칸";
+    if(id==="nightLedger") return "야간반의 장부";
     if(cityCases[id]) return cityCases[id].title;
     return {intro:"우리 사무소",week1:"첫 단골손님",week2:"아는 사람",week3:"두 번째 동료의 부탁",month1:"한 달의 장부",month2:"우리 사무소의 일",month3:"세 달을 버틴 간판"}[id]||"사무소에서 생긴 일";
   }
@@ -2986,13 +2992,141 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       [selected.k==="records"?"접어 둔 당번표를 펼쳐 시장 뒷문을 찾는다.":"켜 둔 등 아래에 낯선 사람이 서 있다."],
       {special:true,crossingRoute:selected.k,foe:"건널목을 막은 해결사",loot:null});
   }
+  function rescueDue(d,day,eligible,roll=Math.random){
+    if(!eligible || day<2) return false;
+    if(d.namelessPending || (!d.namelessSeen && day>=7)) return true;
+    if(d.namelessRollDay!==day){
+      d.namelessRollDay=day;
+      d.namelessRoll=roll()<NAMELESS_P*2.5;
+      save();
+    }
+    return d.namelessRoll;
+  }
+  const rescueVoices=[
+    "제가 들죠. 대표님은 문이나 좀 열어 주세요.",
+    "숨은 쉬어요. 팔 말고 어깨하고 무릎 밑을 받쳐 주세요.",
+    "제 코트 깔게요. 잠깐만요, 바로 데리고 갈게요.",
+    "피 닦을 걸 챙겨 와요. 이대로 들면 바닥에 길을 그리겠네."
+  ];
+  async function offerNamelessRescue(d){
+    const visitor=d.namelessRevealed?"이름없는 특색":"이름없는 해결사";
+    const returning=Boolean(d.namelessRescued);
+    const colleague=pick(S.fixers.filter(f=>!f.isLeader&&f.hp>0));
+    const dialogue=returning
+      ? [["","뒷문에 낮은 발소리가 난다. 전에 이곳에서 상처를 씻은 사람이 붕대를 다시 감고 있다."],
+        [visitor,"문에 다른 이름이 붙었더군. 새로 온 사람도 있소?"]]
+      : [["","문을 잠그려는데, 계단 밑에서 쇠 긁는 소리가 난다. 난간을 짚은 사람이 손 옆에 묻은 피를 소매로 문지른다."],
+        [visitor,"여기서 좀 앉아 있다 가도 되겠소?"],
+        [colleague?.name||"대표",rescueVoices[cityVoiceFor[colleague?.personality]??1]]];
+    const choices=[
+      {k:"treat",t:"안으로 들여 상처를 치료한다",after:[["","피 묻은 물을 두 번 갈고 나서야 그가 의자에 등을 기댄다."],[visitor,"칼 내려놓고 이리 와 보시오. 내 손이 어디서 멈추는지 보면 돼."]]},
+      {k:"rescue",t:"부축해서 근처 진료소까지 간다",after:[["","진료소 계단 마지막 칸은 그가 제 발로 올라간다. 퇴원한 날, 그가 사무소 뒷문을 두드린다."],[visitor,"저번에 두 사람이 들었지. 오늘은 내가 한 사람씩 봐 주겠소."]]},
+      {k:"pass",t:"진료소 위치를 알려 준다",after:[[visitor,"오른쪽 두 번째 골목. 알겠소."],["","그는 난간을 한 칸씩 짚으며 일어선다."]]}
+    ];
+    const game=S;
+    d.namelessPending=true;
+    beginStory(d);
+    const result=await vnPlay(visitor,dialogue,"어떻게 할까?",choices);
+    if(!result || S!==game) return;
+    delete d.namelessPending;
+    d.namelessSeen=true;
+    addStoryLog(visitor,result.t);
+    if(result.k==="pass"){ save(); render(); return; }
+    d.namelessRescued=true;
+    d.namelessRescueDay=S.day;
+    const taught=learnOfficeSignatures(S);
+    for(const [f,T] of taught){
+      S.records.push({day:S.day,name:f.name,what:"고유 기술",note:T.n});
+      addLog(`${f.name} · 고유 기술 [${T.n}] 습득`);
+    }
+    if(taught.length) ac("tech");
+    save(); render();
+    if(taught.length) await modal("사무소에서 배운 고유 기술",taught.map(([f,T])=>`<p><b>${esc(f.name)} · ${esc(T.n)}</b><br>${esc(T.d)}</p>`).join(""),[{t:"확인",primary:true}]);
+  }
+  async function offerNamelessReveal(d){
+    beginStory(d);
+    const colleague=pick(S.fixers.filter(f=>!f.isLeader&&f.hp>0));
+    const choice=await vnPlay("칭호를 적는 칸",[
+      ["","하나 협회의 연락원이 봉투를 건넨다. 찾는 사람의 칭호란에는 도장만 찍혀 있다."],
+      [colleague?.name||"대표","이 주소 맞아요? 저희가 그 사람 이름도 모르는데요."],
+      ["","문 옆에 기대 있던 해결사가 봉투를 받는다. 연락원이 한 발 물러서 인사한다."],
+      ["이름없는 특색","그냥 그렇게들 부르오. 처음 왔을 때 배지부터 꺼냈으면, 붕대를 감기 전에 의뢰서부터 내밀었겠지."]
+    ],"봉투를 받아 든 그가 처마 밑에 서 있다.",[
+      {k:"stay",t:"비가 그칠 때까지 들어와 있으라고 한다",after:[["이름없는 특색","지난번 그 의자면 되오. 오늘은 피 안 묻힐 테니."]]},
+      {k:"return",t:"그날 가르쳐 준 기술을 기억한다고 말한다",after:[["이름없는 특색","써 보고 나면 내가 말한 것과 조금 달라질 거요. 달라진 쪽을 기억하시오."]]}
+    ]);
+    if(!choice) return;
+    d.namelessRevealed=true;
+    if(choice.k==="stay" && colleague) changeFixerTrust(colleague,2,"칭호를 적는 칸");
+    else if(choice.k==="return") changeOfficeTrust(2,"칭호를 적는 칸");
+    addStoryLog("칭호를 적는 칸",choice.t);
+    save(); render();
+  }
+  async function offerNightLedger(d){
+    const colleague=pick(S.fixers.filter(f=>!f.isLeader&&f.hp>0));
+    const reply=[
+      "장부 찾으러 가는 김에 창고 문을 누가 잠갔는지도 봅시다.",
+      "교대 도장부터 봐야겠어요. 같은 날 두 사람이 같은 문을 썼을 테니까요.",
+      "이렇게 두면 밤에 나간 사람들은 번 돈도 못 받겠네요.",
+      "또 종이가 사라졌군요. 종이에 적힌 돈은 안 사라졌을 텐데."
+    ][cityVoiceFor[colleague?.personality]??1];
+    beginStory(d);
+    const choice=await vnPlay("야간반의 장부",[
+      ["","맞은편 운반소에서 접은 장부 표지를 들고 왔다. 철심에 물린 속지가 한 장도 없다."],
+      ["야간반 반장","어제 교대 때까진 있었어요. 일당을 못 준다고 하니까 애들이 새벽에 다 나가 버렸습니다."],
+      [colleague?.name||"대표",reply]
+    ],"운반소의 교대 기록을 찾아줄까?",[
+      {k:"accept",t:"야간 출입구부터 찾아보기로 한다",after:[["야간반 반장","짐수레 세워 두는 데 보조문이 있습니다. 제가 먼저 열어 둘게요."]]},
+      {k:"decline",t:"장부를 마지막으로 본 사람을 다시 만나 보라고 한다",after:[["야간반 반장","그 친구 번호부터 찾아봐야겠네요. 적어 뒀던 것도 이 장부라서."]]}
+    ]);
+    if(!choice) return;
+    d.seen.nightLedger=true;
+    if(choice.k==="accept"){
+      postRequest("nightLedger","수색",["tec","agi"],"야간 운반반","운반소의 야간 교대 장부를 찾고 사람들의 근무 기록을 대조해 달라.",null,["보조문을 지나 수레 보관소에서 어제 밤 출입을 목격한 사람들을 찾는다."],{special:true,loot:null});
+      return;
+    }
+    d.results.nightLedger="refused";
+    addStoryLog("야간반의 장부",choice.t);
+    save(); render();
+  }
+  async function offerEmptyDrawer(d){
+    const colleague=pick(S.fixers.filter(f=>!f.isLeader&&f.hp>0));
+    const reply=[
+      "손잡이만 달아 주세요. 열 일 있으면 제가 열 테니까.",
+      "누가 언제 교대하는지 적어 두면, 다음 사람이 찾기 편하겠어요.",
+      "새로 들어오는 사람한테는 열쇠가 어디 있는지 첫날에 알려줘요.",
+      "쓸데없는 영수증만 안 넣으면, 내 책상 밑에 들어갑니다."
+    ][cityVoiceFor[colleague?.personality]??1];
+    beginStory(d);
+    const choice=await vnPlay("맨 위 서랍",[
+      ["","접수대 서랍이 걸려 열리지 않는다. 손잡이를 빼고 보니 예전에 쓴 종이 한 장이 레일에 물려 있다."],
+      ["","개업 첫 주에 적은 비상 연락처다. 번호 두 개에는 이미 줄이 그어져 있다."],
+      [colleague?.name||"대표",reply]
+    ],"서랍을 비우고 무엇을 넣을까?",[
+      {k:"rest",t:"오늘은 접수대를 닫고 동료들과 비상 절차를 맞춘다",after:[["","창구에 휴무 종이를 걸었다. 누구한테 먼저 전화할지만 정했는데도 차가 두 번 식었다."]]},
+      {k:"share",t:"이웃 사무소와 긴급 연락처를 교환한다",after:[["","새 연락망은 복사해 장갑과 호루라기 옆에 넣어 두었다. 앞집이 휴무일에 여는 뒷문도 함께 적었다."]]}
+    ]);
+    if(!choice) return;
+    d.seen.emptyDrawer=true;
+    if(choice.k==="rest"){
+      for(const f of S.fixers) if(f.hp>0) f.mp=Math.min(f.mpMax,f.mp+Math.ceil(f.mpMax*.1));
+      if(colleague) changeFixerTrust(colleague,2,"맨 위 서랍");
+    }else changeOfficeTrust(3,"맨 위 서랍");
+    addStoryLog("맨 위 서랍",choice.t);
+    save(); render();
+  }
   function next(){
     if(!S||S.over||S.ending) return null;
     const d=state(), ff=founders();
+    if(d.namelessPending && signatureStudents(S).length) return {kind:"rescue"};
     if(d.lastStoryDay===S.day || d.afterDay===S.day ||
       (d.lastStoryDay==null && S.records.some(r=>r.day===S.day && r.what==="사무소 이야기"))) return null;
+    if(rescueDue(d,S.day,signatureStudents(S).length)) return {kind:"rescue"};
     const due = d.followups.find(item=>!item.dueDay || item.dueDay<=S.day);
     if(due) return {kind:"followup",item:due};
+    if(S.day>=100 && d.namelessRescued && !d.namelessRevealed && S.day>d.namelessRescueDay) return {kind:"reveal"};
+    if(S.day>=104 && !d.seen.nightLedger) return {kind:"lateLedger"};
+    if(S.day>=116 && !d.seen.emptyDrawer) return {kind:"lateDrawer"};
     const canShow = id=>cityCases[id] && (!cityCases[id].prescript || !(S.idx?.closed || S.idx?.cur || S.idx?.done>=3 || S.requests.some(q=>q.prescript)));
     const pending = d.dialoguePending?.find(canShow);
     if(pending) return {kind:"city",id:pending};
@@ -3023,7 +3157,21 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     if(leader&&leader.grade===0&&S.fixers.some(f=>!f.isLeader&&f.grade===0)&&!d.seen["colorTogether"])
       return {kind:"after",id:"colorTogether"};
     if(officeTrust()>=85&&!d.seen["trustedOffice"]) return {kind:"after",id:"trustedOffice"};
+    if(d.namelessRevealed && d.namelessRollDay!==S.day){
+      d.namelessRollDay=S.day;
+      d.namelessRoll=Math.random()<NAMELESS_P;
+      save();
+      if(d.namelessRoll) return {kind:"nameless"};
+    }else if(d.namelessRevealed && !signatureStudents(S).length && d.namelessRoll) return {kind:"nameless"};
     return null;
+  }
+  async function finishDueRescue(){
+    const d=state();
+    if(busy || !signatureStudents(S).length) return;
+    if(!d.namelessPending && (d.namelessSeen || S.day<7 || d.lastStoryDay===S.day || d.afterDay===S.day)) return;
+    busy=true;
+    try { await offerNamelessRescue(d); }
+    finally { busy=false; }
   }
   function schedule(){
     if(timer!==null||busy||!S||S.over) return;
@@ -3047,10 +3195,26 @@ const officeStoryModule = (function buildOfficeStoryModule(){
   async function show(event){
     if(!S||S.over) return;
     const d=state(), ff=founders(), id=event.id;
+    if(event.kind==="rescue") return offerNamelessRescue(d);
+    if(event.kind==="reveal") return offerNamelessReveal(d);
+    if(event.kind==="lateLedger") return offerNightLedger(d);
+    if(event.kind==="lateDrawer") return offerEmptyDrawer(d);
+    if(event.kind==="nameless"){ beginStory(d); return namelessColor({}); }
     if(event.kind==="city") return offerCityCase(id);
     if(event.kind==="crossing") return offerCrossingSearch(event.office);
     if(event.kind==="followup"){
       const f=event.item, city = cityCases[f.id];
+      if(f.id==="nightLedger"){
+        d.followups.splice(d.followups.indexOf(f),1);
+        const success=f.result==="success";
+        if(success) changeOfficeTrust(3,"야간반의 장부");
+        addStoryLog("야간반의 장부",success?"밀린 일당을 정산했다.":"근무 기록을 복구하지 못했다.");
+        beginStory(d);
+        await vnPlay("야간반의 장부 · 일당",[
+          ["야간반 반장",success?"오래 기다리게 했네요. 오늘은 교대 끝나는 대로 일당부터 돌렸습니다.":"집집이 찾아가서 어제 어디 있었는지부터 적고 있습니다. 종이 한 장이 아쉽긴 하네요."]
+        ],null,null);
+        return;
+      }
       if(f.id==="crossingSearch"){
         d.followups.splice(d.followups.indexOf(f),1);
         addStoryLog("빈 당번 칸",f.result==="success"?"교대 복귀":"건널목 휴업");
@@ -3187,7 +3351,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     addLog(`[사무소 이야기] ${titleOf(id)} 의뢰의 기한이 지났다.`);
   }
   function refuse(q){
-    if(q.officeStoryId==="crossingSearch"){ expire(q); return; }
+    if(["crossingSearch","nightLedger"].includes(q.officeStoryId)){ expire(q); return; }
     if(q.officeStoryId && cityCases[q.officeStoryId]) cityCaseResult(q.officeStoryId,"refused");
   }
   function testCrossing(withRecords){
@@ -3200,6 +3364,11 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     d.sharedOffice=office.id;
     d.results.crossingCover=withRecords?"success":"refused";
     d.lastStoryDay=0;
+    d.namelessSeen=true;
+    d.namelessRollDay=S.day;
+    d.namelessRoll=false;
+    delete d.namelessPending;
+    d.seen.nightLedger=d.seen.emptyDrawer=true;
     d.followups=[];
     for(const [,id] of calendar) d.seen[id]=true;
     for(const id of Object.keys(cityCases)) d.seen[id]=true;
@@ -3208,7 +3377,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     S.requests=S.requests.filter(q=>q.officeStoryId!=="crossingSearch");
     render(); schedule();
   }
-  return {testCrossing,schedule,after,starAfter,expire,refuse,restoreDialogueCases,cityCaseTitle:id=>id==="crossingSearch"?titleOf(id):cityCases[id]?.title};
+  return {testCrossing,schedule,finishDueRescue,after,starAfter,expire,refuse,restoreDialogueCases,cityCaseTitle:id=>["crossingSearch","nightLedger"].includes(id)?titleOf(id):cityCases[id]?.title};
 })();
 
 /* ================= 의뢰 생성 ================= */
@@ -5906,20 +6075,121 @@ default:ok=false;
 }if(ok){delete target.hanaMarks[id];notes.push("["+T.special+"] 발동 — "+T.specialDesc);}}
 return damage;}
 
-function knownHanaArts(f){const a=[...new Set((Array.isArray(f?.hanaArts)?f.hanaArts:[]).filter(id=>Object.hasOwn(HANA_ARTS,id)))];return a.includes(f?.tech)?[f.tech]:a.slice(0,1);}
+const SIGNATURE_TECHS = {
+  sig_lamp: {n:"등잔 끄기", keyword:"sink", amount:4, cost:10, interval:3, role:0, d:"대상에게 침잠 4. 보호막이 있다면 침잠을 3 더 쌓는다."},
+  sig_seam: {n:"실밥 자르기", keyword:"bleed", amount:3, cost:10, interval:3, role:1, d:"대상에게 출혈 3. 이미 출혈이 있다면 추가 피해 3."},
+  sig_door: {n:"문간 짚기", keyword:"tremor", amount:3, cost:8, interval:3, role:0, d:"대상에게 진동 3. 자신에게 보호막 8."},
+  sig_ember: {n:"잔불 넘기기", keyword:"burn", amount:3, cost:10, interval:3, role:1, d:"대상에게 화상 3. 이미 화상이 있다면 화상을 2 더 쌓는다."},
+  sig_palm: {n:"빈손 빼기", keyword:"poise", amount:5, cost:8, interval:3, role:0, d:"자신에게 호흡 5. 명중하면 전투 정신력 4 회복."},
+  sig_step: {n:"반 발 늦게", keyword:"charge", amount:5, cost:10, interval:3, role:2, d:"자신에게 충전 5. 상대의 예고된 위험 행동에 적중하면 추가 피해 4."},
+  sig_latch: {n:"빗장 걷기", keyword:"tremor", amount:4, cost:11, interval:4, role:1, d:"대상에게 진동 4. 다음 합에서 대상 코인 위력 -1."},
+  sig_turn: {n:"손목 돌려치기", keyword:"poise", amount:5, cost:9, interval:3, role:2, d:"자신에게 호흡 5. 직전에 실제 공격 합에서 밀렸다면 투지 12 회복."},
+  sig_stitch: {n:"봉합선 긋기", keyword:"bleed", amount:2, cost:9, interval:3, role:1, d:"대상에게 출혈 2. 자신이 최대 체력의 절반 이하면 체력 4 회복."},
+  sig_spark: {n:"불똥 가두기", keyword:"burn", amount:2, cost:9, interval:3, role:0, d:"대상에게 화상 2. 위축 4를 쌓아 이후 받는 공격 피해를 줄인다."},
+  sig_breath: {n:"새벽 숨 고르기", keyword:"poise", amount:4, cost:9, interval:3, role:0, d:"자신에게 호흡 4. 명중하면 투지 9 회복."},
+  sig_handoff: {n:"등 뒤로 넘기기", keyword:"charge", amount:4, cost:8, interval:3, role:1, d:"자신에게 충전 4. 체력 비율이 가장 낮은 생존 동료에게 보호막 10. 혼자라면 자신에게 보호막 6."},
+  sig_rope: {n:"닻줄 끊기", keyword:"sink", amount:3, cost:10, interval:3, role:2, d:"대상에게 침잠 3. 상대가 방어 중이면 추가 피해 5."},
+  sig_echo: {n:"속울림 치기", keyword:"tremor", amount:4, cost:11, interval:3, role:2, d:"대상에게 진동 4. 이번 명중으로 진동이 발동할 때 추가 피해 3."},
+  sig_ash: {n:"재 털기", keyword:"burn", amount:3, cost:9, interval:3, role:1, d:"대상에게 화상 3. 자신의 출혈과 화상을 각각 최대 3 제거."}
+};
+Object.assign(TECHS,SIGNATURE_TECHS);
+
+function knownSignature(f){
+  const id=f?.tech;
+  return Object.hasOwn(SIGNATURE_TECHS,id) ? id : null;
+}
+function knownSignatureTechs(d){
+  const history=Array.isArray(d?.signatureTechs)?d.signatureTechs:[];
+  return new Set([...history,...(d?.fixers||[]).map(knownSignature)].filter(id=>Object.hasOwn(SIGNATURE_TECHS,id)));
+}
+function signatureStudents(d){
+  return (d?.fixers||[]).filter(f=>f.hp>0&&!knownSignature(f));
+}
+function learnOfficeSignatures(d,rng=Math.random){
+  const archive=knownSignatureTechs(d);
+  const occupied=new Set(d.fixers.map(knownSignature).filter(Boolean));
+  const ids=Object.keys(SIGNATURE_TECHS);
+  const taught=[];
+  for(const f of signatureStudents(d)){
+    const unused=ids.filter(id=>!archive.has(id));
+    const pool=unused.length?unused:ids.filter(id=>!occupied.has(id));
+    if(!pool.length) break;
+    const id=pool[Math.floor(rng()*pool.length)];
+    f.tech=id;
+    archive.add(id);
+    occupied.add(id);
+    taught.push([f,SIGNATURE_TECHS[id]]);
+  }
+  d.signatureTechs=[...archive];
+  return taught;
+}
+const NORMAL_ATTACK_DECK=[0,0,0,0,6,6,6,6,7,7];
+
+function signatureHit(T,me,foe,{party,enemyMove,factor,lastLost,gainResolve,recoverSpirit,notes}){
+  let extra=0;
+  const self=T.keyword==="charge"||T.keyword==="poise";
+  const target=self?me:foe;
+  let amount=T.amount;
+  const addShield=(p,n)=>{
+    p.shield=Math.min(30,(p.shield||0)+n);
+    notes.push(`${esc(p.name)} 보호막 ${p.shield}`);
+  };
+  switch(T.id){
+    case "sig_lamp": if(foe.shield>0) amount+=3; break;
+    case "sig_seam": if(foe.bleed>0) extra=3; break;
+    case "sig_door": addShield(me,8); break;
+    case "sig_ember": if(foe.burn>0) amount+=2; break;
+    case "sig_palm": notes.push(`정신력 +${recoverSpirit(me,4)}`); break;
+    case "sig_step": if(dangerousFoeSkill(enemyMove)) extra=4; break;
+    case "sig_latch": foe.coinDown=Math.max(1,foe.coinDown||0); notes.push("다음 합 적 코인 위력 -1"); break;
+    case "sig_turn": if(lastLost){gainResolve(me,12);notes.push(`투지 ${me.resolve}/100`);} break;
+    case "sig_stitch": if(me.hp<=me.max/2){me.hp=Math.min(me.max,me.hp+4);notes.push("체력 +4");} break;
+    case "sig_spark": foe.weak=Math.min(6,(foe.weak||0)+4); notes.push(`위축 ${foe.weak}`); break;
+    case "sig_breath": gainResolve(me,9); notes.push(`투지 ${me.resolve}/100`); break;
+    case "sig_handoff": {
+      const ally=party.filter(p=>p!==me&&p.hp>0).sort((a,b)=>a.hp/a.max-b.hp/b.max)[0];
+      addShield(ally||me,ally?10:6);
+      break;
+    }
+    case "sig_rope": if(enemyMove.def) extra=5; break;
+    case "sig_echo": if((foe.tremor||0)+amount>=10) extra=3; break;
+    case "sig_ash":
+      for(const k of ["burn","bleed"]){
+        const removed=Math.min(3,me[k]||0);
+        if(removed){me[k]-=removed;notes.push(`${KEYWORD_NAMES[k]} 제거 ${removed}`);}
+      }
+      break;
+  }
+  notes.push(`${T.n} — ${KEYWORD_NAMES[T.keyword]} ${keywordAdd(target,T.keyword,amount)}`);
+  if(extra) notes.push(`추가 피해 +${Math.round(extra*factor)}`);
+  return Math.round(extra*factor);
+}
+
 function learnedCombatTechs(f, defense){
-  const basic = (f.techs||[]).filter(id=>TECHS[id] && Boolean(TECHS[id].def)===defense);
-  return defense ? basic : ["allout", ...basic, ...knownHanaArts(f)];
+  if(defense) return (f.techs||[]).filter(id=>TECHS[id]?.def);
+  const id=knownSignature(f);
+  return id?[id]:[];
 }
 function equippedTechId(f, wt, defense=false){
   const id = defense ? f.guardTech : f.tech;
   if(learnedCombatTechs(f,defense).includes(id) && techFits(id,wt)) return id;
-  return defense ? null : knownHanaArts(f)[0] || "allout";
+  return null;
 }
-function techCost(T){return TECH_SP_COST;}
-function trainingRoll(f,roll=Math.random(),rng=Math.random){const v=f.hanaTraining||(f.hanaTraining={base:0,cp:0,tech:0});if(roll<.33){v.cp++;return "기본 공격 코인 위력 +1";}if(roll<.83){const k=["str","agi","tec","wil"][Math.min(3,Math.floor(rng()*4))];f.stats[k]=(f.stats[k]||0)+1;return ATTR_NAME[k]+" +1";}if(roll<.94){v.base++;return "기본 공격 기본 위력 +1";}if(roll<.99){v.tech++;return "특수 기술 기본·코인 위력 +1";}f.hanaArts=knownHanaArts(f);if(f.hanaArts.length){v.tech++;return "희귀 기술 이미 습득 · 특수 기술 기본·코인 위력 +1";}const available=Object.keys(HANA_ARTS);const id=available[Math.min(available.length-1,Math.floor(rng()*available.length))];f.hanaArts=[id];f.tech=id;limitBasicTechs(f);return "희귀 기술 습득: "+HANA_ARTS[id].n;}
+function techCost(T){return T.cost??TECH_SP_COST;}
+function relicAttackOf(f){
+  const w=f.gear?.weapon;
+  if(!w?.relic || w.seal || egoHasWeapon(f.ego)) return null;
+  const id="r_"+w.id.slice(6);
+  return TECHS[id] ? {id,...TECHS[id]} : null;
+}
+function trainingRoll(f,roll=Math.random(),rng=Math.random){
+  const v=f.hanaTraining||(f.hanaTraining={base:0,cp:0,tech:0});
+  if(roll<.33){v.cp++;return "기본 공격 코인 위력 +1";}
+  if(roll<.83){const k=["str","agi","tec","wil"][Math.min(3,Math.floor(rng()*4))];f.stats[k]=(f.stats[k]||0)+1;return ATTR_NAME[k]+" +1";}
+  if(roll<.94){v.base++;return "기본 공격 기본 위력 +1";}
+  v.tech++;return "특수 기술 기본·코인 위력 +1";
+}
 async function hanaTraining(ended){if(ended%28!==0||S.hanaTrainingDay===ended)return;S.hanaTrainingDay=ended;const lines=S.fixers.map(f=>{const result=trainingRoll(f);syncStatVitals(f);S.records.push({day:ended,name:f.name,what:"하나 협회 훈련",note:result});addLog(f.name+": 하나 협회 훈련 · "+result);return esc(f.name)+" · "+esc(result);});save();await modal("하나 협회 정기 해결사 훈련",`<p>4주 정기 훈련 결과</p><p>${lines.join("<br>")}</p>`,[{t:"확인",primary:true}]);}
-const relicTechOf = f => { const w = f && f.gear && f.gear.weapon; return w && w.relic && (w.seal||0)===0 && TECHS["r_" + String(w.id).replace("relic-","")] ? "r_" + String(w.id).replace("relic-","") : null; };
 // 방어구 · 장신구 원본의 효과(전투에서 저절로)
 const relicFx = (f, id) => !!(f && f.gear && ["armor","acc"].some(sl=>{ const g = f.gear[sl]; return g && g.relic && g.id==="relic-"+id && (g.seal||0)===0; }));
 const RELIC_PASSIVE = {sleipnir:"전투의 첫 합에서 앞면 확률 +15%", aegis:"전투의 첫 합에서 상대 기본 위력 -3", kavacha:"전투마다 처음 받는 체력 피해를 막아 낸다", karakawa:"합에서 이기면 피해 +2",
@@ -5929,7 +6199,7 @@ const techFits = (id, wt) => { const T = TECHS[id]; return !!T && (!T.kinds || T
 const TECH_STAT_REQ = 28;   // 새 성장 곡선(승급 +4/+1~3)에 맞춰 낮춤
 function techCandidates(f){ const out = [], u = f.wuse || {}, know = f.techs || [];
   if(know.length >= MAX_BASIC_TECHS) return out;
-  Object.entries(TECHS).forEach(([id,T])=>{ if(id==="allout" || T.relic || T.hana || know.includes(id)) return;
+  Object.entries(TECHS).forEach(([id,T])=>{ if(!T.def || know.includes(id)) return;
     if(T.kinds){ const n = T.kinds.reduce((s,k)=>s+(u[k]||0),0), order = Object.keys(TECHS).filter(x=>TECHS[x].kinds && TECHS[x].kinds.some(k=>T.kinds.includes(k)) && know.includes(x)).length;
       const need = 6 + order*8, gradeOk = f.grade <= 8 - Math.min(4, order*2); if(n >= need && gradeOk) out.push(id); }
     else if(T.stat && f.stats[T.stat] >= TECH_STAT_REQ && f.done >= 8) out.push(id); });
@@ -5939,10 +6209,7 @@ async function checkTech(f){
   const c = techCandidates(f); if(!c.length || Math.random() >= (window.__forceTech ? 1 : 0.35)) return;
   const wt = weaponTypeOf(wGear(f)) || "none", fit = c.filter(id=>techFits(id, wt)), id = pick(fit.length ? fit : c), T = TECHS[id];
   f.techs = (f.techs||[]).concat(id); ac("tech");
-  if(techFits(id,wt)){
-    if(TECHS[id].def){ if(f.guardTech==null) f.guardTech=id; }
-    else if(!f.tech || f.tech==="allout") f.tech=id;
-  }
+  if(techFits(id,wt)&&f.guardTech==null) f.guardTech=id;
   S.records.push({day:S.day, name:f.name, what:"기술", note:`${T.n} — ${T.d}`}); addLog(`${f.name}: 기술 [${T.n}]${jo(T.n,"을").slice(T.n.length)} 깨우쳤다`);
   f.diary = (f.diary||[]).concat([`${S.day}일차 기술 ${jo(T.n,"을")} 깨우쳤다`]).slice(-20); save(); render();
   await modal("기술", `${esc(josa(f.name,"이","가"))} 몸으로 익힌 것을 하나의 기술로 깨우쳤다.<br><b style="color:#9fd0ff">[${esc(T.n)}]</b> ${esc(T.d)}<br><span class="muted">${T.kinds ? (()=>{ const w = T.kinds.map(k=>k==="none"?"맨손":WEAPON_KINDS[k].n).join(" · "), ch = w.charCodeAt(w.length-1)-0xAC00, jj = ch>=0 && ch<11172 && ch%28 && ch%28!==8 ? "으로" : "로"; return `${w}${jj} 싸울 때 쓸 수 있다.`; })() : "어떤 무기를 들어도 쓸 수 있다."} 관리에서 합 전투의 "특수 기술" 칸에 무엇을 둘지 고른다.</span>`, [{t:"확인",primary:true}]);
@@ -6066,7 +6333,7 @@ function weaponGuardCard(kind){return {n:"가드",a:1,b:1,def:true,normalCoins:1
 function weaponTechniqueShape(kind,T,ctx={}){
   const id=T.id, [lo,hi]=WEAPON_COIN_RANGE[kind]||WEAPON_COIN_RANGE.none;
   const slots={allout:0,zorn:0,iai:2,fleche:2,sweep:1,charge:0,smash:0,fanning:1,flurry:0,throw:2,dismantle:1,spin:0,onestrike:2,afterimage:1,vital:2,kiai:0,drawcut:1,momentum:0,suppress:1,deadeye:2,crack:2,impale:2,vault:0,whirl:0,crush:0,rush:0,focus:2,r_astrape:2,r_claiomh:2,r_gyeongui:0,r_ruyi:0,r_drepanon:1};
-  const card=T.def?weaponGuardCard(kind):normalAttackCards(kind,undefined,false)[slots[id]??1], origin=clashCardSkill(card);
+  const card=T.def?weaponGuardCard(kind):normalAttackCards(kind,undefined,false)[T.role??slots[id]??1], origin=clashCardSkill(card);
   let coins=origin.coins,cp=origin.cp+TECH_COIN_PLUS;
   const bonus={allout:2,zorn:2,iai:ctx.iaiUsed?1:6,fleche:4,sweep:1,charge:5,fanning:1,flurry:1,spin:1,onestrike:3,kiai:1,drawcut:1,momentum:ctx.lastWon?4:1,deadeye:2,bind:1,r_astrape:4,r_claiomh:3,r_ruyi:3,r_drepanon:1,impale:2,vault:2,whirl:1,crush:2,focus:1};
   let target=(kind==="none"?8.5:10.5)+(T.def?-2:0)+(bonus[id]||0);
@@ -6085,7 +6352,7 @@ function weaponTechniqueShape(kind,T,ctx={}){
   const base=Math.max(1,Math.round(target-coins*cp/2))+2;
   return {card,sk:{...origin,n:T.n,base,coins,cp,def:!!T.def}};
 }
-function specialInterval(id){if(HANA_ARTS[id])return 0;return ["iai","charge","fanning","r_astrape","r_gyeongui","r_drepanon"].includes(id)?3:2;}
+function specialInterval(id){if(HANA_ARTS[id])return 0;return TECHS[id]?.interval??(["r_astrape","r_gyeongui","r_drepanon"].includes(id)?3:2);}
 function clashPowerValue(sk,heads){return sk.base+heads.filter(Boolean).length*sk.cp;}
 function coinDamage(base,remaining,original,heads,mul=1){
   const survival=0.55+0.45*remaining/Math.max(1,original), facing=0.9+0.2*(heads.filter(Boolean).length/Math.max(1,heads.length));
@@ -6302,15 +6569,16 @@ function mgCombat(ctx){
       skillMenu();
     }
     function techOf(me, defense=false){
-      let id = equippedTechId(me.f,me.wt,defense);
-      if(!defense && !Object.hasOwn(HANA_ARTS,id)) id = relicTechOf(me.f) || id;
+      const id = equippedTechId(me.f,me.wt,defense) || (defense?null:"allout");
       return id ? {id,...TECHS[id]} : null;
     }
     const techCD=T=>specialInterval(T.id);
     const techWait=(me,T)=>Math.max(0,techCD(T)-(turn-(me.techTurns?.[T.id]??-Infinity)));
-    const techReady=(me,T=techOf(me))=>techWait(me,T)===0;
+    const techReady=(me,T=techOf(me))=>T!==null&&techWait(me,T)===0;
     function techSkill(me,T=techOf(me)){
-      const shaped=weaponTechniqueShape(me.wt,T,me),sk=shaped.sk,training=me.f.hanaTraining?.tech||0;
+      if(!T) return null;
+      const shaped=weaponTechniqueShape(me.wt,T,me),sk=shaped.sk,progress=me.f.hanaTraining?.tech||0;
+      const training=T.id.startsWith("sig_")?Math.min(2,progress):progress;
       sk.base+=training;sk.cp+=training;
       return {T,sk,card:{...shaped.card,n:T.n,def:!!T.def}};
     }
@@ -6473,7 +6741,7 @@ function mgCombat(ctx){
       if(combatFixedDamage(me.f,me.mangLive))b.push(`고정 추가 피해 +${combatFixedDamage(me.f,me.mangLive)}`);if(shinAwakeClash(me.f))b.push(`신 깨우침: 기본 피해 +${shinAwakeDamage(me.f)} · 합 기본 위력 +${shinAwakeClash(me.f)}`);if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(egoShieldMax(me.f.ego)) b.push(`보호막 ${me.shield}/${egoShieldMax(me.f.ego)}`);else if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge)b.push(`충전 ${me.charge}/20`);if(me.poise)b.push(`호흡 ${me.poise}/50`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
       a.push(...hanaMarkLabel(foe));b.push(...hanaMarkLabel(me));return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
     function shuffleDeck(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-    function deckOf(me){return me.deck||(me.deck={draw:shuffleDeck([0,0,0,6,6,6,7,7,2,2].map((sk,id)=>({sk,id}))),discard:[],hand:[],held:null,carry:null,turn:0});}
+    function deckOf(me){return me.deck||(me.deck={draw:shuffleDeck(NORMAL_ATTACK_DECK.map((sk,id)=>({sk,id}))),discard:[],hand:[],held:null,carry:null,turn:0});}
     function requiredCard(me){
       if(!AB)return null;
       if(foe.sign&&BGMK)return battleResponseCard(turn,me);
@@ -6493,7 +6761,7 @@ function mgCombat(ctx){
       return hint;
     }
     function handOf(me){const d=deckOf(me);if(d.turn!==turn){d.turn=turn;d.hand=d.carry?[d.carry]:[];d.held=d.carry?.id??null;d.carry=null;while(d.hand.length<4){if(!d.draw.length){d.draw=shuffleDeck(d.discard.splice(0));}if(!d.draw.length)break;d.hand.push(d.draw.pop());}}
-      const req=requiredCard(me);if(req!==null && req!==1 && !d.hand.some(c=>c.sk===req)){for(const pool of [d.draw,d.discard]){const i=pool.findIndex(c=>c.sk===req);const j=d.hand.findIndex(c=>c.id!==d.held);if(i>=0&&j>=0){const card=pool[i];pool[i]=d.hand[j];d.hand[j]=card;break;}}}return d;}
+      const req=requiredCard(me);if(isBasic(req) && !d.hand.some(c=>c.sk===req)){for(const pool of [d.draw,d.discard]){const i=pool.findIndex(c=>c.sk===req);const j=d.hand.findIndex(c=>c.id!==d.held);if(i>=0&&j>=0){const card=pool[i];pool[i]=d.hand[j];d.hand[j]=card;break;}}}return d;}
     function closeHands(){party.forEach(me=>{const d=me.deck;if(!d||d.turn!==turn)return;for(const c of d.hand){if(d.carry&&c.id===d.carry.id)continue;d.discard.push(c);}d.hand=[];});}
     function abnormalityHazard(t){
       if(!abPressure || foe.hp<=0) return "";
@@ -6524,31 +6792,36 @@ function mgCombat(ctx){
         <span class="muted">· 투지 ${me.resolve}/100${me.clashLosses>=2?" · 다음 공격 합에 반격 기회 준비":""}${me.resolveBoost?` · 다음 공격 기본 위력 +${me.resolveBoost}`:""}</span>
         ${sup.length ? `<br><span class="muted">동료 지원: ${sup.map(p=>{const k=supportKind(p),g=supportGun(p);return `${esc(p.name)} — ${supportLabel[k]||"지원 효과 없음"}${k==="gun"?(g?` (탄창 ${g.mag}발)`:" (탄창 없음)"):""}${firstSupportUsed&&(k==="gun"||k==="tool")?" (첫 합 사용 완료)":""}`;}).join(" / ")}</span>` : ""}${plannedSuppress().length?`<br><b style="color:#ff9a8a">이번 턴 견제 예고: ${plannedSuppress().map(p=>esc(p.name)).join(", ")}</b>`:""}
         ${statusLine()}<br><span class="muted">능력치 효과: 근력 기본 위력 +${statClashBasePlus(me.f)} · 재주 코인 위력 +${statClashCoinPlus(me.f)} · 재주 앞면 확률 +${statClashHeadPlus(me.f).toFixed(2)}%p · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 최대 체력 +${statHpPlus(me.f)} · 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
-      const ak = basicAtkCards(me), tk = techSkill(me), defense = techOf(me,true);
+      const ak = basicAtkCards(me), tk = techSkill(me), defense = techOf(me,true), relic = relicAttackOf(me.f);
       const ammoGun = (!me.f.ego || me.f.ego.type==="armor") ? ammoMagazine(me.f.gear.weapon) : null;
       const hasBullet = !ammoGun || ammoGun.mag>0;
       const listedAmmoBonus = ammoGun ? (AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus : 0;
       const techniqueShown = (equipDamage(me.f)*1.5).toFixed(1);
       const ammunition = ammoGun ? `<br><span style="color:#f2d27a">탄창 ${ammoGun.mag}/${ammoCap(ammoGun)} · ${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).name} (+${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus})</span>` : "";
-      const previewFirst=!(foeSkill.def&&!AB&&!DF), tsk=mySkill(tk.sk,previewFirst);
+      const previewFirst=!(foeSkill.def&&!AB&&!DF), tsk=tk?mySkill(tk.sk,previewFirst):null;
       const defenseButton=()=>{
         if(!defense) return "";
         const sk=mySkill(techSkill(me,defense).sk,previewFirst), wait=techWait(me,defense);
         return `<button data-sk="8" ${wait?"disabled":""}><b>방어 기술 · ${esc(defense.n)}</b><small>별도 방어 칸 · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 생존 시 정신력 +5${wait?` · 재사용까지 ${wait}턴`:""}</small></button>`;
       };
       const attackButton=(c,i,card)=>{const v=mySkill(basicTrainingSkill(me,c),previewFirst),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" data-card="${card.id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"}${i===0?" · 합 패배 시 직접 피해 -10%":""}${keywordLabel(me,i)} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(v).toFixed(1)} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${c.normalSp?` · 정신력 -${c.normalSp}`:""}${listedAmmoBonus?` · 탄환 +${listedAmmoBonus} 이하`:""}</small></button>`;};
-      const techniqueButton=card=>`<button data-sk="2" data-card="${card.id}" class="pk-tech" ${(!hasBullet&&!tk.sk.def)||!techReady(me)||(tk.T.hana&&me.sp<-33)?"disabled":""}><b>공격 기술 · ${esc(tk.T.n)}</b><small>${!techReady(me)?`<span style="color:#ffb35a">재사용까지 ${techWait(me,tk.T)}턴</span><br>`:tk.T.hana&&me.sp<-33?`<span style="color:#ffb35a">정신력 소모 불가</span><br>`:""}${tsk.def?"방어 · ":""}기본 ${tsk.base} · 코인 ${coinStr(tsk)} +${tsk.cp} · 합 ${tsk.base}~${tsk.base+tsk.coins*tsk.cp} · 피해 기준 ${techniqueShown} · ${esc(tk.T.d)} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(tsk).toFixed(1)} · 정신력 -${techCost(tk.T)} · ${techCD(tk.T)?`사용 간격 ${techCD(tk.T)}턴`:"재사용 제한 없음"}</small></button>`;
+      const attackTechniqueButton=(T,sk,attrs,label)=>{
+        const wait=techWait(me,T);
+        return `<button ${attrs} class="pk-tech" ${!hasBullet||wait?"disabled":""}><b>${label} · ${esc(T.n)}</b><small>${wait?`<span style="color:#ffb35a">재사용까지 ${wait}턴</span><br>`:""}기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 피해 기준 ${techniqueShown} · ${esc(T.d)} · 정신력 -${techCost(T)} · 사용 간격 ${techCD(T)}턴</small></button>`;
+      };
       m.ctrl.innerHTML = `<div class="pk-moves" data-combat-hand>${deck.hand.map(card=>{
         const i=card.sk===0?0:card.sk===6?1:2;
         return `<div style="display:flex;flex-direction:column;gap:4px">
-          ${card.sk===2?techniqueButton(card):attackButton(ak[i],i,card)}
+          ${attackButton(ak[i],i,card)}
           <button data-hold="${card.id}" ${card.id===deck.held?"disabled":""}>${deck.carry?.id===card.id?"보관 취소":"다음 턴 보관"}</button>
         </div>`;
       }).join("")}</div>
       <div class="pk-moves" data-combat-defense style="border-top:1px solid var(--line);padding-top:6px">
         <button data-sk="1"><b>방어(가드)</b><small>매 턴 사용 가능 · 보호막 +8 (최대 30) · 정신력 +3, 공격을 막으면 +7 · 합 없음</small></button>
+        ${attackTechniqueButton(tk.T,tsk,'data-sk="2" data-signature-slot',tk.T.keyword?"고유 기술":"공격 기술")}
         ${defenseButton()}
-      </div>`;
+      </div>
+      ${relic?`<div class="pk-moves">${attackTechniqueButton(relic,mySkill(techSkill(me,relic).sk,previewFirst),"data-relic-attack","유물 기술")}</div>`:""}`;
 
       if(sup.length || cover){
         m.ctrl.insertAdjacentHTML("beforeend", `<div class="fg-seg" style="flex:1 1 100%">
@@ -6562,21 +6835,21 @@ function mgCombat(ctx){
       m.ctrl.insertAdjacentHTML("beforeend", `<div style="flex:1 1 100%;display:flex;gap:5px;flex-wrap:wrap"><span class="muted">투지 ${me.resolve}/100 · 추가 행동(턴당 1회)</span>${resolveMoves.map(([id,n,cost])=>`<button data-resolve="${id}" ${canResolveAction(me,id,cost)?"":"disabled"}>${n}${id==="steady"?" · 정신력 -8 이하에서 전투당 한 번":` (${cost})`}</button>`).join("")}</div>${ammoGun?`<div style="flex:1 1 100%">${ammunition}${AMMO_TYPES.filter(a=>ammoStock(ammoGun,a.id)>0).map(a=>`<button data-sk="3" data-ammo-type="${a.id}">재장전 · ${a.name} (${ammoStock(ammoGun,a.id)}발)</button>`).join("")}</div>`:""}`);
     }
     const wait = ms => new Promise(r=>setTimeout(r, ms));
-    async function resolveClash(si){
+    async function resolveClash(si,option){
       const current=party[act], signBefore={hp:current.hp,max:current.max,contempt:current.contempt,requiredCard:foe.sign?battleResponseCard(turn,current):null};
-      const chosen = si===2 || si===8 ? techOf(current,si===8) : null;
+      const chosen = si===2 && option==="relic" ? relicAttackOf(current.f) : si===2 || si===8 ? techOf(current,si===8) : null;
       if((si===2 || si===8) && (!chosen || !techReady(current,chosen))) return;
       if(chosen?.hana && current.sp<-33){toast("희귀 기술을 사용하려면 전투 정신력이 필요합니다.");return;}
       if(si===1 && foeSkill.def){ const barrier=barrierAct();const me=party[act];me.fought=true;me.guardStreak++;me.shield=Math.min(30,(me.shield||0)+8);const rec=recoverCombatSpirit(me,3);gainResolve(me,3); const signText=foeSignAction(si,me,false,0,true,signBefore); tick = `${esc(jo(party[act].name,"과"))} ${esc(foe.name)} 모두 방어 태세를 굳혔다 — 합 없음 · 정신력 +${rec}${barrier?" · "+barrier:""}${signText?" · "+signText:""}`; return next(); } // 둘 다 막으면 지나간다
       const me = party[act], gun=(!me.f.ego||me.f.ego.type==="armor")?ammoMagazine(me.f.gear.weapon):null;
       const reloading=si===3, tk = chosen ? techSkill(me,chosen) : null, T = tk?.T;
-      if(reloading && (!gun || !AMMO_BY[arguments[1]] || ammoStock(gun,arguments[1])<=0))return;
+      if(reloading && (!gun || !AMMO_BY[option] || ammoStock(gun,option)<=0))return;
       if(!reloading && gun && (isBasic(si) || (si===2 && !tk.sk.def)) && gun.mag<=0)return;
       const firedRound=gun&&!reloading&&(isBasic(si)||(si===2&&!tk.sk.def))?(AMMO_BY[gun.ammoType]||AMMO_TYPES[0]):null;
       if(T) (me.techTurns ||= {})[T.id]=turn;
       if(tk&&tk.T.hana)me.sp=clamp(me.sp-techCost(tk.T),-45,45);
       if(firedRound) gun.mag--;
-      if(reloading) loadAmmo(gun,arguments[1]);
+      if(reloading) loadAmmo(gun,option);
       phase = "anim"; st.techAnimating = Boolean(tk); m.ctrl.innerHTML = "";
       const guarding = si===1||reloading, mode="guard"; if(si===1){me.guardStreak++;me.shield=Math.min(30,(me.shield||0)+8);}else me.guardStreak=0;
       const c = isBasic(si) ? basicPick(me,si===0?0:si===6?1:2) : guarding ? basicDefCard(me) : tk.card, sk = mySkill(tk ? tk.sk : isBasic(si)?basicTrainingSkill(me,c):skillOf(c), !guarding && !(foeSkill.def && !AB && !DF)), wNote = [], tNote = [], rNote = [];
@@ -6622,7 +6895,11 @@ function mgCombat(ctx){
       if(!guarding&&!foeGuarding&&me.daze){me.daze=0;hvNote.push("휘청임 — 이번 합 기본 위력 -"+CLASH_DAZE_CUT);}
       if(!guarding && !foeGuarding && me.cpDown){ hvNote.push(`손이 무뎌진 채 합에 나섰다(코인 위력 -${me.cpDown})`); me.cpDown = 0; }
       const won = R.win==="me", wSk = won ? R.a : fk; if(!guarding&&!foeGuarding)gainResolve(me,won?5:15); else if(foeGuarding)gainResolve(me,3); me.spBefore = me.sp; me.lastWonPrev = me.lastWon;
-      if(offensiveClash) me.clashLosses = won ? 0 : (me.clashLosses||0)+1;
+      const lastOffensiveLost=me.lastOffensiveLost;
+      if(offensiveClash){
+        me.clashLosses=won?0:(me.clashLosses||0)+1;
+        me.lastOffensiveLost=!won;
+      }
       // 합이 진행된 경우에만 승패로 정신력이 변한다.
       if(guarding || foeGuarding || T?.def){ /* 방어 정신력은 따로 정산한다. */ }
       else if(won){ me.sp = clamp(me.sp + Math.min(7,3+Math.max(0,R.count-1)), -45, 45); }
@@ -6715,7 +6992,10 @@ function mgCombat(ctx){
 
         { const pc = passiveCut(me); if(pc && dmg > 0){ const d0 = dmg; dmg = Math.max(1, dmg - pc); rNote.push(`${FOE_PASSIVE[foe.passive].n} — 피해 ${d0}→${dmg}`); } }
         if(BOSS) dmg = BOSS.taken(dmg, {me, T, fk}, bNote);
-        if(dmg>0){const blocked=AB&&AB.immune&&!(me.f.grade<=1&&((me.f.gear.weapon&&me.f.gear.weapon.unique&&!needsRepair(me.f.gear.weapon))||(me.f.ego&&me.f.ego.type!=="armor")));if(!blocked){const factor=fk.def&&!wSk.def&&!(T&&["mordhau","crush","r_claiomh"].includes(T.id))?.5:1;const hadPoise=(me.poise||0)>=10;const rareDest=T&&T.hana?hanaApply(T,me,foe,tNote):null;onWeaponKeyword(me,si,tNote);dmg+=hanaTriggerMarks(me,foe,factor,tNote);if(hadPoise&&keywordSpend(me,"poise")){dmg+=Math.round(5*factor);tNote.push("호흡 10 소모 — 공격 피해 +5(방어 적용)");}if(rareDest)hanaMark(T,rareDest,tNote);if(me.sp2!=="rupture"&&foe.rupture>0){dmg+=foe.rupture;tNote.push("파열 추가 피해 "+foe.rupture);foe.rupture--;}const ks=keywordSnapshot(foe), extra=keywordImpact(foe,ks,factor,tNote);if(AB?.id==="nothing"&&!egoHasWeapon(me.f.ego)){const before=dmg;dmg=Math.round(dmg*0.6);abNote.push(`광폭 — 물리 공격 피해 ${before}→${dmg} (60%)`);}dmg=foeDefenseDamage(foe,dmg+extra-ks.burn,tNote)+ks.burn;if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}else{dmg=foeDefenseDamage(foe,dmg,tNote);}if(dmg>0&&!blocked){const fixed=combatFixedDamage(me.f,me.mangLive);dmg+=fixed;if(fixed)tNote.push(`고정 추가 피해 +${fixed}`);}dmg=keywordShield(foe,dmg,tNote);}
+        if(dmg>0){const blocked=AB&&AB.immune&&!(me.f.grade<=1&&((me.f.gear.weapon&&me.f.gear.weapon.unique&&!needsRepair(me.f.gear.weapon))||(me.f.ego&&me.f.ego.type!=="armor")));if(!blocked){const factor=fk.def&&!wSk.def&&!(T&&["mordhau","crush","r_claiomh"].includes(T.id))?.5:1;const hadPoise=(me.poise||0)>=10;if(T?.keyword){
+          dmg+=signatureHit(T,me,foe,{party,enemyMove:fk,factor,lastLost:lastOffensiveLost,gainResolve,recoverSpirit:recoverCombatSpirit,notes:tNote});
+        }
+        const rareDest=T&&T.hana?hanaApply(T,me,foe,tNote):null;onWeaponKeyword(me,si,tNote);dmg+=hanaTriggerMarks(me,foe,factor,tNote);if(hadPoise&&keywordSpend(me,"poise")){dmg+=Math.round(5*factor);tNote.push("호흡 10 소모 — 공격 피해 +5(방어 적용)");}if(rareDest)hanaMark(T,rareDest,tNote);if(me.sp2!=="rupture"&&foe.rupture>0){dmg+=foe.rupture;tNote.push("파열 추가 피해 "+foe.rupture);foe.rupture--;}const ks=keywordSnapshot(foe), extra=keywordImpact(foe,ks,factor,tNote);if(AB?.id==="nothing"&&!egoHasWeapon(me.f.ego)){const before=dmg;dmg=Math.round(dmg*0.6);abNote.push(`광폭 — 물리 공격 피해 ${before}→${dmg} (60%)`);}dmg=foeDefenseDamage(foe,dmg+extra-ks.burn,tNote)+ks.burn;if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}else{dmg=foeDefenseDamage(foe,dmg,tNote);}if(dmg>0&&!blocked){const fixed=combatFixedDamage(me.f,me.mangLive);dmg+=fixed;if(fixed)tNote.push(`고정 추가 피해 +${fixed}`);}dmg=keywordShield(foe,dmg,tNote);}
         if(me.drepHeal){me.drepHeal=false;const h=Math.round(Math.min(foe.hp,Math.max(0,dmg))*.3);me.hp=Math.min(me.max,me.hp+h);if(h)tNote.push(`거둔 만큼 되찾았다(체력 +${h})`);}
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
         if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = abPenalty(AB,Math.round(foe.max*0.25)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
@@ -6903,7 +7183,23 @@ function mgCombat(ctx){
       else if(b.dataset.hold!==undefined&&phase==="skill"){const d=handOf(party[act]),c=d.hand.find(c=>c.id===Number(b.dataset.hold));if(c&&c.id!==d.held){d.carry=d.carry?.id===c.id?null:c;skillMenu();}}
       else if(b.dataset.resolve){if(phase==="skill")resolveAction(b.dataset.resolve);}
       else if(b.dataset.sk==="4"){ if(phase==="skill") shinAct(); }
-      else if(b.dataset.sk!==undefined && phase==="skill"){ const si=+b.dataset.sk,me=party[act],d=handOf(me);if(isBasic(si)||si===2){const i=d.hand.findIndex(c=>c.id===Number(b.dataset.card)&&c.sk===si);if(i<0)return;const [c]=d.hand.splice(i,1);if(d.carry?.id===c.id)d.carry=null;d.discard.push(c);}me.frontline = me.fought = true; resolveClash(si,b.dataset.ammoType); }
+      else if(b.dataset.relicAttack!==undefined && phase==="skill"){
+        const me=party[act];
+        me.frontline=me.fought=true;
+        resolveClash(2,"relic");
+      }
+      else if(b.dataset.sk!==undefined && phase==="skill"){
+        const si=+b.dataset.sk, me=party[act];
+        if(isBasic(si)){
+          const d=handOf(me), i=d.hand.findIndex(c=>c.id===Number(b.dataset.card)&&c.sk===si);
+          if(i<0) return;
+          const [c]=d.hand.splice(i,1);
+          if(d.carry?.id===c.id) d.carry=null;
+          d.discard.push(c);
+        }
+        me.frontline=me.fought=true;
+        resolveClash(si,b.dataset.ammoType);
+      }
       else if(b.dataset.fin && phase==="finish"){ outcome = b.dataset.fin; m.ctrl.innerHTML = ""; finish(); }
       else if(b.dataset.lamp && phase==="lamp"){ const mk = foe.lampPick;
         if(b.dataset.lamp==="out"){ party.splice(party.indexOf(mk), 1); act = 0; tick = `${esc(jo(mk.name,"을"))} 어둠 밖으로 빼냈다. 남은 이들이 싸운다.`; }
@@ -11098,7 +11394,6 @@ function startDay(first){
     if(!S.scarWeekDue||S.scarWeekDue.week!==week) S.scarWeekDue={week,amount:Math.min(S.debt,Math.max(Math.floor(S.money*0.35),10000))}; }
   rwSnap();
   surroundingsTick(); genRequests(); assocWeekly(); arcSpawn(); hanaStarSpawn(); bossSpawn();forgottenTick();
-  if(typeof NAMELESS_P!=="undefined" && S.day >= 5 && Math.random() < NAMELESS_P) S.vnNameless = true;
   genRecruits();
   spawnRumors();
   S.todayIncome = 0;
@@ -11115,7 +11410,10 @@ async function maybeEndDay(){
 async function endDay(reason){
   if(!S || S.over || S.ending) return;
   S.ending = true;
-  try { await endDayInner(reason); } finally { if(S) S.ending = false; officeStoryModule.schedule(); }
+  try {
+    await officeStoryModule.finishDueRescue();
+    await endDayInner(reason);
+  } finally { if(S) S.ending = false; officeStoryModule.schedule(); }
 }
 /* 조사: 받침에 맞춰 붙인다. type은 "이"·"을"·"은"·"와"·"로" — 숫자·영문·괄호/태그 끝도 읽는 소리로 판단 */
 function jo(w, type){
@@ -11597,7 +11895,7 @@ function genRecruits(){
     if(old && S.recruitPool.length) S.recruitPool[rnd(0,S.recruitPool.length-1)]=old;
   }
 }
-/* 미리보기 전용: 대표를 제외한 동료 인원 한도는 공방의 사무소 확장으로 늘어난다. */
+/* 대표를 제외한 동료 인원 한도는 공방의 사무소 확장으로 늘어난다. */
 const OFFICE_EXTENSIONS = [
   {grade:9,max:5,cost:100000,label:"1차 확장"},
   {grade:5,max:7,cost:400000,label:"2차 확장"},
@@ -11699,16 +11997,15 @@ async function openManage(){
       ${f.ego?`<span>E.G.O.</span><b style="color:var(--accent)">${esc(egoLabel(f.ego))} (${EGO_FORM_NAME[f.ego.type]||"무기"}) ${egoFormLocked(f.ego)?`<span class="muted" style="font-size:12px">형상 확정 · 변경 불가</span>`:`<button data-egoforge="1" style="padding:2px 8px">형상 정하기</button>`} <button data-egonames="1" style="padding:2px 8px">기술 이름 설정</button><br><span class="muted" style="font-weight:400">${esc(egoGearSummary(f.ego))}${egoHasWeapon(f.ego)?" · "+egoAttackCards(f.ego,(CARDS[weaponTypeOf(wGear(f))||"none"]||CARDS.none).filter(c=>!c.def)).map(c=>esc(c.n)).join(" / "):""}${egoHasArmor(f.ego)?` · ${esc(f.ego.guardName||"방어[개화]")} · 방어 고정 피해 감소 2`:""}</span>
         ${f.ego.desc ? `<br><span class="muted" style="font-weight:400">${esc(f.ego.desc)}</span>` : ""}${f.ego.origin ? `<br><span class="muted" style="font-weight:400">살아온 날: ${esc(f.ego.origin)}</span>` : ""}${f.ego.look ? `<br><span class="muted" style="font-weight:400">${egoSlot(f.ego)==="weapon" ? WEAPON_KINDS[f.ego.look.kind].n : ARMOR_TYPES[f.ego.look.type]} · ${ptsText(f.ego.bonus||{})}${egoSpecial(f.ego) ? ` · ${egoSpecLabel(f.ego.type)} [${egoSpecial(f.ego).n}] — ${egoSpecial(f.ego).d}` : ""}</span>` : `<br><span class="muted" style="font-weight:400">미정 상태 · 생김새와 능력을 정할 수 있다</span>`}</b>`:""}
       <div class="gear-title">장비 관리${needsRepair(f.gear.weapon) ? ` <span class="need-fix-tag">${f.gear.weapon.durMax<=1 ? "무기가 부서졌다" : "무기 수리 필요"}</span>` : ""}</div>${gearRow("weapon","무기")}${gearRow("armor","방어구")}${gearRow("acc","장신구")}${(bodyItems(f).length || (f.augs||[]).length) ? `<span>의체 · 시술</span><b>${bodyItems(f).map(x=>esc(x.name)).concat(augItems(f).map(x=>esc(x.name))).join(" · ")} <span class="muted">${[...bodyItems(f), ...augItems(f)].map(bodyDesc).filter(Boolean).join(" · ")}</span></b>` : ""}
-      ${[false,true].map(defense=>{
-        const wt=weaponTypeOf(wGear(f))||"none", list=learnedCombatTechs(f,defense);
-        const selected=equippedTechId(f,wt,defense);
-        const T=TECHS[selected];
-        return `<span>${defense?"방어 기술":"공격 기술"}</span><b><select data-tech="${defense?"guard":"attack"}">
-          ${defense?`<option value="" ${selected?"":"selected"}>기본 가드만 사용</option>`:""}
-          ${list.map(id=>`<option value="${id}" ${selected===id?"selected":""} ${techFits(id,wt)?"":"disabled"}>${esc(TECHS[id].n)}${techFits(id,wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
-          <br><span class="muted" style="font-weight:400">${T?esc(T.d)+" · ":""}${defense?"별도 방어 칸에서 사용 · 생존 시 정신력 회복":"사용 시 정신력 소모"}</span></b>`;
-      }).join("")}
-      <span>하나 협회 훈련</span><b>일반 기본 +${f.hanaTraining?.base||0} · 일반 코인 +${f.hanaTraining?.cp||0} · 특수 기본·코인 +${f.hanaTraining?.tech||0} · 희귀 기술 ${knownHanaArts(f).length}/1 (전체 21종)</b>
+      <span>고유 기술</span><b>${knownSignature(f)?`${esc(TECHS[f.tech].n)}<br><span class="muted">${esc(TECHS[f.tech].d)}</span>`:"미습득 · 전력 공격 사용"}</b>
+      ${(()=>{
+        const wt=weaponTypeOf(wGear(f))||"none", selected=equippedTechId(f,wt,true);
+        return `<span>방어 기술</span><b><select data-tech="guard">
+          <option value="" ${selected?"":"selected"}>기본 가드만 사용</option>
+          ${learnedCombatTechs(f,true).map(id=>`<option value="${id}" ${selected===id?"selected":""} ${techFits(id,wt)?"":"disabled"}>${esc(TECHS[id].n)}${techFits(id,wt)?"":" (지금 무기로는 못 씀)"}</option>`).join("")}</select>
+          <br><span class="muted" style="font-weight:400">${selected?esc(TECHS[selected].d)+" · ":""}별도 방어 칸에서 사용 · 생존 시 정신력 회복</span></b>`;
+      })()}
+      <span>하나 협회 훈련</span><b>일반 기본 +${f.hanaTraining?.base||0} · 일반 코인 +${f.hanaTraining?.cp||0} · 방어 기술 기본·코인 +${f.hanaTraining?.tech||0} · 고유 기술 기본·코인 +${Math.min(2,f.hanaTraining?.tech||0)}</b>
       <span>전투 키워드</span><b>${esc(keywordPlanText(f))}<br><span class="muted">최초 설정 고정 · 무기 장착 시 적용</span></b>
       <span>완료 의뢰</span><b>${f.done}건</b>
     </div>
@@ -11725,14 +12022,12 @@ async function openManage(){
     const prev = ()=>{ const cv = box.querySelector(".mgp"), f = S.fixers.find(x=>x.id===sel); if(cv && f) animPreview(cv, ()=>Object.assign(fixerLook(f), stateOpts(mview))); };
     prev();
     root.addEventListener("change", e=>{
-      const slot=e.target.dataset?.tech;
-      if(!slot) return;
+      if(e.target.dataset?.tech!=="guard") return;
       const f=S.fixers.find(x=>x.id===sel);
       if(!f) return;
-      const id=e.target.value, defense=slot==="guard", wt=weaponTypeOf(wGear(f))||"none";
-      if(!(defense && !id) && !(techFits(id,wt) && learnedCombatTechs(f,defense).includes(id))) return;
-      if(defense) f.guardTech=id;
-      else f.tech=id;
+      const id=e.target.value, wt=weaponTypeOf(wGear(f))||"none";
+      if(id && !(techFits(id,wt) && learnedCombatTechs(f,true).includes(id))) return;
+      f.guardTech=id||null;
       save(); box.innerHTML=draw(); prev();
     });
     root.addEventListener("click", async e=>{
@@ -12388,20 +12683,32 @@ function revealedRelicTechniques(){
   for(const id of relicTechniqueDiscoveries(d))ids.add(id);
   return ids;
 }
-function keywordRulesHtml(){return `<div class="cdx on"><div class="cdx-h"><b>전투 키워드</b></div><div class="cdx-g"><span>최초 설정</span><div>일반 공격 1·2·3에 각각 키워드 하나 설정. 1번부터 순차 활성화. 일반 특수 기술은 제외. 하나 협회 희귀 기술은 전용 일반·특수 키워드를 적중 시 부여하며, 특수 키워드는 3턴 이내 다음 유효 적중에서 조건 충족 시 1회 발동한다. 희귀 기술의 파열은 최대 9, 피격 시 보유량만큼 추가 피해 후 1 감소. 무기 교체 후에도 변경 불가, 맨손 및 기본 방어 제외. 적중마다 한 번 부여하고 해당 피격부터 발동. 출혈 최대 24 · 화상 최대 12 · 침잠 및 진동 최대 30, 턴 종료 시 3 감소.</div><span>적 보정</span><div>죄종을 제외한 적은 체력 보정을 받는다. 일반 방어력은 피해를 고정 차감하며 뒤틀림에는 적용하지 않는다. 6급 이상 인간형 적은 명중할 때 한 종류의 키워드를 쌓으며, 적용한 턴에는 그 키워드가 감소하지 않는다. 보스의 고유 효과는 별도 적용.</div><span>등급별</span><div>9~8급 1칸 × 1 · 7~6급 1칸 × 3 · 5~4급 2칸 × 5 · 3~2급 2칸 × 7 · 1급 이상 3칸 × 9</div><span>출혈</span><div>피격 시 보유량만큼 추가 피해(방어·방어구 적용), 턴 종료 시 3 감소.</div><span>화상</span><div>피격 시 보유량만큼 추가 피해(방어 무시), 턴 종료 시 3 감소. 보호막은 피해를 흡수할 수 있음.</div><span>침잠</span><div>보호막이 있는 대상 피격 시 보유량만큼 보호막 감소. 턴 종료 시 3 감소. 보호막이 없으면 유지.</div><span>진동</span><div>피격 시 10 이상이면 10 소모, 다음 실제 합 휘청임(기본 위력 -2). 중복 휘청임 없음.</div><span>충전</span><div>자신에게 축적, 최대 20. 다음 공격 시작 시 10 소모, 이번 공격 코인 위력 +1.</div><span>호흡</span><div>자신에게 축적, 최대 50. 다음 공격 적중 시 10 소모, 피해 +5(방어 적용).</div><span>보호막</span><div>체력 피해를 먼저 흡수한다. 일부 7급 이상 인간 적은 전투 시작 보호막 8~22 및 3턴 주기의 조건부 보호막 전개(최대량의 60% 회복)를 사용한다.</div></div></div>`;}
+function keywordRulesHtml(){return `<div class="cdx on"><div class="cdx-h"><b>전투 키워드</b></div><div class="cdx-g"><span>최초 설정</span><div>일반 공격 1·2·3에 각각 키워드 하나 설정. 1번부터 순차 활성화. 고유 기술은 명중하면 기술에 적힌 키워드와 효과를 적용한다. 무기 교체 후에도 변경 불가, 맨손 및 기본 방어 제외. 적중마다 한 번 부여하고 해당 피격부터 발동. 출혈 최대 24 · 화상 최대 12 · 침잠 및 진동 최대 30, 턴 종료 시 3 감소.</div><span>적 보정</span><div>죄종을 제외한 적은 체력 보정을 받는다. 일반 방어력은 피해를 고정 차감하며 뒤틀림에는 적용하지 않는다. 6급 이상 인간형 적은 명중할 때 한 종류의 키워드를 쌓으며, 적용한 턴에는 그 키워드가 감소하지 않는다. 보스의 고유 효과는 별도 적용.</div><span>등급별</span><div>9~8급 1칸 × 1 · 7~6급 1칸 × 3 · 5~4급 2칸 × 5 · 3~2급 2칸 × 7 · 1급 이상 3칸 × 9</div><span>출혈</span><div>피격 시 보유량만큼 추가 피해(방어·방어구 적용), 턴 종료 시 3 감소.</div><span>화상</span><div>피격 시 보유량만큼 추가 피해(방어 무시), 턴 종료 시 3 감소. 보호막은 피해를 흡수할 수 있음.</div><span>침잠</span><div>보호막이 있는 대상 피격 시 보유량만큼 보호막 감소. 턴 종료 시 3 감소. 보호막이 없으면 유지.</div><span>진동</span><div>피격 시 10 이상이면 10 소모, 다음 실제 합 휘청임(기본 위력 -2). 중복 휘청임 없음.</div><span>충전</span><div>자신에게 축적, 최대 20. 다음 공격 시작 시 10 소모, 이번 공격 코인 위력 +1.</div><span>호흡</span><div>자신에게 축적, 최대 50. 다음 공격 적중 시 10 소모, 피해 +5(방어 적용).</div><span>보호막</span><div>체력 피해를 먼저 흡수한다. 일부 7급 이상 인간 적은 전투 시작 보호막 8~22 및 3턴 주기의 조건부 보호막 전개(최대량의 60% 회복)를 사용한다.</div></div></div>`;}
 function techniqueRecordHtml(weapon="all"){
   const kindName=k=>k==="none"?"맨손":(WEAPON_KINDS[k]||{}).n||k;
-  const revealed=revealedRelicTechniques();
-  const entries=Object.entries(TECHS).filter(([id,T])=>(!T.relic||revealed.has(T.relic))&&(weapon==="all"||techFits(id,weapon)));
+  const signatures=knownSignatureTechs(S);
+  const relics=revealedRelicTechniques();
+  const defenses=new Set([...(S?.fixers||[]),...(S?.formerFixers||[])].flatMap(f=>learnedCombatTechs(f,true)));
+  const notes=new Set((S?.records||[]).filter(r=>r.what==="기술").map(r=>r.note?.split(" — ")[0]));
+  const known=(id,T)=>signatures.has(id) || (T.relic&&relics.has(T.relic)) || (T.def&&(defenses.has(id)||notes.has(T.n)));
+  const entries=Object.entries(TECHS).filter(([id,T])=>known(id,T)&&(weapon==="all"||techFits(id,weapon)));
   const rows=entries.map(([id,T])=>{
     const R=T.relic?RELICS.find(r=>r.id===T.relic):null;
     const use=T.kinds?T.kinds.map(kindName).join(" · "):"모든 무기 및 맨손";
-    const learn=T.hana?"4주 정기 훈련에서 1% 확률로 습득 (해결사당 평생 1개)":T.relic?((R?R.name:T.relic)+" 원본 장착 시 사용 가능"):id==="allout"?"기본 기술":T.stat?ATTR_NAME[T.stat]+" "+TECH_STAT_REQ+" 이상 · 의뢰 수행 8회 이상":"해당 무기 숙련도 및 해결사 급수에 따라 습득";
-    return `<div class="cdx on"><div class="cdx-h"><b>${esc(T.n)}</b><span class="badge">${T.hana?"하나 협회 희귀 기술":T.relic?"유물 전용 특수 기술":T.def?"방어형 특수 기술":"공격형 특수 기술"}</span></div><div class="cdx-g"><span>사용 가능 무기</span><div>${esc(use)}</div><span>습득 조건</span><div>${esc(learn)}</div><span>효과</span><div>${esc(T.d)}</div><span>무기별 합 위력 (양산 기준)</span><div>${(weapon==="all"?Object.keys(CARDS).filter(k=>techFits(id,k)):[weapon]).map(k=>{const v=weaponTechniqueShape(k,{...T,id}).sk;return `${esc(kindName(k))}: 기본 ${v.base} · 코인 ${v.coins}개 × ${v.cp} · 평균 ${clashMean(v).toFixed(1)}`;}).join("<br>")}</div><span>사용 간격 · 피해 계수</span><div>${T.hana?"제한 없음":specialInterval(id)+"턴"} · ${T.def?"별도 방어 칸에서 사용 · 생존 시 정신력 회복 · 반격 배율 별도":`정신력 -${techCost(T)} · 1.50배`}</div></div></div>`;
+    const label=T.keyword?"고유 기술":T.relic?"유물 기술":"방어 기술";
+    const detail=T.def?"별도 방어 칸 · 생존 시 정신력 회복":`정신력 -${techCost(T)} · 피해 1.50배`;
+    const effect=T.keyword?`${KEYWORD_NAMES[T.keyword]} · ${T.d}`:T.d;
+    return `<div class="cdx on"><div class="cdx-h"><b>${esc(T.n)}</b><span class="badge">${label}</span></div>
+      <div class="cdx-g"><span>사용 가능 무기</span><div>${esc(use)}${R?" · "+esc(R.name)+" 원본 장착":""}</div>
+      <span>효과</span><div>${esc(effect)}</div><span>무기별 합 위력 (양산 기준)</span><div>${(weapon==="all"?Object.keys(CARDS).filter(k=>techFits(id,k)):[weapon]).map(k=>{
+        const v=weaponTechniqueShape(k,{...T,id}).sk;
+        return `${esc(kindName(k))} · 기본 ${v.base} · 코인 ${v.coins}개 × ${v.cp} · 평균 ${clashMean(v).toFixed(1)}`;
+      }).join("<br>")}</div><span>사용 간격</span><div>${specialInterval(id)}턴 · ${detail}</div></div></div>`;
   }).join("");
-  const normalRows=Object.keys(CARDS).filter(k=>weapon==="all"||weapon===k).map(k=>`<div class="cdx on"><div class="cdx-h"><b>${esc(kindName(k))}</b><span class="badge">일반 공격</span></div><div class="cdx-g">${normalAttackCards(k).map(c=>{const v=clashCardSkill(c);return `<span>${esc(c.n)}</span><div>${c.normalRole} · 기본 ${v.base} · 코인 ${v.coins}개 × ${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 평균 ${clashMean(v).toFixed(1)} · 피해 ${c.normalMul.toFixed(2)}배 · 정신력 소모 없음</div>`;}).join("")}</div></div>`).join("");
-  const guardRows='<div class="cdx on"><div class="cdx-h"><b>방어 전용 기술</b></div><div class="cdx-g"><span>방어</span><div>피해 50% 감소 · 정신력 7 회복</div><span>회피</span><div>성공률 25~75% · 일반 직접 피해 무효 및 정신력 12 회복</div><span>흘려내기</span><div>피해 35% 감소 · 성공률 45~80% · 성공 시 다음 합 적 코인 위력 -1 및 정신력 9 회복</div><span>반격</span><div>피해 25% 감소 · 일반 인간 적에게 받은 피해가 있으면 무기 피해 기준의 30% 반격 · 정신력 7 회복</div></div></div>';
-  return `<p class="muted" style="margin:0 0 8px">기술의 사용 가능 무기와 효과를 확인할 수 있다. 기술은 공격과 방어 칸에 따로 장착할 수 있으며, 하나 협회 희귀 기술을 습득하면 전력 공격 대신 희귀 기술을 사용할 수 있다. 유물 전용 기술은 해당 유물을 획득한 뒤에만 공개되며, 봉인이 풀린 상태에서 사용할 수 있다.</p><p class="muted" style="margin:0 0 10px">특수 기술은 무기별 평균 합 위력을 기준으로 개별 효과를 반영한다. 공방 등급별 기본 위력: 양산 +0 / 정식 +2 / 상급 +4 / 고유·개화 +6. 강공 최대 위력: 맨손 16 / 양산 20 / 정식 22 / 상급 24 / 고유·개화 26. 사용 시 정신력 -${TECH_SP_COST} · 일반 특수 기술 2턴 간격 · 발도, 돌격, 패닝 및 일부 유물 기술 3턴 간격</p><div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div><p class="muted" style="margin:0 0 8px">특수 기술 ${entries.length}개</p>${keywordRulesHtml()}<p class="muted">하나 협회 4주 훈련: 일반 코인 +1 (33%), 기본 능력치 +1 (50%), 일반 기본 위력 +1 (11%), 특수 기본·코인 위력 +1 (5%), 희귀 기술 21종 중 1개 (1%, 해결사당 평생 1개). 이미 습득한 경우 특수 기술 기본·코인 위력 +1로 대체.</p><h4>특수 기술</h4>${rows||'<p class="muted">해당 무기로 사용할 수 있는 기술이 없다.</p>'}`;
+  const hint=signatures.size?"":'<div class="cdx on"><div class="cdx-h"><b>접수대에 남은 메모</b></div><div style="padding:10px">근처 약방에서 붕대를 빌려 간 사람이 있다. 다 갚을 돈은 없으니 손을 쓰는 법이라도 알려 주겠다고 했단다.</div></div>';
+  return `<p class="muted">습득한 기술이 이곳에 기록된다. 전투 손패에는 일반 공격이 들어가고, 방어 옆에서는 각 해결사의 고유 기술을 쓸 수 있다. 배우기 전에는 그 자리에 전력 공격이 놓인다.</p>
+    ${hint}<div class="fg-seg" style="margin-bottom:10px" aria-label="사용 가능 무기별 기술 필터">${["all",...Object.keys(WEAPON_KINDS),"none"].map(k=>`<button type="button" data-tech-record="${k}" class="${weapon===k?"on":""}" aria-pressed="${weapon===k}">${k==="all"?"전체":esc(kindName(k))}</button>`).join("")}</div>
+    ${rows||'<p class="muted">아직 이 무기로 쓸 수 있는 습득 기술이 없다.</p>'}${keywordRulesHtml()}`;
 }
 function combatRuleRecordHtml(){
   const baseRows=Object.entries(CARDS).map(([kind,cards])=>{
@@ -12417,15 +12724,15 @@ function combatRuleRecordHtml(){
   <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45, 의뢰 전력 보정 0이라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
   <p>양쪽 코인을 던져 위력이 낮은 쪽의 코인 1개를 제거하고 다시 던진다. 동률이면 그대로 다시 던진다. 한쪽 코인이 모두 사라지면 패배한다. 최대 24회 굴림 제한에서 코인이 더 많이 남은 쪽이 승리하며, 같으면 양측 50% 확률로 승리한다.</p>
   <p>해결사의 앞면 확률은 전투 정신력 -45에서 27.5%, 0에서 50%, +15에서 62%, +45에서 85%. 재주 10당 기존 앞면 확률 +0.25%p도 유지한다. 기술 등 추가 보정 후 5~95%로 제한한다. 적은 기본 50%이며 일부 기술은 예외다.</p>
-  <p>공격 기술은 무기별 코인 구조를 바탕으로 평균 합 위력을 조정하며 정신력 -${TECH_SP_COST}. 방어 기술은 별도 방어 칸에서 쓰며 생존 시 정신력 5를 회복한다. 공격·방어 기술의 재사용 대기시간은 따로 계산한다. 양산 +0 · 정식 +2 · 상급 +4 · 고유·개화 +6의 기본 위력 보정을 받는다. 강공 최대는 맨손 16, 양산 20, 정식 22, 상급 24, 고유·개화 26이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
+  <p>전력 공격과 고유 기술은 무기별 코인 구조를 따르며, 사용 시 기술에 표시된 정신력을 소모한다. 방어 기술은 별도 방어 칸에서 쓰며 생존 시 정신력 5를 회복한다. 공격·방어 기술의 재사용 대기시간은 따로 계산한다. 양산 +0 · 정식 +2 · 상급 +4 · 고유·개화 +6의 기본 위력 보정을 받는다. 강공 최대는 맨손 16, 양산 20, 정식 22, 상급 24, 고유·개화 26이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
   <p><b>가드와 투지:</b> 공격 합에서 두 번 연속 밀리면 다음 공격 합에서 기본 위력 +2와 음수 정신력에 따른 앞면 확률 불이익 완화를 얻는다. 혼신의 일격이나 사즉생과 함께 쓸 때 기본 위력 보정은 큰 쪽이 적용된다. 가드는 합 없이 보호막 8을 얻고 정신력 3을 회복한다. 상대의 공격을 막고 생존하면 정신력 7을 회복한다. 정신력이 -8 이하일 때 호흡 정리를 쓰면 전투당 한 번, 투지 소모 없이 정신력 12를 회복한다. 보호막 상한은 30이며 턴 종료 시 남은 보호막의 절반을 올림해 감소시킨다. 합 승리 투지 5, 패배 15, 가드 7, 적 방어 3. 기존 투지 행동은 유지한다.</p><p><b>휘청임:</b> 다음 실제 합에서 기본 위력 -${CLASH_DAZE_CUT}. 중복으로 쌓이지 않으며 합을 한 번 진행하면 소멸한다. 코인 위력 감소는 별개이며 해당 합의 각 앞면 코인에 적용된다. 기본 방어·재장전 등 합이 없는 행동으로는 소모하지 않는다. 예: 기본 6, 코인 위력 5, 앞면 2개일 때 휘청임만 받으면 14, 코인 위력 -2까지 받으면 10.</p>
   </div></div><div class="cdx on"><div class="cdx-h"><b>피해량 계산 (직접 전투)</b></div><div style="padding:10px;line-height:1.7">
   <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 합 평균 18, 상급 공방 기준 공격력 20에 무기형 +5, 일체형 +2의 기본 피해를 더한다. 개화 의복은 체력 피해 38% 감소, 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
   <p><b>② 코인 보정 피해 = 반올림(무기 피해 기준 × 잔존 계수 × 앞면 계수)</b> (최소 1). 잔존 계수 = 0.55 + 0.45 × (남은 코인 수 ÷ 원래 코인 수). 앞면 계수 = 0.9 + 0.2 × (공격 재굴림의 앞면 수 ÷ 남은 코인 수).</p>
   <p><b>③ 실제 피해:</b> 코인 보정 피해에 일반 공격 역할별(약공 1.00배, 보통 공격 1.20배, 강공 1.30배) 또는 특수 기술 1.50배, 방어 기술 반격 계수, 장기전 계수(13턴부터 턴마다 +10%)를 곱한다. 이후 상대 방어(통상 50% 감소), 무기·유물·상태·탄환·동료 지원·적 내성 및 특수 기믹을 적용한다. 합 위력 그 자체가 피해량으로 더해지지는 않는다.</p>
-  <p><b>예시:</b> 무기 피해 기준 20, 코인 2개 중 1개 남아 앞면이면 20 × 0.775 × 1.1 = 17.05 → 17 피해. 피해 배율 1.25인 전력 공격이면 17 × 1.25 → 21. 다른 보정 없이 적이 일반 방어하면 11 피해.</p>
+  <p><b>예시:</b> 무기 피해 기준 20, 코인 2개 중 1개 남아 앞면이면 20 × 0.775 × 1.1 = 17.05 → 17 피해. 피해 배율 1.50인 공격 기술이면 17 × 1.50 → 약 26. 다른 보정 없이 적이 일반 방어하면 약 13 피해.</p>
   <p><b>받는 피해:</b> 적의 등급별 피해 기준에도 같은 코인 계수를 적용한 뒤 의뢰 요구치 대비 전력(0.85~1배, 티르의 오른손 장착 시 1배), 방어구·피로·장기전 등을 반영한다. 가드는 합 없이 보호막을 얻으며 재장전은 별도 턴 행동이다. 추가 방어구 감소는 곱연산 후 버림한다. 특수 기술·보호막·내성·상태 효과에 따라 달라질 수 있다.</p>
-  <p>기본 덱은 약공 3장·보통 공격 3장·강공 2장·장착 공격 기술 2장이다. 매 턴 4장을 뽑고 한 장을 사용하며 남은 카드 중 한 장을 다음 턴에 보관할 수 있다. 같은 카드는 연속 보관할 수 없다. 기본 방어는 손패와 관계없이 매 턴 사용할 수 있다. 장착한 방어 기술도 별도 방어 칸에 표시되며, 공격·방어 기술의 사용 간격은 기존과 같다. 약공·보통 공격·강공은 정신력을 소모하지 않는다. 약공으로 합에서 지면 상대의 직접 공격 피해를 10% 줄인다. 대검 기본 공격은 기본 위력 +2, 코인 위력 -2로 최대 합 위력을 유지한다. 기술의 정신력 비용은 기술별 표시를 따른다. 강공의 코인이 2개 이상이면 한 개를 줄이고 최대 합 위력을 유지한다. 개화 무기형 +4, 일체형 +2, 고유 무기 +3 및 망 한 겹당 +1의 고정 추가 피해를 합산한다. 신은 전투원마다 전투 중 한 번만 사용하며 망 한 겹마다 턴 종료 정신력 -3이 추가된다. 자동 수행 성공률 및 의뢰 종료 시 부상·정신력 정산은 이 직접 전투 산식과 별개다.</p>
+  <p>기본 덱은 약공 4장·보통 공격 4장·강공 2장이다. 전력 공격 또는 고유 기술은 방어 옆 고정 칸에 있다. 매 턴 4장을 뽑고 한 장을 사용하며 남은 카드 중 한 장을 다음 턴에 보관할 수 있다. 같은 카드는 연속 보관할 수 없다. 기본 방어는 손패와 관계없이 매 턴 사용할 수 있다. 장착한 방어 기술도 별도 방어 칸에 표시되며, 공격·방어 기술의 사용 간격은 기존과 같다. 약공·보통 공격·강공은 정신력을 소모하지 않는다. 약공으로 합에서 지면 상대의 직접 공격 피해를 10% 줄인다. 대검 기본 공격은 기본 위력 +2, 코인 위력 -2로 최대 합 위력을 유지한다. 기술의 정신력 비용은 기술별 표시를 따른다. 강공의 코인이 2개 이상이면 한 개를 줄이고 최대 합 위력을 유지한다. 개화 무기형 +4, 일체형 +2, 고유 무기 +3 및 망 한 겹당 +1의 고정 추가 피해를 합산한다. 신은 전투원마다 전투 중 한 번만 사용하며 망 한 겹마다 턴 종료 정신력 -3이 추가된다. 자동 수행 성공률 및 의뢰 종료 시 부상·정신력 정산은 이 직접 전투 산식과 별개다.</p>
   </div></div><h4>무기별 기본 위력 일람 (능력치·기술·장비 효과 적용 전)</h4>${baseRows}`;
 }
 function recordReferenceTabs(active){
@@ -12554,7 +12861,6 @@ function prepareSavedGame(d){
       [f.gear.weapon, f.gear.armor, f.gear.acc].forEach(renameGear);
       initDur(f.gear.weapon);
     }
-    f.tech = f.tech || "allout";
     f.techs = f.techs || [];
     f.wuse = f.wuse || {};
   }
@@ -14533,7 +14839,6 @@ let vnBusy = false;
 async function vnFlush(){
   if(vnBusy || !S) return;
   if(document.querySelector(".modal-bg, .vn, .mg-bg, .relic-fx, .cls, .endcard")) return;
-  if((!S.vnQ || !S.vnQ.length) && S.vnNameless){ S.vnNameless = false; vnBusy = true; try{ await namelessColor({}); }finally{ vnBusy = false; } return; }
   if(!S.vnQ || !S.vnQ.length) return;
   vnBusy = true; const sc = S.vnQ.shift(); save();
   try{ if(sc.bs) await bsChoiceScene(sc); else await vnPlay(sc.title, sc.lines, null, null); }finally{ vnBusy = false; }
@@ -18009,7 +18314,7 @@ let fixerFoldOwner = null;
 function render(){
   if(!S) return;
   forgottenTick();
-  if(((S.vnQ && S.vnQ.length) || S.vnNameless) && typeof vnFlush==="function") setTimeout(vnFlush, 700);
+  if(S.vnQ?.length && typeof vnFlush==="function") setTimeout(vnFlush, 700);
   officeStoryModule.schedule();
   migrate1247(S); migrateWorkshopDur(S); syncAllStatVitals(S);
   const app = document.getElementById("app");
