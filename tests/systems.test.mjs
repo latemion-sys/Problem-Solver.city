@@ -417,6 +417,17 @@ test('공방 무기는 구형 저장에서도 공격력이 적용되고 탄약 �
   assert.deepEqual(Array.from(actual),[15,0,5,10,720,7200,24,13]);
 });
 
+test('의뢰 급수 보정은 공격에만 적용되며 다코인 감소는 3급부터다',()=>{
+  const cx=vm.createContext({});
+  vm.runInContext(section('function missionEnemySkill(','function coinDamage('),cx);
+  const original={base:8,cp:3,coins:5};
+  const results=[7,6,4,3,1].map(g=>cx.missionEnemySkill(original,g)).map(s=>[s.base,s.cp,s.coins]);
+  assert.deepEqual(results,[[8,3,5],[9,4,5],[9,4,5],[10,4,4],[10,4,4]]);
+  assert.equal(cx.missionEnemySkill({...original,coins:3},3).coins,3);
+  const guard={...original,def:true};
+  assert.equal(cx.missionEnemySkill(guard,3),guard);
+});
+
 test('고유 기술이 없는 인원이 있을 때만 첫 만남과 재등장 확률을 적용한다',()=>{
   const cx=vm.createContext({save(){},Math,NAMELESS_P:.035});
   vm.runInContext(section('function rescueDue(','const rescueVoices'),cx);
