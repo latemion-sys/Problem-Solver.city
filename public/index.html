@@ -1675,7 +1675,7 @@ const CHANGELOG = [
     "츠바이·시·리우·세븐·디에치 협회, 주변 사무소, 콩콩이파, 검지와 얽힌 일을 동료와의 대화와 선택으로 풀어가는 사건을 추가했습니다.",
     "해결사와 사무소의 고등급 승급에 고위험 의뢰 실적을 반영합니다. 사무소 심사에서는 단체 출동 실적을 확인합니다.",
     "사무소 이야기가 같은 날 몰려 나오지 않도록 조정했습니다. 방문객에게 답하는 동료는 이야기마다 달라지며, 성격에 따라 대사도 달라집니다.",
-    "뒤틀림 전투와 타격 연출을 가볍게 만들었습니다. 정신력이 낮을 때 호흡을 정리할 수 있고, 수색에서는 재주에 따라 단서의 종류와 양이 달라집니다. 날짜 정산 중 예고 없는 동료 사망을 없앴습니다."
+    "기존 3D 연출을 복원하고 뒤틀림 전투와 특수 기술 사용 중 화면을 그리는 주기를 조정했습니다. 정신력이 낮을 때 호흡을 정리할 수 있고, 수색에서는 재주에 따라 단서의 종류와 양이 달라집니다. 날짜 정산 중 예고 없는 동료 사망을 없앴습니다."
   ]],
   ["v.a3.1.5.1", ["환상체 전투 징후마다 현재 전투원이 사용할 단 하나의 대응 카드와 성공 조건을 직접 표시. 방어는 방어(가드), 공격은 약공·보통 공격·강공으로 명시.", "징후 안내·실제 파훼 판정·필수 카드 손패 보장을 통합. 숨은 조건 제거, 탄창이 비면 징후 대응을 방어로 전환. 환상체 도감과 악장별 안내도 동기화. 기존 피해·보상·일반 전투 덱 유지."]],
   ["v.a3.1.4.8", ["해결사 목록 및 영입 화면의 능력치와 총합에 현재 적용 중인 장비 보정치를 합산하여 표시.", "관리에서는 기본 능력치 옆에 장비 보정치를 초록색 (+수치) 또는 빨간색 (-수치)으로 표시. 기존 성장 및 전투 판정은 유지."]],
@@ -3354,17 +3354,167 @@ function distAfter(q, team, success, lines){
     ac("distort"); try{ rememberCityRumor("office", `괴물이 된 사람을 ${jo(S.officeName,"이")} 처리했다는 소식이 돈다.`); }catch(_){} }
 }
 // 뒤틀림 그림: 사람 실루엣이 어긋난 잔상으로 갈라지고, 가시 같은 살점이 돋는다
-function drawDistortFx(c, x, gy, h, lvl, t){
+function drawDistortFx(c, x, gy, h, lvl, t, hurt){
   c.save(); c.globalCompositeOperation = "lighter";
   [[-1,"rgba(255,40,70,0.22)"],[1,"rgba(60,220,255,0.18)"]].forEach(([s,col],i)=>{ const dx = s*(4 + lvl*2 + Math.sin(t*7+i)*3), dy = Math.sin(t*5+i*2)*2;
     c.fillStyle = col; c.beginPath(); c.ellipse(x + dx, gy - h*0.55 + dy, h*0.2, h*0.52, Math.sin(t*2)*0.08, 0, 7); c.fill(); });
   c.restore();
   c.save(); { const g = c.createRadialGradient(x, gy - h*0.55, 0, x, gy - h*0.55, h*0.75); g.addColorStop(0, `rgba(200,30,60,${0.22 + 0.08*lvl})`); g.addColorStop(1, "rgba(200,30,60,0)"); c.fillStyle = g; c.fillRect(x - h, gy - h*1.4, h*2, h*1.6); }
-  const n = 4 + lvl*2;
+  const n = 5 + lvl*3;
   for(let i=0;i<n;i++){ const a = -Math.PI/2 + (i - n/2)*0.42 + Math.sin(t*1.7+i)*0.12, r0 = h*(0.14 + 0.03*Math.sin(i*3)), len = h*(0.2 + 0.08*lvl)*(0.6 + 0.4*Math.abs(Math.sin(t*2.3+i)));
     const bx = x + Math.cos(a)*r0, by = gy - h*0.62 + Math.sin(a)*r0*1.4, tx = bx + Math.cos(a)*len, ty = by + Math.sin(a)*len;
-    c.fillStyle = `rgba(${120+lvl*30},${18},${40},0.95)`; c.beginPath(); c.moveTo(bx - Math.sin(a)*h*0.018, by + Math.cos(a)*h*0.018); c.quadraticCurveTo(bx + Math.cos(a)*len*0.5 + Math.sin(t*3+i)*h*0.02, by + Math.sin(a)*len*0.5, tx, ty); c.lineTo(bx + Math.sin(a)*h*0.018, by - Math.cos(a)*h*0.018); c.closePath(); c.fill(); }
+    c.fillStyle = `rgba(${120+lvl*30},${18},${40},0.95)`; c.shadowColor = "rgba(255,60,90,0.8)"; c.shadowBlur = 6; c.beginPath(); c.moveTo(bx - Math.sin(a)*h*0.018, by + Math.cos(a)*h*0.018); c.quadraticCurveTo(bx + Math.cos(a)*len*0.5 + Math.sin(t*3+i)*h*0.02, by + Math.sin(a)*len*0.5, tx, ty); c.lineTo(bx + Math.sin(a)*h*0.018, by - Math.cos(a)*h*0.018); c.closePath(); c.fill(); }
   c.restore(); }
+/* ================= 뒤틀림 형체 셰이더 =================
+   대호수 시뮬레이터 뒤틀림(heart-gl twist)의 결을 전투 화면의 적 하나에 옮긴 것.
+   적 실루엣을 작은 2D 캔버스에 그려 텍스처로 넘기고, WebGL2 프래그먼트 셰이더에서
+   도메인 워핑(형체 일렁임) · 방사형 살점 돌기 · 핏줄 결 · 심장 박동 테두리 · 발밑 먹물 · 겹친 잔상을 입힌다.
+   WebGL2가 없거나 실패하면 null을 돌려주고, 호출하는 쪽은 이전 2D 그림으로 돌아간다. */
+const DistGL = (()=>{
+  let gl = null, cv = null, prog = null, tex = null, oc = null, ox = null, U = {}, dead = false;
+  const VS = `#version 300 es
+in vec2 a;void main(){gl_Position=vec4(a,0.,1.);}`;
+  const FS = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;uniform vec2 uRes;uniform vec2 uC;uniform float uFeet,uT,uLvl,uHurt,uHit,uKill,uSeed;
+out vec4 o;
+float hash(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
+ return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
+float fbm(vec2 p){float v=0.,a=.5;mat2 m=mat2(1.6,1.2,-1.2,1.6);for(int i=0;i<4;i++){v+=a*noise(p);p=m*p;a*=.5;}return v;}
+float A(vec2 uv){return (uv.x<0.||uv.y<0.||uv.x>1.||uv.y>1.)?0.:texture(uTex,uv).a;}
+float asp;vec2 W;
+// 형체 일렁임: 맞은 직후와 상처가 깊을수록 더 크게 어긋난다
+vec2 warp(vec2 uv){
+ float t=uT+uSeed;
+ vec2 w=vec2(fbm(uv*vec2(7.,5.)+vec2(t*.8,0.)),fbm(uv*vec2(7.,5.)+vec2(3.1,-t*.7)))-.5;
+ float amp=(.012+.006*uLvl)*(1.+uHurt*.9)+uHit*.035;
+ float row=floor(uv.y*48.),tk=floor(t*9.);
+ float tear=step(.9-uHit*.25,hash(vec2(row,tk)))*(.01+.006*uLvl+uHit*.05)*(hash(vec2(tk,row))-.5)*2.;
+ return uv+w*amp*2.+vec2(tear,0.);
+}
+// 몸 + 살점 돌기(몸 중심에서 바깥쪽으로, 어깨와 등 위쪽에만 자란다)
+float bodyAt(vec2 uv,out float spk){
+ spk=0.;
+ vec2 su=warp(uv);float a=A(su);
+ vec2 d=(uv-uC)*vec2(asp,1.);float r=length(d)+1e-4;float ang=atan(d.y,d.x);
+ float n=3.+uLvl*2.;
+ float s=pow(max(0.,sin(ang*n+fbm(vec2(ang*1.3,uT*.2+uSeed))*5.)),2.)*(.55+.6*fbm(vec2(ang*4.,uT*.5)));
+ s=max(s,.35*pow(max(0.,sin(ang*(n*2.3)+2.+uT*.3)),6.));
+ float up=smoothstep(.35,-.55,d.y/r);
+ float len=(.05+.04*uLvl)*s*up*(.7+.3*sin(uT*1.9+ang*3.))*(1.+uHurt*.6+uHit*.8);
+ vec2 dir=(d/r)/vec2(asp,1.);
+ for(int i=1;i<=6;i++){float k=float(i)/6.;float h=A(warp(uv-dir*len*k));
+  if(h>.5){spk=max(spk,1.-k*k);}}
+ return max(a,step(.001,spk)*smoothstep(0.,.25,spk+.08));
+}
+void main(){
+ vec2 uv=vec2(gl_FragCoord.x/uRes.x,1.-gl_FragCoord.y/uRes.y);
+ asp=uRes.x/uRes.y;
+ float t=uT+uSeed,lv=uLvl,kill=uKill;
+ float hb=pow(max(0.,sin(uT*5.4)),12.)+.6*pow(max(0.,sin(uT*5.4-.9)),12.);
+ float spk;float body=bodyAt(uv,spk);
+ vec2 su=warp(uv);vec4 tx=texture(uTex,clamp(su,0.,1.));
+ // 바깥 번짐(테두리 빛): 둘레 여덟 방향의 몸 밀도
+ float halo=0.;float R=.018+.008*lv;
+ for(int i=0;i<8;i++){float an=float(i)*.785398+t*.3;vec2 off=vec2(cos(an)/asp,sin(an))*R;halo+=A(warp(uv+off));}
+ halo/=8.;
+ float far=0.;
+ for(int i=0;i<8;i++){float an=float(i)*.785398;vec2 off=vec2(cos(an)/asp,sin(an))*R*3.2;far+=A(warp(uv+off));}
+ far/=8.;
+ vec3 col=vec3(0.);float al=0.;
+ // 발밑 먹물: 일렁이는 가장자리, 사살되면 차오른다
+ vec2 fp=(uv-vec2(uC.x,uFeet))*vec2(asp,1.);
+ float iw=(.21+.06*lv)*(1.+kill*.6),ih=.035+.012*lv+kill*.05;
+ float edge=fbm(vec2(atan(fp.y,fp.x)*2.,t*.35))*.35+fbm(fp*14.+t*.4)*.18;
+ float ink=smoothstep(1.,.82,length(fp/vec2(iw,ih))-edge);
+ float sheen=pow(max(0.,fbm(fp*vec2(9.,26.)+vec2(t*.5,0.))-.45),2.)*2.2;
+ vec3 inkC=vec3(.05,0.,.012)+vec3(.45,.02,.07)*sheen*(.6+.4*hb);
+ col=mix(col,inkC,ink);al=max(al,ink*.92);
+ // 먹물에서 피어오르는 검붉은 물방울 기둥(별급일수록 많다)
+ for(int i=0;i<5;i++){float fi=float(i);if(fi>lv*1.7+1.)break;
+  float px=uC.x+(hash(vec2(fi,uSeed))-.5)*iw*1.6/asp;float ph=fract(t*.22+hash(vec2(fi,3.))) ;
+  vec2 q=(uv-vec2(px,uFeet-ph*.32))*vec2(asp,1.);float dr=exp(-dot(q,q)*9000.)*(1.-ph);
+  col+=vec3(.5,.02,.08)*dr;al=max(al,dr*.9);}
+ // 겹친 잔상(악몽 이상): 붉은빛 · 푸른빛이 서로 어긋난다
+ if(lv>=1.5){float off=.012+.008*sin(t*2.3)+uHit*.03;
+  float gR=A(warp(uv+vec2(off,0.))),gC=A(warp(uv-vec2(off*.9,-off*.3)));
+  float gm=(1.-body)*.55;
+  col+=vec3(.55,0.,.12)*gR*gm+vec3(.0,.28,.4)*gC*gm*.7;al=max(al,max(gR,gC)*gm*.8);}
+ // 붉은 안개와 테두리 빛
+ float rim=clamp(halo-body,0.,1.);float glow=clamp(far-body,0.,1.);
+ vec3 rimC=mix(vec3(1.,.15,.18),vec3(1.,.55,.45),hb*.5);
+ col+=rimC*rim*(.75+.6*hb)+vec3(.5,0.,.08)*glow*(.35+.25*hb);
+ al=max(al,rim*(.85)+glow*.4);
+ // 몸: 검붉은 살결 + 안쪽에서 흐르는 핏줄
+ if(body>0.){
+  float sh=dot(tx.rgb,vec3(.3,.5,.2));
+  vec3 base=mix(vec3(.05,.0,.012),vec3(.2,.02,.05),sh*1.4);
+  float veins=1.-smoothstep(0.,.07,abs(fbm(uv*vec2(10.,8.)*1.3-vec2(0.,t*.4))-.5));
+  float veins2=1.-smoothstep(0.,.05,abs(fbm(uv*vec2(19.,15.)+vec2(t*.2,0.))-.5));
+  base+=vec3(.75,.03,.1)*(veins*.8+veins2*.35)*(.55+.45*hb);
+  // 살점 돌기: 뿌리는 붉고 끝으로 갈수록 검게 굳는다
+  float fl=fbm(uv*vec2(30.,24.)+uT*.2);
+  vec3 sc=mix(vec3(.06,0.,.015),mix(vec3(.42,.03,.08),vec3(.8,.18,.2),fl*fl),spk)*(.7+.5*fl);
+  base=mix(base,sc,step(.001,spk)*(1.-tx.a));
+  // 몸 안쪽 테두리에 맺힌 붉은 빛
+  float inner=clamp(body-A(warp(uv+vec2(0.,-R*.6)))*.5-.5,0.,1.);
+  base+=vec3(.9,.12,.15)*inner*.35*(1.+hb);
+  // 맞은 순간 흰 살빛으로 번쩍
+  base=mix(base,vec3(1.,.86,.8),uHit*.6);
+  col=mix(col,base,body);al=max(al,body);
+ }
+ // 사살: 위에서부터 먹물 속으로 가라앉듯 사라진다(먹물은 남는다)
+ if(kill>0.){float line=(uFeet-1.)+kill*1.02;
+  float keep=smoothstep(line-.03,line+.03,uv.y+(fbm(uv*11.+t)-.5)*.08);
+  float notInk=1.-ink;col*=mix(1.,keep,notInk);al*=mix(1.,keep,notInk);}
+ al=clamp(al,0.,1.);col=min(col,vec3(al));
+ o=vec4(col,al);
+}`;
+  function init(){
+    if(gl || dead) return !!gl;
+    try{
+      cv = document.createElement("canvas"); cv.width = 8; cv.height = 8;
+      gl = cv.getContext("webgl2", {premultipliedAlpha:true, alpha:true, antialias:false, preserveDrawingBuffer:true});
+      if(!gl) throw 0;
+      const sh = (ty, src)=>{ const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+      prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+      if(!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
+      gl.useProgram(prog);
+      const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+      const loc = gl.getAttribLocation(prog, "a"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+      ["uTex","uRes","uC","uFeet","uT","uLvl","uHurt","uHit","uKill","uSeed"].forEach(n=>U[n] = gl.getUniformLocation(prog, n));
+      tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex);
+      [[gl.TEXTURE_MIN_FILTER, gl.LINEAR],[gl.TEXTURE_MAG_FILTER, gl.LINEAR],[gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]].forEach(([k,v])=>gl.texParameteri(gl.TEXTURE_2D, k, v));
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+      oc = document.createElement("canvas"); ox = oc.getContext("2d");
+      gl.canvas.addEventListener("webglcontextlost", ()=>{ gl = null; dead = true; });
+      return true;
+    }catch(e){ console.warn("DistGL 사용 불가", e); gl = null; dead = true; return false; }
+  }
+  // c: 그릴 2D 맥락 · x, gy, h: 적의 발 위치와 키 · figOpt: drawFixer 옵션 · k: {lvl, hurt, hit, kill, seed}
+  function draw(c, x, gy, h, figOpt, k){
+    if(!init()) return false;
+    const x0 = x - h*1.15, y0 = gy - h*1.5, Wl = h*2.1, Hl = h*1.78;
+    const tr = c.getTransform(), s = Math.hypot(tr.a, tr.b) || 1;
+    const sc = Math.min(1, 440/(Wl*s)) * s, pw = Math.max(16, Math.round(Wl*sc)), ph = Math.max(16, Math.round(Hl*sc));
+    if(oc.width !== pw || oc.height !== ph){ oc.width = pw; oc.height = ph; }
+    if(cv.width !== pw || cv.height !== ph){ cv.width = pw; cv.height = ph; }
+    ox.setTransform(1,0,0,1,0,0); ox.clearRect(0,0,pw,ph);
+    ox.setTransform(sc,0,0,sc,-x0*sc,-y0*sc);
+    drawFixer(ox, x, gy, h, figOpt);
+    gl.viewport(0,0,pw,ph); gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.useProgram(prog); gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, oc);
+    gl.uniform1i(U.uTex, 0); gl.uniform2f(U.uRes, pw, ph);
+    gl.uniform2f(U.uC, (x - x0)/Wl, (gy - h*0.58 - y0)/Hl); gl.uniform1f(U.uFeet, (gy - y0)/Hl);
+    gl.uniform1f(U.uT, k.t); gl.uniform1f(U.uLvl, k.lvl||1); gl.uniform1f(U.uHurt, k.hurt||0); gl.uniform1f(U.uHit, k.hit||0); gl.uniform1f(U.uKill, k.kill||0); gl.uniform1f(U.uSeed, k.seed||0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    c.drawImage(cv, x0, y0, Wl, Hl);
+    return true;
+  }
+  return {draw, ok: ()=>init()};
+})();
 /* ================= 재해 등급별 보스 의뢰 =================
    같은 재해 등급보다 한 단계 센 상대. 기한 없음 · 2명 이상 · 직접 수행만.
    사무소가 그 등급에 닿으면 하루 25% 확률로 게시판에 한 번 뜬다(한 번에 하나). 실패하면 7일 뒤 다시 올라온다.
@@ -5168,19 +5318,17 @@ function bgmFor(title, q){
   return "normal"; }
 const BATTLE_BGM = ["battle","battle_yesod","battle_malkuth","battle_netzach","battle_hod"];
 /* ================= 미니게임 공통 창 ================= */
-let activeMinigames = 0;
-function mgOpen(title, desc, ctx, H=300, maxDpr=2){
+function mgOpen(title, desc, ctx, H=300){
   const bg = document.createElement("div"); bg.className = "mg-bg";
   bg.innerHTML = `<div class="mg"><div class="mg-h"><b>${title}</b><span>${ctx.total>1?`미니게임 ${ctx.idx} / ${ctx.total} · `:""}${esc(ctx.q.client)}</span></div>
     <div class="mg-desc">${desc}</div><div class="mg-stage"><canvas width="720" height="${H}" style="aspect-ratio:720/${H}"></canvas></div>
     <div class="mg-info"></div><div class="mg-ctrl"></div><div class="mg-f"><button class="mg-quit">포기</button></div></div>`;
   document.body.appendChild(bg);
   const cvs = bg.querySelector("canvas"), c = cvs.getContext("2d");
-  const d = Math.min(maxDpr, devicePixelRatio||1); cvs.width = 720*d; cvs.height = H*d; c.setTransform(d,0,0,d,0,0);
+  const d = Math.min(2, devicePixelRatio||1); cvs.width = 720*d; cvs.height = H*d; c.setTransform(d,0,0,d,0,0);
   const pos = e => { const r = cvs.getBoundingClientRect(); return {x:(e.clientX-r.left)/r.width*720, y:(e.clientY-r.top)/r.height*H}; };
   const tok = BGM.push(bgmFor(title, ctx.q), bg);
-  activeMinigames++; let closed = false;
-  return { bg, cvs, c, pos, info: bg.querySelector(".mg-info"), ctrl: bg.querySelector(".mg-ctrl"), quit: bg.querySelector(".mg-quit"), close(){ if(closed) return; closed = true; activeMinigames--; BGM.pop(tok); bg.remove(); } };
+  return { bg, cvs, c, pos, info: bg.querySelector(".mg-info"), ctrl: bg.querySelector(".mg-ctrl"), quit: bg.querySelector(".mg-quit"), close(){ if(bg.isConnected) BGM.pop(tok); bg.remove(); } };
 }
 function mgResult(m, score, text, win=null){
   return new Promise(res=>{ let settled=false; m.info.innerHTML = `<b style="color:${win===true?"var(--green)":win===false?"var(--red)":score>=0.7?"var(--green)":score>=0.4?"var(--yellow)":"var(--red)"}">${text} · ${Math.round(score*100)}점</b>`; m.ctrl.innerHTML=""; m.quit.textContent="계속"; m.quit.disabled=false;
@@ -5819,7 +5967,7 @@ function coinDamage(base,remaining,original,heads,mul=1){
 function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
-    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 사용할 기술을 선택해 상대와 합을 겨룬다. 위력이 낮은 쪽의 코인이 하나씩 파괴되며, 합에서 승리하면 무기와 기술, 남은 코인에 따라 피해를 입힌다. 상대를 쓰러뜨린 뒤 의뢰 목표인 ${goal}을 달성하면 성공하며, 모든 해결사가 전투 불능이 되면 실패한다.`, ctx, 380, q.distFoe ? 1 : 1.5);
+    const m = mgOpen(`정면 돌파 · ${goal} 의뢰`, `목표: <b style="color:${goal==="사살"?"#ff8a7a":"#9fe8b0"}">${goal}</b>. 사용할 기술을 선택해 상대와 합을 겨룬다. 위력이 낮은 쪽의 코인이 하나씩 파괴되며, 합에서 승리하면 무기와 기술, 남은 코인에 따라 피해를 입힌다. 상대를 쓰러뜨린 뒤 의뢰 목표인 ${goal}을 달성하면 성공하며, 모든 해결사가 전투 불능이 되면 실패한다.`, ctx, 380);
     const party = ctx.team.slice(0,5).map(f=>({f, name:f.name, hp:100+statHpPlus(f), shownHp:100+statHpPlus(f), max:100+statHpPlus(f), lg:leadGear(f), wt: weaponTypeOf(wGear(f)) || "none", spec: weaponSpecOf(wGear(f)), armor: armorSpecOf(aGear(f)), sp2: f.ego && f.ego.special || null, wsp: (wspOf(wGear(f))||{}).id || null, ye:0, wchg:0, hits:0, charge:0, shield:0, endured:false}));
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !wGear(party[0].f)) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     party.forEach(p=>{ p.resolve=0; p.resolveTurn=0; p.resolveBoost=0; p.guardStreak=0; p.guardMode="guard"; p.shinLive = false; p.mangLive = 0; p.shinUsed = false; p.mangPeak = 0; p.extraTurn = 0; });   // 신(心) · 망(望): 전투 안에서 두르고 감는다
@@ -6247,7 +6395,7 @@ function mgCombat(ctx){
       if(tk&&tk.T.hana)me.sp=clamp(me.sp-techCost(tk.T),-45,45);
       if(firedRound) gun.mag--;
       if(reloading) loadAmmo(gun,arguments[1]);
-      phase = "anim"; m.ctrl.innerHTML = "";
+      phase = "anim"; st.techAnimating = Boolean(tk); m.ctrl.innerHTML = "";
       const guarding = si===1||reloading, mode="guard"; if(si===1){me.guardStreak++;me.shield=Math.min(30,(me.shield||0)+8);}else me.guardStreak=0;
       const c = isBasic(si) ? basicPick(me,si===0?0:si===6?1:2) : guarding ? basicDefCard(me) : tk.card, sk = mySkill(tk ? tk.sk : isBasic(si)?basicTrainingSkill(me,c):skillOf(c), !guarding && !(foeSkill.def && !AB && !DF)), wNote = [], tNote = [], rNote = [];
       const barrier=barrierAct();if(barrier)tNote.push(barrier);if(!guarding&&!sk.def&&keywordSpend(me,"charge")){tNote.push("충전 10 소모 — 이번 공격 코인 위력 +1");}
@@ -6547,40 +6695,27 @@ function mgCombat(ctx){
         if(b.dataset.lamp==="out"){ party.splice(party.indexOf(mk), 1); act = 0; tick = `${esc(jo(mk.name,"을"))} 어둠 밖으로 빼냈다. 남은 이들이 싸운다.`; }
         else { foe.lampMark = mk; tick = `${esc(jo(mk.name,"을"))} 그대로 두었다 — 3턴 안에 쓰러뜨려야 한다.`; }
         skillMenu(); } };
-    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); layoutObserver?.disconnect(); useCanvas(); m.close(); resolve({win:false, score:0, outcome:null, battle: battleResults()}); };
+    m.quit.onclick = ()=>{ if(done) return; done=true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, outcome:null, battle: battleResults()}); };
     /* ---- 연출: 포켓몬식 구도(적은 오른쪽 위 먼 발판, 우리는 왼쪽 아래 가까운 발판) ---- */
     const W = 720, H = 380;
     const POS = { foe:{x:528, gy:182, h:116, face:-1, z:0.62}, me:{x:178, gy:352, h:176, face:1, z:0.3} };
     const PLATS = [[530,184,112,19],[190,354,168,30]];
     m.bg.querySelector(".mg").classList.add("mg-fixed");
     // 선택지 칸이 더 커진 적이 있으면 그 높이를 유지한다(창이 위아래로 흔들리지 않게)
-    const layoutObserver = typeof ResizeObserver==="function" ? new ResizeObserver(()=>{
-      const h = m.ctrl.scrollHeight;
-      if(h > (parseFloat(m.ctrl.style.minHeight)||0)) m.ctrl.style.minHeight = h+"px";
-    }) : null;
-    layoutObserver?.observe(m.ctrl);
+    new ResizeObserver(()=>{ const h = m.ctrl.scrollHeight; if(h > (parseFloat(m.ctrl.style.minHeight)||0)) m.ctrl.style.minHeight = h+"px"; }).observe(m.ctrl);
     const stage = m.bg.querySelector(".mg-stage"), glc = document.createElement("canvas");
     if(BOSS){ bossFx.bind(stage); bossFx.cut(BOSS.B); }
     const gd = Math.min(PERF.low ? 1 : 1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
     // 그래픽 카드 없이 CPU로 셰이더를 흉내 내는 환경(소프트웨어 렌더러)이면 처음부터 2D로 그린다. 그 밖에도 처음 몇 프레임이 너무 느리면 2D로 내려간다.
-    let G = null; if(!DF && !PERF.low && !softGL()){ try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; } }
-    let slowFrames = 0;
-    let SFX = null; try { if(G) SFX = SlashFX.make(W, H); } catch(e){ SFX = null; }
-    function useCanvas(){
-      const renderer = G;
-      G = null;
-      renderer?.dispose();
-      SFX?.dispose();
-      SFX = null;
-      glc.remove(); m.cvs.classList.remove("mg-over");
-    }
-    glc.addEventListener("webglcontextlost", useCanvas, {once:true});
-    if(!G) useCanvas();
+    let G = null; if(!softGL()){ try { G = CombatGL.make(glc, W, H); } catch(e){ console.warn(e); G = null; } }
+    const glProbe = {n:0, sum:0};
+    let SFX = null; try { SFX = SlashFX.make(W, H); } catch(e){ SFX = null; }
+    if(!G){ glc.remove(); m.cvs.classList.remove("mg-over"); }
     const FX_COL = { blade:[0.8,0.9,1], great:[0.85,0.9,1], spear:[0.8,0.92,1], blunt:[1,0.72,0.42], drill:[1,0.66,0.3], gun:[1,0.85,0.5], tool:[0.95,0.85,0.7], twin:[0.8,0.92,1], fist:[1,0.78,0.5], none:[1,0.85,0.7] };
     let clock = 0, last = performance.now(); st.ev = []; st.fx = []; st.waves = []; st.pop = [];
     const chestOf = who => who==="foe" ? [POS.foe.x, POS.foe.gy - POS.foe.h*0.52] : [POS.me.x + 6, POS.me.gy - POS.me.h*0.52];
-    const addFx = (o, dur, delay=0)=>{ if(G) st.fx.push(Object.assign({t0: clock+delay, dur}, o)); };
+    const addFx = (o, dur, delay=0)=>{ st.fx.push(Object.assign({t0: clock+delay, dur}, o)); };
     // 환상체의 고유 기술: 환상체 자리에서 기술의 갈래대로 흔적을 남기고, 맞는 순간 기술 이름을 띄운다
     const AFIG = ()=>[POS.foe.x, POS.foe.gy - POS.foe.h*0.55];
     function abnoAtk(card, x, y, imp, dmg){
@@ -6625,7 +6760,7 @@ function mgCombat(ctx){
         if(card && card.cleave) addFx({kind:"arc", x:cx+dir*8, y:cy-10, R:R*0.86, a0:a0+0.15*dir, a1:a1+0.15*dir, w:4*sc, col}, 320, imp-50); }
       if(!SFX && !(AB && !AB.possessed && by==="foe")) addFx({kind:"hit", x, y, R:(wt==="blunt"?80:50)*sc*big, col: tgt==="foe" ? [1,0.86,0.62] : [1,0.45,0.4]}, wt==="blunt"?460:340, imp);
       if(!SFX && !(AB && !AB.possessed && by==="foe")) addFx({kind:"pt", x, y, n:Math.min(150, 26+dmg*3), spd:(90+dmg*3)*sc, dx:dir, dy:-0.4, col: tgt==="foe" ? [1,0.75,0.4] : [1,0.4,0.35], seed:Math.random()*99}, 900, imp);
-      setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = performance.now() + (st.crit?95:45);
+      setTimeout(()=>{ st.waves.push({x, y, t0:clock, k: (wt==="blunt"?1:0.6)*big}); st.shake = (wt==="blunt"?10:6)*big + dmg/5; st.aberr = 1*big; st.stopUntil = clock + (st.crit?140:70);
         foe.shownHp = foe.hp; party.forEach(p=>p.shownHp = p.hp); if(st.crit) st.flash = 0.4; st.pop.push({x:x+(tgt==="foe"?30:40), y:y-30, t0:clock, txt: tgt==="foe" ? `-${dmg}` : (party[act].hp<=0 ? "쓰러짐" : WOUND[woundOf(party[act].hp,party[act].max)]), col: tgt==="foe" ? "#ffe2a8" : "#ff8a7a"}); }, imp);
     }
     // 한 사람의 움직임: 대기(숨쉬기) · 돌진 · 무기 휘두르기/찌르기 · 피격 반동
@@ -6655,6 +6790,7 @@ function mgCombat(ctx){
       if(outcome && st.koAt!=null){ const k = ease(clamp((clock-st.koAt)/600,0,1));
         if(outcome==="제압"){ frot = 0.42*k; fdim = 0.35*k; fp.sw = -0.2; } else { frot = 1.3*k; fdim = 0.25*k; } }
       const fcol = hexMix(hexMix(SIDE_COL.foe.fill, "#000000", fdim), "#fff4e8", fp.flash);
+      const fworst = foe.shownHp/foe.max;
       if(AB && !AB.possessed){
         // 환상체: 관측 화면과 같은 모습. 발판 위에 떠 있고, 공격할 때 부풀며 다가오고, 맞으면 하얗게 번쩍인다
         const at = st.abAtk ? clock - st.abAtk.t0 : 1e9, ak = at < st.abAtk?.imp + 360 ? (at < st.abAtk.imp ? ease(at/st.abAtk.imp) : 1 - clamp((at-st.abAtk.imp)/360,0,1)) : 0;
@@ -6664,10 +6800,10 @@ function mgCombat(ctx){
         c.restore();
       } else {
       const foeOpt = {face:-1, spr: !DF, col: DF ? hexMix(fcol, "#2a0810", 0.45) : fcol, state: "combat", weapon: foe.mangLive && foe.spec ? Object.assign({}, foe.spec, {mang: foe.mangLive}) : foe.spec, shin: foe.shinLive && !outcome ? {murk: 0} : null, mk: 0, sw:fp.sw, atk: outcome ? null : fp.atk, rot: fp.rot + frot};
-      const x = POS.foe.x + fp.dx, y = POS.foe.gy + fp.dy;
-      const h = POS.foe.h * 0.96 * (DF ? 1 + 0.04*DF.lvl : 1);
-      if(DF && outcome!=="사살") drawDistortFx(c, x, y, h, DF.lvl, now/1000);
-      drawFixer(c, x, y, h, foeOpt); }
+      const dfK = DF ? {t: now/1000, lvl: DF.lvl, hurt: 1-fworst, hit: clamp(fp.flash*3,0,1), kill: outcome==="사살" && st.koAt!=null ? clamp((clock-st.koAt)/1500,0,1) : 0, seed: (DF.lvl*7.3)%10} : null;
+      if(!(DF && DistGL.draw(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96*(1 + 0.04*DF.lvl), Object.assign({}, foeOpt, {rot: fp.rot}), dfK))){
+        if(DF && outcome!=="사살") drawDistortFx(c, POS.foe.x+fp.dx, POS.foe.gy+fp.dy, POS.foe.h*0.96, DF.lvl, now/1000, 1-fworst);
+        drawFixer(c, POS.foe.x+fp.dx + (DF ? (Math.random()-0.5)*DF.lvl*1.5 : 0), POS.foe.gy+fp.dy, POS.foe.h*0.96*(DF ? 1 + 0.04*DF.lvl : 1), foeOpt); } }
       const ent = clamp((clock-(st.enterAt||-9999))/500,0,1); let mrot = 0, mdim = 0;
       if(me.hp<=0){ st.downAt = st.downAt || clock; mrot = -1.25*ease(clamp((clock-st.downAt)/500,0,1)); mdim = 0.45; } else st.downAt = 0;
       const mcol = hexMix(hexMix(SIDE_COL.ally.fill, "#000000", mdim), "#fff4e8", mp.flash);
@@ -6717,37 +6853,34 @@ function mgCombat(ctx){
       st.pop = st.pop.filter(p=>clock-p.t0 < 900);
       st.pop.forEach(p=>{ const k = (clock-p.t0)/900; c.globalAlpha = 1-k*k; c.fillStyle = p.col; c.font = `800 ${18+6*(1-k)}px "Noto Sans KR",sans-serif`; c.fillText(p.txt, p.x, p.y - 26*ease(k)); c.globalAlpha = 1; });
     }
-    let raf; const fcv = document.createElement("canvas"); fcv.width = glc.width; fcv.height = glc.height; const fctx = fcv.getContext("2d");
+    let raf, nextDrawAt = 0; const fcv = document.createElement("canvas"); fcv.width = glc.width; fcv.height = glc.height; const fctx = fcv.getContext("2d");
     function draw(){
-      if(!document.body.contains(m.bg)){ useCanvas(); layoutObserver?.disconnect(); return; }
-      const now = performance.now(), elapsed = now-last;
-      if(elapsed< (DF ? 1000/35 : 1000/60)-1){ raf = requestAnimationFrame(draw); return; }
-      last = now;
-      clock += Math.min(100, elapsed) * (st.stopUntil>now ? 0.35 : 1);
+      if(!document.body.contains(m.bg)){ if(G) G.dispose(); return; }
+      const now = performance.now(), dt = Math.min(50, now-last); last = now;
+      if(!(st.stopUntil > clock)) clock += dt; else clock += dt*0.08;
       if(st.lastAct !== act){ st.enterAt = st.lastAct==null ? -9999 : clock; st.lastAct = act; }
       if(outcome && st.koAt==null) st.koAt = clock+300;
       st.shake = (st.shake||0)*0.86; st.aberr = (st.aberr||0)*0.9; st.flash = (st.flash||0)*0.88;
       if(outcome==="사살" && st.koAt!=null && !st.ember && clock-st.koAt>650){ st.ember = 1; const [x,y] = chestOf("foe"); addFx({kind:"pt", x:x+20, y:y+30, n:90, spd:40, dx:0, dy:-1, col:[1,0.55,0.25], seed:7}, 1600); }
-      if(G && !document.hidden){
-        slowFrames = elapsed>32 && elapsed<250 ? slowFrames+1 : Math.max(0,slowFrames-1);
-        if(slowFrames>=12) useCanvas();
-      }
-      st.waves = st.waves.filter(w=>clock-w.t0 < 520);
+      // 전투와 연출의 시간은 매 프레임 진행하고, 무거운 장면에서만 그리기 횟수를 줄인다.
+      if(DF || (phase==="anim" && st.techAnimating)){
+        if(now+1<nextDrawAt){ raf = requestAnimationFrame(draw); return; }
+        const frameInterval = 1000/30;
+        nextDrawAt = Math.max(nextDrawAt+frameInterval, now+frameInterval-1);
+      } else nextDrawAt = now;
+      // 성능 확인: 처음 몇십 프레임은 셰이더·메시 준비로 원래 느리다. 그 뒤 60프레임을 재서, 정말 버거울 때(평균 80ms 넘게)만 전투 연출을 끈다.
+      if(G && glProbe.n >= 0){ glProbe.n++; if(glProbe.n > 40) glProbe.sum += dt;
+        if(glProbe.n === 100){ if(glProbe.sum/60 > 80){ try{ G.dispose(); }catch(_){ } G = null; glc.remove(); m.cvs.classList.remove("mg-over"); } glProbe.n = -1; } }
       if(G){
         const gd = fcv.width/W; fctx.setTransform(1,0,0,1,0,0); fctx.clearRect(0,0,fcv.width,fcv.height); fctx.setTransform(gd,0,0,gd,0,0);
         drawFighters(fctx, now);
         const fx = []; st.fx = st.fx.filter(f=>clock-f.t0 < f.dur);
         st.fx.forEach(f=>{ const k = (clock-f.t0)/f.dur; if(k>=0) fx.push(Object.assign({}, f, {k})); });
+        st.waves = st.waves.filter(w=>clock-w.t0 < 520);
         const waves = st.waves.map(w=>{ const k = (clock-w.t0)/520; return [w.x, w.y, 20+k*170, (1-k)*w.k]; });
         const dis = outcome==="사살" && st.koAt!=null ? {v: clamp((clock-st.koAt-500)/1400,0,1)*0.95, rect:[POS.foe.x-160, POS.foe.gy-150, POS.foe.x+160, POS.foe.gy+40]} : null;
-        try {
-          G.render({t: now/1000, horizon: 150, plats: PLATS, fig: fcv, dis, feet:[POS.foe.gy, POS.me.gy, 360, 0], fx, waves, aberr: st.aberr, flash: st.flash, flashCol:[1,0.96,0.9], shake:[(Math.random()-0.5)*st.shake, (Math.random()-0.5)*st.shake]});
-        } catch(error){
-          console.warn("전투 그래픽을 2D로 전환합니다.", error);
-          useCanvas();
-        }
-      }
-      if(!G){
+        G.render({t: now/1000, horizon: 150, plats: PLATS, fig: fcv, dis, feet:[POS.foe.gy, POS.me.gy, 360, 0], fx, waves, aberr: st.aberr, flash: st.flash, flashCol:[1,0.96,0.9], shake:[(Math.random()-0.5)*st.shake, (Math.random()-0.5)*st.shake]});
+      } else {
         // WebGL이 안 되는 기기: 기존 2D 그림
         const c = m.c; c.save(); streetBG(c, W, H, now/1000, st); drawFighters(c, now);
         if(outcome==="사살" && st.koAt!=null) { c.globalAlpha = clamp((clock-st.koAt-500)/1400,0,1)*0.9; c.fillStyle = "#08070b"; c.fillRect(POS.foe.x-160, POS.foe.gy-150, 320, 190); c.globalAlpha = 1; }
@@ -18761,7 +18894,7 @@ function playFx(kind, title, sub, good){
 function loop(now){
   if(!cx){ return; }
   if(PERF.last){ const dt = now - PERF.last; if(dt < 250){ PERF.ft = PERF.ft*0.95 + dt*0.05; PERF.low = PERF.ft > 26; } } PERF.last = now;
-  if(window.__hvBusy || activeMinigames>0){ requestAnimationFrame(loop); return; }   // 개화·뒤틀림 화면이 떠 있는 동안 뒤 화면은 쉰다
+  if(window.__hvBusy){ requestAnimationFrame(loop); return; }   // 개화·뒤틀림 화면이 떠 있는 동안 뒤 화면은 쉰다
   if(scene && drawScene(now)){ requestAnimationFrame(loop); return; }
   const W=cv.width,H=cv.height; const age=(now-fx.t)/1000;
   drawWeather(now, W, H, "sky");
@@ -21081,8 +21214,7 @@ const SlashFX = (function(){
         });
         gl.bindVertexArray(null);
         return list.length;
-      },
-      dispose(){ gl.getExtension("WEBGL_lose_context")?.loseContext(); }
+      }
     };
     return api;
   }
