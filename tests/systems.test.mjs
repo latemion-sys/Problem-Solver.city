@@ -338,6 +338,71 @@ test('침잠은 일반 대상에 추가 피해를 주고 보호막 대상에 더
   assert.deepEqual(Array.from(result),[8,12,10,2,0]);
 });
 
+test('고유 특수 키워드 12종의 발동·소멸·상한',()=>{
+  const cx=vm.createContext({
+    TECHS:{}, esc:String, document:{addEventListener(){}},
+    foeDefenseDamage:(foe,dmg)=>Math.max(0,dmg-(foe.defense||0))
+  });
+  vm.runInContext(section('const KEYWORD_NAMES=','// 네 능력치의'),cx);
+  vm.runInContext(section('const SIGNATURE_MARKS=','function knownSignature('),cx);
+  const results=vm.runInContext(`(()=>{
+    const notes=[], actor=()=>({name:"대상",hp:100});
+    const T=id=>SIGNATURE_TECHS[id];
+    const me=actor();
+    const scar={...actor(),bleed:5};
+    prepareSignatureMark(T("sig_seam"),scar,notes);
+    signatureMarkTurnEnd(scar,notes);
+    const scarFirst=scar.hp;
+    signatureMarkTurnEnd(scar,notes);
+    const blood={...actor(),bleed:7};
+    prepareSignatureMark(T("sig_stitch"),blood,notes);
+    keywordDecay(blood,signatureMarkTurnEnd(blood,notes));
+    const flames=[["sig_ember",22,0],["sig_spark",17,3]].map(([id,cap,defense])=>{
+      const foe={...actor(),defense};
+      prepareSignatureMark(T(id),foe,notes);
+      const raised=keywordCap("burn",foe);
+      keywordAdd(foe,"burn",99);
+      const hit=finishSignatureMark(T(id),me,foe,1,notes);
+      return [raised,hit,foe.burn,keywordCap("burn",foe)];
+    });
+    const sink={...actor(),sink:8};
+    const triple=id=>[1,2,3].map(()=>{
+      prepareSignatureMark(T(id),sink,notes);
+      return finishSignatureMark(T(id),me,sink,1,notes);
+    });
+    const panic=triple("sig_lamp"), shield=me.shield;
+    me.shield=0;
+    const submerge=triple("sig_rope"), self=me.hp;
+    const echo={...actor(),tremor:9};
+    prepareSignatureMark(T("sig_echo"),echo,notes);
+    signatureMarkTurnEnd(echo,notes);
+    const echoFirst=echo.hp;
+    signatureMarkClashStart(echo,notes);
+    keywordDecay(echo,signatureMarkTurnEnd(echo,notes));
+    const axis={...actor(),tremor:9};
+    prepareSignatureMark(T("sig_latch"),axis,notes);
+    const axisFirst=finishSignatureMark(T("sig_latch"),me,axis,1,notes);
+    prepareSignatureMark(T("sig_latch"),axis,notes);
+    const axisSecond=finishSignatureMark(T("sig_latch"),me,axis,1,notes);
+    const explosive={...actor(),charge:8};
+    const primer=beginSignatureMark(T("sig_step"),explosive,actor(),false,notes);
+    const primerCap=keywordCap("charge",explosive);
+    const discharge=actor(), victim=actor();
+    for(let i=0;i<3;i++){discharge.charge=10;beginSignatureMark(T("sig_handoff"),discharge,victim,false,notes);}
+    const spirit=actor();
+    beginSignatureMark(T("sig_palm"),spirit,victim,false,notes);
+    for(let i=0;i<3;i++)beginSignatureMark(T("sig_turn"),spirit,victim,false,notes);
+    return {effects:[...new Set(Object.values(SIGNATURE_TECHS).map(t=>t.mark))].length,scar:[scarFirst,scar.hp],blood:[blood.hp,blood.bleed],flames,
+      panic:[...panic,shield],submerge:[...submerge,self],echo:[echoFirst,echo.hp,echo.tremor],axis:[axisFirst,axisSecond,axis.tremor,axis.coinDown],
+      primer:[primer,primerCap,explosive.charge],discharge:[victim.hp,keywordCap("charge",discharge),discharge.charge],
+      spirit:[spirit.signatureMarks.clear,spirit.signatureMarks.flash]};
+  })()`,cx);
+  assert.deepEqual(JSON.parse(JSON.stringify(results)),{
+    effects:12,scar:[92,88],blood:[93,7],flames:[[22,33,12,12],[17,31,12,12]],panic:[0,0,8,8],submerge:[0,0,16,96],
+    echo:[92,88,9],axis:[0,18,4,2],primer:[10,30,3],discharge:[85,15,0],spirit:[1,3]
+  });
+});
+
 test('고유 기술이 없는 인원이 있을 때만 첫 만남과 재등장 확률을 적용한다',()=>{
   const cx=vm.createContext({save(){},Math,NAMELESS_P:.035});
   vm.runInContext(section('function rescueDue(','const rescueVoices'),cx);
