@@ -282,20 +282,24 @@ test('현장 장부 단서를 조사하면 모든 위치를 하나로 좁힐 수
   assert.ok(boards.some(b=>b.k===.95&&b.hints.includes('trait')));
 });
 
-test('미리보기 인간형 적은 강공을 예고하고 강공 뒤에는 빈틈을 보인다',()=>{
+test('미리보기는 위험한 수만 예고하며 인간형 적의 강공 뒤에는 일반 행동이 이어진다',()=>{
   const start=preview.indexOf('function nextHumanIntent('), end=preview.indexOf('function mgCombat(',start);
   assert.ok(start>=0&&end>start);
   const cx=vm.createContext({});
   vm.runInContext(preview.slice(start,end),cx);
   const intent=cx.nextHumanIntent;
   assert.equal(intent('probe',.1),'heavy');
-  assert.equal(intent('probe',.9),'feint');
+  assert.equal(intent('probe',.7),'feint');
+  assert.equal(intent('probe',.9),'probe');
   assert.equal(intent('feint',.9),'heavy');
-  assert.equal(intent('heavy',.1),'recover');
-  assert.equal(intent('heavy',.9),'recover');
-  assert.equal(intent('recover',.1),'guard');
-  assert.equal(intent('recover',.9),'probe');
+  assert.equal(intent('heavy',.1),'guard');
+  assert.equal(intent('heavy',.9),'probe');
   assert.equal(intent('guard',.1),'probe');
+  assert.equal(cx.dangerousFoeSkill({heavy:true}),true);
+  assert.equal(cx.dangerousFoeSkill({bossSig:'bark'}),true);
+  assert.equal(cx.dangerousFoeSkill({danger:true}),true);
+  assert.equal(cx.dangerousFoeSkill({}),false);
+  assert.equal(cx.dangerousFoeSkill({def:true,danger:true}),false);
 });
 
 test('미리보기 문답 수색은 16개 장소를 제한 안에 구분한다',()=>{
@@ -327,4 +331,30 @@ test('미리보기 문답 수색은 16개 장소를 제한 안에 구분한다',
       if(possible.length!==1 || possible[0]!==goal) throw Error('질문 한도 내 미해결');
     }
   })()`,cx);
+});
+
+test('미리보기의 인간형 키워드, 환상체 압박, 죄종 및 뒤틀림 규칙이 분리된다',()=>{
+  const cx=vm.createContext({
+    clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),
+    isDistContract:q=>q.kind==='뒤틀림 토벌',
+    threatOf:q=>q.threat
+  });
+  const sectionOf=(a,b)=>preview.slice(preview.indexOf(a),preview.indexOf(b,preview.indexOf(a)));
+  vm.runInContext(sectionOf('const DIST_TIER =','const DIST_PLACES')+sectionOf('function combatDistortion(','function distAfter('),cx);
+  vm.runInContext(sectionOf('function foeBalanceGrade(','function foeDefenseDamage('),cx);
+  assert.equal(cx.foeBalance({},null,null,7).kw,0);
+  assert.equal(cx.foeBalance({},null,null,6).kw,2);
+  assert.equal(cx.foeBalance({},{risk:'ALEPH'},null,1).kw,0);
+  assert.equal(cx.foeBalance({},{kill:true},null,9).hp,0);
+  assert.ok(vm.runInContext('!AB_COMBAT_PRESSURE.ZAYIN && AB_COMBAT_PRESSURE.TETH.sp>0',cx));
+  for(const [th,coins,fixedHit] of [['도시 질병',4,3],['도시 악몽',5,4],['도시의 별',6,5]]){
+    const old={distFoe:{th,mp:25,cards:[{n:'찌르기',a:4,b:8},{n:'방패',a:4,b:7,def:true}]}};
+    const foe=cx.combatDistortion(old);
+    assert.equal(foe.fixedHit,fixedHit);
+    assert.equal(foe.cards.length,1);
+    assert.equal(foe.cards[0].normalCoins,coins);
+    assert.equal(cx.foeBalance({},null,foe,1).kw,0);
+    assert.equal(cx.foeBalance({},null,foe,1).def,0);
+    assert.ok(cx.combatDistortion({kind:'뒤틀림 토벌',threat:th}).cards.every(card=>card.normalCoins===coins));
+  }
 });
