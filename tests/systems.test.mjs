@@ -263,40 +263,65 @@ test('운영에 미리보기 전투 및 수색 규칙을 함께 배포한다',()
 });
 
 test('공격 손패와 고유 기술 고정 칸이 분리되고 기존 장착은 안전하게 이관된다',()=>{
-  const cx=vm.createContext({TECHS:{brace:{def:true},old:{},allout:{}},Math});
-  vm.runInContext(section('const SIGNATURE_TECHS =','function signatureHit('),cx);
+  const cx=vm.createContext({TECHS:{brace:{def:true},old:{},allout:{}},Math,document:{addEventListener(){}}});
+  vm.runInContext(section('const KEYWORD_NAMES=','function keywordCap('),cx);
+  vm.runInContext(section('const SIGNATURE_TECHS =','function signatureLink('),cx);
   vm.runInContext(section('const MAX_BASIC_TECHS =','function syncAllStatVitals('),cx);
   const result=vm.runInContext(`(()=>{
-    const leader={hp:100,tech:"allout",techs:["old","brace"],guardTech:"brace"};
-    const partner={hp:100,tech:"old",techs:["old"]};
+    const keywordPlan={keys:["bleed","burn","tremor"],order:[0,1,2]};
+    const leader={hp:100,grade:8,keywordPlan,tech:"allout",techs:["old","brace"],guardTech:"brace"};
+    const partner={hp:100,grade:8,keywordPlan,tech:"old",techs:["old"]};
     const absent={hp:0};
     const office={fixers:[leader,partner,absent]};
     limitBasicTechs(leader);
     limitBasicTechs(partner);
     const initial=[leader.tech,leader.guardTech,partner.tech];
-    const plan=planOfficeSignatures(office,()=>0);
+    const initialChoices=signatureCandidates(leader);
+    const plan=signatureStudents(office).map(f=>[f,signatureCandidates(f)[0]]);
     if(office.fixers.some(f=>f.tech) || office.signatureTechs) throw new Error("장면 종료 전에 기술 지급");
     const taught=learnOfficeSignatures(office,plan);
     const earned=taught.map(([f])=>f.tech);
     const reloaded=JSON.parse(JSON.stringify(office));
     reloaded.fixers.forEach(limitBasicTechs);
-    const stays=learnOfficeSignatures(reloaded,planOfficeSignatures(reloaded,()=>0)).length;
+    const stays=signatureStudents(reloaded).length;
     const before=reloaded.signatureTechs.slice();
-    reloaded.fixers[1]=limitBasicTechs({hp:100});
-    const newHires=learnOfficeSignatures(reloaded,planOfficeSignatures(reloaded,()=>0)).length;
-    return {initial,earned,stays,before,after:reloaded.signatureTechs,newHires,
+    const veteran=limitBasicTechs({hp:100,grade:4,keywordPlan,tech:"sig_step"});
+    const canRelearn=signatureCanRelearn(veteran);
+    const veteranChoices=signatureCandidates(veteran);
+    learnOfficeSignatures(reloaded,[[veteran,"sig_ember"]]);
+    return {initial,earned,stays,before,after:reloaded.signatureTechs,initialChoices,canRelearn,veteranChoices,
       signatureCount:Object.keys(SIGNATURE_TECHS).length,deck:NORMAL_ATTACK_DECK};
   })()`,cx);
   const json=JSON.parse(JSON.stringify(result));
   assert.deepEqual(json.initial,[null,'brace',null]);
-  assert.equal(new Set(json.earned).size,2);
+  assert.deepEqual(json.earned,['sig_seam','sig_seam']);
   assert.equal(json.stays,0);
-  assert.equal(json.newHires,1);
-  assert.deepEqual(json.after.slice(0,2),json.before);
+  assert.deepEqual(json.initialChoices,['sig_seam','sig_stitch']);
+  assert.ok(json.canRelearn);
+  assert.ok(json.veteranChoices.includes('sig_ember'));
+  assert.ok(!json.veteranChoices.includes('sig_echo'));
+  assert.deepEqual(json.after.slice(0,json.before.length),json.before);
   assert.equal(json.signatureCount,15);
   assert.equal(json.deck.length,10);
   assert.ok(json.deck.every(card=>[0,6,7].includes(card)));
   assert.match(game,/data-combat-defense[\s\S]{0,450}data-signature-slot/);
+});
+
+test('화상은 턴 종료에 한 번 피해를 주고 진동은 부여한 턴에 유지된다',()=>{
+  const cx=vm.createContext({esc:x=>x,document:{addEventListener(){}}});
+  vm.runInContext(section('const KEYWORD_NAMES=','// 네 능력치의'),cx);
+  const result=vm.runInContext(`(()=>{
+    const enemy={hp:50,shield:2,name:"적"}, notes=[];
+    keywordAdd(enemy,"burn",30);
+    keywordAdd(enemy,"tremor",3);
+    const immediate=keywordImpact(enemy,keywordSnapshot(enemy),1,notes);
+    keywordBurn(enemy,notes);
+    keywordDecay(enemy);
+    const first=[enemy.hp,enemy.shield,enemy.burn,enemy.tremor];
+    keywordDecay(enemy);
+    return {immediate,first,later:enemy.tremor};
+  })()`,cx);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)),{immediate:0,first:[40,0,9,3],later:1});
 });
 
 test('고유 기술이 없는 인원이 있을 때만 첫 만남과 재등장 확률을 적용한다',()=>{
