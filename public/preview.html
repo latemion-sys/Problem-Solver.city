@@ -12942,7 +12942,13 @@ function prepareSavedGame(d){
     }
     if(typeof q.text==="string") q.text = q.text.replace(/(달라)\. 확인하고 처리해 달라$/, "$1");
   }
-  return syncAllStatVitals(migrateWorkshopDur(migrate1247(migrateGunAmmoState(d))));
+  syncAllStatVitals(migrateWorkshopDur(migrate1247(migrateGunAmmoState(d))));
+  // 오래된 저장에서는 오늘의 다른 이야기가 첫 구조 장면을 막지 않게 한다.
+  if(!d.over && d.day>=7 && !d.officeStory?.namelessSeen && !d.officeStory?.namelessRescued && signatureStudents(d).length){
+    if(!d.officeStory || typeof d.officeStory!=="object") d.officeStory={};
+    d.officeStory.namelessPending=true;
+  }
+  return d;
 }
 function load(){
   try{
