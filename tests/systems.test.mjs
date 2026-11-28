@@ -281,3 +281,50 @@ test('현장 장부 단서를 조사하면 모든 위치를 하나로 좁힐 수
   assert.ok(boards.filter(b=>b.k===1.65).every(b=>b.before<=2));
   assert.ok(boards.some(b=>b.k===.95&&b.hints.includes('trait')));
 });
+
+test('미리보기 인간형 적은 강공을 예고하고 강공 뒤에는 빈틈을 보인다',()=>{
+  const start=preview.indexOf('function nextHumanIntent('), end=preview.indexOf('function mgCombat(',start);
+  assert.ok(start>=0&&end>start);
+  const cx=vm.createContext({});
+  vm.runInContext(preview.slice(start,end),cx);
+  const intent=cx.nextHumanIntent;
+  assert.equal(intent('probe',.1),'heavy');
+  assert.equal(intent('probe',.9),'feint');
+  assert.equal(intent('feint',.9),'heavy');
+  assert.equal(intent('heavy',.1),'recover');
+  assert.equal(intent('heavy',.9),'recover');
+  assert.equal(intent('recover',.1),'guard');
+  assert.equal(intent('recover',.9),'probe');
+  assert.equal(intent('guard',.1),'probe');
+});
+
+test('미리보기 문답 수색은 16개 장소를 제한 안에 구분한다',()=>{
+  const start=preview.indexOf('const SEARCH_LOCATIONS ='), end=preview.indexOf('function mgSearch(',start);
+  assert.ok(start>=0&&end>start);
+  const cx=vm.createContext({});
+  vm.runInContext(preview.slice(start,end),cx);
+  vm.runInContext(`(()=>{
+    if(SEARCH_LOCATIONS.length!==16 || Object.keys(SEARCH_QUESTIONS).length!==23) throw Error('수색 데이터 수');
+    if(new Set(SEARCH_LOCATIONS.map(x=>x.tags.slice().sort().join())).size!==16) throw Error('구별되지 않는 후보');
+    for(const location of SEARCH_LOCATIONS){
+      for(const tag of location.tags) if(!Object.hasOwn(SEARCH_QUESTIONS,tag)) throw Error('질문이 없는 태그');
+    }
+    for(let seed=1;seed<=12;seed++) for(const goal of SEARCH_LOCATIONS){
+      let state=seed, possible=SEARCH_LOCATIONS;
+      const rng=()=>((state=(Math.imul(state,1664525)+1013904223)>>>0)/2**32);
+      const asked=new Set();
+      for(let left=7;possible.length>1 && left>0;left--){
+        const options=searchQuestionOptions(possible,asked,left,rng);
+        if(!options.length) throw Error('다음 질문 없음');
+        const {id}=options[Math.floor(rng()*options.length)];
+        const yes=goal.tags.includes(id);
+        if(asked.has(id)) throw Error('중복 질문');
+        asked.add(id);
+        const remaining=possible.filter(place=>place.tags.includes(id)===yes);
+        if(!remaining.includes(goal) || remaining.length>=possible.length) throw Error('잘못된 답변');
+        possible=remaining;
+      }
+      if(possible.length!==1 || possible[0]!==goal) throw Error('질문 한도 내 미해결');
+    }
+  })()`,cx);
+});

@@ -515,6 +515,10 @@ body.on-title footer{position:fixed;left:0;right:0;bottom:6px;margin:0;z-index:5
 .mg{width:min(760px,100%);background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:10px;overflow:hidden}
 .mg-h{display:flex;justify-content:space-between;align-items:baseline;padding:10px 14px;border-bottom:1px solid var(--line)} .mg-h span{color:var(--muted);font-size:12px}
 .mg-desc{padding:8px 14px;font-size:13px;color:#cfc8bb}
+.combat-forecast{margin:0 14px 6px;padding:7px 10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(155px,100%),1fr));gap:3px 12px;background:var(--panel2);border-inline-start:3px solid #a39c93;font-size:13px}
+.combat-forecast[data-danger="true"]{border-inline-start-color:#e5aa68}
+.combat-forecast span{color:var(--muted);margin-inline-end:4px}
+.combat-forecast small{grid-column:1/-1;color:#efd2a2}
 .mg-stage{padding:0 14px;position:relative} .mg-stage canvas.mg-gl{position:absolute;left:14px;top:0;width:calc(100% - 28px)} .mg-stage canvas.mg-over{position:relative;background:transparent} .mg-stage canvas{width:100%;aspect-ratio:720/300;display:block;border-radius:6px;background:#000;touch-action:none}
 .mg-info{padding:8px 14px;font-size:13px;min-height:44px} .mg-log{font-size:12px;color:var(--muted);margin-top:4px}
 .mg-ctrl{display:flex;gap:8px;padding:0 14px 6px} .mg-ctrl button{flex:1;padding:10px;font-size:15px}
@@ -1667,6 +1671,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a4.1.1.7";
 const CHANGELOG = [
+  ["미리보기 · 전투 예고와 문답 수색", ["중요 예고를 전투 화면 위에 표시하고, 일반 인간형 적의 수를 직전 행동에 따라 바꿨습니다. 수색은 목격자 문답으로 진행합니다."]],
   ["미리보기 · 전투와 후반 의뢰", ["동네 양아치 전투에 예고와 빈틈을 추가했습니다. 장부·추격·호위의 정보 선택, 직접 수행 성공 기준, 이웃 사무소 후속 사건을 시험합니다."]],
   ["v.a4.1.1.6", [
     "기본 공격의 정신력 소모를 없앴습니다. 약공으로 합에서 지면 받는 직접 피해가 줄어들고, 대검은 코인이 뒷면을 보일 때도 더 높은 위력을 냅니다.",
@@ -5092,7 +5097,7 @@ const scorePayMul = sc => { const p = clamp(Math.round(sc*100), 0, 100); return 
 const isAbnoContract = q => !!(q && (q.kind==="환상체" || /죄종/.test(q.kind||"") || q.risk==="죄종" || q.abno || q.abnoFoe));
 const isDistContract = q => !!(q && (q.distFoe || q.distorted || /뒤틀림/.test(q.kind||"")));
 const directOnly = q => !!(q && (q.boss || q.ruins || q.crossingRoute || isAbnoContract(q) || isDistContract(q)));
-const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
+const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"목격자 문답"};
 const gamesFor = q => { if(q.crossingRoute) return q.crossingRoute==="direct"?["str","search"]:["search"];
   const base = gamesFor0(q); if(!storyMG(q)) return base;
   if(directOnly(q)) return ["story"].concat(base);
@@ -6054,6 +6059,14 @@ function coinDamage(base,remaining,original,heads,mul=1){
   const survival=0.55+0.45*remaining/Math.max(1,original), facing=0.9+0.2*(heads.filter(Boolean).length/Math.max(1,heads.length));
   return Math.max(1,Math.round(base*mul*survival*facing));
 }
+function nextHumanIntent(previous, roll=Math.random()){
+  if(previous==="heavy") return "recover";
+  if(previous==="feint") return "heavy";
+  if(previous==="guard") return "probe";
+  if(previous==="recover") return roll<0.32 ? "guard" : "probe";
+  return roll<0.65 ? "heavy" : "feint";
+}
+
 function mgCombat(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, goal = q.goal || "제압";
@@ -6062,7 +6075,8 @@ function mgCombat(ctx){
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !wGear(party[0].f)) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     party.forEach(p=>{ p.resolve=0; p.resolveTurn=0; p.resolveBoost=0; p.guardStreak=0; p.guardMode="guard"; p.shinLive = false; p.mangLive = 0; p.shinUsed = false; p.mangPeak = 0; p.extraTurn = 0; });   // 신(心) · 망(望): 전투 안에서 두르고 감는다
     const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null,
-      pipeFighter = !AB && !DF && !q.boss && !q.arc && q.kind==="일반" && q.foe==="동네 양아치",
+      humanForecast = !AB && !DF && !q.boss && !q.arc && q.kind==="일반",
+      pipeFighter = humanForecast && q.foe==="동네 양아치",
       reqC = DF && DIST_TIER[DF.th] ? Math.max(1, q.req - DIST_TIER[DF.th].req) : q.req,   // 뒤틀림: 합 전투는 그 등급의 본래 요구치로 겨룬다(가산된 요구치는 자동 진행 성공률에만)
       kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : pipeFighter
         ? {wt:"blunt",v:WEAPON_KINDS.blunt.vars.indexOf("쇠파이프"),worn:true,aug:null} : q.boss && BOSS_DEF[q.boss] ? Object.assign(foeKit(q.foe || "", g0), {wt:BOSS_DEF[q.boss].wt, v:0, aug:null}) : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
@@ -6338,17 +6352,30 @@ function mgCombat(ctx){
       return Object.assign({}, hv, {n:`${hv.n}(${H.tag})`, heavy:"status", stk:k, stn:rnd(1,2), tell:`${N}${H.tell}`, hint:H.hint}); }
     // 뒤틀림은 다음 두 수까지 미리 정해 둔다 — '뒤틀림을 보는 눈'을 가진 이가 있으면 그것이 보인다
     function orchestraStage(t){return Math.floor(((t-1)%17)/4);}
-    function pipeSkill(t){
-      const attacks=foe.skills.filter(c=>!c.def), phase=(t-1)%3;
-      const strike=attacks.reduce((a,b)=>a.base+a.coins*a.cp>=b.base+b.coins*b.cp?a:b);
-      if(phase===0) return {...attacks[0],n:"짧게 휘두르기",pipeTell:"다음 턴에 양손으로 크게 내려친다. 합으로 끊고 싶다면 지금 공격 카드 한 장을 남겨 둔다."};
-      if(phase===1) return {...strike,n:"양손 내려치기",base:strike.base+3,pipeTell:"이 공격 뒤에는 발이 엇갈린다. 지금 합을 이기면 다음 공격이 더 약해진다. 가드로 버티고 카드를 남기는 것도 가능하다."};
-      const cut=foe.pipeInterrupted?4:2; foe.pipeInterrupted=false;
-      return {...attacks[0],n:"자세를 추스르며 휘두르기",base:Math.max(1,attacks[0].base-cut),cp:Math.max(0,attacks[0].cp-1),pipeTell:"발이 엇갈렸다. 다음 턴에 다시 거리를 잰다."};
+    function humanPlan(kind){
+      const attacks=foe.skills.filter(c=>!c.def);
+      const light=attacks[0], guard=foe.skills.find(c=>c.def);
+      if(kind==="heavy"){
+        const variants = g0<=3 ? ["rush","cripple","status"] : ["rush","cripple"];
+        const skill=foeHeavy(attacks,pick(variants));
+        if(pipeFighter){ skill.n="양손 내려치기"; skill.base+=2; }
+        return {kind,skill};
+      }
+      if(kind==="guard" && guard) return {kind,skill:guard};
+      if(kind==="recover") return {kind,skill:{...light,n:"자세를 추스르며 휘두르기",base:Math.max(1,light.base-2),cp:Math.max(0,light.cp-1)}};
+      if(kind==="feint") return {kind,skill:{...(attacks[1]||light),n:"거리 재기"}};
+      return {kind:"probe",skill:light};
     }
     function pickFoeSkill(){ if(AB && AB.movement){foe.allow=orchestraStage(turn);foe.nextAllow=orchestraStage(turn+1);}
       if(DF){ foe.q = foe.q || []; while(foe.q.length < 3) foe.q.push(rollFoeSkill(turn + foe.q.length)); foeSkill = foe.q.shift(); }
-      else foeSkill = pipeFighter ? pipeSkill(turn) : rollFoeSkill(turn);
+      else if(humanForecast){
+        const plan=foe.nextPlan || humanPlan("probe");
+        foe.intent=plan.kind;
+        foeSkill=plan.skill;
+        if(plan.kind==="recover" && foe.interrupted) foeSkill={...foeSkill,base:Math.max(1,foeSkill.base-2)};
+        foe.interrupted=false;
+        foe.nextPlan=humanPlan(nextHumanIntent(plan.kind));
+      } else foeSkill = rollFoeSkill(turn);
       { const fb = foeLivePow(); if(fb) foeSkill = Object.assign({}, foeSkill, {base: foeSkill.base + fb}); } }
     const foeLivePow = () => foe.shinMax ? (foe.shinLive ? SHIN_POW : 0) + foe.mangLive : 0;
     function foeShinStep(){ if(!foe.shinMax || foe.hp<=0 || outcome) return "";
@@ -6432,7 +6459,6 @@ function mgCombat(ctx){
       if(foe.burn) a.push(`${foe.brand ? "낙인 " : ""}화상 ${foe.burn}`); if(foe.bleed) a.push(`출혈 ${foe.bleed}`); if(foe.rupture) a.push(`파열 ${foe.rupture}`); if(foe.tremor) a.push(`진동 ${foe.tremor}`); if(foe.frost) a.push(`냉기 ${foe.frost}/3`); if(foe.crack) a.push(`금 ${foe.crack}`); if(foe.daze) a.push(`휘청임(다음 합 기본 위력 -${CLASH_DAZE_CUT})`); if(foe.weak) a.push(`위축 ${foe.weak}(다음 공격 피해 -${foe.weak})`); if(foe.coinDown) a.push(`코인 위력 감소 ${foe.coinDown}(다음 합)`);
       { const p=intimidation(me);if(p)b.push(`위압 ${gName(me.f.grade)} → ${gName(foeBalanceGrade(q,AB,DF,g0))} 상당 적 뒷면 확률 +${p}%p`); }
       { const ad = antiDist(me); if(ad && (ad.base || ad.cp)) b.push(`뒤틀림 대응 ${ad.why}(기본 위력 +${ad.base}${ad.cp ? ` · 코인 위력 +${ad.cp}` : ""})`); }
-      if(DF && foe.q && foe.q.length && party.some(p=>p.hp>0 && p.f.distEye)) a.push(`<span style="color:#c9b0ff">보이는 다음 수: ${foe.q.slice(0,2).map(k=>esc(k.n)).join(" → ")}</span>`);
       if(me.wsp){ const w = Object.values(WORKSHOP_SP).find(x=>x.id===me.wsp); b.push(`고유 [${w.n}]${me.wsp==="ye" ? ` 예리함 ${me.ye}` : me.wsp==="screw" ? " · 적중 충전 +3" : ""}`); }
       if(combatFixedDamage(me.f,me.mangLive))b.push(`고정 추가 피해 +${combatFixedDamage(me.f,me.mangLive)}`);if(shinAwakeClash(me.f))b.push(`신 깨우침: 기본 피해 +${shinAwakeDamage(me.f)} · 합 기본 위력 +${shinAwakeClash(me.f)}`);if(me.sp2) b.push(`E.G.O. ${SPN(me.sp2)}`); if(egoShieldMax(me.f.ego)) b.push(`보호막 ${me.shield}/${egoShieldMax(me.f.ego)}`);else if(me.shield) b.push(`보호막 ${me.shield}`); if(me.charge)b.push(`충전 ${me.charge}/20`);if(me.poise)b.push(`호흡 ${me.poise}/50`); if(me.sp2==="endure") b.push(me.endured ? "인내 소진" : "인내 대기");
       a.push(...hanaMarkLabel(foe));b.push(...hanaMarkLabel(me));return a.length || b.length ? `<br><span class="muted">${b.length ? `${esc(me.name)}: <span style="color:#c9b0ff">${b.join(" · ")}</span>` : ""}${a.length && b.length ? " · " : ""}${a.length ? `${foe.name}: <span style="color:#ffb35a">${a.join(" · ")}</span>` : ""}</span>` : ""; }
@@ -6454,17 +6480,34 @@ function mgCombat(ctx){
       else if(orchestra && signScheduled(turn+1))hint="다음 턴 악장 마감 예고: "+battleSignTell(turn+1,me);
       else if(AB.movement)hint="현재 악장 대응: "+battleSignTell(turn,me,false);
       else if(signScheduled(turn+1))hint="다음 턴 징후 예고: "+battleSignTell(turn+1,me);
-      return hint?`<br><b style="color:#ffcf82">${esc(hint)}</b>`:"";
+      return hint;
     }
     function handOf(me){const d=deckOf(me);if(d.turn!==turn){d.turn=turn;d.hand=d.carry?[d.carry]:[];d.held=d.carry?.id??null;d.carry=null;while(d.hand.length<4){if(!d.draw.length){d.draw=shuffleDeck(d.discard.splice(0));}if(!d.draw.length)break;d.hand.push(d.draw.pop());}}
       const req=requiredCard(me);if(req!==null && req!==1 && !d.hand.some(c=>c.sk===req)){for(const pool of [d.draw,d.discard]){const i=pool.findIndex(c=>c.sk===req);const j=d.hand.findIndex(c=>c.id!==d.held);if(i>=0&&j>=0){const card=pool[i];pool[i]=d.hand[j];d.hand[j]=card;break;}}}return d;}
     function closeHands(){party.forEach(me=>{const d=me.deck;if(!d||d.turn!==turn)return;for(const c of d.hand){if(d.carry&&c.id===d.carry.id)continue;d.discard.push(c);}d.hand=[];});}
+    function renderFoeForecast(me){
+      const current=foeSk(), next=foe.nextPlan;
+      const labels={heavy:"강공",recover:"빈틈",guard:"방어",probe:"견제",feint:"거리 재기"};
+      const response=abResponseLine(me);
+      const advice=foe.intent==="heavy" ? "합으로 끊으면 다음 빈틈이 더 커진다. 가드하고 카드를 남겨도 된다."
+        : next?.kind==="heavy" ? "다음 수에 대비해 지금 공격 카드를 보관할 수 있다."
+        : foe.intent==="recover" ? "자세를 추스르는 중이다. 남겨 둔 공격을 쓸 기회다." : "";
+      const distortionForecast=DF && party.some(p=>p.hp>0 && p.f.distEye) ? foe.q?.slice(0,2) : null;
+      forecast.dataset.danger=String(Boolean(foeSkill.heavy || foeSkill.bossSig || next?.kind==="heavy" || foe.sign));
+      forecast.innerHTML=`<div><span>이번 수</span> <b>${esc(foeSkill.n)}</b> · ${foeSkill.def?"방어":`위력 ${current.base}~${current.base+current.coins*current.cp} · 코인 ${current.coins}개`}</div>
+        ${next?`<div><span>다음 수</span> <b>${labels[next.kind]}</b>${next.kind==="heavy"?` · ${esc(next.skill.n)}`:""}</div>`:""}
+        ${distortionForecast?.length?`<div><span>보이는 다음 수</span> <b>${distortionForecast.map(k=>esc(k.n)).join(" → ")}</b></div>`:""}
+        ${foeSkill.heavy && (foeSkill.tell || foeSkill.hint)?`<small>${esc([foeSkill.tell,foeSkill.hint].filter(Boolean).join(" · "))}</small>`:""}
+        ${response?`<small><b>${esc(response)}</b></small>`:""}
+        ${advice?`<small>${esc(advice)}</small>`:""}`;
+    }
     function skillMenu(){
       phase = "skill"; const me = party[act], sup = support(), deck=handOf(me);
+      renderFoeForecast(me);
       m.info.innerHTML = `<div class="pk-text"><b>${turn}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp,me.max)]}">${WOUND[woundOf(me.hp,me.max)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
-        <span class="muted">· 투지 ${me.resolve}/100${me.clashLosses>=2?" · 다음 공격 합에 반격 기회 준비":""}${me.resolveBoost?` · 다음 공격 기본 위력 +${me.resolveBoost}`:""} · 적 예고: <b>${esc(foeSkill.n)}</b> (${foeSk().base}~${foeSk().base+foeSk().coins*foeSk().cp}, 코인 ${foeSk().coins}개)${foeSkill.def?" · 방어":""}</span>${foeSkill.heavy ? `<br><b style="color:#ff8a7a">${esc(foeSkill.tell || (foeSkill.tell = pick([`${foe.name}의 자세가 달라졌다`, `${jo(foe.name,"이")} 쥔 무기에 담긴 힘이 느껴진다`, `${jo(foe.name,"이")} 숨을 깊게 들이마신다`, `${foe.name}의 발끝에 무게가 실린다`, `공기가 무거워졌다 — ${jo(foe.name,"이")} 무언가를 노린다`])))} — ${foeSkill.hint || "크게 한 방이 온다."} 맞받아칠지, 막아 낼지 골라라.</b>` : ""}
+        <span class="muted">· 투지 ${me.resolve}/100${me.clashLosses>=2?" · 다음 공격 합에 반격 기회 준비":""}${me.resolveBoost?` · 다음 공격 기본 위력 +${me.resolveBoost}`:""}</span>
         ${sup.length ? `<br><span class="muted">동료 지원: ${sup.map(p=>{const k=supportKind(p),g=supportGun(p);return `${esc(p.name)} — ${supportLabel[k]||"지원 효과 없음"}${k==="gun"?(g?` (탄창 ${g.mag}발)`:" (탄창 없음)"):""}${firstSupportUsed&&(k==="gun"||k==="tool")?" (첫 합 사용 완료)":""}`;}).join(" / ")}</span>` : ""}${plannedSuppress().length?`<br><b style="color:#ff9a8a">이번 턴 견제 예고: ${plannedSuppress().map(p=>esc(p.name)).join(", ")}</b>`:""}
-        ${statusLine()}${abResponseLine(me)}${foeSkill.pipeTell?`<br><b style="color:#ffcf82">${esc(foeSkill.pipeTell)}</b>`:""}<br><span class="muted">능력치 효과: 근력 기본 위력 +${statClashBasePlus(me.f)} · 재주 코인 위력 +${statClashCoinPlus(me.f)} · 재주 앞면 확률 +${statClashHeadPlus(me.f).toFixed(2)}%p · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 최대 체력 +${statHpPlus(me.f)} · 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
+        ${statusLine()}<br><span class="muted">능력치 효과: 근력 기본 위력 +${statClashBasePlus(me.f)} · 재주 코인 위력 +${statClashCoinPlus(me.f)} · 재주 앞면 확률 +${statClashHeadPlus(me.f).toFixed(2)}%p · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 최대 체력 +${statHpPlus(me.f)} · 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
       const ak = basicAtkCards(me), tk = techSkill(me), defense = techOf(me,true);
       const ammoGun = (!me.f.ego || me.f.ego.type==="armor") ? ammoMagazine(me.f.gear.weapon) : null;
       const hasBullet = !ammoGun || ammoGun.mag>0;
@@ -6564,9 +6607,9 @@ function mgCombat(ctx){
       if(!guarding && !foeGuarding && me.cpDown){ hvNote.push(`손이 무뎌진 채 합에 나섰다(코인 위력 -${me.cpDown})`); me.cpDown = 0; }
       const won = R.win==="me", wSk = won ? R.a : fk; if(!guarding&&!foeGuarding)gainResolve(me,won?5:15); else if(foeGuarding)gainResolve(me,3); me.spBefore = me.sp; me.lastWonPrev = me.lastWon;
       if(offensiveClash) me.clashLosses = won ? 0 : (me.clashLosses||0)+1;
-      if(pipeFighter && turn%3===2 && offensiveClash && won){
-        foe.pipeInterrupted=true;
-        tNote.push("내려치기를 끊었다. 다음 턴에 상대가 더 크게 비틀거린다.");
+      if(humanForecast && foe.intent==="heavy" && offensiveClash && won){
+        foe.interrupted=true;
+        tNote.push("강한 공격을 끊었다. 다음 턴에 상대가 더 크게 비틀거린다.");
       }
       // 합이 진행된 경우에만 승패로 정신력이 변한다.
       if(guarding || foeGuarding || T?.def){ /* 방어 정신력은 따로 정산한다. */ }
@@ -6840,6 +6883,10 @@ function mgCombat(ctx){
     // 선택지 칸이 더 커진 적이 있으면 그 높이를 유지한다(창이 위아래로 흔들리지 않게)
     new ResizeObserver(()=>{ const h = m.ctrl.scrollHeight; if(h > (parseFloat(m.ctrl.style.minHeight)||0)) m.ctrl.style.minHeight = h+"px"; }).observe(m.ctrl);
     const stage = m.bg.querySelector(".mg-stage"), glc = document.createElement("canvas");
+    const forecast=document.createElement("div");
+    forecast.className="combat-forecast";
+    forecast.setAttribute("aria-label","적 행동 예고");
+    stage.before(forecast);
     if(BOSS){ bossFx.bind(stage); bossFx.cut(BOSS.B); }
     const gd = Math.min(PERF.low ? 1 : 1.5, devicePixelRatio||1); glc.width = Math.round(W*gd); glc.height = Math.round(H*gd); glc.className = "mg-gl"; glc.style.aspectRatio = `720/${H}`;
     stage.insertBefore(glc, m.cvs); m.cvs.classList.add("mg-over");
@@ -7026,7 +7073,7 @@ function mgCombat(ctx){
       raf = requestAnimationFrame(draw);
     }
     raf = requestAnimationFrame(draw);
-    { const fs = foeShinStep(); if(fs) AXN.push(fs); } if(q.__signNow){ const sg = foeSignSpawn(true); if(sg) AXN.push(sg); } pickFoeSkill(); tick = AXN.join("<br>");
+    { const fs = foeShinStep(); if(fs) AXN.push(fs); } if(q.__signNow){ const sg = foeSignSpawn(true); if(sg) AXN.push(sg); } pickFoeSkill(); renderFoeForecast(party[act]); tick = AXN.join("<br>");
     // 큰 새: 일대가 어두워지고, 체력이 가장 약한 이를 등불로 홀린다
     if(AB && AB.fx==="lamp"){ const mk = party.slice().sort((x,y)=>x.f.hpMax - y.f.hpMax)[0];
       if(party.length < 2){ foe.lampMark = mk; tick = (tick ? tick+"<br>" : "") + `<b style="color:#ff8a7a">일대가 어둠에 잠겼다. 등불이 ${esc(jo(mk.name,"을"))} 부른다 — 3턴 안에 쓰러뜨리지 못하면 끌려간다</b>`; }
@@ -7414,184 +7461,126 @@ function mgClues(ctx){
   });
 }
 
-/* ================= 수색: 현장 장부 =================
-   네 장소에 물건을 하나씩 배치한다. 재주에 따라 주어지는 단서와 현장 조사로 답을 좁힌 뒤 장부를 제출한다.
-   조사와 서로 다른 배치의 제출은 같은 행동 한도를 쓴다. */
-const SR_SPOTS = [
-  {n:"지붕 위",        a:["high","dry","open"]},
-  {n:"하수구 입구",     a:["low","wet","dark"]},
-  {n:"쓰레기 더미",     a:["low","dry","smell"]},
-  {n:"창고 안",        a:["inside","dark","dry"]},
-  {n:"빨랫줄 아래",     a:["wet","open"]},
-  {n:"계단 밑",        a:["low","dark","dry"]},
-  {n:"버려진 차 안",    a:["inside","dry"]},
-  {n:"물탱크 옆",      a:["high","wet"]}
-];
-const SR_THINGS = [
-  {n:"깡통 더미", a:["metal"]}, {n:"젖은 신문 뭉치", a:["paper"]}, {n:"찢어진 우산", a:["cloth","metal"]}, {n:"녹슨 의수 한 짝", a:["metal","part"]},
-  {n:"빈 술병", a:["glass"]}, {n:"이불 뭉치", a:["cloth","big"]}, {n:"납작해진 상자", a:["paper","big"]}, {n:"들쥐 둥지", a:["alive","fur"]},
-  {n:"부서진 라디오", a:["metal","part"]}, {n:"헌 외투", a:["cloth"]}
-];
-const SR_ATTR_SPOT = {high:"높은 곳", low:"낮은 곳", wet:"젖은 곳", dry:"마른 곳", dark:"어두운 곳", open:"트인 곳", inside:"지붕 덮인 곳", smell:"냄새나는 곳"};
-const SR_ATTR_THING = {metal:"쇠붙이", paper:"종이로 된 것", cloth:"천으로 된 것", glass:"유리로 된 것", big:"덩치가 큰 것", alive:"살아 있는 것", fur:"털 달린 것", part:"기계 부품"};
-function srTarget(q){
-  const t = q.text || "";
-  const T = [["고양이",{n:"고양이", a:["alive","fur"], like:["high","dry","dark"]}],["인형",{n:"아이의 인형", a:["cloth"], like:["low","open"]}],["장부",{n:"숨겨진 장부", a:["paper"], like:["inside","dark","dry"]}],
-    ["열쇠",{n:"떨어진 열쇠", a:["metal"], like:["low","wet"]}],["수리공",{n:"쓰러진 수리공", a:["alive","big"], like:["inside","dark"]}],["창고",{n:"밀수 물품", a:["big","metal"], like:["inside","dark"]}],
-    ["해결사",{n:"해결사의 흔적", a:["metal","cloth"], like:["dark","low"]}],["생존자",{n:"숨어 있는 생존자", a:["alive","big"], like:["inside","dark"]}]];
-  for(const [k,v] of T) if(t.includes(k)) return v;
-  return {n:"찾는 물건", a:["small"], like:["dark"]};
-}
-function srClueFits(things, candidate, clue){
-  const item=candidate[clue.s];
-  if(clue.t==="is") return item===clue.x;
-  if(clue.t==="not") return item!==clue.x;
-  return things[item].a.includes(clue.a);
-}
-function srMake(q, k){
-  const N = 4;
-  const spots = SR_SPOTS.slice().sort(()=>Math.random()-0.5).slice(0,N);
-  const target = srTarget(q);
-  const things = [target].concat(SR_THINGS.slice().sort(()=>Math.random()-0.5).slice(0,N-1));
-  const sol = [0,1,2,3].sort(()=>Math.random()-0.5);
-  // 찾는 것은 그럴듯한 장소에 배치한다.
-  const good = spots.map((s,i)=>[i,target.like.filter(a=>s.a.includes(a)).length]).sort((a,b)=>b[1]-a[1])[0][0];
-  const ti = sol.indexOf(0); [sol[ti],sol[good]]=[sol[good],sol[ti]];
-  // 확실한 단서는 목표 외의 장소 한 곳에 배치해 수색 자체가 자동으로 끝나지 않도록 한다.
-  const exact = [0,1,2,3].filter(i=>sol[i]!==0).sort(()=>Math.random()-0.5)[0];
-  const remaining = [0,1,2,3].filter(i=>i!==exact).sort(()=>Math.random()-0.5);
-  const intro = [{t:"is",s:exact,x:sol[exact]}], at=spots.map(()=>[]);
-  const orders=[];
-  for(const a of remaining) for(const b of remaining){
-    if(a===b) continue;
-    const c=remaining.find(i=>i!==a && i!==b), candidate=sol.slice();
-    candidate[a]=sol[remaining[0]];
-    candidate[b]=sol[remaining[1]];
-    candidate[c]=sol[remaining[2]];
-    orders.push(candidate);
+/* ================= 수색: 목격자 문답 ================= */
+const SEARCH_LOCATIONS = [
+  ["옥상 물탱크","high water wind metal locked"],
+  ["지하 배수로","below water metal narrow"],
+  ["폐역 대합실","indoor below transit metal seats echo"],
+  ["시장 하역장","trade busy metal stacked transit food"],
+  ["새벽 국밥집","indoor trade busy staff bright seats food"],
+  ["공방 수리대","indoor trade staff bright metal tools noise"],
+  ["골목 세탁소","indoor trade staff water bright stacked"],
+  ["지부 기록실","indoor locked staff paper stacked"],
+  ["버려진 차고","indoor metal tools dust locked"],
+  ["철교 밑 통로","water wind metal transit echo narrow"],
+  ["가판대 뒷길","trade busy paper narrow food"],
+  ["공사장 비계","high wind metal tools dust noise narrow"],
+  ["장례식장 빈소","indoor staff bright seats paper"],
+  ["여관 공용 복도","indoor high staff narrow echo seats"],
+  ["쓰레기 집하장","water stacked metal animals dust"],
+  ["골목 비둘기장","high wind animals wood locked noise"]
+].map(([name, tags])=>({name,tags:tags.split(" ")}));
+
+const SEARCH_QUESTIONS = {
+  indoor:[["지붕 아래였어요?","비가 와도 그대로 서 있을 수 있는 곳입니까?","벽 안쪽에서 봤나요?"],["안으로 들어가야 보이는 자리였어요.","지붕 밑에서 봤습니다."],["밖이었어요. 위로 하늘이 보였죠.","건물 안은 아니었습니다."]],
+  high:[["계단이나 사다리로 올라갔습니까?","지면보다 위쪽에서 봤어요?","올라가야 닿는 곳인가요?"],["고개를 들었죠. 지상보다 위였습니다.","올라가는 길이 있더군요."],["위로 올라갈 일은 없었어요.","높은 곳은 아니었습니다."]],
+  below:[["지하 쪽이었나요?","길에서 더 밑으로 내려가야 합니까?","지면 아래로 들어갔어요?"],["아래로 내려갔습니다. 도로 높이보다 밑이에요.","계단 아래쪽에서 봤습니다."],["땅 밑까지 가진 않았습니다.","지하 쪽은 아니에요."]],
+  water:[["물이 흐르거나 고여 있었나요?","바닥이나 설비에서 물이 보였습니까?","주변에 물기가 뚜렷했어요?"],["물이 눈에 띄더군요.","물 있는 곳 가까이였습니다."],["눈에 띄는 물은 없었습니다.","물기보다 다른 게 먼저 보였어요."]],
+  wind:[["바람을 막을 데가 없었나요?","거기 바람이 셌습니까?","옷깃이 날릴 만큼 트인 자리였나요?"],["바람이 옷 속으로 들이쳤어요.","막아 줄 게 없이 바람이 왔습니다."],["그렇게 트인 데는 아니었습니다.","바람은 별로 느끼지 못했어요."]],
+  metal:[["철골이나 금속 설비가 눈에 띄었나요?","근처에 쇠로 된 큰 구조물이 있었어요?","금속이 유난히 많이 보이는 곳입니까?"],["쇠붙이가 제법 눈에 들어왔어요.","큰 금속 구조물이 있었습니다."],["크게 눈에 띄는 쇠는 없었어요.","금속이 많은 자리는 아니었습니다."]],
+  locked:[["출입을 막는 잠금장치나 통제가 있나요?","들어갈 때 허락이 필요한 자리였습니까?","문이나 입구를 잠가 두는 곳입니까?"],["누구나 들어가는 곳은 아닙니다. 잠금장치나 통제가 있어요.","입구를 관리하는 자리였어요."],["따로 잠가 둔 자리는 아니었어요.","출입을 막아 놓지는 않았습니다."]],
+  transit:[["사람이나 짐이 지나가는 통로인가요?","운송이나 이동에 쓰이는 구역입니까?","짐을 실어 나르거나 길을 잇는 자리였어요?"],["사람이든 짐이든 거쳐 가는 곳이었습니다.","이동에 쓰이던 자리예요."],["그런 통로나 운송 시설은 아니에요.","어디로 가기 위해 거치는 곳은 아니었습니다."]],
+  trade:[["장사나 거래를 하는 자리였나요?","물건값을 치르는 곳 가까이였습니까?","손님을 받고 돈을 버는 곳입니까?"],["거래가 이루어지는 자리였습니다.","장사하는 곳과 붙어 있었어요."],["거기서 장사하는 건 못 봤습니다.","거래하는 자리는 아니에요."]],
+  busy:[["오가는 사람이 많았나요?","기다리고 있으면 사람이 계속 지나갑니까?","평소 발길이 많은 곳이었습니까?"],["발길이 잦은 데입니다.","사람이 드문 자리는 아니었어요."],["눈에 띄게 붐비진 않았습니다.","사람 물결이 있는 자리는 아니었어요."]],
+  staff:[["그 자리에서 일하는 사람이 따로 있나요?","당번이나 일하는 직원이 지키는 곳입니까?","지나가는 사람 말고 그곳 담당자가 있어요?"],["볼일이 있으면 거기 일하는 사람을 찾으면 됩니다.","그 자리를 맡고 있는 사람이 있어요."],["따로 맡아 일하는 사람은 없었습니다.","사람을 찾아가 물을 만한 담당자는 없어요."]],
+  bright:[["등불이나 조명이 밝았나요?","얼굴이 보일 정도로 불이 켜져 있었습니까?","불빛이 먼저 눈에 들어오는 곳이던가요?"],["조명이 있어 얼굴을 알아볼 정도였어요.","불빛이 또렷한 자리였죠."],["환하게 밝혀 둔 자리는 아니었습니다.","뚜렷한 불빛은 기억나지 않아요."]],
+  stacked:[["물건이 쌓여 있었나요?","짐더미를 지나야 했습니까?","상자나 더미가 눈에 띄는 곳입니까?"],["짐이 쌓인 게 보였습니다.","더미가 시야에 들어왔어요."],["쌓아 둔 짐더미는 없었어요.","그렇게 물건을 올려놓는 자리는 아니었습니다."]],
+  seats:[["앉아서 기다릴 자리가 있었나요?","의자나 걸터앉을 자리가 있습니까?","잠깐 앉아볼 만한 곳이던가요?"],["앉을 자리는 있었습니다.","서서 기다릴 필요는 없는 곳이었어요."],["앉도록 마련한 자리는 없었어요.","의자나 벤치는 기억나지 않습니다."]],
+  food:[["먹을 걸 만들거나 다루는 곳이었나요?","먹거리 냄새가 나는 자리였습니까?","음식과 관련된 구역입니까?"],["먹을 것을 다루는 곳이었습니다.","음식이 먼저 떠오르는 자리예요."],["먹을 것과는 관계없는 곳이었어요.","음식을 다루는 분위기는 아니었습니다."]],
+  tools:[["공구가 놓여 있었나요?","고치거나 만드는 데 쓰는 장비가 있었습니까?","작업 도구가 눈에 들어왔어요?"],["공구가 있는 자리였어요.","손을 써서 일하는 흔적이 있었습니다."],["작업 공구는 보이지 않았어요.","뭔가 고치는 자리는 아니었습니다."]],
+  animals:[["근처에 짐승이 모였나요?","새나 들짐승이 드나드는 곳이었습니까?","사람 말고 다른 생물도 눈에 띄었어요?"],["짐승이 드나드는 곳이에요.","사람만 다니는 자리는 아니었습니다."],["짐승이 눈에 띄진 않았습니다.","그런 생물 흔적은 못 봤어요."]],
+  paper:[["종이 표지나 기록이 눈에 띄었나요?","서류나 종잇장이 많이 보였습니까?","가까이에 읽을 만한 종이가 있었어요?"],["종잇장이 눈에 띄는 곳이었어요.","종이로 된 기록이나 표지가 있었습니다."],["종이나 기록은 별로 안 보였어요.","읽을 만한 종이가 있는 자리는 아니었습니다."]],
+  dust:[["먼지가 쌓였나요?","발을 옮길 때 먼지가 일던가요?","먼지가 눈에 띄는 곳이었습니까?"],["밟을 때 먼지가 일었어요.","먼지가 눈에 띄게 남아 있었습니다."],["먼지가 유난한 곳은 아니었어요.","그런 흔적은 없었습니다."]],
+  echo:[["말하면 소리가 울리는 자리였나요?","발소리가 되돌아오던가요?","메아리가 나는 곳이었습니까?"],["발소리가 한 번 더 들렸어요.","소리가 벽에 부딪쳐 돌아왔죠."],["소리가 되돌아오는 느낌은 없었어요.","울리는 곳은 아니었습니다."]],
+  narrow:[["옆으로 비켜 지나야 할 만큼 좁았습니까?","사람 둘이 나란히 지나기 어렵나요?","통로가 비좁던가요?"],["둘이 지나가려면 몸을 틀어야 했어요.","좁은 길이었습니다."],["그만큼 비좁진 않았어요.","지나가는 데 옆 사람과 부딪칠 곳은 아니었습니다."]],
+  noise:[["가만히 있어도 소음이 들렸나요?","주변에서 큰 소리가 났습니까?","작은 말소리가 묻힐 만한 곳이었어요?"],["근처 소리가 꽤 컸습니다.","조용히 얘기하기 어려운 자리였어요."],["큰 소리가 꾸준히 나는 곳은 아니었습니다.","주변 소리가 두드러지지는 않았어요."]],
+  wood:[["나무로 짠 구조물이 있었나요?","널빤지나 나무 틀이 먼저 보였습니까?","나무로 만든 충분히 큰 물건이 있었어요?"],["나무 틀이 뚜렷이 보였어요.","널빤지로 짠 구조물이 있었습니다."],["눈에 띄는 나무 구조물은 없었습니다.","널빤지로 꾸민 자리는 아니었어요."]]
+};
+function searchShuffle(items, rng=Math.random){
+  const result=items.slice();
+  for(let i=result.length-1;i>0;i--){
+    const j=Math.floor(rng()*(i+1));
+    [result[i],result[j]]=[result[j],result[i]];
   }
-  let possible=orders;
-  const add = (to, clue)=>{
-    to.push(clue);
-    possible=possible.filter(candidate=>srClueFits(things,candidate,clue));
-  };
-  const useful = clue=>possible.some(candidate=>!srClueFits(things,candidate,clue));
-  const informs = clue=>useful(clue) && possible.filter(candidate=>srClueFits(things,candidate,clue)).length>1;
-  const traits = i=>things[sol[i]].a.filter(a=>SR_ATTR_THING[a]).map(a=>({t:"trait",s:i,a}));
-  const excludes = i=>sol.filter(x=>x!==sol[i]).map(x=>({t:"not",s:i,x}));
-  // 초반 단서는 재주에 따라 성질, 배제, 확정 위치로 달라진다.
-  if(k>=0.9){
-    const hint = remaining.flatMap(traits).find(informs) || remaining.flatMap(excludes).find(informs);
-    if(hint) add(intro,hint);
-  }
-  if(k>=1.2){
-    const hint = remaining.flatMap(excludes).find(informs);
-    if(hint) add(intro,hint);
-  }
-  const before=possible.slice();
-  const order=remaining.slice().sort((a,b)=>Number(sol[b]===0)-Number(sol[a]===0));
-  for(const i of order){
-    const hints = k>=1.2 ? traits(i).concat(excludes(i)) : excludes(i);
-    for(const hint of hints) if(useful(hint)) add(at[i],hint);
-  }
-  const reduced = i=>before.filter(candidate=>at[i].every(h=>srClueFits(things,candidate,h))).length;
-  const lead = k>=1.2 ? order.filter(i=>at[i].length).sort((a,b)=>reduced(a)-reduced(b))[0] : null;
-  return {spots,things,sol,intro,at,N,lead};
+  return result;
 }
-function srText(P, c){
-  const place=P.spots[c.s].n;
-  if(c.t==="trait") return `${place}에서 발견된 것은 ${SR_ATTR_THING[c.a]}이다.`;
-  const item=P.things[c.x].n;
-  return c.t==="is" ? `${place}에는 ${josa(item,"이","가")} 있었다.` : `${place}에 ${josa(item,"은","는")} 없었다.`;
+function searchCanResolve(candidates, budget){
+  if(candidates.length<=1 || budget>=candidates.length-1) return true;
+  if(candidates.length>2**budget) return false;
+  return Object.keys(SEARCH_QUESTIONS).some(id=>{
+    const yes=candidates.filter(location=>location.tags.includes(id));
+    if(!yes.length || yes.length===candidates.length) return false;
+    const no=candidates.filter(location=>!location.tags.includes(id));
+    return searchCanResolve(yes,budget-1) && searchCanResolve(no,budget-1);
+  });
 }
-// 자리마다의 모습(가운데가 0,0, 대략 반지름 30 안)
-function srSpotArt(c, n, t){
-  c.save(); c.lineJoin = "round"; c.lineCap = "round";
-  const dark = "#2a2631", mid = "#3a3542", lite = "#5a5262", rust = "#6a4632";
-  if(n==="지붕 위"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-32,10); c.lineTo(-22,-12); c.lineTo(26,-12); c.lineTo(34,10); c.closePath(); c.fill();
-    c.strokeStyle = lite; c.lineWidth = 1; for(let i=-24;i<=28;i+=7){ c.beginPath(); c.moveTo(i,-12); c.lineTo(i*1.2,10); c.stroke(); }
-    c.fillStyle = mid; c.fillRect(14,-26,8,14); c.fillStyle = "rgba(200,200,210,0.12)"; c.beginPath(); c.arc(18,-30-Math.sin(t)*2,5,0,7); c.fill(); }
-  else if(n==="하수구 입구"){ c.fillStyle = "#15131a"; c.beginPath(); c.ellipse(0,8,28,10,0,0,7); c.fill(); c.strokeStyle = lite; c.lineWidth = 2; c.beginPath(); c.ellipse(0,8,28,10,0,0,7); c.stroke();
-    c.lineWidth = 1.5; for(let i=-20;i<=20;i+=6){ c.beginPath(); c.moveTo(i,1); c.lineTo(i,15); c.stroke(); } c.fillStyle = "rgba(120,170,200,0.14)"; c.beginPath(); c.ellipse(-6,20,20,4,0,0,7); c.fill(); }
-  else if(n==="쓰레기 더미"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-30,16); c.quadraticCurveTo(-18,-14,0,-8); c.quadraticCurveTo(16,-20,30,16); c.closePath(); c.fill();
-    c.fillStyle = mid; c.fillRect(-20,-2,12,10); c.fillStyle = lite; c.beginPath(); c.arc(8,2,6,0,7); c.fill(); c.fillStyle = "#1c1a20"; c.fillRect(12,6,14,9); }
-  else if(n==="창고 안"){ c.fillStyle = dark; c.fillRect(-30,-24,60,40); c.fillStyle = "#16141b"; c.fillRect(-14,-10,28,26); c.strokeStyle = lite; c.lineWidth = 1;
-    for(let y=-8;y<16;y+=4){ c.beginPath(); c.moveTo(-14,y); c.lineTo(14,y); c.stroke(); } c.fillStyle = "rgba(255,200,120,0.18)"; c.fillRect(-26,-20,8,6); }
-  else if(n==="빨랫줄 아래"){ c.strokeStyle = lite; c.lineWidth = 1; c.beginPath(); c.moveTo(-32,-18); c.quadraticCurveTo(0,-8,32,-18); c.stroke();
-    [-18,0,16].forEach((x,k)=>{ const sw = Math.sin(t*2+k)*2; c.fillStyle = ["#4a4456","#3e4a52","#52463e"][k]; c.beginPath(); c.moveTo(x-7,-13); c.lineTo(x+7,-13); c.lineTo(x+6+sw,8); c.lineTo(x-6+sw,8); c.closePath(); c.fill(); });
-    c.fillStyle = "rgba(120,170,200,0.14)"; c.beginPath(); c.ellipse(0,20,22,4,0,0,7); c.fill(); }
-  else if(n==="계단 밑"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-30,16); for(let k=0;k<5;k++){ c.lineTo(-30+k*12,16-k*8); c.lineTo(-18+k*12,16-k*8); } c.lineTo(30,-24); c.lineTo(30,16); c.closePath(); c.fill();
-    c.fillStyle = "#121016"; c.beginPath(); c.moveTo(-18,16); c.lineTo(20,-12); c.lineTo(20,16); c.closePath(); c.fill(); }
-  else if(n==="버려진 차 안"){ c.fillStyle = dark; c.beginPath(); c.moveTo(-32,10); c.lineTo(-26,-4); c.lineTo(-14,-16); c.lineTo(14,-16); c.lineTo(24,-4); c.lineTo(32,0); c.lineTo(32,10); c.closePath(); c.fill();
-    c.fillStyle = "#16141b"; c.fillRect(-12,-13,11,9); c.fillRect(2,-13,11,9); c.fillStyle = rust; c.globalAlpha = 0.5; c.fillRect(-28,2,16,6); c.globalAlpha = 1;
-    c.fillStyle = "#121016"; [-18,18].forEach(x=>{ c.beginPath(); c.arc(x,12,7,0,7); c.fill(); }); }
-  else if(n==="물탱크 옆"){ c.fillStyle = mid; c.beginPath(); c.ellipse(0,-20,20,6,0,0,7); c.fill(); c.fillStyle = dark; c.fillRect(-20,-20,40,30); c.beginPath(); c.ellipse(0,10,20,6,0,0,7); c.fill();
-    c.strokeStyle = lite; c.lineWidth = 1; [-8,2].forEach(y=>{ c.beginPath(); c.moveTo(-20,y); c.lineTo(20,y); c.stroke(); }); c.fillStyle = "rgba(120,170,200,0.25)"; c.fillRect(14,10+((t*30)%10),2,3); }
-  c.restore();
+function searchQuestionOptions(candidates, asked, left, rng=Math.random){
+  const useful=searchShuffle(Object.keys(SEARCH_QUESTIONS),rng).filter(id=>!asked.has(id)).flatMap(id=>{
+    const yes=candidates.filter(location=>location.tags.includes(id));
+    const no=candidates.filter(location=>!location.tags.includes(id));
+    if(!yes.length || !no.length || !searchCanResolve(yes,left-1) || !searchCanResolve(no,left-1)) return [];
+    return [{id, worst:Math.max(yes.length,no.length)}];
+  });
+  const best=useful.reduce((first,x)=>!first || x.worst<first.worst?x:first,null);
+  return best?searchShuffle([best,...useful.filter(q=>q!==best).slice(0,4)],rng):[];
 }
 function mgSearch(ctx){
   return new Promise(resolve=>{
-    const q = ctx.q, k = powK(ctx, "tec"), P = srMake(q, k);
-    if(!P){ resolve({win:true, score:0.6}); return; }
-    const m = mgOpen("수색 · 현장 장부", `${esc(q.text)}<br>재주에 따라 처음부터 아는 물건, 물건의 특징, 조사로 배제할 수 있는 후보가 달라진다. 단서를 모아 위치를 추리한다. 조사와 제출은 같은 행동 한도를 쓴다. 이미 확인한 단서와 맞지 않는 물건은 장부에 표시된다. 적은 행동으로 성공할수록 점수가 높다. 네 장소에 물건을 하나씩 배치한 뒤 <b>맞춰 보기</b>를 누른다. 모두 맞히면 <b>${esc(P.things[0].n)}</b>의 위치가 확정된다.`, ctx, 260);
-    const T0=8,G = {left:T0, attempts:0, seen:new Set(), clues:P.intro.slice(), submitted:new Set(), notes:P.intro.map(c=>srText(P,c)), guess:Array(P.N).fill(-1), lock:Array(P.N).fill(false), done:false, flash:{}, msg:""};
-    P.intro.forEach(c=>{ if(c.t==="is") G.guess[c.s]=c.x; });
-    const ruledOut = (i,j)=>G.clues.some(c=>c.s===i ? !srClueFits(P.things,{[i]:j},c) : c.t==="is" && c.x===j);
-    if(FXTEST) window.__sr = {P, G};
-    const pos = P.spots.map((s,i)=>({x: 90 + i*(540/Math.max(1,P.N-1)), y: s.a.includes("high") ? 88 : s.a.includes("low") ? 190 : 140}));
-    let raf;
-    const ui = () => {
-      m.info.innerHTML = `<div class="sr-top">남은 행동 <b>${G.left}</b> / 8 · 정답 제출 ${G.attempts}회 · 확정 <b>${G.lock.filter(Boolean).length}</b> / ${P.N}${G.msg ? ` · <span style="color:var(--yellow)">${G.msg}</span>` : ""}</div>
-        <div class="sr-notes">${P.lead!=null && !G.seen.has(P.lead)?`<div><b>재주 · ${esc(P.spots[P.lead].n)}부터 보면 후보를 좁힐 수 있다.</b></div>`:""}${G.notes.map(t=>`<div>· ${esc(t)}</div>`).join("") || `<div class="muted">아직 아는 것이 없다.</div>`}</div>`;
-      m.ctrl.innerHTML = `<div class="sr-wrap"><div class="muted" style="font-size:12px;margin-bottom:6px">이 현장에 있던 것: ${P.things.map(t=>esc(t.n)).join(" · ")}</div><div class="sr-book">${P.spots.map((s,i)=>`<label class="${G.lock[i]?"lock":""}"><span>${esc(s.n)}</span>${G.lock[i] ? `<b>${esc(P.things[P.sol[i]].n)}</b>` :
-        `<select data-sr="${i}"><option value="-1">—</option>${P.things.map((t,j)=>`<option value="${j}" ${G.guess[i]===j?"selected":""}>${esc(t.n)}${ruledOut(i,j)?" · 단서와 불일치":""}</option>`).join("")}</select>`}</label>`).join("")}</div>
-        <div class="sr-act"><button class="primary" data-srchk="1" ${G.done?"disabled":""}>맞춰 보기</button></div></div>`;
+    const k=powK(ctx,"tec"), goal=pick(SEARCH_LOCATIONS), limit=7;
+    let candidates=searchShuffle(SEARCH_LOCATIONS), options=[], selected="", done=false;
+    const asked=new Set(), history=[], promptText={};
+    const witness=pick(["야간 경비원","손수레를 끌던 사람","가게 문을 닫던 상인","우편물을 돌리던 배달원"]);
+    const m=mgOpen("수색 · 목격자 문답", `${esc(ctx.q.text)}<br>${witness}에게 마지막 행선지를 물을 수 있다. 답으로 후보를 좁힌 뒤 한 곳을 확인한다.`,ctx);
+    m.cvs.parentElement.hidden=true;
+    const draw=()=>{
+      m.info.innerHTML=`<div class="sr-top">남은 질문 <b>${limit-asked.size}</b> · 가능한 장소 <b>${candidates.length}</b></div>
+        ${history.length?`<div class="sr-notes">${history.map(({question,reply,yes})=>`<div>${esc(question)}<br><b>${yes?"예":"아니오"}</b> · ${esc(reply)}</div>`).join("")}</div>`:""}`;
+      const best=options.reduce((n,x)=>Math.min(n,x.worst),Infinity);
+      m.ctrl.innerHTML=`${options.length?`<div class="pk-moves">${options.map(({id,worst})=>`<button data-search-question="${id}"><b>${esc(promptText[id])}</b>${k>=1.2&&worst===best?`<small>재주 · 후보를 크게 좁힐 수 있다</small>`:""}</button>`).join("")}</div>`:""}
+        <div class="sr-act" style="flex:1 1 100%"><label>확인할 장소 <select data-search-place><option value="">장소 선택</option>
+          ${candidates.map((place,i)=>`<option value="${i}" ${String(i)===selected?"selected":""}>${esc(place.name)}</option>`).join("")}</select></label>
+          <button class="primary" data-search-submit ${selected===""?"disabled":""}>이 장소를 확인한다</button></div>`;
     };
-    const end = win => { if(G.done) return; G.done=true;ui();const sc=G.lock.filter(Boolean).length/P.N,used=T0-G.left,grade=used<=3?"대성공":used<=5?"우수":"성공",score=win?(used<=3?1:used<=5?.92:.8):sc*.5;
-      setTimeout(()=>{cancelAnimationFrame(raf);mgResult(m,score,win?`찾아냈다 · ${grade} (행동 ${used}회)`:"끝내 찾지 못했다").then(()=>resolve({win,score}));},900);};
-    const spend = () => { G.left--; if(G.left<=0 && !G.lock[P.sol.indexOf(0)]) end(false); };
-    m.cvs.addEventListener("pointerdown", e=>{ if(G.done) return; const p = m.pos(e), i = pos.findIndex(o=>Math.hypot(o.x-p.x, o.y-p.y) < 34); if(i<0) return;
-      if(G.seen.has(i)){ G.msg = `${josa(P.spots[i].n,"은","는")} 이미 살폈다`; ui(); return; }
-      G.seen.add(i); G.flash[i] = performance.now(); const found = P.at[i].map(c=>srText(P,c));
-      G.clues.push(...P.at[i]);
-      G.notes = G.notes.concat(found.length ? found : [`${P.spots[i].n}에서는 별다른 것을 알아내지 못했다.`]); G.msg = ""; spend(); ui(); });
-    m.ctrl.addEventListener("change", e=>{ const i = e.target.dataset.sr; if(i==null) return; G.guess[+i] = +e.target.value; });
-    m.ctrl.addEventListener("click", e=>{ if(!e.target.dataset.srchk || G.done) return;
-      const submitted=P.spots.map((_,i)=>G.lock[i]?P.sol[i]:G.guess[i]);if(submitted.some(x=>x<0)||new Set(submitted).size!==P.N){G.msg="각 장소에 서로 다른 물건을 모두 배치해야 한다";ui();return;}
-      const key=submitted.join(",");
-      if(G.submitted.has(key)){ G.msg="이미 확인한 배치다"; ui(); return; }
-      G.submitted.add(key); G.attempts++; G.left--;
-      if(submitted.every((item,i)=>item===P.sol[i])){
-        G.lock.fill(true);
-        G.msg = "모든 장소를 확인했다.";
-        end(true);
-      } else {
-        G.msg = "배치가 맞지 않는다. 현장 단서를 다시 확인하자.";
-        if(G.left<=0) end(false); else ui();
+    function refresh(){
+      options=asked.size<limit?searchQuestionOptions(candidates,asked,limit-asked.size):[];
+      options.forEach(({id})=>{ if(!promptText[id]) promptText[id]=pick(SEARCH_QUESTIONS[id][0]); });
+      selected="";
+      draw();
+    }
+    m.ctrl.addEventListener("change", e=>{
+      if(!e.target.matches("[data-search-place]")) return;
+      selected=e.target.value;
+      m.ctrl.querySelector("[data-search-submit]").disabled=selected==="";
+    });
+    m.ctrl.addEventListener("click", e=>{
+      const button=e.target.closest("button"); if(!button || done) return;
+      const id=button.dataset.searchQuestion;
+      if(id && options.some(q=>q.id===id)){
+        const yes=goal.tags.includes(id);
+        asked.add(id);
+        history.push({question:promptText[id],reply:pick(SEARCH_QUESTIONS[id][yes?1:2]),yes});
+        candidates=candidates.filter(place=>place.tags.includes(id)===yes);
+        refresh(); return;
+      }
+      if(button.hasAttribute("data-search-submit") && selected!==""){
+        const win=candidates[Number(selected)]===goal;
+        done=true;
+        const score=win ? clamp(1-Math.max(0,asked.size-4)*0.06,0.8,1) : 0;
+        mgResult(m,score,win?`마지막 행선지를 확인했다 · ${esc(goal.name)}`:`헛걸음했다 · 목격 지점은 ${esc(goal.name)}이었다`,win).then(()=>resolve({win,score}));
       }
     });
-    m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0}); };
-    const t0 = performance.now();
-    function draw(){
-      const c = m.c, now = performance.now(), t = (now-t0)/1000, W = 720, H = 260;
-      let g = c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#16141c"); g.addColorStop(1,"#0c0b10"); c.fillStyle = g; c.fillRect(0,0,W,H);
-      // 뒷골목: 건물 벽 · 배관 · 바닥
-      c.fillStyle = "#1d1a24"; for(let i=0;i<9;i++){ const x = i*84 - 10, h = 120 + (i*37%60); c.fillRect(x, 0, 80, h); c.fillStyle = "rgba(255,210,140,0.05)"; for(let j=0;j<3;j++) c.fillRect(x+12+j*22, 20+(i*13%30), 10, 14); c.fillStyle = "#1d1a24"; }
-      c.strokeStyle = "rgba(140,130,150,0.18)"; c.lineWidth = 3; c.beginPath(); c.moveTo(0,64); c.lineTo(W,58); c.stroke();
-      c.fillStyle = "#121016"; c.fillRect(0, 214, W, H-214); c.strokeStyle = "rgba(255,255,255,0.04)"; for(let i=0;i<24;i++){ c.beginPath(); c.moveTo(i*32, 214); c.lineTo(i*32-30, H); c.stroke(); }
-      pos.forEach((o,i)=>{ const s = P.spots[i], seen = G.seen.has(i), lk = G.lock[i], f = G.flash[i] ? Math.max(0, 1-(now-G.flash[i])/700) : 0;
-        c.save(); c.translate(o.x, o.y); srSpotArt(c, s.n, t + i);
-        const r = 32;
-        c.strokeStyle = lk ? "rgba(120,255,200,0.9)" : seen ? "rgba(230,210,160,0.6)" : "rgba(200,190,170,0.35)"; c.lineWidth = lk ? 2 : 1.2; c.setLineDash(seen||lk ? [] : [4,5]); c.beginPath(); c.arc(0,0,r,0,7); c.stroke(); c.setLineDash([]);
-        if(f){ c.strokeStyle = `rgba(255,240,200,${f})`; c.lineWidth = 2; c.beginPath(); c.arc(0,0,r+10*(1-f),0,7); c.stroke(); }
-        c.fillStyle = lk ? "#c8ffe8" : "#d8cfbd"; c.font = `600 11px "Noto Sans KR",sans-serif`; c.textAlign = "center"; c.fillText(s.n, 0, r+15);
-        if(lk){ c.fillStyle = "rgba(10,20,16,0.75)"; c.fillRect(-46, -r-20, 92, 15); c.fillStyle = "#9fe8c8"; c.font = `500 10px "Noto Sans KR",sans-serif`; c.fillText(P.things[P.sol[i]].n, 0, -r-9); }
-        else if(seen){ c.fillStyle = "rgba(230,210,160,0.85)"; c.font = `700 12px "Noto Sans KR",sans-serif`; c.fillText("살핌", 0, -r-6); }
-        c.restore(); });
-      vignette(c, W, H, "rgba(0,0,0,0.5)");
-      raf = requestAnimationFrame(draw);
-    }
-    ui(); raf = requestAnimationFrame(draw);
+    m.quit.onclick=()=>{ if(done) return; done=true; m.close(); resolve({win:false,score:0}); };
+    refresh();
   });
 }
 
@@ -22197,12 +22186,18 @@ function fxTestPanel(){
   document.body.appendChild(el);
   el.insertAdjacentHTML("afterbegin",`<div class="g">
     <button data-fxproposal="pipe">예고와 빈틈 전투</button>
+    <button data-fxproposal="search">목격자 문답 수색</button>
     <button data-fxproposal="records">100일차 · 당번표 있음</button>
     <button data-fxproposal="direct">100일차 · 당번표 없음</button>
   </div>`);
   el.addEventListener("click",async e=>{
     const key=e.target.closest("[data-fxproposal]")?.dataset.fxproposal;
     if(!key || !S) return;
+    if(key==="search"){
+      const q=makeRequest(8,{kind:"수색",attrs:["agi","tec"]});
+      await mgSearch({q,team:[leader()],idx:1,total:1});
+      return;
+    }
     if(key!=="pipe"){ officeStoryModule.testCrossing(key==="records"); return; }
     const f=leader(), q=makeRequest(9,{kind:"일반",attrs:["str"],goal:"제압"});
     Object.assign(q,{foe:"동네 양아치",distFoe:null});
