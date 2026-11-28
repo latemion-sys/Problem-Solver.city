@@ -2089,7 +2089,17 @@ const MAKERS = {
   "크리스탈 아틀리에":"[아틀리에] 팔시온.",
   "스크류 아틀리에":"[아틀리에] 전기로 강화한 나선형 무기."
 };
-const W_ = (id, tier, maker, name, kind, look, b, price) => ({id, tier, slot:"weapon", maker, name, wtype:kind, look:Object.assign({kind}, look), power:b, price, bonus:profBonus(kind, b)});
+const WORKSHOP_ATTACK_CLASS={great:1,lance:1,fist:-1,twin:-1,rapier:-1};
+const WORKSHOP_ATTACK_MAX=[8,15,24];
+function workshopWeaponAttack(tier,kind,level,look){
+  if(kind==="gun") return 0;
+  const offset=kind==="blade"&&look?.v===3?-1:(WORKSHOP_ATTACK_CLASS[kind]||0);
+  return Math.max(1,Math.min(WORKSHOP_ATTACK_MAX[tier]??24,level+1+offset));
+}
+const W_ = (id,tier,maker,name,kind,look,b,price)=>({
+  id,tier,slot:"weapon",maker,name,wtype:kind,look:{kind,...look},power:b,
+  attack:workshopWeaponAttack(tier,kind,b,look),price,bonus:profBonus(kind,b)
+});
 const A_ = (id, tier, maker, name, look, price, extra) => Object.assign({id, tier, slot:"armor", maker, name, look, price}, extra);
 const C_ = (id, tier, maker, name, price, extra) => Object.assign({id, tier, slot:"acc", maker, name, price}, extra);
 const SHOP = [
@@ -2207,7 +2217,7 @@ const WORKSHOP_LOOK = {
   m17:{style:"valley"}, m18:{style:"valley"}, m19:{style:"koori"}, m20:{style:"koori"}, m21:{style:"allas"}, m22:{style:"mook"},
   s9:{style:"yuria"}, s10:{style:"yuria"}, s11:{style:"wheels"}, s12:{style:"crystal"}, s13:{style:"screw"}, s14:{style:"meztil"}};
 SHOP.forEach(it=>{ const L = WORKSHOP_LOOK[it.id]; if(L) Object.assign(it.look, L); });
-/* 총기 능력치·구매가는 동급 무기 기준. 추가 피해는 별도 구매한 탄환에만 부여된다. */
+/* 총기 장비 보정과 구매가는 동급 무기 기준. 직접 공격력은 장전한 탄환으로 계산한다. */
 const GUN_PRICE_K = 1, GUN_POWER_K = 1, GUN_HP_RED = 0;
 SHOP.filter(it=>it.slot==="weapon" && it.wtype==="gun").forEach(it=>{
   const peers = SHOP.filter(x=>x.slot==="weapon" && x.wtype!=="gun" && x.tier===it.tier).sort((a,b)=>Math.abs(a.power-it.power)-Math.abs(b.power-it.power));
@@ -2223,15 +2233,30 @@ const AMMO_RULES = Object.freeze({
   rifle:{name:"소총", cap:20, priceMul:2.3, active:false}
 });
 const AMMO_TYPES = Object.freeze([
-  {id:"normal",name:"일반탄",bonus:1,mul:1},
-  {id:"crafted",name:"제작탄",bonus:2,mul:1.2},
-  {id:"processed",name:"공방제 가공탄",bonus:3,mul:1.4},
-  {id:"special",name:"특수 제작탄",bonus:4,mul:1.6},
-  {id:"logic",name:"로직 아틀리에제 고속분쇄탄",bonus:6,mul:10,single:true}
+  {id:"normal",name:"일반탄",attack:2,mul:1},
+  {id:"crafted",name:"제작탄",attack:3,mul:1.2},
+  {id:"processed",name:"공방제 가공탄",attack:4,mul:1.4},
+  {id:"special",name:"특수 제작탄",attack:5,mul:1.6},
+  {id:"logic",name:"로직 아틀리에제 고속분쇄탄",attack:7,mul:10,single:true}
 ]);
 const AMMO_BY = Object.fromEntries(AMMO_TYPES.map(a=>[a.id,a]));
 const GUN_KIND_BY_ID = Object.freeze({n7:"pistol",n8:"shotgun",s3:"pistol",s4:"shotgun"});
 const gunKind = g => g && g.wtype==="gun" ? (GUN_KIND_BY_ID[g.id]||null) : null;
+const AMMO_ATTACK_BY_GUN=Object.freeze({n7:3,n8:5,s3:15,s4:18});
+function ammoAttack(g,round){
+  return gunKind(g)&&round?(AMMO_ATTACK_BY_GUN[g.id]||0)+(Number(round.attack)||0):0;
+}
+function weaponAttack(weapon,round){
+  if(!weapon) return 0;
+  if(!weapon.ego&&!weapon.unique&&!weapon.relic){
+    if(gunKind(weapon)) return ammoAttack(weapon,round);
+    // 이미 저장된 공방 무기도 현재 상점의 공격력을 적용한다.
+    const current=SHOP.find(g=>g.id===weapon.id&&g.slot==="weapon");
+    if(current) return current.attack;
+    if(Number.isFinite(weapon.attack)) return weapon.attack;
+  }
+  return Number(weapon.power)||0;
+}
 const ammoKey = (g,t) => `${g.id}:${t}`;
 const ammoRule = g => AMMO_RULES[gunKind(g)] || null;
 const ammoStock = (g,t) => (S && S.ammo ? Math.max(0,Number(S.ammo[ammoKey(g,t)]||0)) : 0);
@@ -2239,7 +2264,7 @@ function ammoUnitPrice(g,t){ const rule=ammoRule(g), ammo=AMMO_BY[t]; if(!rule||
   const shop=SHOP.find(x=>x.id===g.id), base=shop ? shop.price : (g.price||0);
   // 일반탄 10발이 해당 총기의 동급 무기 기준 가격 × 총종별 배율
   const basic=base*rule.priceMul/10;
-  return Math.max(1,Math.round(basic*ammo.mul));
+  return Math.max(1,Math.round(Math.round(basic*ammo.mul)*0.9));
 }
 const ammoCap = g => (ammoRule(g)||{}).cap || 0;
 function ammoMagazine(g){ if(!gunKind(g)) return null; const max=ammoCap(g);
@@ -6632,11 +6657,11 @@ function foeHpValue(q,AB,DF,grade){
 function foeDmgValue(q,AB,DF,grade){
   return q.hanaStar?42:AB?(AB.kill?4:AB_DMG_BALANCE[q.risk||AB.risk]||15):DF&&q.distFoe?(DIST_DMG_BALANCE[DF.th]||16):FOE_DMG_BALANCE[grade]||6;
 }
-function equipDamage(f){
+function equipDamage(f,round=null){
   const w=wGear(f), spec=w&&WEAPON_KINDS[w.wtype], weights=spec&&spec.prof||{str:.4,agi:.3,tec:.3};
   const bonus=egoHasWeapon(f.ego)?egoStatBonus(f.ego,"weapon"):{};
   const a=Object.entries(weights).reduce((s,[k,v])=>s+((Number(f.stats[k])||0)+(bonus[k]||0))*v,0);
-  const wp=w?.power||0;
+  const wp=weaponAttack(w,round);
   return 4+0.3*a+wp+egoExtraDamage(f.ego)+shinAwakeDamage(f);
 }
 function clashCardSkill(c){
@@ -6860,7 +6885,7 @@ function mgCombat(ctx){
     }
     // 생존 동료의 무기별 지원. 첫 실제 합에서만 탄환 및 첫 합 지원을 소모한다.
     const supportKind=p=>weaponTypeOf(wGear(p.f))||"none";
-    const supportGun=p=>supportKind(p)==="gun"&&(!p.f.ego||p.f.ego.type==="armor")?ammoMagazine(p.f.gear.weapon):null;
+    const supportGun=p=>supportKind(p)==="gun"?ammoMagazine(wGear(p.f)):null;
     const supportCount=(...ks)=>support().filter(p=>ks.includes(supportKind(p))).length;
     let firstSupportUsed=false, suppressPlan=null;
     const firstSupport=()=>firstSupportUsed?0:supportCount("tool")+2*support().filter(p=>{const g=supportGun(p);return g&&g.mag>0;}).length;
@@ -6915,7 +6940,10 @@ function mgCombat(ctx){
     const basicTrainingSkill=(me,c)=>{const sk=skillOf(c),t=me.f.hanaTraining||{};return {...sk,base:sk.base+(t.base||0)+(c.removedCoins||0)*(t.cp||0),cp:sk.cp+(t.cp||0)};};
     const basicPick=(me,slot)=>{const a=basicAtkCards(me);return a[Math.min(a.length-1,Math.max(0,slot))]||a[0];};
     // 첫 공격이 들어가기 전에는 현재 무기의 강공 기준 피해를 쓴다.
-    const counterLimit=me=>(me.peakAttackDamage??Math.round(equipDamage(me.f)*(basicPick(me,2).normalMul||1.3)))+7;
+    const counterLimit=me=>{
+      const weapon=wGear(me.f), round=gunKind(weapon)&&weapon.mag>0?AMMO_BY[weapon.ammoType]||AMMO_TYPES[0]:null;
+      return (me.peakAttackDamage??Math.round(equipDamage(me.f,round)*(basicPick(me,2).normalMul||1.3)))+7;
+    };
     function limitCounterDamage(me,damage,notes){
       const limit=counterLimit(me);
       if(damage>limit) notes.push(`반격 피해 상한 ${limit} — ${damage} → ${limit}`);
@@ -7091,7 +7119,7 @@ function mgCombat(ctx){
       else if(AB.id==="spiral"&&me.contempt)card=1;
       else if(["biik","spiral","flyingfish","greenboots"].includes(AB.id))card=lastAbMove?.si===0?6:0;
       if(sign&&card!==null&&card!==1){
-        const gun=(!me.f.ego||me.f.ego.type==="armor")?ammoMagazine(me.f.gear.weapon):null;
+        const gun=ammoMagazine(wGear(me.f));
         if(gun&&gun.mag<=0)card=1;
       }
       return card;
@@ -7199,10 +7227,12 @@ function mgCombat(ctx){
         ${sup.length ? `<br><span class="muted">동료 지원: ${sup.map(p=>{const k=supportKind(p),g=supportGun(p);return `${esc(p.name)} — ${supportLabel[k]||"지원 효과 없음"}${k==="gun"?(g?` (탄창 ${g.mag}발)`:" (탄창 없음)"):""}${firstSupportUsed&&(k==="gun"||k==="tool")?" (첫 합 사용 완료)":""}`;}).join(" / ")}</span>` : ""}${plannedSuppress().length?`<br><b style="color:#ff9a8a">이번 턴 견제 예고: ${plannedSuppress().map(p=>esc(p.name)).join(", ")}</b>`:""}
         ${statusLine()}<br><span class="muted">능력치 효과: 근력 기본 위력 +${statClashBasePlus(me.f)} · 재주 코인 위력 +${statClashCoinPlus(me.f)} · 재주 앞면 확률 +${statClashHeadPlus(me.f).toFixed(2)}%p · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 최대 체력 +${statHpPlus(me.f)} · 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
       const ak = basicAtkCards(me), tk = techSkill(me), defense = techOf(me,true), relic = relicAttackOf(me.f);
-      const ammoGun = (!me.f.ego || me.f.ego.type==="armor") ? ammoMagazine(me.f.gear.weapon) : null;
+      const ammoGun = ammoMagazine(wGear(me.f));
       const hasBullet = !ammoGun || ammoGun.mag>0;
-      const listedAmmoBonus = ammoGun ? (AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus : 0;
-      const ammunition = ammoGun ? `<br><span style="color:#f2d27a">탄창 ${ammoGun.mag}/${ammoCap(ammoGun)} · ${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).name} (+${(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]).bonus})</span>` : "";
+      const listedRound=ammoGun?(AMMO_BY[ammoGun.ammoType]||AMMO_TYPES[0]):null;
+      const ammunition=ammoGun?`<br><span style="color:#f2d27a">탄창 ${ammoGun.mag}/${ammoCap(ammoGun)} · ${esc(listedRound.name)} · 공격력 ${ammoAttack(ammoGun,listedRound)}</span>`:"";
+      const attackStat=ammoGun?ammoAttack(ammoGun,listedRound):weaponAttack(wGear(me.f));
+      const attackLabel=`${ammoGun?"탄환":"무기"} 공격력 ${attackStat}`;
       const previewFirst=!(foeSkill.def&&!AB&&!DF), tsk=tk?mySkill(tk.sk,previewFirst||!!tk.T.signature,!!tk.T.signature):null;
       const defenseButton=()=>{
         if(!defense) return '<button data-sk="1"><b>가드</b><small>매 턴 사용 가능 · 보호막 +8 (최대 30) · 정신력 +3, 공격을 막으면 +7 · 합 없음</small></button>';
@@ -7216,13 +7246,13 @@ function mgCombat(ctx){
         (me.poise||0)>=10?"유효 적중 → 내 호흡 10 소모 · 피해 +5":""
       ].filter(Boolean);
       const resourceHint=resourceHints.length?" · "+resourceHints.join(" · "):"";
-      const attackButton=(c,i,card)=>{const v=mySkill(basicTrainingSkill(me,c),previewFirst,i===2),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" data-card="${card.id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"}${i===0?" · 합 패배 시 직접 피해 -10%":""}${keywordLabel(me,i)}${i===2?resourceHint:""} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(v).toFixed(1)} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${c.normalSp?` · 정신력 -${c.normalSp}`:""}${listedAmmoBonus?` · 탄환 +${listedAmmoBonus} 이하`:""}</small></button>`;};
+      const attackButton=(c,i,card)=>{const v=mySkill(basicTrainingSkill(me,c),previewFirst,i===2),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" data-card="${card.id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"}${i===0?" · 합 패배 시 직접 피해 -10%":""}${keywordLabel(me,i)}${i===2?resourceHint:""} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(v).toFixed(1)} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${c.normalSp?` · 정신력 -${c.normalSp}`:""} · ${attackLabel}</small></button>`;};
       const attackTechniqueButton=(T,sk,attrs,label)=>{
         const linked=T.signature?signatureLink(T,me,foe,foeSkill):0;
         const stacks=T.signature?(selfKeyword(T.keyword)?me:foe)[T.keyword]||0:0;
         const synergy=T.signature?` · ${selfKeyword(T.keyword)?"내":"적"} ${KEYWORD_NAMES[T.keyword]} ${stacks} · ${linked?"연계 가능":"연계 준비 중"}`:"";
         const wait=techWait(me,T), cannotPay=T.signature&&me.sp-techCost(T)<-45;
-        return `<button ${attrs} class="pk-tech" ${!hasBullet||wait||cannotPay?"disabled":""}><b>${label} · ${esc(T.n)}</b><small>${wait?`<span style="color:#ffb35a">재사용까지 ${wait}턴</span><br>`:cannotPay?'정신력 소모 불가<br>':""}기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 피해 계수 ${techDamage(T).toFixed(2)}배 · 평균 합 ${clashMean(sk).toFixed(1)}${T.signature?resourceHint:""}${synergy} · ${esc(signatureDetails(T))} · 정신력 -${techCost(T)} · 사용 간격 ${techCD(T)}턴</small></button>`;
+        return `<button ${attrs} class="pk-tech" ${!hasBullet||wait||cannotPay?"disabled":""}><b>${label} · ${esc(T.n)}</b><small>${wait?`<span style="color:#ffb35a">재사용까지 ${wait}턴</span><br>`:cannotPay?'정신력 소모 불가<br>':""}기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 피해 계수 ${techDamage(T).toFixed(2)}배 · ${attrs==="data-relic-attack"?`무기 공격력 ${weaponAttack(wGear(me.f))}`:attackLabel} · 평균 합 ${clashMean(sk).toFixed(1)}${T.signature?resourceHint:""}${synergy} · ${esc(signatureDetails(T))} · 정신력 -${techCost(T)} · 사용 간격 ${techCD(T)}턴</small></button>`;
       };
       m.ctrl.innerHTML = `<div class="pk-moves" data-combat-hand>${deck.hand.map(card=>{
         const i=card.sk===0?0:card.sk===6?1:2;
@@ -7260,7 +7290,7 @@ function mgCombat(ctx){
       if(chosen?.signature && current.sp-techCost(chosen)<-45) return;
       if(chosen?.hana && current.sp<-33){toast("희귀 기술을 사용하려면 전투 정신력이 필요합니다.");return;}
       if(si===1 && foeSkill.def){ const barrier=barrierAct();const me=party[act];me.fought=true;me.guardStreak++;me.shield=Math.min(30,(me.shield||0)+8);const rec=recoverCombatSpirit(me,3);gainResolve(me,3); const signText=foeSignAction(si,me,false,0,true,signBefore); tick = `${esc(jo(party[act].name,"과"))} ${esc(foe.name)} 모두 방어 태세를 굳혔다 — 합 없음 · 정신력 +${rec}${barrier?" · "+barrier:""}${signText?" · "+signText:""}`; return next(); } // 둘 다 막으면 지나간다
-      const me = party[act], gun=(!me.f.ego||me.f.ego.type==="armor")?ammoMagazine(me.f.gear.weapon):null;
+      const me = party[act], gun=ammoMagazine(wGear(me.f));
       const reloading=si===3, tk = chosen ? techSkill(me,chosen) : null, T = tk?.T;
       if(reloading && (!gun || !AMMO_BY[option] || ammoStock(gun,option)<=0))return;
       if(!reloading && gun && (isBasic(si) || (si===2 && !tk.sk.def)) && gun.mag<=0)return;
@@ -7345,8 +7375,9 @@ function mgCombat(ctx){
       m.info.innerHTML = `<div class="pk-text">${lines.join("<br>")}</div>`;
       // 피해: 남은 코인 재굴림의 잔존율과 앞면 비율을 무기 피해 기준에 곱한다. 합 위력과 피해는 별개다.
       const heads = flip(R.left, won ? (ignoreResolve?Math.max(0,me.sp):me.sp) : 0, won ? 0 : (wSk.headAdj||0)); const clashPower=powOf(wSk, heads);
-      let P = won ? coinDamage(equipDamage(me.f),R.left,wSk.coins,heads,1) : coinDamage(foe.baseDamage,R.left,wSk.coins,heads,1);
-      const ammoPlus=won&&firedRound?Math.min(6,firedRound.bonus):0; let ammoEffective=ammoPlus, crit = 0;
+      const P=won?coinDamage(equipDamage(me.f,firedRound),R.left,wSk.coins,heads,1):coinDamage(foe.baseDamage,R.left,wSk.coins,heads,1);
+      const appliedAttack=weaponAttack(wGear(me.f),firedRound);
+      let crit=0;
 
       if(clash){ (won ? clash.mine : clash.foe).heads = heads; (won ? clash.mine : clash.foe).p = clashPower; clash.flipAt = performance.now(); clash.res = won ? "foe" : "me"; }
       let total = 0;
@@ -7419,17 +7450,13 @@ function mgCombat(ctx){
         if(W==="logic"){ const ex = wSk.cp*2; dmg += ex; wNote.push(`연사 — 한 발 더(+${ex})`); }
         if(W==="crystal" && R.left){ dmg += R.left*2; wNote.push(`쌍 팔시온 — 남은 코인 ${R.left}개(+${R.left*2})`); }
         if(AB&&AB.movement){const allowed=[si===7,si===2||si===6,si===0,si===6,false][foe.allow];if(!allowed){dmg=foe.allow===4?0:Math.round(dmg*(1-abRate(AB,1)));abNote.push(foe.allow===4?"피날레 — 악단에 공격이 닿지 않았다":"이번 악장에는 피해의 70%가 소리에 묻혔다");}}
-        if(AB && AB.immune && !(me.f.grade <= 1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.95)))); ammoEffective=0; abNote.push(abHigh(AB)?"칼날이 미끄러진다 — 피해 일부만 전달됐다":"칼날이 미끄러진다 — 거의 통하지 않았다"); }
+        if(AB && AB.immune && !(me.f.grade <= 1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.95)))); abNote.push(abHigh(AB)?"칼날이 미끄러진다 — 피해 일부만 전달됐다":"칼날이 미끄러진다 — 거의 통하지 않았다"); }
         if(AB && AB.fx==="spiral"){ if(me.contempt) dmg = Math.round(dmg*(1-abRate(AB,0.3))); else { me.gaze = (me.gaze||0) + 1; dmg = Math.round(dmg*(1 + 0.1*me.gaze)); abNote.push(`시선 ${me.gaze}(피해 +${me.gaze*10}%)`);
             if(me.gaze >= 7){ me.contempt = true; me.hp = Math.max(1, me.hp - abPenalty(AB,15)); abNote.push(`<b style="color:#ff8a7a">나선이 ${esc(me.name)}의 시선마저 경멸했다 — 출혈, 이후 피해 -${Math.round(abRate(AB,0.3)*100)}%</b>`); } }
           party.forEach(p=>{ if(p.grasp){ p.grasp = 0; abNote.push(`${esc(p.name)}를 쥔 손아귀가 풀렸다`); } }); }
         if(AB && AB.fx==="jade"){ if(turn <= 2){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.5)))); abNote.push(`꿈속이다 — 공격 피해 ${Math.round(abRate(AB,0.5)*100)}% 감소`); } else { dmg = Math.round(dmg*1.2); abNote.push("옥에 금이 갔다(피해 +20%)"); } }
         if(AB && AB.fx==="whale" && (foe.shell||0) < 3){ foe.shell = (foe.shell||0) + 1; dmg = Math.max(1, dmg - abPenalty(AB,3)); abNote.push(foe.shell >= 3 ? "껍데기가 깨져 나갔다" : `껍데기가 칼날을 튕겼다(-${abPenalty(AB,3)}, ${foe.shell}/3)`); }
         if(me.burden){ dmg = Math.max(1, Math.round(dmg*(1-abRate(AB,0.4)))); me.burden = false; abNote.push(`<span style="color:#e8d27a">짊어진 탑 탓에 칼끝이 무뎠지만, 그래도 이겨 쳤다. 거인에게 탑을 되돌려 주었다</span>`); }
-        // 탄환의 추가 피해는 마지막에 한 번만 더하며, 기술·고유 무기 배율로 증폭되지 않는다.
-        // 적이 방어하거나 특수 면역 상태라면 탄환에도 동일한 제약이 걸린다.
-        const ammoNet=dmg>0?Math.min(6,Math.round(ammoEffective*(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))?0.5:1))):0;
-        if(ammoNet) dmg+=ammoNet;
         const assist=dmg>0 && !(AB && AB.immune && !(me.f.grade<=1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))) ? supportDamage(!!fk.def) : 0;
         dmg+=assist;
 
@@ -7547,7 +7574,7 @@ function mgCombat(ctx){
       if(BOSS) bNote.push(...BOSS.after({won, guarding, foeGuarding, reloading, T, fk, me}));
       await wait(900);
       clash = null;
-      lines.push(reloading && fk.def ? "재장전 완료 — 피해 0, 체력 변화 없음." : won ? `코인 보정 후 피해 ${P}${ammoPlus?` · 탄환 추가 피해 최대 +${ammoPlus}`:""} — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : guarding ? `${jo(esc(me.name),"이")} ${guardModes[mode]}로 대응했다(피해 ${total}) — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}`);
+      lines.push(reloading && fk.def ? "재장전 완료 — 피해 0, 체력 변화 없음." : won ? `코인 보정 후 피해 ${P} (기준에 ${firedRound?"탄환":"무기"} 공격력 ${appliedAttack} 포함) — ${foe.name}에게 ${total}의 피해.` : total<=0 ? `${jo(esc(me.name),"은")} 상처 없이 버텼다.` : guarding ? `${jo(esc(me.name),"이")} ${guardModes[mode]}로 대응했다(피해 ${total}) — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}` : `${jo(esc(me.name),"이")} 맞았다${sk.def?"(막아서 절반)":""} — ${me.hp<=0 ? "쓰러졌다" : WOUND[woundOf(me.hp,me.max)]}`);
       if(hvNote.length) lines.push(`<span style="color:#ff9a6a">적 기술</span> ${hvNote.join(" · ")}`);
 
       if(egoNote.length) lines.push(`<span style="color:#c9b0ff">E.G.O.</span> ${egoNote.join(" · ")}`);
@@ -12588,13 +12615,13 @@ async function openManage(){
 function gearDesc(g){
   const p=[]; if(g.bonus) Object.entries(g.bonus).filter(([,v])=>v).forEach(([k,v])=>p.push(v<0 ? `<span style="color:#ff8a7a">${ATTR_NAME[k]}${v}</span>` : `${ATTR_NAME[k]}+${v}`));
   const pc = (lab, v) => p.push(v<0 ? `<span style="color:#ff8a7a">${lab} 피해 +${Math.abs(Math.round(v*100))}%</span>` : `${lab} 피해 -${Math.abs(Math.round(v*100))}%`);
-  if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed); const extra=SHOP.find(x=>x.id===g.id&&x.slot==="armor")?.extraRed;if(extra&&!g.unique&&!g.relic)p.push("최종 받는 피해 -"+Math.round(extra*100)+"%");if(g.slot==="weapon"){if(g.unique&&!g.ego)p.push("고정 추가 피해 +3");const b=weaponTierBonus(g.unique||g.relic?3:g.tier);p.push(normalAttackCards(weaponTypeOf(g)||"none",g).map(c=>esc(c.n)+" "+(c.a+b)+"+"+c.normalCoins+"×"+c.normalCp).join(" / "));}
+  if(g.hpRed) pc("체력", g.hpRed); if(g.mpRed) pc("정신력", g.mpRed); const extra=SHOP.find(x=>x.id===g.id&&x.slot==="armor")?.extraRed;if(extra&&!g.unique&&!g.relic)p.push("최종 받는 피해 -"+Math.round(extra*100)+"%");if(g.slot==="weapon"){if(!gunKind(g))p.unshift(`공격력 ${weaponAttack(g)}`);if(g.unique&&!g.ego)p.push("고정 추가 피해 +3");const b=weaponTierBonus(g.unique||g.relic?3:g.tier);p.push(normalAttackCards(weaponTypeOf(g)||"none",g).map(c=>esc(c.n)+" "+(c.a+b)+"+"+c.normalCoins+"×"+c.normalCp).join(" / "));}
   if(g.effect) p.push(`<span style="color:#cfe2ff">${esc(g.effect)}</span>${g.fx==="enk" ? ` <span class="muted">(사용 ${g.uses||0}회)</span>` : ""}`, g.desc && !g.relic ? `<span class="muted">${esc(g.desc)}</span>` : "");
   if(g.gift?.kind==="선택 기프트") p.unshift("선택 기프트");
   if(g.gift && g.gift.recipientName) p.push(`획득자: ${esc(g.gift.recipientName)}`);
   if(g.selfUp && g.gift) p.push(`${g.gift.from.replace(/ \(아종:.*\)$/,"")} 관측 시 행동 성공률 +${Math.round(g.selfUp*100)}%p`);
   if(g.relic) p.push(`<span style="color:#d8b45a">유적 출토 · ${esc(g.origin)} · ${esc(g.boundName||"")}에게 귀속</span>`, g.trait ? `<span style="color:#9fe8c8">성질: ${esc(g.trait)}</span>` : "", g.special ? `<span style="color:${(g.seal||0)===0 ? "#f2d27a" : "#8f8676"}">원본 특수: ${esc(g.special)}${(g.seal||0)===0 ? "" : " (봉인 중 — 쓸 수 없다)"}</span>` : "", `<span class="muted">${esc(g.desc||"")}</span>`);
-  if(gunKind(g)){ const a=AMMO_BY[g.ammoType]||AMMO_TYPES[0];p.push(`<span style="color:#9ad0ff">탄창 ${g.mag||0}/${ammoCap(g)} · ${a.name} (공격 피해 +${a.bonus}, 공격마다 1발)</span>`); }
+  if(gunKind(g)){ const a=AMMO_BY[g.ammoType]||AMMO_TYPES[0];p.push(`<span style="color:#9ad0ff">탄창 ${g.mag||0}/${ammoCap(g)} · ${a.name} (공격력 ${ammoAttack(g,a)}, 공격마다 1발)</span>`); }
   if(g.traits) p.push(`<span style="color:#9fe8b0">이점 ${g.traits.adv.join(", ")}</span>`, `<span style="color:#ff8a7a">결점 ${g.traits.bad.join(", ")}</span>`);
   if(g.slot==="weapon" && g.unique){ p.push("고유 무기 · 닳지 않음"); const w = wspOf(g); if(w) p.push(`[${w.n}] ${w.d}`); } else if(durText(g)) p.push(durText(g));
   return p.filter(Boolean).join(" · ");
@@ -12654,11 +12681,11 @@ async function openShop(startTab){
     if(tab===5){
       const fgun=f&&f.gear&&f.gear.weapon, active=gunKind(fgun), available=SHOP.filter(it=>gunKind(it) && (it.tier<=tierMax || (fgun && fgun.id===it.id)));
       return `<div class="field"><label>장전할 해결사</label><select id="who">${S.fixers.map(x=>`<option value="${x.id}" ${x.id===who?"selected":""}>${esc(x.name)} (${gName(x.grade)})</option>`).join("")}</select></div>${tabs}
-        <p class="muted" style="font-size:12px">탄약은 10발씩 구매합니다. 탄종별 추가 피해는 공격당 한 번 적용하며, 전투 중 한 발씩 소비합니다. 고속분쇄탄은 1발 단위 구매, 동시 소유 최대 1발입니다. 저격총과 소총은 규격만 준비돼 있으며 판매하지 않습니다.</p>
+        <p class="muted" style="font-size:12px">탄약은 10발씩 구매합니다. 탄환 공격력은 총기의 규격과 탄종에 따라 달라지며, 발사할 때 피해 기준에 들어갑니다. 탄환은 공격당 한 발씩 소비합니다. 고속분쇄탄은 1발 단위 구매, 동시 소유 최대 1발입니다. 저격총과 소총은 규격만 준비돼 있으며 판매하지 않습니다.</p>
         ${active ? `<div class="item"><div style="flex:1"><b>${esc(fgun.name)}</b><div class="d">탄창 ${fgun.mag||0}/${ammoCap(fgun)} · 현재 ${esc((AMMO_BY[fgun.ammoType]||AMMO_TYPES[0]).name)}</div></div></div>
-          <div class="list">${AMMO_TYPES.map(a=>`<div class="item"><div style="flex:1">${esc(a.name)} <span class="muted">피해 +${a.bonus} · 보유 ${ammoStock(fgun,a.id)}발</span></div><button data-ammo-load="${a.id}" ${!ammoStock(fgun,a.id)&&fgun.ammoType===a.id?"disabled":""}>장전</button></div>`).join("")}</div>` : `<p class="muted">선택한 해결사에게 구매한 총기가 없습니다. 아래에서 탄약을 미리 구매할 수 있습니다.</p>`}
+          <div class="list">${AMMO_TYPES.map(a=>`<div class="item"><div style="flex:1">${esc(a.name)} <span class="muted">공격력 ${ammoAttack(fgun,a)} · 보유 ${ammoStock(fgun,a.id)}발</span></div><button data-ammo-load="${a.id}" ${!ammoStock(fgun,a.id)&&fgun.ammoType===a.id?"disabled":""}>장전</button></div>`).join("")}</div>` : `<p class="muted">선택한 해결사에게 구매한 총기가 없습니다. 아래에서 탄약을 미리 구매할 수 있습니다.</p>`}
         ${available.map(it=>`<h4 class="sh-mk">${esc(it.name)} <span class="muted">${AMMO_RULES[gunKind(it)].name} · 탄창 ${ammoCap(it)}발</span></h4><div class="list">${AMMO_TYPES.map(a=>{ const num=a.single?1:10, cost=ammoUnitPrice(it,a.id)*num;
-          return `<div class="item"><div style="flex:1"><b>${esc(a.name)}</b><div class="d">추가 피해 +${a.bonus} · ${num}발 ${won(cost)} · 보유 ${ammoStock(it,a.id)}발</div></div><button data-ammo-buy="${it.id}|${a.id}" ${S.money<cost||a.single&&ammoLoadedSpecial()>=1?"disabled":""}>구매</button></div>`;}).join("")}</div>`).join("")}`;
+          return `<div class="item"><div style="flex:1"><b>${esc(a.name)}</b><div class="d">공격력 ${ammoAttack(it,a)} · ${num}발 ${won(cost)} · 보유 ${ammoStock(it,a.id)}발</div></div><button data-ammo-buy="${it.id}|${a.id}" ${S.money<cost||a.single&&ammoLoadedSpecial()>=1?"disabled":""}>구매</button></div>`;}).join("")}</div>`).join("")}`;
     }
     if(tab===3){
       const cs = uniqs();
@@ -13249,9 +13276,9 @@ function combatRuleRecordHtml(){
   <p>전력 공격과 고유 기술은 무기별 코인 구조를 따르며, 사용 시 기술에 표시된 정신력을 소모한다. 장착한 방어 기술은 가드 자리를 대체하며 매 턴 사용할 수 있다. 방어 기술로 생존하면 정신력 5를 회복한다. 반격 피해의 상한은 이번 전투에서 본인이 낸 직접 공격 최고 피해 +7이다. 아직 적중한 공격이 없으면 강공 기준 피해 +7을 적용한다. 공격·방어 기술의 재사용 대기시간은 따로 계산한다. 양산 +0 · 정식 +2 · 상급 +4 · 고유·개화 +6의 기본 위력 보정을 받는다. 강공 최대는 맨손 16, 양산 20, 정식 22, 상급 24, 고유·개화 26이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
   <p><b>가드와 투지:</b> 공격 합에서 두 번 연속 밀리면 다음 공격 합에서 기본 위력 +2와 음수 정신력에 따른 앞면 확률 불이익 완화를 얻는다. 혼신의 일격이나 사즉생과 함께 쓸 때 기본 위력 보정은 큰 쪽이 적용된다. 가드는 합 없이 보호막 8을 얻고 정신력 3을 회복한다. 상대의 공격을 막고 생존하면 정신력 7을 회복한다. 정신력이 -8 이하일 때 호흡 정리를 쓰면 전투당 한 번, 투지 소모 없이 정신력 12를 회복한다. 보호막 상한은 30이며 턴 종료 시 남은 보호막의 절반을 올림해 감소시킨다. 합 승리 투지 5, 패배 15, 가드 7, 적 방어 3. 기존 투지 행동은 유지한다.</p><p><b>진탕:</b> 다음 실제 합에서 기본 위력 -${STAGGER_CLASH_CUT}. 중복으로 쌓이지 않으며 합을 한 번 진행하면 소멸한다. 코인 위력 감소는 별개이며 해당 합의 각 앞면 코인에 적용된다. 기본 방어·재장전 등 합이 없는 행동으로는 소모하지 않는다. 예: 기본 6, 코인 위력 5, 앞면 2개일 때 진탕만 받으면 14, 코인 위력 -2까지 받으면 10.</p>
   </div></details><details class="cdx on"><summary class="cdx-h"><b>피해량 계산</b></summary><div style="padding:10px;line-height:1.7">
-  <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 장착 능력치와 형태별 공격력·기본 피해 보정을 적용한다. 개화 의복은 형태에 따라 체력 피해를 줄이고 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
+  <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 장비 공격력.</b> 근접 무기는 무기 공격력, 총기는 발사한 탄환의 공격력을 넣습니다. 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 장착 능력치와 형태별 공격력·기본 피해 보정을 적용한다. 개화 의복은 형태에 따라 체력 피해를 줄이고 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
   <p><b>② 코인 보정 피해 = 반올림(무기 피해 기준 × 잔존 계수 × 앞면 계수)</b> (최소 1). 잔존 계수 = 0.55 + 0.45 × (남은 코인 수 ÷ 원래 코인 수). 앞면 계수 = 0.9 + 0.2 × (공격 재굴림의 앞면 수 ÷ 남은 코인 수).</p>
-  <p><b>③ 실제 피해:</b> 코인 보정 피해에 일반 공격 역할별(약공 1.00배, 보통 공격 1.20배, 강공 1.30배) 또는 기술별 피해 계수, 방어 기술 반격 계수, 장기전 계수(13턴부터 턴마다 +10%)를 곱한다. 이후 상대 방어(통상 50% 감소), 무기·유물·상태·탄환·동료 지원·적 내성 및 특수 기믹을 적용한다. 합 위력 그 자체가 피해량으로 더해지지는 않는다.</p>
+  <p><b>③ 실제 피해:</b> 코인 보정 피해에 일반 공격 역할별(약공 1.00배, 보통 공격 1.20배, 강공 1.30배) 또는 기술별 피해 계수, 방어 기술 반격 계수, 장기전 계수(13턴부터 턴마다 +10%)를 곱한다. 이후 상대 방어(통상 50% 감소), 무기·유물·상태·동료 지원·적 내성 및 특수 기믹을 적용한다. 합 위력 그 자체가 피해량으로 더해지지는 않는다.</p>
   <p><b>예시:</b> 무기 피해 기준 20, 코인 2개 중 1개 남아 앞면이면 20 × 0.775 × 1.1 = 17.05 → 17 피해. 피해 배율 1.50인 공격 기술이면 17 × 1.50 → 약 26. 다른 보정 없이 적이 일반 방어하면 약 13 피해.</p>
   <p><b>받는 피해:</b> 적의 등급별 피해 기준에도 같은 코인 계수를 적용한 뒤 의뢰 요구치 대비 전력(0.85~1배, 티르의 오른손 장착 시 1배), 방어구·피로·장기전 등을 반영한다. 가드는 합 없이 보호막을 얻으며 재장전은 별도 턴 행동이다. 추가 방어구 감소는 곱연산 후 버림한다. 특수 기술·보호막·내성·상태 효과에 따라 달라질 수 있다.</p>
   <p>기본 덱은 약공 4장·보통 공격 4장·강공 2장이다. 전력 공격 또는 고유 기술은 방어 옆 고정 칸에 있다. 매 턴 4장을 뽑고 한 장을 사용하며 남은 카드 중 한 장을 다음 턴에 보관할 수 있다. 같은 카드는 연속 보관할 수 없다. 기본 방어는 손패와 관계없이 매 턴 사용할 수 있다. 장착한 방어 기술도 별도 방어 칸에 표시되며, 공격·방어 기술의 사용 간격은 기존과 같다. 약공·보통 공격·강공은 정신력을 소모하지 않는다. 약공으로 합에서 지면 상대의 직접 공격 피해를 10% 줄인다. 대검 기본 공격은 기본 위력 +2, 코인 위력 -2로 최대 합 위력을 유지한다. 기술의 정신력 비용은 기술별 표시를 따른다. 강공의 코인이 2개 이상이면 한 개를 줄이고 최대 합 위력을 유지한다. 개화 무기형 +4, 일체형 +2, 고유 무기 +3 및 망 한 겹당 +1의 고정 추가 피해를 합산한다. 신은 전투원마다 전투 중 한 번만 사용하며 망 한 겹마다 턴 종료 정신력 -3이 추가된다. 자동 수행 성공률 및 의뢰 종료 시 부상·정신력 정산은 이 직접 전투 산식과 별개다.</p>

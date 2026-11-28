@@ -403,6 +403,20 @@ test('고유 특수 키워드 12종의 발동·소멸·상한',()=>{
   });
 });
 
+test('공방 무기는 구형 저장에서도 공격력이 적용되고 탄약 가격은 기존 가격의 90%다',()=>{
+  const cx=vm.createContext({SHOP:[],Math});
+  vm.runInContext(section('const WORKSHOP_ATTACK_CLASS=','const A_ ='),cx);
+  vm.runInContext(section('const AMMO_RULES =','const ammoCap ='),cx);
+  const actual=vm.runInContext(`(()=>{
+    const near={id:"m13",slot:"weapon",wtype:"great",power:13,tier:1,attack:workshopWeaponAttack(1,"great",13)};
+    const gun={id:"n7",slot:"weapon",wtype:"gun",price:5000,power:4,attack:0};
+    SHOP.push(near,gun);
+    return [weaponAttack({id:near.id,power:13}),weaponAttack(gun),weaponAttack(gun,AMMO_BY.normal),weaponAttack(gun,AMMO_BY.logic),
+      ammoUnitPrice(gun,"normal"),ammoUnitPrice(gun,"logic"),workshopWeaponAttack(2,"great",24),workshopWeaponAttack(1,"fist",13)];
+  })()`,cx);
+  assert.deepEqual(Array.from(actual),[15,0,5,10,720,7200,24,13]);
+});
+
 test('고유 기술이 없는 인원이 있을 때만 첫 만남과 재등장 확률을 적용한다',()=>{
   const cx=vm.createContext({save(){},Math,NAMELESS_P:.035});
   vm.runInContext(section('function rescueDue(','const rescueVoices'),cx);
