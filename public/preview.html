@@ -1667,6 +1667,7 @@ window.HeartGL={create,supported:()=>{try{return !!document.createElement('canva
 /* ================= 데이터 ================= */
 const VERSION = "v.a4.1.1.7";
 const CHANGELOG = [
+  ["미리보기 · 전투와 후반 의뢰", ["동네 양아치 전투에 예고와 빈틈을 추가했습니다. 장부·추격·호위의 정보 선택, 직접 수행 성공 기준, 이웃 사무소 후속 사건을 시험합니다."]],
   ["v.a4.1.1.6", [
     "기본 공격의 정신력 소모를 없앴습니다. 약공으로 합에서 지면 받는 직접 피해가 줄어들고, 대검은 코인이 뒷면을 보일 때도 더 높은 위력을 냅니다.",
     "E.G.O.가 개화하면 곧바로 해당 장비 칸에 장착되며, 기존 장비는 보관함으로 옮겨집니다.",
@@ -2905,6 +2906,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     save(); render();
   }
   function titleOf(id){
+    if(id==="crossingSearch") return "빈 당번 칸";
     if(cityCases[id]) return cityCases[id].title;
     return {intro:"우리 사무소",week1:"첫 단골손님",week2:"아는 사람",week3:"두 번째 동료의 부탁",month1:"한 달의 장부",month2:"우리 사무소의 일",month3:"세 달을 버틴 간판"}[id]||"사무소에서 생긴 일";
   }
@@ -2935,7 +2937,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
       text:"예전에 끝맺지 못한 일이 있다. 그 일이 어떻게 됐는지 알아봐 달라.",
       scene:["예전에 함께 일하던 사람이 마지막으로 남긴 주소가 있다.","그 주소부터 뒤져 본다."]};
   }
-  function postRequest(id, kind, attrs, client, text, actorId, scene){
+  function postRequest(id, kind, attrs, client, text, actorId, scene, extra){
     const grade=Math.max(1,Math.min(9,(Number(S.officeGrade)||8)+1));
     const q=makeRequest(grade,{kind,attrs});
     q.officeStoryId=id;
@@ -2943,9 +2945,40 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     q.client=client; q.text=text;
     q.story=scene;
     q.deadline=Math.max(3,q.deadline||1);
+    if(extra) Object.assign(q,extra);
     S.requests.unshift(q);
     addStoryLog(titleOf(id),`관련 의뢰가 게시판에 올라왔다: ${text}`);
     save(); render();
+  }
+  async function offerCrossingSearch(office){
+    const d=state(), colleague=pick(S.fixers.filter(f=>!f.isLeader && f.hp>0));
+    const name=colleague?.name || "대표";
+    const knowsWatch=d.results.crossingCover==="success";
+    const lines=[
+      ["","접수대에서 전화벨이 울린다. 건너편에선 누가 수화기에 바람을 불어넣는 것처럼 숨을 몰아쉰다."],
+      [office.name,"건널목 당번이 안 돌아왔습니다. 다음 조가 가 보니, 등만 켜 둔 채 자리가 비어 있더군요."],
+      [name,knowsWatch?"전에 바꿔 적은 당번표가 아직 있죠? 같이 순찰하던 사람 이름부터 봐요.":"지금 가면 아직 교대 시간이에요. 길목을 쓴 사람들부터 만나죠."]
+    ];
+    const choices=[
+      {k:"direct",t:"건널목으로 곧장 간다",after:[[office.name,"정면에 사람이 서 있습니다. 그 길로 가시려면 먼저 비키게 해야 합니다."]]},
+      {k:"decline",t:"오늘 인원을 내기 어렵다고 답한다",after:[[office.name,"알겠습니다. 다음 조가 돌아올 때까진 제가 길목을 보죠."]]}
+    ];
+    if(knowsWatch) choices.unshift({k:"records",t:"당번표를 받아 뒷길부터 찾는다",after:[[office.name,"표 뒤쪽에 지난번에 쓴 우회로가 있습니다. 시장 뒤쪽 문으로 돌아가세요."]]});
+    beginStory(d);
+    const selected=await vnPlay("빈 당번 칸",lines,"어느 쪽부터 확인할까?",choices);
+    if(!selected) return;
+    d.seen.crossingSearch=true;
+    d.crossingOfficeName=office.name;
+    if(selected.k==="decline"){
+      d.results.crossingSearch="refused";
+      addStoryLog("빈 당번 칸",selected.t);
+      save(); render(); return;
+    }
+    d.crossingRoute=selected.k;
+    const text=selected.k==="records"?"교대 기록에 나온 건널목 뒷길에서 실종된 해결사의 흔적을 찾아라.":"건널목을 막아 선 사람을 제압한 뒤 돌아오지 않은 해결사의 흔적을 찾아라.";
+    postRequest("crossingSearch","수색",["agi","tec"],office.name,text,null,
+      [selected.k==="records"?"접어 둔 당번표를 펼쳐 시장 뒷문을 찾는다.":"켜 둔 등 아래에 낯선 사람이 서 있다."],
+      {special:true,crossingRoute:selected.k,foe:"건널목을 막은 해결사",loot:null});
   }
   function next(){
     if(!S||S.over||S.ending) return null;
@@ -2966,6 +2999,10 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     }
     for(const [id,c] of Object.entries(cityCases).sort(([,a],[,b])=>(a.day||Infinity)-(b.day||Infinity))){
       if(c.day && S.day>=c.day && !d.seen[id] && canShow(id)) return {kind:"city",id};
+    }
+    if(S.day>=100 && d.sharedOffice!=null && !d.seen.crossingSearch){
+      const office=initSurroundings().offices.find(o=>o.id===d.sharedOffice && !o.closed);
+      if(office) return {kind:"crossing",office};
     }
     if(S.day<=90||d.afterDay===S.day) return null;
     if(d.starWins>=1&&!d.seen["star1"]) return {kind:"after",id:"star1"};
@@ -3005,8 +3042,21 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     if(!S||S.over) return;
     const d=state(), ff=founders(), id=event.id;
     if(event.kind==="city") return offerCityCase(id);
+    if(event.kind==="crossing") return offerCrossingSearch(event.office);
     if(event.kind==="followup"){
       const f=event.item, city = cityCases[f.id];
+      if(f.id==="crossingSearch"){
+        d.followups.splice(d.followups.indexOf(f),1);
+        addStoryLog("빈 당번 칸",f.result==="success"?"교대 복귀":"건널목 휴업");
+        const speaker=d.crossingOfficeName || "이웃 사무소";
+        const reply=f.result==="success"
+          ? (d.crossingRoute==="records"?"당번이 뒷문에서 기다리고 있었습니다. 앞길은 이제 우리가 볼 테니, 다음 호위에는 교대 인원 한 명을 보내겠습니다.":"그쪽에서 길을 열어 준 덕에 당번을 데리고 나왔습니다. 다음 호위에는 교대 인원 한 명을 보내겠습니다.")
+          : "오늘은 건널목의 등을 끄겠습니다. 사람이 돌아올 때까진 그 길로 일감을 보내지 말아 주세요.";
+        if(f.result==="success") d.crossingEscortSupport=true;
+        beginStory(d);
+        await vnPlay("빈 당번 칸 · 다음 교대",[[speaker,reply]],null,null);
+        return;
+      }
       if(city){
         if(f.result==="success" && city.next && !d.seen[city.next]) await offerCityCase(city.next);
         if(f.result==="success" && city.next && !d.seen[city.next]) return;
@@ -3106,7 +3156,7 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     if(q.officeStoryId){
       const id=q.officeStoryId;
       d.results[id]=success?"success":"failure";
-      d.followups.push({id,result:success?"success":"failure",actor:q.officeStoryActor||null});
+      d.followups.push({id,result:success?"success":"failure",actor:q.officeStoryActor||null,...(id==="crossingSearch"?{dueDay:S.day+1}:{})});
       lines.push(`<span style="color:#d8c9a0">사무소 이야기 · ${titleOf(id)}의 후속 이야기가 생겼습니다.</span>`);
     }
     if(success&&q.kind!=="특색 심사"&&threatOf(q)==="도시의 별"){
@@ -3131,9 +3181,28 @@ const officeStoryModule = (function buildOfficeStoryModule(){
     addLog(`[사무소 이야기] ${titleOf(id)} 의뢰의 기한이 지났다.`);
   }
   function refuse(q){
+    if(q.officeStoryId==="crossingSearch"){ expire(q); return; }
     if(q.officeStoryId && cityCases[q.officeStoryId]) cityCaseResult(q.officeStoryId,"refused");
   }
-  return {schedule,after,starAfter,expire,refuse,restoreDialogueCases,cityCaseTitle:id=>cityCases[id]?.title};
+  function testCrossing(withRecords){
+    if(!FXTEST || !S || busy) return;
+    const office=initSurroundings().offices.find(o=>!o.closed);
+    if(!office) return toast("교대할 이웃 사무소가 없다.");
+    const d=state();
+    S.day=Math.max(100,S.day);
+    if(S.officeGrade>4) S.officeGrade=4;
+    d.sharedOffice=office.id;
+    d.results.crossingCover=withRecords?"success":"refused";
+    d.lastStoryDay=0;
+    d.followups=[];
+    for(const [,id] of calendar) d.seen[id]=true;
+    for(const id of Object.keys(cityCases)) d.seen[id]=true;
+    delete d.seen.crossingSearch;
+    delete d.crossingEscortSupport;
+    S.requests=S.requests.filter(q=>q.officeStoryId!=="crossingSearch");
+    render(); schedule();
+  }
+  return {testCrossing,schedule,after,starAfter,expire,refuse,restoreDialogueCases,cityCaseTitle:id=>id==="crossingSearch"?titleOf(id):cityCases[id]?.title};
 })();
 
 /* ================= 의뢰 생성 ================= */
@@ -5016,14 +5085,16 @@ function autoWound(f){
   for(let i=0;i<4;i++){ r -= P[i]; if(r<=0) return i; } return 3;
 }
 const CLEAN_WIN = 0.8;
-const DIRECT_PR = 97;
+const DIRECT_SCORE_GOAL = 50;
+const DIRECT_WIN_GAMES = ["str","agi","escort","search","ruins","abno"];
 const scorePayMul = sc => { const p = clamp(Math.round(sc*100), 0, 100); return p <= 50 ? 0.75 : p <= 75 ? 0.75 + (p-50)/25*0.25 : 1 + (p-75)/25*0.25; };   // 목표 게임이 없는 직접 수행의 성공률(실패는 3%뿐)   // 직접 수행 압승 기준(이 점수 이상이면 확정 성공)
 // 1.2.4: 환상체·뒤틀림 관련 의뢰는 자동 수행 대상에서 완전히 제외한다.
 const isAbnoContract = q => !!(q && (q.kind==="환상체" || /죄종/.test(q.kind||"") || q.risk==="죄종" || q.abno || q.abnoFoe));
 const isDistContract = q => !!(q && (q.distFoe || q.distorted || /뒤틀림/.test(q.kind||"")));
-const directOnly = q => !!(q && (q.boss || q.ruins || isAbnoContract(q) || isDistContract(q)));
+const directOnly = q => !!(q && (q.boss || q.ruins || q.crossingRoute || isAbnoContract(q) || isDistContract(q)));
 const MG_NAME = {story:"사건 전용 미니게임", ruins:"폐지부 갈림길 탐험",abno:"관측과 대응", str:"합 전투", agi:"추격", tec:"단서 찾기", shield:"방벽 막기", escort:"길 위의 경계", search:"현장 장부"};
-const gamesFor = q => { const base = gamesFor0(q); if(!storyMG(q)) return base;
+const gamesFor = q => { if(q.crossingRoute) return q.crossingRoute==="direct"?["str","search"]:["search"];
+  const base = gamesFor0(q); if(!storyMG(q)) return base;
   if(directOnly(q)) return ["story"].concat(base);
   return q.arc ? ["story"].concat(base.includes("str") || q.goal ? ["str"] : []) : ["story"].concat(base); };
 const gamesFor0 = q => q.ruins ? ["ruins"] : q.abnoFoe ? ["str"] : isAbnoContract(q) ? ["abno"] : isDistContract(q) || q.boss ? ["str"] : q.kind==="호위" ? ["escort"] : q.kind==="수색" ? ["search"] : (q.attrs||[]).filter(a=>a!=="wil");
@@ -5037,17 +5108,18 @@ function directStageResult(results){
 function chooseMode(q, team){
   if(directOnly(q)) return Promise.resolve("play");
   const base = rate(team, q), games = gamesFor(q);
-  const lo = clamp(base-25,3,97), fight = games.includes("str") || (games.length===1 && ["agi","escort","search","abno"].includes(games[0]));
+  const objective = games.find(game=>DIRECT_WIN_GAMES.includes(game));
   return modal("출동 방식", `<div class="kv">
       <span>예상 성공률</span><b>${base}%</b>
-      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${games[0]==="story" ? `먼저 해당 사건의 전용 미니게임을 진행한다.${games.includes("str") ? " 미니게임 결과가 좋을수록 상대의 체력이 줄어든 상태에서 전투를 시작한다. 이후 합 전투에서 승리하면 의뢰에 성공한다." : " 결과가 좋을수록 성공률이 오른다."}` : fight ? `${games[0]==="abno" ? "통제에 성공해 환상체를 알로 되돌리거나, 날뛰는 개체를 전투로 제압하면 의뢰에 성공한다. 즉사 조건이 있는 환상체는 통제 실패 시 의뢰도 실패한다." : games[0]==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : games[0]==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복에 걸리면 합 전투가 시작된다." : games[0]==="search" ? "제한 시간 안에 수색 대상의 위치를 찾아내면 성공한다." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 행동자 ${jo(esc(team[0].name),"이")} 싸우고 동료 ${team.length-1}명은 무기별 지원과 등급별 견제에 대응한다` : "혼자 싸운다"}` : `성공률 ${lo}%에서 시작해 미니게임 결과에 따라 최대 ${base}%까지 오른다`}</span></b>
+      <span>직접 수행</span><b>${games.map(a=>MG_NAME[a]).join(" → ")}<br><span class="muted">${games[0]==="story" ? `먼저 해당 사건의 전용 미니게임을 진행한다.${games.includes("str") ? " 미니게임 결과가 좋을수록 상대의 체력이 줄어든 상태에서 전투를 시작한다. 이후 합 전투에서 승리하면 의뢰에 성공한다." : ` 평균 점수 ${DIRECT_SCORE_GOAL}점 이상이면 성공한다.`}` : objective ? `${objective==="abno" ? "통제에 성공해 환상체를 알로 되돌리거나, 날뛰는 개체를 전투로 제압하면 의뢰에 성공한다. 즉사 조건이 있는 환상체는 통제 실패 시 의뢰도 실패한다." : objective==="agi" ? "표적을 붙잡으면 성공, 놓치면 실패." : objective==="escort" ? "의뢰인을 목적지까지 데려가면 성공. 매복에 걸리면 합 전투가 시작된다." : objective==="search" ? "제한 시간 안에 수색 대상의 위치를 찾아내면 성공한다." : "합 전투에서 이기면 성공, 지면 실패."} ${team.length>1 ? `대표 행동자 ${jo(esc(team[0].name),"이")} 싸우고 동료 ${team.length-1}명은 무기별 지원과 등급별 견제에 대응한다` : "혼자 싸운다"}` : `평균 점수 ${DIRECT_SCORE_GOAL}점 이상이면 성공. 수행 점수는 보수에도 반영된다.`}</span></b>
       <span>자동 진행</span><b>팀 전력으로 판정 · 성공률 ${autoRate(team,q)}% · <span style="color:var(--yellow)">보수 80%</span><br><span class="muted">성공하면 모두 안정, 실패하면 등급에 따라 부상</span></b></div>`,
     [{t:"취소", v:null}, {t:"자동 진행", v:"auto"}, {t:"직접 수행", v:"play", primary:true}]);
 }
 async function runMinigames(q, team){
-  const games = gamesFor(q); let sum = 0, combat = null, abno = null; const dec = []; let invalid=false;
+  const games = gamesFor(q), scoreGoal=games.some(g=>DIRECT_WIN_GAMES.includes(g))?null:DIRECT_SCORE_GOAL;
+  let sum = 0, combat = null, abno = null; const dec = []; let invalid=false;
   for(let i=0;i<games.length;i++){
-    const a = games[i], ctx = {q, team, idx:i+1, total:games.length};
+    const a = games[i], ctx = {q, team, idx:i+1, total:games.length, scoreGoal};
     if(a==="story"){ const r = await mgStory(ctx); sum += r; q.__edge = r; }
     else if(a==="ruins"){ const r=await mgRuins(ctx);sum+=r.score;dec.push(r); }
     else if(a==="str"){ const fightCtx={...ctx,q:{...q,goal:directGoal(q)}}; combat = await mgCombat(fightCtx); sum += combat?.score||0; dec.push(combat); }
@@ -5327,7 +5399,7 @@ const BATTLE_BGM = ["battle","battle_yesod","battle_malkuth","battle_netzach","b
 function mgOpen(title, desc, ctx, H=300){
   const bg = document.createElement("div"); bg.className = "mg-bg";
   bg.innerHTML = `<div class="mg"><div class="mg-h"><b>${title}</b><span>${ctx.total>1?`미니게임 ${ctx.idx} / ${ctx.total} · `:""}${esc(ctx.q.client)}</span></div>
-    <div class="mg-desc">${desc}</div><div class="mg-stage"><canvas width="720" height="${H}" style="aspect-ratio:720/${H}"></canvas></div>
+    <div class="mg-desc">${desc}${ctx.scoreGoal!=null?`<br>의뢰 성공 기준 · ${ctx.total>1?"평균 ":""}${ctx.scoreGoal}점 이상`:""}</div><div class="mg-stage"><canvas width="720" height="${H}" style="aspect-ratio:720/${H}"></canvas></div>
     <div class="mg-info"></div><div class="mg-ctrl"></div><div class="mg-f"><button class="mg-quit">포기</button></div></div>`;
   document.body.appendChild(bg);
   const cvs = bg.querySelector("canvas"), c = cvs.getContext("2d");
@@ -5990,8 +6062,10 @@ function mgCombat(ctx){
     if(FXTEST){ const w = document.querySelector("#fxw"); if(w && w.value && !wGear(party[0].f)) party.forEach(p=>{ p.wt = w.value; p.spec = defaultSpec(w.value); }); }
     party.forEach(p=>{ p.resolve=0; p.resolveTurn=0; p.resolveBoost=0; p.guardStreak=0; p.guardMode="guard"; p.shinLive = false; p.mangLive = 0; p.shinUsed = false; p.mangPeak = 0; p.extraTurn = 0; });   // 신(心) · 망(望): 전투 안에서 두르고 감는다
     const g0 = q.grade!=null ? q.grade : 9, AB = q.abnoFoe || null, DF = q.distFoe || null,
+      pipeFighter = !AB && !DF && !q.boss && !q.arc && q.kind==="일반" && q.foe==="동네 양아치",
       reqC = DF && DIST_TIER[DF.th] ? Math.max(1, q.req - DIST_TIER[DF.th].req) : q.req,   // 뒤틀림: 합 전투는 그 등급의 본래 요구치로 겨룬다(가산된 요구치는 자동 진행 성공률에만)
-      kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : q.boss && BOSS_DEF[q.boss] ? Object.assign(foeKit(q.foe || "", g0), {wt:BOSS_DEF[q.boss].wt, v:0, aug:null}) : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
+      kit = AB || DF ? {wt:"none", v:0, worn:false, aug:null} : pipeFighter
+        ? {wt:"blunt",v:WEAPON_KINDS.blunt.vars.indexOf("쇠파이프"),worn:true,aug:null} : q.boss && BOSS_DEF[q.boss] ? Object.assign(foeKit(q.foe || "", g0), {wt:BOSS_DEF[q.boss].wt, v:0, aug:null}) : foeKit(q.foe || FOE_NAMES[g0] || "", g0), fwt = kit.wt;
     const foe = {name: q.foe || FOE_NAMES[g0] || "적", wt:fwt, kit, spec: fwt==="none" ? null : Object.assign(defaultSpec(fwt), {v:kit.v, metal: kit.worn ? pick(RUST_METALS) : pick(["#b9aca9","#aab5b1","#8e959e","#5f6670"]), len: kit.worn ? 0.85 + Math.random()*0.15 : 0.95 + Math.random()*0.15}), parts:{}, cards: AB ? AB.cards.map(c=>Object.assign({},c)) : DF ? DF.cards.map(c=>Object.assign({},c)) : normalAttackCards(fwt,undefined,false).concat(weaponGuardCard(fwt)).map(c=>{const tier=fwt==="none"||kit.worn?0:g0>=8?0:g0>=5?1:g0>=2?2:3,shift=weaponTierBonus(tier)-1-(kit.worn?1:0),a=Math.max(1,c.a+shift);return {...c,a,b:a+c.normalCoins*c.normalCp};})};
     foe.aug = kit.aug;
     /* ---- 림버스식 합 ----
@@ -6264,9 +6338,17 @@ function mgCombat(ctx){
       return Object.assign({}, hv, {n:`${hv.n}(${H.tag})`, heavy:"status", stk:k, stn:rnd(1,2), tell:`${N}${H.tell}`, hint:H.hint}); }
     // 뒤틀림은 다음 두 수까지 미리 정해 둔다 — '뒤틀림을 보는 눈'을 가진 이가 있으면 그것이 보인다
     function orchestraStage(t){return Math.floor(((t-1)%17)/4);}
+    function pipeSkill(t){
+      const attacks=foe.skills.filter(c=>!c.def), phase=(t-1)%3;
+      const strike=attacks.reduce((a,b)=>a.base+a.coins*a.cp>=b.base+b.coins*b.cp?a:b);
+      if(phase===0) return {...attacks[0],n:"짧게 휘두르기",pipeTell:"다음 턴에 양손으로 크게 내려친다. 합으로 끊고 싶다면 지금 공격 카드 한 장을 남겨 둔다."};
+      if(phase===1) return {...strike,n:"양손 내려치기",base:strike.base+3,pipeTell:"이 공격 뒤에는 발이 엇갈린다. 지금 합을 이기면 다음 공격이 더 약해진다. 가드로 버티고 카드를 남기는 것도 가능하다."};
+      const cut=foe.pipeInterrupted?4:2; foe.pipeInterrupted=false;
+      return {...attacks[0],n:"자세를 추스르며 휘두르기",base:Math.max(1,attacks[0].base-cut),cp:Math.max(0,attacks[0].cp-1),pipeTell:"발이 엇갈렸다. 다음 턴에 다시 거리를 잰다."};
+    }
     function pickFoeSkill(){ if(AB && AB.movement){foe.allow=orchestraStage(turn);foe.nextAllow=orchestraStage(turn+1);}
       if(DF){ foe.q = foe.q || []; while(foe.q.length < 3) foe.q.push(rollFoeSkill(turn + foe.q.length)); foeSkill = foe.q.shift(); }
-      else foeSkill = rollFoeSkill(turn);
+      else foeSkill = pipeFighter ? pipeSkill(turn) : rollFoeSkill(turn);
       { const fb = foeLivePow(); if(fb) foeSkill = Object.assign({}, foeSkill, {base: foeSkill.base + fb}); } }
     const foeLivePow = () => foe.shinMax ? (foe.shinLive ? SHIN_POW : 0) + foe.mangLive : 0;
     function foeShinStep(){ if(!foe.shinMax || foe.hp<=0 || outcome) return "";
@@ -6382,7 +6464,7 @@ function mgCombat(ctx){
       m.info.innerHTML = `<div class="pk-text"><b>${turn}턴</b> · ${esc(me.name)} — <b style="color:${WOUND_COL[woundOf(me.hp,me.max)]}">${WOUND[woundOf(me.hp,me.max)]}</b> · 정신력 ${me.sp>=0?"+":""}${me.sp}
         <span class="muted">· 투지 ${me.resolve}/100${me.clashLosses>=2?" · 다음 공격 합에 반격 기회 준비":""}${me.resolveBoost?` · 다음 공격 기본 위력 +${me.resolveBoost}`:""} · 적 예고: <b>${esc(foeSkill.n)}</b> (${foeSk().base}~${foeSk().base+foeSk().coins*foeSk().cp}, 코인 ${foeSk().coins}개)${foeSkill.def?" · 방어":""}</span>${foeSkill.heavy ? `<br><b style="color:#ff8a7a">${esc(foeSkill.tell || (foeSkill.tell = pick([`${foe.name}의 자세가 달라졌다`, `${jo(foe.name,"이")} 쥔 무기에 담긴 힘이 느껴진다`, `${jo(foe.name,"이")} 숨을 깊게 들이마신다`, `${foe.name}의 발끝에 무게가 실린다`, `공기가 무거워졌다 — ${jo(foe.name,"이")} 무언가를 노린다`])))} — ${foeSkill.hint || "크게 한 방이 온다."} 맞받아칠지, 막아 낼지 골라라.</b>` : ""}
         ${sup.length ? `<br><span class="muted">동료 지원: ${sup.map(p=>{const k=supportKind(p),g=supportGun(p);return `${esc(p.name)} — ${supportLabel[k]||"지원 효과 없음"}${k==="gun"?(g?` (탄창 ${g.mag}발)`:" (탄창 없음)"):""}${firstSupportUsed&&(k==="gun"||k==="tool")?" (첫 합 사용 완료)":""}`;}).join(" / ")}</span>` : ""}${plannedSuppress().length?`<br><b style="color:#ff9a8a">이번 턴 견제 예고: ${plannedSuppress().map(p=>esc(p.name)).join(", ")}</b>`:""}
-        ${statusLine()}${abResponseLine(me)}<br><span class="muted">능력치 효과: 근력 기본 위력 +${statClashBasePlus(me.f)} · 재주 코인 위력 +${statClashCoinPlus(me.f)} · 재주 앞면 확률 +${statClashHeadPlus(me.f).toFixed(2)}%p · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 최대 체력 +${statHpPlus(me.f)} · 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
+        ${statusLine()}${abResponseLine(me)}${foeSkill.pipeTell?`<br><b style="color:#ffcf82">${esc(foeSkill.pipeTell)}</b>`:""}<br><span class="muted">능력치 효과: 근력 기본 위력 +${statClashBasePlus(me.f)} · 재주 코인 위력 +${statClashCoinPlus(me.f)} · 재주 앞면 확률 +${statClashHeadPlus(me.f).toFixed(2)}%p · 민첩 방어 고정 감소 ${statGuardMinus(me.f)} · 최대 체력 +${statHpPlus(me.f)} · 최대 정신력 +${statMpPlus(me.f)}</span>${tick ? `<br><span style="color:#ffb35a">${tick}</span>` : ""}</div>`; tick = "";
       const ak = basicAtkCards(me), tk = techSkill(me), defense = techOf(me,true);
       const ammoGun = (!me.f.ego || me.f.ego.type==="armor") ? ammoMagazine(me.f.gear.weapon) : null;
       const hasBullet = !ammoGun || ammoGun.mag>0;
@@ -6482,6 +6564,10 @@ function mgCombat(ctx){
       if(!guarding && !foeGuarding && me.cpDown){ hvNote.push(`손이 무뎌진 채 합에 나섰다(코인 위력 -${me.cpDown})`); me.cpDown = 0; }
       const won = R.win==="me", wSk = won ? R.a : fk; if(!guarding&&!foeGuarding)gainResolve(me,won?5:15); else if(foeGuarding)gainResolve(me,3); me.spBefore = me.sp; me.lastWonPrev = me.lastWon;
       if(offensiveClash) me.clashLosses = won ? 0 : (me.clashLosses||0)+1;
+      if(pipeFighter && turn%3===2 && offensiveClash && won){
+        foe.pipeInterrupted=true;
+        tNote.push("내려치기를 끊었다. 다음 턴에 상대가 더 크게 비틀거린다.");
+      }
       // 합이 진행된 경우에만 승패로 정신력이 변한다.
       if(guarding || foeGuarding || T?.def){ /* 방어 정신력은 따로 정산한다. */ }
       else if(won){ me.sp = clamp(me.sp + Math.min(7,3+Math.max(0,R.count-1)), -45, 45); }
@@ -7010,7 +7096,7 @@ function mgTrack(ctx){
         ${G.msg ? `<br><span class="muted">${G.msg}</span>` : ""}${!G.done && G.notes && G.notes.length ? `<br>${G.notes.join(" · ")}` : ""}</div>`;
       if(G.done) return;
       m.ctrl.innerHTML = `<div class="pk-moves">${G.junc.map((b,i)=>`<button data-br="${i}"${b.ruled?' style="opacity:.55"':''}><b>${b.nm}</b><small>${b.ruled ? '<span style="color:#c9b0ff">감각: 이 길은 아니다</span> · ' : ''}${b.seen ? `<span style="color:${CLUE[b.clue].col}">${CLUE[b.clue].n}</span>${CLUE[b.clue].sure?" · 확실함":b.clue!=="none"?" · 헛걸음일 수 있음":""}` : "살펴보지 않음"}</small></button>`).join("")}
-        ${G.junc.some(b=>!b.seen) ? `<button data-scout="1"><b>멈춰서 살핀다</b><small>길 하나를 더 살핀다 · 시간 1 · 표적이 멀어질 수 있음</small></button>` : ""}</div>`;
+        ${G.junc.map((b,i)=>!b.seen?`<button data-scout="${i}"><b>${esc(b.nm)} 살피기</b><small>시간 1 · 표적이 멀어질 수 있음</small></button>`:"").join("")}</div>`;
     }
     // 장면: 선택하면 짧은 장면(달리기 · 막다른 길 · 살피기)이 끝난 뒤 다음 갈림길이 나온다. 장면 중엔 선택지를 숨긴다
     function scene(type, dur, data, after){ G.scene = {type, t0: performance.now(), dur, data:data||{}}; m.ctrl.innerHTML = ""; setTimeout(()=>{ G.scene = null; after(); }, dur); }
@@ -7024,8 +7110,8 @@ function mgTrack(ctx){
       else scene("dead", 1700, {nm:b.nm, idx:i, n:G.junc.length, hurt: G.mishaps>(G.lastMis||0)}, ()=>{ G.lastMis = G.mishaps; check() || (newJunction(), scene("arrive", 900, {}, ui)); });
       ui(); m.ctrl.innerHTML = "";
     }
-    function scout(){
-      if(G.done || G.scene) return; const un = G.junc.filter(b=>!b.seen); if(!un.length) return; G.turn++; const pb = pick(un); pb.seen = true; pb.reveal = performance.now();
+    function scout(i){
+      const pb=G.junc[i]; if(G.done || G.scene || !pb || pb.seen) return; G.turn++; pb.seen = true; pb.reveal = performance.now();
       const away = Math.random() < 0.5; if(away) G.d += 1; G.msg = away ? "흔적을 살피는 사이, 표적이 한 걸음 더 멀어졌다." : "흔적을 살폈다. 표적은 아직 멀리 못 갔다.";
       ui(); m.ctrl.innerHTML = ""; scene("scout", 1100, {idx: G.junc.indexOf(pb)}, ()=>{ check() || ui(); });
     }
@@ -7042,7 +7128,7 @@ function mgTrack(ctx){
       setTimeout(()=>{ cancelAnimationFrame(raf); mgResult(m, res.score, `${text} — 의뢰 ${win?"성공":"실패"}`, win).then(()=>resolve(res)); }, 1800);
       return true;
     }
-    m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout) scout(); };
+    m.ctrl.onclick = e=>{ const b = e.target.closest("button"); if(!b) return; if(b.dataset.br!=null) step(+b.dataset.br); else if(b.dataset.scout!=null) scout(+b.dataset.scout); };
     m.quit.onclick = ()=>{ if(G.done) return; G.done = true; cancelAnimationFrame(raf); m.close(); resolve({win:false, score:0, battle:[{f:lead, fought:true, wound:Math.min(3,G.wound), sp:0}]}); };
     // ---- 그림: 1인칭 골목. 소실점을 향해 벽이 흐르고, 표적의 뒷모습이 거리만큼 작게 보인다 ----
     // 갈림길: 골목 끝 벽에 길 입구들이 열리고, 살펴본 입구엔 흔적이 장면 안에 보인다(발자국·반짝이는 물건·손짓하는 행인·울리는 소리).
@@ -7390,26 +7476,27 @@ function srMake(q, k){
     possible=possible.filter(candidate=>srClueFits(things,candidate,clue));
   };
   const useful = clue=>possible.some(candidate=>!srClueFits(things,candidate,clue));
+  const informs = clue=>useful(clue) && possible.filter(candidate=>srClueFits(things,candidate,clue)).length>1;
   const traits = i=>things[sol[i]].a.filter(a=>SR_ATTR_THING[a]).map(a=>({t:"trait",s:i,a}));
   const excludes = i=>sol.filter(x=>x!==sol[i]).map(x=>({t:"not",s:i,x}));
   // 초반 단서는 재주에 따라 성질, 배제, 확정 위치로 달라진다.
   if(k>=0.9){
-    const hint = remaining.flatMap(traits).find(useful) || remaining.flatMap(excludes).find(useful);
+    const hint = remaining.flatMap(traits).find(informs) || remaining.flatMap(excludes).find(informs);
     if(hint) add(intro,hint);
   }
-  if(k>=1.5){
-    const i=remaining.find(i=>sol[i]!==0 && useful({t:"is",s:i,x:sol[i]}));
-    if(i!=null) add(intro,{t:"is",s:i,x:sol[i]});
-  } else if(k>=1.2){
-    const hint = remaining.flatMap(excludes).find(useful);
+  if(k>=1.2){
+    const hint = remaining.flatMap(excludes).find(informs);
     if(hint) add(intro,hint);
   }
-  // 조사 단서를 모두 모으면 추측 제출 없이 답을 확정할 수 있다.
-  for(const i of remaining){
+  const before=possible.slice();
+  const order=remaining.slice().sort((a,b)=>Number(sol[b]===0)-Number(sol[a]===0));
+  for(const i of order){
     const hints = k>=1.2 ? traits(i).concat(excludes(i)) : excludes(i);
     for(const hint of hints) if(useful(hint)) add(at[i],hint);
   }
-  return {spots,things,sol,intro,at,N};
+  const reduced = i=>before.filter(candidate=>at[i].every(h=>srClueFits(things,candidate,h))).length;
+  const lead = k>=1.2 ? order.filter(i=>at[i].length).sort((a,b)=>reduced(a)-reduced(b))[0] : null;
+  return {spots,things,sol,intro,at,N,lead};
 }
 function srText(P, c){
   const place=P.spots[c.s].n;
@@ -7455,7 +7542,7 @@ function mgSearch(ctx){
     let raf;
     const ui = () => {
       m.info.innerHTML = `<div class="sr-top">남은 행동 <b>${G.left}</b> / 8 · 정답 제출 ${G.attempts}회 · 확정 <b>${G.lock.filter(Boolean).length}</b> / ${P.N}${G.msg ? ` · <span style="color:var(--yellow)">${G.msg}</span>` : ""}</div>
-        <div class="sr-notes">${G.notes.map(t=>`<div>· ${esc(t)}</div>`).join("") || `<div class="muted">아직 아는 것이 없다.</div>`}</div>`;
+        <div class="sr-notes">${P.lead!=null && !G.seen.has(P.lead)?`<div><b>재주 · ${esc(P.spots[P.lead].n)}부터 보면 후보를 좁힐 수 있다.</b></div>`:""}${G.notes.map(t=>`<div>· ${esc(t)}</div>`).join("") || `<div class="muted">아직 아는 것이 없다.</div>`}</div>`;
       m.ctrl.innerHTML = `<div class="sr-wrap"><div class="muted" style="font-size:12px;margin-bottom:6px">이 현장에 있던 것: ${P.things.map(t=>esc(t.n)).join(" · ")}</div><div class="sr-book">${P.spots.map((s,i)=>`<label class="${G.lock[i]?"lock":""}"><span>${esc(s.n)}</span>${G.lock[i] ? `<b>${esc(P.things[P.sol[i]].n)}</b>` :
         `<select data-sr="${i}"><option value="-1">—</option>${P.things.map((t,j)=>`<option value="${j}" ${G.guess[i]===j?"selected":""}>${esc(t.n)}${ruledOut(i,j)?" · 단서와 불일치":""}</option>`).join("")}</select>`}</label>`).join("")}</div>
         <div class="sr-act"><button class="primary" data-srchk="1" ${G.done?"disabled":""}>맞춰 보기</button></div></div>`;
@@ -9331,15 +9418,27 @@ function escFoe(q){ const P = REQ_POOL[reqTier(q.grade!=null ? q.grade : 9)], ro
 function mgEscort(ctx){
   return new Promise(resolve=>{
     const q = ctx.q, tier = reqTier(q.grade!=null ? q.grade : 9), k = clamp(teamPower(ctx.team, ["str","agi"]) / Math.max(1, q.req), 0.55, 1.7);
-    const SEG = [3,4,5,6][tier], baseAmb = [0.08,0.16,0.24,0.32][tier];
+    const baseSegments = [3,4,4,4][tier], baseAmb = [0.08,0.16,0.24,0.32][tier];
+    const linkedOffice = S.officeStory?.crossingEscortSupport ? S.officeStory.crossingOfficeName : null;
+    const chooseRoute = tier>=2 || S.day>=100 || !!linkedOffice;
+    const routes = {
+      main:{n:"큰길로 돌아간다",segments:baseSegments+1,ambush:-0.1,info:"한 구간 더 이동한다. 첫 구간의 매복을 피하고 이후에도 매복 위험이 낮다."},
+      short:{n:"시장 뒤 골목으로 간다",segments:Math.max(2,baseSegments-1),ambush:0.14,info:"한 구간 덜 이동한다. 입구에 낯선 발자국이 있고 매복 위험이 높다."},
+      ally:{n:"이웃 사무소에 교대를 부탁한다",segments:baseSegments,ambush:-0.1,info:"지원 한 번을 쓴다. 첫 구간의 매복을 피하고 이동 거리는 그대로다."}
+    };
+    let SEG = baseSegments;
     const m = mgOpen("호위 · 길 위의 경계", `${esc(q.text)}<br>이동 중 발생하는 사건에 대응하며 목적지까지 의뢰인을 호위한다. <b>경계</b> 수치가 낮을수록 매복에 걸릴 가능성이 높아지며, 매복에 걸리면 합 전투가 시작된다. 의뢰인의 <b>안전</b>이 모두 소진되거나 전투에서 패배하면 의뢰에 실패한다.`, ctx, 220);
     const G = {seg:0, al: clamp(Math.round(60 + (k-1)*40), 40, 90), safe:100, amb:0, done:false, log:[], fights:[], ev:null, walk:0}; if(FXTEST) window.__es = G;
     const deck = ESC_EVENTS.slice().sort(()=>Math.random()-0.5);
+    let route=null, waitingRoute=chooseRoute;
     let raf;
     const ui = () => {
       m.info.innerHTML = `구간 <b>${Math.min(G.seg+1, SEG)}</b> / ${SEG} · 경계 <b style="color:${G.al>=50?"var(--green)":G.al>=25?"var(--yellow)":"var(--red)"}">${G.al}</b> · 의뢰인 안전 <b>${G.safe}</b>
         <div class="muted" style="font-size:12px;margin-top:4px">${G.log.slice(-3).map(esc).join("<br>")}</div>`;
-      m.ctrl.innerHTML = G.ev && !G.done ? `<div class="es-card"><p>${esc(G.ev.t)}</p><div class="pk-moves">${G.ev.o.map((o,i)=>`<button data-es="${i}"><b>${esc(o[0])}</b></button>`).join("")}</div></div>` : "";
+      m.ctrl.innerHTML = waitingRoute && !G.done
+        ? `<div class="es-card"><p>${linkedOffice?`${esc(linkedOffice)}에서 약속한 교대 인원을 보낼 수 있다고 연락했다.`:"교차로 앞에서 의뢰인이 걸음을 멈춘다. 어느 길로 갈지 묻는다."}</p>
+          <div class="pk-moves">${(linkedOffice?["main","short","ally"]:["main","short"]).map(id=>`<button data-escort-route="${id}"><b>${routes[id].n}</b><small>${routes[id].info}</small></button>`).join("")}</div></div>`
+        : G.ev && !G.done ? `<div class="es-card"><p>${esc(G.ev.t)}</p><div class="pk-moves">${G.ev.o.map((o,i)=>`<button data-es="${i}"><b>${esc(o[0])}</b></button>`).join("")}</div></div>` : "";
     };
     const finish = win => { if(G.done) return; G.done = true; ui();
       const sc = win ? clamp(0.5 + G.safe/200, 0, 1) : 0.15;
@@ -9366,12 +9465,23 @@ function mgEscort(ctx){
       setTimeout(async ()=>{
         if(G.done) return;
         G.al = clamp(G.al - 6, 0, 100);
-        const p = clamp(baseAmb + G.amb + (50 - G.al)/120, 0.02, 0.85); G.amb = 0;
+        const sheltered = G.seg===0 && (route==="main" || route==="ally");
+        const p = sheltered ? 0 : clamp(baseAmb + (routes[route]?.ambush||0) + G.amb + (50 - G.al)/120, 0.02, 0.85); G.amb = 0;
         if(Math.random() < p && !(await ambush(`${G.seg+1}구간 — 매복이다!`))) return;
         G.ev = deck[G.seg % deck.length]; ui();
       }, 900);
     }
-    m.ctrl.addEventListener("click", async e=>{ const b = e.target.closest("[data-es]"); if(!b || G.done || !G.ev) return;
+    m.ctrl.addEventListener("click", async e=>{
+      const selected=e.target.closest("[data-escort-route]")?.dataset.escortRoute;
+      if(selected && waitingRoute && !G.done){
+        if(selected==="ally"){
+          if(!S.officeStory?.crossingEscortSupport) return;
+          S.officeStory.crossingEscortSupport=false; save();
+        }
+        route=selected; SEG=routes[route].segments; waitingRoute=false;
+        G.log.push(routes[route].n); ui(); next(); return;
+      }
+      const b = e.target.closest("[data-es]"); if(!b || G.done || !G.ev) return;
       const [lab, ef] = G.ev.o[+b.dataset.es]; G.ev = null; G.log.push(`${G.seg+1}구간 — ${lab}`);
       G.al = clamp(G.al + (ef.al||0), 0, 100); G.safe = clamp(G.safe + (ef.safe||0), 0, 100); G.amb += ef.amb||0;
       if(ef.crew && ctx.team.length<2){ G.safe = clamp(G.safe - 8, 0, 100); G.log.push("맡길 동료가 없었다."); }
@@ -9403,7 +9513,7 @@ function mgEscort(ctx){
       vignette(c, W, H, "rgba(0,0,0,0.5)");
       raf = requestAnimationFrame(draw);
     }
-    ui(); raf = requestAnimationFrame(draw); next();
+    ui(); raf = requestAnimationFrame(draw); if(!waitingRoute) next();
   });
 }
 
@@ -9450,7 +9560,7 @@ async function dispatch(qid, fids, modeArg){
       for(const x of lost){ await abnoLose(x.f, x.kind, x.why); if(!S || S.over) return; } save(); render(); return; }
     /* 직접 수행: 목표가 있는 게임(합 전투 · 추격 · 호위 · 수색 · 유적)은 달성하면 성공, 하나라도 놓치면 실패.
        · 목표 게임을 모두 해냈으면 앞뒤에 붙은 점수 게임(전용 미니게임 · 단서 · 방벽)과 상관없이 성공.
-       · 점수 게임만 있는 의뢰는 점수와 상관없이 97% — 직접 해낸 일이 운으로 무너지는 건 3%뿐이다(점수는 보상·평가에 쓰인다).
+       · 점수 게임만 있는 의뢰는 안내된 기준을 넘기면 성공하며 점수는 보상·평가에 쓰인다.
        · 압승(80점 이상)은 특수 전리품 확률이 늘어난다.
        · 환상체는 통제·제압 결과가 곧 성패(기믹이 많아 그대로 둔다) */
     if(isAbnoContract(q) && r.decisive!=null){ decisive = r.decisive; mgLine = `직접 수행 ${decisive ? "성공" : "실패"}`; }
@@ -9459,7 +9569,8 @@ async function dispatch(qid, fids, modeArg){
       mgLine = r.score >= CLEAN_WIN ? `직접 수행 <b>압승</b>(${Math.round(r.score*100)}점) — 의뢰 확정 성공 · 추가 전리품 기회`
         : r.score >= 0.45 ? `직접 수행 승리(${Math.round(r.score*100)}점) — 의뢰 확정 성공`
         : `직접 수행 <b>간신히 승리</b>(${Math.round(r.score*100)}점) — 의뢰는 성공했지만 상처가 깊다`; }
-    else { mgScore = r.score; pr = DIRECT_PR; mgLine = `직접 수행 ${Math.round(r.score*100)}점 · 성공률 <b>${pr}%</b>`; } }
+    else { mgScore = r.score; decisive = Math.round(mgScore*100) >= DIRECT_SCORE_GOAL;
+      mgLine = `직접 수행 ${Math.round(r.score*100)}점 · 기준 ${DIRECT_SCORE_GOAL}점 · <b>${decisive?"성공":"실패"}</b>`; } }
   else { pr = base; if(hasGame) payMul = 0.8; mgLine = `자동 진행 · 성공률 ${pr}%${hasGame?" · 보수 80%":""}`; }
   let pay = personalNomPay(q,namedSent,payMul);
   // 직접 수행 점수는 보수로 이어진다: 100점 ×1.25 · 75점 ×1 · 50점 이하 ×0.75 (사이는 고르게, 소수점 올림)
@@ -18009,8 +18120,8 @@ function updateCard(qid){
   const only = directOnly(q), auto = !only && (modePref()==="auto" || !gamesFor(q).length);
   const spec=team.map(f=>{const p=specialty(f,q);return p.bonus?`${esc(f.name)}: ${p.name} ${p.bonus>0?"+":""}${p.bonus}%p`:"";}).filter(Boolean);
   est.innerHTML = `${only ? `<b>직접 수행 전용</b> <span class="muted">(현장 행동과 전투 결과로 성패 결정)</span>` : (auto || !gamesFor(q).length ? `${auto?"자동 성공률":"기본 성공률"} <b style="color:${m.rate>=75?"var(--green)":m.rate>=50?"var(--yellow)":"var(--red)"}">${m.rate}%</b>${auto&&gamesFor(q).length?` · 보수 ${won(personalNomPay(q,personalNomMatch(q,team),0.8))}`:""}`
-      : gamesFor(q).some(g=>["str","agi","escort","search","ruins","abno"].includes(g)) ? `직접 수행 <b style="color:var(--green)">목표 달성 시 성공</b> <span class="muted">(전투·추격·호위 등 목표를 놓치면 실패)</span>`
-      : `직접 수행 성공률 <b style="color:var(--green)">${DIRECT_PR}%</b> <span class="muted">(점수는 보상·평가에 반영)</span>`)}
+      : gamesFor(q).some(g=>DIRECT_WIN_GAMES.includes(g)) ? `직접 수행 <b style="color:var(--green)">목표 달성 시 성공</b> <span class="muted">(전투·추격·호위 등 목표를 놓치면 실패)</span>`
+      : `직접 수행 <b style="color:var(--green)">평균 ${DIRECT_SCORE_GOAL}점 이상 성공</b> <span class="muted">(점수는 보상·평가에 반영)</span>`)}
     ${q.personalNom?`<div style="color:${personalNomMatch(q,team)?"#9fe8b0":"#e7a07c"}">${esc(q.personalNom.name)} ${personalNomMatch(q,team)?"지명 출동 +25%":"미출동 -15%"} · 예상 보수 ${won(personalNomPay(q,personalNomMatch(q,team),auto&&gamesFor(q).length?0.8:1))}</div>`:""}
     ${!auto && gamesFor(q).some(g=>["str","escort","abno","ruins"].includes(g))?'<div class="muted">직접 전투에서는 실제로 입은 피해에 따라 정산한다. 아래 수치는 부상 시 최대 범위다.</div>':""}
     <div style="margin-top:5px">${m.profiles.map(p=>`<div>${esc(p.name)}${p.status?` (${p.status})`:""}: 예상 ${m.stat} 손실 <b>성공 ${p.success}</b> / 실패 ${p.fail[0]}~${p.fail[1]}</div>`).join("")}</div>
@@ -22084,6 +22195,19 @@ function fxTestPanel(){
      <button data-ab="calm">관측 시작</button><button data-ab="rage">날뜀으로 시작</button><button data-ab="sign">기믹 징후 바로 띄우기</button><button data-ab="signrage">날뜀 + 징후 바로 띄우기</button><button data-ab="know">도감 정보 모두 열기</button><button data-ab="cityall">도시 일람 모두 열기</button><button data-ab="knowall">모든 환상체 모든 도감 열기</button><button data-ab="gift">모든 기프트를 도감에 추가</button><button data-ab="codex">도감 보기</button><button data-ab="night">밤 넘기기(기믹 정산)</button><button data-ab="sin">표식 찍힌 이가 사살한 것으로</button></div>
    <b>원작 환상체 기믹 시험</b><div class="g"><button data-ab="bless">대표에게 기사의 축복</button><button data-ab="despair">축복받은 이 쓰러뜨리기</button><button data-ab="flame">대표에게 용기의 불꽃 +1</button><button data-ab="feast">대표에게 요정의 축제</button><button data-ab="prick">대표가 가시에 찔림</button><button data-ab="solitude">대표에게 고독</button><button data-ab="bullet">마탄 2발(6·7번째 탄환)</button><button data-ab="skin">가죽 쓴 동료의 방문</button><button data-ab="gun">대표에게 총 쥐여 주기</button><button data-ab="sup5">환상체 제압 수 +5</button><button data-ab="clear">기믹 상태 모두 지우기</button></div>`;
   document.body.appendChild(el);
+  el.insertAdjacentHTML("afterbegin",`<div class="g">
+    <button data-fxproposal="pipe">예고와 빈틈 전투</button>
+    <button data-fxproposal="records">100일차 · 당번표 있음</button>
+    <button data-fxproposal="direct">100일차 · 당번표 없음</button>
+  </div>`);
+  el.addEventListener("click",async e=>{
+    const key=e.target.closest("[data-fxproposal]")?.dataset.fxproposal;
+    if(!key || !S) return;
+    if(key!=="pipe"){ officeStoryModule.testCrossing(key==="records"); return; }
+    const f=leader(), q=makeRequest(9,{kind:"일반",attrs:["str"],goal:"제압"});
+    Object.assign(q,{foe:"동네 양아치",distFoe:null});
+    await mgCombat({q,team:[f],idx:1,total:1});
+  });
   el.insertAdjacentHTML("beforeend",`<h4>3D 인물 그림</h4><div class="g"><button data-spr3="toggle">3D 그림 켜기/끄기</button><button data-spr3="view">무기 · 공격 방식 보기</button></div>`);
   el.addEventListener("click", e=>{ const k = e.target.closest("[data-spr3]")?.dataset.spr3; if(!k) return; if(k==="toggle"){ SPR.on = !SPR.on; toast(`3D 인물 그림 ${SPR.on ? "켜짐" : "꺼짐"}`); } else openSprViewer(); });
   el.insertAdjacentHTML("beforeend",`<h4>V.a1.2.6.3 전용 시험</h4><div class="g">
