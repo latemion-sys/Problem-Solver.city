@@ -6613,6 +6613,13 @@ function mgCombat(ctx){
     const basicDefCard=me=>egoDefenseCard(me.f.ego,defCard(me.wt));
     const basicTrainingSkill=(me,c)=>{const sk=skillOf(c),t=me.f.hanaTraining||{};return {...sk,base:sk.base+(t.base||0)+(c.removedCoins||0)*(t.cp||0),cp:sk.cp+(t.cp||0)};};
     const basicPick=(me,slot)=>{const a=basicAtkCards(me);return a[Math.min(a.length-1,Math.max(0,slot))]||a[0];};
+    // 첫 공격이 들어가기 전에는 현재 무기의 강공 기준 피해를 쓴다.
+    const counterLimit=me=>(me.peakAttackDamage??Math.round(equipDamage(me.f)*(basicPick(me,2).normalMul||1.3)))+7;
+    function limitCounterDamage(me,damage,notes){
+      const limit=counterLimit(me);
+      if(damage>limit) notes.push(`반격 피해 상한 ${limit} — ${damage} → ${limit}`);
+      return Math.min(damage,limit);
+    }
     const guardModes={guard:"가드"};
     const isBasic=si=>si===0||si===6||si===7;
     const keywordSlot=si=>si===0?0:si===6?1:si===7?2:-1;
@@ -6901,7 +6908,7 @@ function mgCombat(ctx){
         if(AB?.enrage && !foe.enraged)
           return `<button data-sk="8"><b>방어 기술 · ${esc(defense.n)}</b><small>징벌 새가 알로 돌아갈 때까지 반격 없이 방어</small></button>`;
         const sk=mySkill(techSkill(me,defense).sk,previewFirst);
-        return `<button data-sk="8"><b>방어 기술 · ${esc(defense.n)}</b><small>매 턴 사용 가능 · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 생존 시 정신력 +5 · ${esc(defense.d)}</small></button>`;
+        return `<button data-sk="8"><b>방어 기술 · ${esc(defense.n)}</b><small>매 턴 사용 가능 · 합 ${sk.base}~${sk.base+sk.coins*sk.cp} · 기본 ${sk.base} · 코인 ${coinStr(sk)} +${sk.cp} · 생존 시 정신력 +5${defense.counterFactor!=null?` · 반격 피해 상한 ${counterLimit(me)}`:""} · ${esc(defense.d)}</small></button>`;
       };
       const attackButton=(c,i,card)=>{const v=mySkill(basicTrainingSkill(me,c),previewFirst),id=i===0?0:i===1?6:7;return `<button data-sk="${id}" data-card="${card.id}" ${!hasBullet?"disabled":""}><b>${esc(c.n)}</b><small>일반 공격 · ${c.normalRole||"기본"}${i===0?" · 합 패배 시 직접 피해 -10%":""}${keywordLabel(me,i)} · 기본 ${v.base} · 코인 ${coinStr(v)} +${v.cp} · 합 ${v.base}~${v.base+v.coins*v.cp} · 공방 보정 +${weaponTierBonus(weaponClashTier(me.f))} · 평균 합 ${clashMean(v).toFixed(1)} · 피해 계수 ${(c.normalMul||1).toFixed(2)}배${c.normalSp?` · 정신력 -${c.normalSp}`:""}${listedAmmoBonus?` · 탄환 +${listedAmmoBonus} 이하`:""}</small></button>`;};
       const attackTechniqueButton=(T,sk,attrs,label)=>{
@@ -7093,14 +7100,21 @@ function mgCombat(ctx){
         // 적이 방어하거나 특수 면역 상태라면 탄환에도 동일한 제약이 걸린다.
         const ammoNet=dmg>0?Math.min(6,Math.round(ammoEffective*(fk.def && !wSk.def && !(T && (T.id==="mordhau" || T.id==="crush" || T.id==="r_claiomh"))?0.5:1))):0;
         if(ammoNet) dmg+=ammoNet;
-         if(dmg>0 && !(AB && AB.immune && !(me.f.grade<=1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))))dmg+=supportDamage(!!fk.def);
+        const assist=dmg>0 && !(AB && AB.immune && !(me.f.grade<=1 && ((me.f.gear.weapon && me.f.gear.weapon.unique && !needsRepair(me.f.gear.weapon)) || (me.f.ego && me.f.ego.type!=="armor")))) ? supportDamage(!!fk.def) : 0;
+        dmg+=assist;
 
         { const pc = passiveCut(me); if(pc && dmg > 0){ const d0 = dmg; dmg = Math.max(1, dmg - pc); rNote.push(`${FOE_PASSIVE[foe.passive].n} — 피해 ${d0}→${dmg}`); } }
         if(BOSS) dmg = BOSS.taken(dmg, {me, T, fk}, bNote);
         if(dmg>0){const blocked=AB&&AB.immune&&!(me.f.grade<=1&&((me.f.gear.weapon&&me.f.gear.weapon.unique&&!needsRepair(me.f.gear.weapon))||(me.f.ego&&me.f.ego.type!=="armor")));if(!blocked){const factor=fk.def&&!wSk.def&&!(T&&["mordhau","crush","r_claiomh"].includes(T.id))?.5:1;const hadPoise=(me.poise||0)>=10;if(T?.keyword){
           dmg+=signatureHit(T,me,foe,{party,enemyMove:fk,factor,lastLost:lastOffensiveLost,gainResolve,recoverSpirit:recoverCombatSpirit,notes:tNote});
         }
-        const rareDest=T&&T.hana?hanaApply(T,me,foe,tNote):null;onWeaponKeyword(me,si,tNote);dmg+=hanaTriggerMarks(me,foe,factor,tNote);if(hadPoise&&keywordSpend(me,"poise")){dmg+=Math.round(5*factor);tNote.push("호흡 10 소모 — 공격 피해 +5(방어 적용)");}if(rareDest)hanaMark(T,rareDest,tNote);if(me.sp2!=="rupture"&&foe.rupture>0){dmg+=foe.rupture;tNote.push("파열 추가 피해 "+foe.rupture);foe.rupture--;}const ks=keywordSnapshot(foe), extra=keywordImpact(foe,ks,factor,tNote);if(AB?.id==="nothing"&&!egoHasWeapon(me.f.ego)){const before=dmg;dmg=Math.round(dmg*0.6);abNote.push(`광폭 — 물리 공격 피해 ${before}→${dmg} (60%)`);}dmg=foeDefenseDamage(foe,dmg+extra-ks.burn,tNote)+ks.burn;if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}else{dmg=foeDefenseDamage(foe,dmg,tNote);}if(dmg>0&&!blocked){const fixed=combatFixedDamage(me.f,me.mangLive);dmg+=fixed;if(fixed)tNote.push(`고정 추가 피해 +${fixed}`);}dmg=keywordShield(foe,dmg,tNote);}
+        const rareDest=T&&T.hana?hanaApply(T,me,foe,tNote):null;onWeaponKeyword(me,si,tNote);dmg+=hanaTriggerMarks(me,foe,factor,tNote);if(hadPoise&&keywordSpend(me,"poise")){dmg+=Math.round(5*factor);tNote.push("호흡 10 소모 — 공격 피해 +5(방어 적용)");}if(rareDest)hanaMark(T,rareDest,tNote);if(me.sp2!=="rupture"&&foe.rupture>0){dmg+=foe.rupture;tNote.push("파열 추가 피해 "+foe.rupture);foe.rupture--;}const ks=keywordSnapshot(foe), extra=keywordImpact(foe,ks,factor,tNote);if(AB?.id==="nothing"&&!egoHasWeapon(me.f.ego)){const before=dmg;dmg=Math.round(dmg*0.6);abNote.push(`광폭 — 물리 공격 피해 ${before}→${dmg} (60%)`);}dmg=foeDefenseDamage(foe,dmg+extra-ks.burn,tNote)+ks.burn;if(me.sp2==="charge"||me.sp2==="poise"){const k=me.sp2;keywordAdd(me,k,3);egoNote.push(`${KEYWORD_NAMES[k]} +3`);}if(me.wsp==="screw"){keywordAdd(me,"charge",3);wNote.push("방전 — 충전 +3");}}else{dmg=foeDefenseDamage(foe,dmg,tNote);}if(dmg>0&&!blocked){const fixed=combatFixedDamage(me.f,me.mangLive);dmg+=fixed;if(fixed)tNote.push(`고정 추가 피해 +${fixed}`);}if(T?.counterFactor!=null) dmg=limitCounterDamage(me,dmg,tNote);
+          dmg=keywordShield(foe,dmg,tNote);
+        }
+        if(!wSk.def){
+          const ownDamage=Math.min(foe.hp,Math.max(0,dmg-assist));
+          if(ownDamage>0) me.peakAttackDamage=Math.max(me.peakAttackDamage||0,ownDamage);
+        }
         if(me.drepHeal){me.drepHeal=false;const h=Math.round(Math.min(foe.hp,Math.max(0,dmg))*.3);me.hp=Math.min(me.max,me.hp+h);if(h)tNote.push(`거둔 만큼 되찾았다(체력 +${h})`);}
         foe.hp = Math.max(0, foe.hp - dmg); total = dmg; st.crit = foe.hp<=0 || crit>0; attack("me", dmg, c);
         if(AB && AB.fx==="pair" && !foe.mate && foe.hp > 0 && foe.hp < foe.max*0.5){ foe.mate = true; const h = abPenalty(AB,Math.round(foe.max*0.25)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`<b style="color:#ff8a7a">반쪽이 다치자 다른 반쪽이 날아와 상처를 메웠다(+${h})</b>`); }
@@ -7182,7 +7196,7 @@ function mgCombat(ctx){
         if(BOSS) dmg = BOSS.dealt(dmg, {me, fk, guarding: !!sk.def}, bNote);
         const w0 = woundOf(me.hp,me.max); me.hp = Math.max(0, me.hp - dmg); total = dmg;
         if(me.scarabNow){ me.scarabNow = false; me.hp = Math.max(me.hp, Math.round(me.max*0.74)); rNote.push("태양 스카라베 — 쓰러질 상처를 1로 버티고, 가슴의 원반이 동틀 녘처럼 데워 경상까지 되돌렸다"); } me.woundUp = woundOf(me.hp,me.max) > w0 || me.hp<=0; st.crit = false; if(dmg>0) attack("foe", dmg, fk);
-        if(si===1&&me.hp>0){const rec=recoverCombatSpirit(me,mode==="evade"&&evadeOK?12:mode==="parry"&&parryOK?9:7);gainResolve(me,evadeOK||parryOK?10:7);tNote.push(`방어 행동 — 정신력 +${rec} · 투지 ${me.resolve}/100`);if(mode==="counter"&&dmg>0&&!AB&&!DF&&!BOSS){let ret=Math.max(1,Math.round(equipDamage(me.f)*0.3));const ks=keywordSnapshot(foe),ex=keywordImpact(foe,ks,1,tNote);ret=foeDefenseDamage(foe,ret+ex-ks.burn,tNote)+ks.burn;ret=keywordShield(foe,ret,tNote);foe.hp=Math.max(0,foe.hp-ret);tNote.push(`반격 — ${ret} 피해`);}}
+        if(si===1&&me.hp>0){const rec=recoverCombatSpirit(me,mode==="evade"&&evadeOK?12:mode==="parry"&&parryOK?9:7);gainResolve(me,evadeOK||parryOK?10:7);tNote.push(`방어 행동 — 정신력 +${rec} · 투지 ${me.resolve}/100`);if(mode==="counter"&&dmg>0&&!AB&&!DF&&!BOSS){let ret=Math.max(1,Math.round(equipDamage(me.f)*0.3));const ks=keywordSnapshot(foe),ex=keywordImpact(foe,ks,1,tNote);ret=foeDefenseDamage(foe,ret+ex-ks.burn,tNote)+ks.burn;ret=keywordShield(foe,limitCounterDamage(me,ret,tNote),tNote);foe.hp=Math.max(0,foe.hp-ret);tNote.push(`반격 — ${ret} 피해`);}}
         if(AB && AB.fx==="kin" && dmg > 0 && foe.hp > 0){ const h = Math.max(0, Math.round(dmg*0.4)); foe.hp = Math.min(foe.max, foe.hp + h); abNote.push(`흘린 피를 마셨다(+${h})`); } }
       if(BOSS) bNote.push(...BOSS.after({won, guarding, foeGuarding, reloading, T, fk, me}));
       await wait(900);
@@ -12834,7 +12848,7 @@ function combatRuleRecordHtml(){
   <p><b>한 번의 합 위력 = 기본 위력 + 앞면 코인 수 × 코인 위력.</b> 뒷면은 0을 더한다. 예: 기본 4, 코인 2개·위력 2, 근력 30·재주 45, 의뢰 전력 보정 0이라면 기본 6, 코인 위력 5, 합 위력 6~16 (앞면 0/1/2개: 6/11/16).</p>
   <p>양쪽 코인을 던져 위력이 낮은 쪽의 코인 1개를 제거하고 다시 던진다. 동률이면 그대로 다시 던진다. 한쪽 코인이 모두 사라지면 패배한다. 최대 24회 굴림 제한에서 코인이 더 많이 남은 쪽이 승리하며, 같으면 양측 50% 확률로 승리한다.</p>
   <p>해결사의 앞면 확률은 전투 정신력 -45에서 27.5%, 0에서 50%, +15에서 62%, +45에서 85%. 재주 10당 기존 앞면 확률 +0.25%p도 유지한다. 기술 등 추가 보정 후 5~95%로 제한한다. 적은 기본 50%이며 일부 기술은 예외다.</p>
-  <p>전력 공격과 고유 기술은 무기별 코인 구조를 따르며, 사용 시 기술에 표시된 정신력을 소모한다. 장착한 방어 기술은 가드 자리를 대체하며 매 턴 사용할 수 있다. 방어 기술로 생존하면 정신력 5를 회복한다. 공격·방어 기술의 재사용 대기시간은 따로 계산한다. 양산 +0 · 정식 +2 · 상급 +4 · 고유·개화 +6의 기본 위력 보정을 받는다. 강공 최대는 맨손 16, 양산 20, 정식 22, 상급 24, 고유·개화 26이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
+  <p>전력 공격과 고유 기술은 무기별 코인 구조를 따르며, 사용 시 기술에 표시된 정신력을 소모한다. 장착한 방어 기술은 가드 자리를 대체하며 매 턴 사용할 수 있다. 방어 기술로 생존하면 정신력 5를 회복한다. 반격 피해의 상한은 이번 전투에서 본인이 낸 직접 공격 최고 피해 +7이다. 아직 적중한 공격이 없으면 강공 기준 피해 +7을 적용한다. 공격·방어 기술의 재사용 대기시간은 따로 계산한다. 양산 +0 · 정식 +2 · 상급 +4 · 고유·개화 +6의 기본 위력 보정을 받는다. 강공 최대는 맨손 16, 양산 20, 정식 22, 상급 24, 고유·개화 26이다. 평균은 앞면 확률 50% 기준이며 능력치·훈련·신·망 등 별도 보정은 제외한다. 무기 효과, 신·망, 동료 지원, 환상체·뒤틀림 대응 및 개별 기술의 보정은 별도로 적용된다. 적의 위력은 인간형의 무기 등급 및 환상체·뒤틀림·죄종의 고유 기술에 따라 정해진다. 권장 인원에 따른 기본 위력 가산과 4급 이상 인간 적의 일괄 코인 위력 가산은 없다. 환상체·뒤틀림의 3턴 주기 강공은 기본 위력 +1이며 죄종은 적용하지 않는다. 인간형 몰아치기는 코인 수 증가에 따른 코인 위력 중복 상승을 제한한다. 보스 고유 효과와 신·망은 유지한다.</p>
   <p><b>가드와 투지:</b> 공격 합에서 두 번 연속 밀리면 다음 공격 합에서 기본 위력 +2와 음수 정신력에 따른 앞면 확률 불이익 완화를 얻는다. 혼신의 일격이나 사즉생과 함께 쓸 때 기본 위력 보정은 큰 쪽이 적용된다. 가드는 합 없이 보호막 8을 얻고 정신력 3을 회복한다. 상대의 공격을 막고 생존하면 정신력 7을 회복한다. 정신력이 -8 이하일 때 호흡 정리를 쓰면 전투당 한 번, 투지 소모 없이 정신력 12를 회복한다. 보호막 상한은 30이며 턴 종료 시 남은 보호막의 절반을 올림해 감소시킨다. 합 승리 투지 5, 패배 15, 가드 7, 적 방어 3. 기존 투지 행동은 유지한다.</p><p><b>휘청임:</b> 다음 실제 합에서 기본 위력 -${CLASH_DAZE_CUT}. 중복으로 쌓이지 않으며 합을 한 번 진행하면 소멸한다. 코인 위력 감소는 별개이며 해당 합의 각 앞면 코인에 적용된다. 기본 방어·재장전 등 합이 없는 행동으로는 소모하지 않는다. 예: 기본 6, 코인 위력 5, 앞면 2개일 때 휘청임만 받으면 14, 코인 위력 -2까지 받으면 10.</p>
   </div></div><div class="cdx on"><div class="cdx-h"><b>피해량 계산 (직접 전투)</b></div><div style="padding:10px;line-height:1.7">
   <p><b>① 무기 피해 기준 = 4 + (무기별 능력치 가중합 × 0.3) + 무기 공격력.</b> 맨손의 능력치 비중은 근력 40%, 민첩 30%, 재주 30%. 개화 무기는 합 평균 18, 상급 공방 기준 공격력 20에 무기형 +5, 일체형 +2의 기본 피해를 더한다. 개화 의복은 체력 피해 38% 감소, 기본 보호막 20(일체형 5)을 매 턴 시작에 회복한다. 보호막 특수 효과를 선택하면 각각 30, 15가 된다.</p>
