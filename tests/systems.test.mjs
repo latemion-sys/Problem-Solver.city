@@ -253,3 +253,31 @@ test('출동 인원: 일반 3명, 도시 악몽과 도시의 별 4명',()=>{
   assert.match(game,/team.length>partyMax\(q\)/);
   assert.match(game,/else if\(sel.length < partyMax\(q\)\)/);
 });
+
+test('현장 장부 단서를 조사하면 모든 위치를 하나로 좁힐 수 있다',()=>{
+  const random=Object.create(Math);
+  let seed=923;
+  random.random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);
+  const cx={Math:random};
+  vm.createContext(cx);
+  vm.runInContext(section('const SR_SPOTS =','// 자리마다의 모습'),cx);
+  const boards=vm.runInContext(`(()=>{
+    const assignments=[];
+    for(let a=0;a<4;a++) for(let b=0;b<4;b++) for(let c=0;c<4;c++) for(let d=0;d<4;d++){
+      const plan=[a,b,c,d];
+      if(new Set(plan).size===4) assignments.push(plan);
+    }
+    const cases=[];
+    for(const k of [.55,.95,1.25,1.65]) for(let i=0;i<60;i++){
+      const P=srMake({text:["장부","고양이","인형","의수"][i%4]},k);
+      const before=assignments.filter(plan=>P.intro.every(h=>srClueFits(P.things,plan,h)));
+      const after=before.filter(plan=>P.at.flat().every(h=>srClueFits(P.things,plan,h)));
+      cases.push({k,before:before.length,after:after.length,correct:after[0]?.join()===P.sol.join(),hints:P.intro.map(h=>h.t)});
+    }
+    return cases;
+  })()`,cx);
+  assert.ok(boards.every(b=>b.correct&&b.after===1));
+  assert.ok(boards.filter(b=>b.k===.55).every(b=>b.before===6));
+  assert.ok(boards.filter(b=>b.k===1.65).every(b=>b.before<=2));
+  assert.ok(boards.some(b=>b.k===.95&&b.hints.includes('trait')));
+});
